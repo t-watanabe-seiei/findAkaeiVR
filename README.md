@@ -76,8 +76,112 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
     composer require livewire/livewire
     
-### 009 git init
+### 009 git　setup
 
-### 010 
-### 011 
+    git init
 
+### 010  モデルとマイグレーションファイルの生成。
+
+    php artisan make:model Score -m
+
+### 011 API用コントローラーを作成
+
+    php artisan make:controller ScoreController --api
+
+### 012  Artisanコマンドを使用してAPIルーティングを有効にする（routes/api.phpがないため） 
+    
+    php artisan install:api
+
+### 013 ルーティングの設定のため routes/api.php に以下を追加。
+
+    Route::resource('/Scores', App\Http\Controllers\ScoreController::class);
+
+### 014 api/books/* が設定されたらOK。
+
+    php artisan route:list
+
+### 015 Scores マイグレーションファイルを編集してカラムの追加。
+
+    Schema::create('scores', function (Blueprint $table) {
+        $table->id();
+        $table->bigInteger('userid');
+        $table->double('time', 8, 3);
+        $table->timestamps();
+    });
+
+### 016 php artisan migrate (create [Table] scores)
+
+### phpLiteAdmin にてダミーデータを挿入 Score
+
+### Api get 動作確認
+
+    一覧取得
+    curl -X GET http://localhost:8000/api/Scores
+
+    新規登録
+    curl -X POST http://localhost:8000/api/Scores  -d 'userid=20230001&time=11.99'
+
+### ScoreController　の  index , store , show , update , destroy を修正
+
+    public function index()
+    {
+        return Score::all();
+    }
+    
+    public function store(Request $request)
+    {
+        Score::create($request->all());
+    }
+    
+    public function show(string $userid)
+    {
+        return Score::where('userid', $userid)->get();
+    }
+    
+    
+    public function update(Request $request, string $id)
+    {
+        Score::where('id', $id)->update([
+            'userid' => $request->userid,
+            'time' => $request->time
+        ]);
+    }
+
+    public function destroy(string $id)
+    {
+        Score:where('id', $id)->delete();
+    }
+    
+### バリデーション用にリクエストクラスを作成。
+
+    php artisan make:request StoreScore
+
+### app\Http\Requests\StoreScore.php ができるのでルールを設定。
+    public function authorize(): bool
+    {
+        return true;
+    }
+    public function rules(): array
+    {
+        return [
+              'userid' => 'required|max_digits:8',
+              'time' => 'required|decimal:2,3',
+        ];
+    }
+
+### Api 動作確認
+
+一覧取得
+curl -X GET http://localhost:8000/api/Scores
+
+新規登録
+curl -X POST http://localhost:8000/api/Scores  -d 'userid=20230001&time=11.99'
+
+更新（２番目のデータ）
+curl -X PUT http://localhost:8000/api/Scores/2  -d 'userid=20240001&time=59.999'
+
+参照（userid=20240001のデータ）
+curl -X GET http://localhost:8000/api/Scores/20230001
+
+削除（２番目のデータ）
+curl -X DELETE http://localhost:8000/api/Scores/2
