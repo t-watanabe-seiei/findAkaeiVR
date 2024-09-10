@@ -185,3 +185,20 @@ curl -X GET http://localhost:8000/api/Scores/20230001
 
 削除（２番目のデータ）
 curl -X DELETE http://localhost:8000/api/Scores/2
+
+
+
+
+# この時点で、https://replit.com/　の　Development Time（600分）　がなくなってしまったので、GitHub　から、Local に Pull
+Localは php8.1.26 だったため、 windows.php.net/download から、 
+php8.2.23-nts-win32-vs16-x64.zipをダウンロード & php.iniを編集+環境変数の設定(IISの設定は未設定)
+
+    composer install
+    php artisan key:generate
+    touch database/database.sqlite
+    php artisan migrate
+    phpliteadmin.php の pathの設定
+    
+    php artisan serve --host 0.0.0.0 --port 8000
+
+    

@@ -54,9 +54,15 @@ $subdirectories = false;
 
 //if the above $directory variable is set to false, you must specify the databases manually in an array as the next variable
 //if any of the databases do not exist as they are referenced by their path, they will be created automatically
+// $databases = array(
+// 	array(
+// 		'path'=> '/home/runner/findAkaeiVR/database/database.sqlite',
+// 		'name'=> 'main'
+// 	)
+// );
 $databases = array(
 	array(
-		'path'=> '/home/runner/findAkaeiVR/database/database.sqlite',
+		'path'=> 'C:\MyApp\findAkaeiVR\database\database.sqlite',
 		'name'=> 'main'
 	)
 );
