@@ -344,3 +344,24 @@ php -v
 ## npm run dev コマンドでエラー巣が起こる場合、ファイルの拡張子を追加することで、webpack が正しくモジュールを解決できるようになります。　C:\MyApp\findAkaeiVR\resources\js\app.js の中身を以下に変更
     import './bootstrap.js';
 
+# もっかい　sourceTree から、githubへ
+# xserverへログインして、Gitクローン
+    git clone git@github.com:t-watanabe-seiei/findAkaeiVR.git
+#
+    git fetch
+    git pull
+
+# composer パッケージのインストール
+    composer install
+# .env ファイルのReName
+    mv .env.example .env
+# APP_KEY の更新
+    php artisan key:generate
+# .env ファイルの一部修正
+
+## npm install
+## npm audit ※
+## touch database/database.sqlite
+## php artisan migrate
+## phpliteadmin.php の pathの設定
+    /home/seiei9/seiei.online/public_html/2024oc.seiei.online/findAkaeiVR/database/database.sqlite
