@@ -201,4 +201,146 @@ php8.2.23-nts-win32-vs16-x64.zipをダウンロード & php.iniを編集+環境�
     
     php artisan serve --host 0.0.0.0 --port 8000
 
+# sourceTree から、githubへ
+# xserverへログインして、Gitクローン
+    git clone git@github.com:t-watanabe-seiei/findAkaeiVR.git
+#
+    git fetch
+    git pull
+
+# php のバージョンをアップ　php8.2へ
+
+# 使いたいPHPバージョンの存在確認＆パスを調べる
+whereis php
+
+
+## １．ホームディレクトリに「bin」フォルダを作成
+mkdir $HOME/bin
+## ２．シンボリックリンクを作成する　※今回はPHP8.2を指定しました。
+シンボリックリンクの新規作成
+ln -s /usr/bin/php8.2 $HOME/bin/php
+シンボリックリンクの向き先を変える
+ln -nfs /usr/bin/php8.2 $HOME/bin/php
+## ３.bashrcにパスを通す記述を追記
+vi ~/.bashrc
+最終行に以下を追加して保存
+export PATH=$HOME/bin:$PATH
+## ４．変更内容を反映させる
+source ~/.bashrc
+## ５．反映されているかを確認
+php -v
+
+
+# composer パッケージのインストール
+    composer install
+# .env ファイルの存在確認　なければ作成orReName
+    mv .env.example .env
+# APP_KEY の更新
+    php artisan key:generate
+# .env ファイルの一部修正
+
+# 公開ディレクトリの設定 ※2024oc.seiei.onlineで以下のコマンド入力
+　ln -s /home/seiei9/seiei.online/public_html/2024oc.seiei.online/findAkaeiVR/public find
+
+# Node.jsのバージョンをアップグレード ※Node.jsのバージョンを18.x以上にアップデート
+
+### nodebrewをインストールされたか確認
+    nodebrew
+
+## nodebrewでインストール可能なnodeのバージョンを確認
+     nodebrew ls-remote
+
+## nodebrewで使いたいバージョンのnodeをインストール
+    nodebrew install-binary v20.17.0
+    ※エックスサーバーでは、node16 までしか対応していない・・・
+
+## 他にも最新の安定版をインストールしたかったstableとする。
+    nodebrew install-binary stable
+
+## nodebrewでインストールされたnodeのバージョンを確認
+    nodebrew ls
+
+## 使いたいnodeのバージョンをインストールしたバージョンのリストから選ぶ。
+    nodebrew use v22.8.0
+
+### ※Windowsでは、 https://nodejs.org/en/ から、windows版の　Download node.js LTS をダウンロードしてそのままインストールすると、Node.js がバージョンアップされる（node-v20.17.0-x64.msi）
+
+# 
+    npm install
+    npm audit fix --force
+
+    https://prog-8.com/docs/nodejs-env-win
+
+
     
+
+    touch database/database.sqlite
+    php artisan migrate
+    phpliteadmin.php の pathの設定
+
+    git pull git@github.com:t-watanabe-seiei/vr.git main
+    git pull git@github.com:t-watanabe-seiei/findAkaeiVR.git main
+
+
+
+
+
+
+
+## やっぱり　node.js を version 16.20.2 に戻す
+
+## laramix に戻す
+    npm install --save-dev laravel-mix
+## package.jsonファイルに、”laravel-mix”が追加になります。
+    {
+        "devDependencies": {
+            "laravel-mix": "^6.0.49",
+        }
+    }
+## プロジェクト直下に、webpack.mix.jsファイルを作成し、以下の内容にします。
+    const mix = require('laravel-mix');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mix Asset Management
+    |--------------------------------------------------------------------------
+    |
+    | Mix provides a clean, fluent API for defining some Webpack build steps
+    | for your Laravel applications. By default, we are compiling the CSS
+    | file for the application as well as bundling up all the JS files.
+    |
+    */
+
+    mix.js('resources/js/app.js', 'public/js')
+        .postCss('resources/css/app.css', 'public/css', [
+            //
+        ]);
+## package.jsonファイルを開き、“scripts”部分のviteの記述を削除し、以下のようにMixを追加します。
+{
+    "scripts": {
+        "dev": "npm run development",
+        "development": "mix",
+        "watch": "mix watch",
+        "watch-poll": "mix watch -- --watch-options-poll=1000",
+        "hot": "mix watch --hot",
+        "prod": "npm run production",
+        "production": "mix --production"
+    },
+}
+## .env を開き、以下のViteに関する記述を削除します。
+    VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+    VITE_PUSHER_HOST="${PUSHER_HOST}"
+    VITE_PUSHER_PORT="${PUSHER_PORT}"
+    VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"
+    VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+## .evv にMixに関する記述を追加します。
+    MIX_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+    MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+
+## webpack.mix.js が ES モジュールとして扱われており、require() 関数で ES モジュールを読み込もうとしているために発生しています。
+    解決方法
+    webpack.mix.js を webpack.mix.cjs に名前を変更します。
+
+## npm run dev コマンドでエラー巣が起こる場合、ファイルの拡張子を追加することで、webpack が正しくモジュールを解決できるようになります。　C:\MyApp\findAkaeiVR\resources\js\app.js の中身を以下に変更
+    import './bootstrap.js';
+
