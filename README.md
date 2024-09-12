@@ -365,3 +365,9 @@ php -v
 ## php artisan migrate
 ## phpliteadmin.php の pathの設定
     /home/seiei9/seiei.online/public_html/2024oc.seiei.online/findAkaeiVR/database/database.sqlite
+
+
+curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230001&time=11.99'
+curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230002&time=12.03'
+curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&time=10.87'
+
