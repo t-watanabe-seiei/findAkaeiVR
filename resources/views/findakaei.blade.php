@@ -100,7 +100,7 @@
                             myRank5.setAttribute("value", "ranking 005 ");
 
                             //fetch de get
-                            fetch('http://localhost:8000/api/Scores')            
+                            fetch('/api/Scores')            
                             .then((response) => response.json())
                             .then((datas) => { 
                                 datas.forEach(data => {
@@ -109,22 +109,22 @@
                             });
                          
                             //fetch de POST
-                            fetch('http://localhost:8000/api/Scores', {  
+                            fetch('/api/Scores', {  
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({userid: '20250001',time: '12.34',}
+                                body: JSON.stringify({userid: '20260001',time: '23.45',}
                                 )
                             });
                             
                             //fetch de PUT
-                            fetch('http://localhost:8000/api/Scores/1', {  
+                            fetch('/api/Scores/1', {  
                                 method: "PUT",
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({userid: '20200001',time: '9.20',}
+                                body: JSON.stringify({userid: '20190001',time: '11.22',}
                                 )
                             });
 
