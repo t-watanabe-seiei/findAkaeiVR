@@ -100,7 +100,7 @@
                             myRank5.setAttribute("value", "ranking 005 ");
 
                             //fetch de get
-                            fetch('/api/Scores')            
+                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores')            
                             .then((response) => response.json())
                             .then((datas) => { 
                                 datas.forEach(data => {
@@ -109,7 +109,7 @@
                             });
                          
                             //fetch de POST
-                            fetch('/api/Scores', {  
+                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json"
@@ -119,12 +119,12 @@
                             });
                             
                             //fetch de PUT
-                            fetch('/api/Scores/1', {  
+                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores/1', {  
                                 method: "PUT",
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({userid: '20190001',time: '11.22',}
+                                body: JSON.stringify({userid: '20180001',time: '88.88',}
                                 )
                             });
 
