@@ -6,8 +6,8 @@
     <title>hit-box test</title>
     <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
-    <script>
-  
+
+    <script>  
         let PassSec;   // 秒数カウント用変数
         let mytext;
         let PassageID;
@@ -25,7 +25,7 @@
         // 繰り返し処理の中止
         function stopShowing() {
             clearInterval( PassageID );   // タイマーのクリア
-            console.log(PassSec);
+            // console.log(PassSec);
         }
         
         AFRAME.registerComponent('hit-box', {
@@ -37,6 +37,12 @@
                 let mySky;
                 let model1;
                 let model2;
+                let myRank1;
+                let myRank2;
+                let myRank3;
+                let myRank4;
+                let myRank5;
+
 
                 //タイマースタート
                 PassSec = 0;
@@ -78,6 +84,31 @@
 
                             //タイマーSTOP
                             stopShowing();
+
+                            //タイマーの時間を表示
+                            console.log(PassSec);
+                            myRank1 = document.getElementById("ranking1");
+                            myRank1.setAttribute("value", "ranking 001 ");
+                            myRank2 = document.getElementById("ranking2");
+                            myRank2.setAttribute("value", "ranking 002 ");
+                            myRank3 = document.getElementById("ranking3");
+                            myRank3.setAttribute("value", "ranking 003 ");
+                            myRank4 = document.getElementById("ranking4");
+                            myRank4.setAttribute("value", "ranking 004 ");
+                            myRank5 = document.getElementById("ranking5");
+                            myRank5.setAttribute("value", "ranking 005 ");
+
+                            //scores からデータ取得
+                            fetch('http://localhost:8000/api/Scores')            
+                            .then((response) => response.json())
+                            .then((datas) => { 
+                                // console.log(datas);
+                                // console.log(datas[0].userid);
+                                datas.forEach(data => {
+                                    console.log(data.userid);
+                                });
+                            });
+
                             break;
 
                         case 1:
@@ -156,6 +187,9 @@
             <img id="sky01" src={{ asset('cg/R0010034.JPG') }} >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} >
+
+            
+
         </a-assets>
 
         <!-- マウスカーソル -->
@@ -181,10 +215,17 @@
         <!-- 360度画像を表示 -->
         <a-sky id="aSky" src="#sky01"></a-sky> <!--最初は正門の写真-->
 
+        
+
         <a-camera id="my_camera">
             <a-cursor></a-cursor>
             <input type="button" value="start" onClick="OnStartButtonClick();">
             <a-text id="my_text" value="Look for the stingray　**26**" position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
+            <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff"></a-text>
+            <a-text id="ranking2" value="" position="-1 1.00 -3" color="#ffffff"></a-text>
+            <a-text id="ranking3" value="" position="-1 0.75 -3" color="#ffffff"></a-text>
+            <a-text id="ranking4" value="" position="-1 0.50 -3" color="#ffffff"></a-text>
+            <a-text id="ranking5" value="" position="-1 0.25 -3" color="#ffffff"></a-text>
         </a-camera>
     </a-scene>
 </body>
