@@ -6,6 +6,7 @@
     <title>hit-box test</title>
     <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script>  
         let PassSec;   // 秒数カウント用変数
@@ -98,15 +99,33 @@
                             myRank5 = document.getElementById("ranking5");
                             myRank5.setAttribute("value", "ranking 005 ");
 
-                            //scores からデータ取得
+                            //fetch de get
                             fetch('http://localhost:8000/api/Scores')            
                             .then((response) => response.json())
                             .then((datas) => { 
-                                // console.log(datas);
-                                // console.log(datas[0].userid);
                                 datas.forEach(data => {
                                     console.log(data.userid);
                                 });
+                            });
+                         
+                            //fetch de POST
+                            fetch('http://localhost:8000/api/Scores', {  
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({userid: '20250001',time: '12.34',}
+                                )
+                            });
+                            
+                            //fetch de PUT
+                            fetch('http://localhost:8000/api/Scores/1', {  
+                                method: "PUT",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({userid: '20200001',time: '9.20',}
+                                )
                             });
 
                             break;
@@ -184,9 +203,9 @@
         <a-assets>
             <a-asset-item id="akaeiModel_01" src={{ asset('cg/akaei_oldMan_idle.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_02" src={{ asset('cg/akaei_TrunToRunning.glb') }}></a-asset-item>
-            <img id="sky01" src={{ asset('cg/R0010034.JPG') }} >  
-            <img id="sky02" src={{ asset('cg/R0010035.JPG') }} >
-            <img id="sky03" src={{ asset('cg/R0010036.JPG') }} >
+            <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
+            <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
+            <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
 
             
 
