@@ -8,9 +8,11 @@ use \App\Models\Score;
 
 class ScoreController extends Controller
 {
-    public function index()
+    public function index()     //TOP 5
     {
-        return Score::all();
+        return Score::orderBy('time', 'asc')
+               ->take(5)
+               ->get();
     }
     
     public function store(Request $request)

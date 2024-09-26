@@ -15,12 +15,12 @@
 
         // 繰り返し処理の中身
         function showPassage() {
-            PassSec = PassSec + 0.1;   // カウントアップ
-            PassSec = Math.round(PassSec * 10); // 10をかけて→「3.0000000000000004」を四捨五入→「3」
-            PassSec = PassSec / 10;             // 「3」を10で割る
+            PassSec = PassSec + 0.01;   // カウントアップ
+            PassSec = Math.round(PassSec * 100); // 100をかけて→「3.12300000000000004」を四捨五入→「312」
+            PassSec = PassSec / 100;             // 「312」を100で割る
             
             mytext = document.getElementById("my_text");
-            mytext.setAttribute("value", PassSec.toFixed(1));
+            mytext.setAttribute("value", PassSec.toFixed(2));
         }
 
         // 繰り返し処理の中止
@@ -43,11 +43,15 @@
                 let myRank3;
                 let myRank4;
                 let myRank5;
+                let myRankElement;
+                
+                const video = document.getElementById("video");
+                const videosphere = document.getElementById("videosphere");
 
 
                 //タイマースタート
                 PassSec = 0;
-                PassageID = setInterval('showPassage()',100);   // タイマーをセット(0.1s間隔)
+                PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
 
                 this.el.addEventListener('click', () => {
                     // console.log('clicked!');
@@ -59,14 +63,46 @@
                     setTimeout(rePaintModel, 2300, "該当modelを削除し、別の場所に再描画します", hitCount);
                 });
 
+                
+                const playMovie = function (msg1, movieID) {
+                    //　背景a-skyを非表示
+                    mySky = document.getElementById('aSky');
+                    mySky.setAttribute("visible","false");
+
+                    //　my_text , ranking1~5 を非表示
+                    mytext = document.getElementById("my_text");
+                    mytext.setAttribute("value", "");
+                    myRank1 = document.getElementById("ranking1");
+                    myRank1.setAttribute("value", "");
+                    myRank2 = document.getElementById("ranking2");
+                    myRank2.setAttribute("value", "");
+                    myRank3 = document.getElementById("ranking3");
+                    myRank3.setAttribute("value", "");
+                    myRank4 = document.getElementById("ranking4");
+                    myRank4.setAttribute("value", "");
+                    myRank5 = document.getElementById("ranking5");
+                    myRank5.setAttribute("value", "");
+
+                    //movie再生
+                    videosphere.setAttribute("visible","true");
+                    video.play();
+                };
+
+
                 const rePaintModel = function (msg1, hitCount) {
                     console.log(msg1);
                     console.log(hitCount);
 
                     switch (hitCount % 3) {
                         case 0:
+                            // //movie
+                            // videosphere.setAttribute("visible","true");
+                            // video.play();
+
+
                             //　背景を変更 a-sky
                             mySky = document.getElementById('aSky');
+                            // mySky.setAttribute("visible","false");
                             mySky.setAttribute('src', '#sky01');
 
                             //akaeiGroupの一を変更
@@ -88,45 +124,48 @@
 
                             //タイマーの時間を表示
                             console.log(PassSec);
-                            myRank1 = document.getElementById("ranking1");
-                            myRank1.setAttribute("value", "ranking 001 ");
-                            myRank2 = document.getElementById("ranking2");
-                            myRank2.setAttribute("value", "ranking 002 ");
-                            myRank3 = document.getElementById("ranking3");
-                            myRank3.setAttribute("value", "ranking 003 ");
-                            myRank4 = document.getElementById("ranking4");
-                            myRank4.setAttribute("value", "ranking 004 ");
-                            myRank5 = document.getElementById("ranking5");
-                            myRank5.setAttribute("value", "ranking 005 ");
 
-                            //fetch de get
-                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores')            
-                            .then((response) => response.json())
-                            .then((datas) => { 
-                                datas.forEach(data => {
-                                    console.log(data.userid);
-                                });
-                            });
-                         
-                            //fetch de POST
+
+
+                            //fetch de POST 自分の記録をPOST
                             fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({userid: '20260001',time: '23.45',}
+                                body: JSON.stringify({userid: '20110001',time: PassSec,}
                                 )
                             });
+
+                            //fetch de get 自分の記録も含めて TOP 5 表示
+                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores')            
+                            .then((response) => response.json())
+                            .then((datas) => { 
+                                datas.forEach((data,index) => {
+                                    console.log(index + "st : " + data.userid + " -> " + data.time);
+                                    myRankElement = document.getElementById("ranking" + (index + 1));
+                                    myRankElement.setAttribute("value" , (index+1) + "st : " + data.userid + " -> " + data.time);
+                                    if(data.userid == 20110001){
+                                        myRankElement.setAttribute("Color","red");
+                                    }
+                                });
+                            });
+
+                         
+
                             
-                            //fetch de PUT
-                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores/1', {  
-                                method: "PUT",
-                                headers: {
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({userid: '20180001',time: '88.88',}
-                                )
-                            });
+                            // //fetch de PUT
+                            // fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores/1', {  
+                            //     method: "PUT",
+                            //     headers: {
+                            //         "Content-Type": "application/json"
+                            //     },
+                            //     body: JSON.stringify({userid: '20180001',time: '88.88',}
+                            //     )
+                            // });
+
+
+                            setTimeout(playMovie, 3000, "movieを再生します", 1);
 
                             break;
 
@@ -134,6 +173,8 @@
                             //　背景を変更 a-sky
                             mySky = document.getElementById('aSky');
                             mySky.setAttribute('src', '#sky02');
+                            mySky = document.getElementById('aSky');
+                            
 
                             //akaeiGroupの一を変更
                             model1 = document.getElementById('akaeiGroup');
@@ -147,7 +188,7 @@
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
                             hitFlag = true;
                             mytext = document.getElementById("my_text");
-                            mytext.setAttribute("value", "Look for the stingray again");
+                            // mytext.setAttribute("value", "Look for the stingray again");
                             break;
 
                         case 2:
@@ -167,7 +208,7 @@
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
                             hitFlag = true;
                             mytext = document.getElementById("my_text");
-                            mytext.setAttribute("value", "Look for the stingray again");
+                            // mytext.setAttribute("value", "Look for the stingray again");
                             break;
 
                         default:
@@ -206,13 +247,17 @@
             <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
-
+            <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
+            preload="auto" muted loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
         </a-assets>
 
         <!-- マウスカーソル -->
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
+
+        <!-- 実際にVRで表示されるモデル内側に指定リソースを表示する球体オブジェクト -->
+        <a-videosphere id="videosphere" src='#video' visible="false"></a-videosphere>
 
         <!-- Controller -->
         <a-entity laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>

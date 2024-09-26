@@ -374,107 +374,138 @@ curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&tim
 
 ### fetch to axios で、get post put （※axios CDN import require　->  use fetch）
 
-                            //fetch de get  ※scores からデータ取得
-                            fetch('http://localhost:8000/api/Scores')            
-                            .then((response) => response.json())
-                            .then((datas) => { 
-                                // console.log(datas);
-                                // console.log(datas[0].userid);
-                                datas.forEach(data => {
-                                    console.log(data.userid);
-                                });
+    //fetch de get  ※scores からデータ取得
+    fetch('http://localhost:8000/api/Scores')            
+    .then((response) => response.json())
+    .then((datas) => { 
+        // console.log(datas);
+        // console.log(datas[0].userid);
+        datas.forEach(data => {
+            console.log(data.userid);
+        });
+    });
+
+    //fetch de get  ※error 処理付
+    fetch('http://localhost:8000/api/Scores')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(datas => {
+        console.log('fetch de get  ※error 処理付');
+        datas.forEach(data => {
+            console.log(data.userid);
+        });
+    })
+    .catch(error => {
+        console.error('There was a problem with the fetch operation:', error);
+    });
+
+
+
+
+
+
+
+
+
+    
+
+    //fetch de POST
+    fetch('http://localhost:8000/api/Scores', {  
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({userid: '20250001',time: '12.34',}
+        )
+    });
+
+    
+    //fetch de PUT
+    fetch('http://localhost:8000/api/Scores/1', {  
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({userid: '20200001',time: '9.20',}
+        )
+    });
+
+    //axios de get 既に JSON 形式に変換されている
+    axios.get("http://localhost:8000/api/Scores")
+    .then(response => {
+        console.log('axios de get');
+
+        let datas = response.data;
+        datas.forEach(data => {
+            console.log(data.time);
+        });
+
+    });
+
+    //axios de post
+    const dataToSend = {
+        userid: '20240003',
+        time: '10.53',
+    };
+    axios.post('http://localhost:8000/api/Scores', dataToSend)
+    .then(response => {
+        // リクエスト成功時の処理
+        console.log('axios de post');
+        console.log('Data created:', response.data);
+    })
+    .catch(error => {
+        // リクエスト失敗時の処理
+        console.error('Error creating data:', error);
+    });
+
+
+    //axios de put
+    const dataToSend2 = {
+        userid: '20230009',
+        time: '9.99',
+    };
+    axios.put('http://localhost:8000/api/Scores/5', dataToSend2)
+    .then(response => {
+        // リクエスト成功時の処理
+        console.log('axios de put');
+        console.log('Data updated:', response.data);
+    })
+    .catch(error => {
+        // リクエスト失敗時の処理
+        console.error('Error creating data:', error);
                             });
+## fetch に 環境変数　MIX_ASSET_URL を追加　　
+    fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores')            
+    .then((response) => response.json())
+    .then((datas) => { 
+        datas.forEach(data => {
+            console.log(data.userid);
+        });
+    });
 
-                            //fetch de get  ※error 処理付
-                            fetch('http://localhost:8000/api/Scores')
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error('Network response was not ok');
-                                }
-                                return response.json();
-                            })
-                            .then(datas => {
-                                console.log('fetch de get  ※error 処理付');
-                                datas.forEach(data => {
-                                    console.log(data.userid);
-                                });
-                            })
-                            .catch(error => {
-                                console.error('There was a problem with the fetch operation:', error);
-                            });
+    fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({userid: '20260001',time: '23.45',}
+        )
+    });
 
-
-
-
-
-
-
-
-
-                            
-
-                            //fetch de POST
-                            fetch('http://localhost:8000/api/Scores', {  
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({userid: '20250001',time: '12.34',}
-                                )
-                            });
-
-                            
-                            //fetch de PUT
-                            fetch('http://localhost:8000/api/Scores/1', {  
-                                method: "PUT",
-                                headers: {
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({userid: '20200001',time: '9.20',}
-                                )
-                            });
-
-                            //axios de get 既に JSON 形式に変換されている
-                            axios.get("http://localhost:8000/api/Scores")
-                            .then(response => {
-                                console.log('axios de get');
-
-                                let datas = response.data;
-                                datas.forEach(data => {
-                                    console.log(data.time);
-                                });
-
-                            });
-
-                            //axios de post
-                            const dataToSend = {
-                                userid: '20240003',
-                                time: '10.53',
-                            };
-                            axios.post('http://localhost:8000/api/Scores', dataToSend)
-                            .then(response => {
-                                // リクエスト成功時の処理
-                                console.log('axios de post');
-                                console.log('Data created:', response.data);
-                            })
-                            .catch(error => {
-                                // リクエスト失敗時の処理
-                                console.error('Error creating data:', error);
-                            });
+    fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores/1', {  
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({userid: '20180001',time: '88.88',}
+        )
+    });
 
 
-                            //axios de put
-                            const dataToSend2 = {
-                                userid: '20230009',
-                                time: '9.99',
-                            };
-                            axios.put('http://localhost:8000/api/Scores/5', dataToSend2)
-                            .then(response => {
-                                // リクエスト成功時の処理
-                                console.log('axios de put');
-                                console.log('Data updated:', response.data);
-                            })
-                            .catch(error => {
-                                // リクエスト失敗時の処理
-                                console.error('Error creating data:', error);
-                            });
+## ScoreControllerでの戻り値の修正
+    index（Top5をGETで返す）
+    show(userID) 自己ベスト
