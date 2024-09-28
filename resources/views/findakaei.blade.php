@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8" />
     <title>hit-box test</title>
-    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
@@ -19,8 +20,8 @@
             PassSec = Math.round(PassSec * 100); // 100をかけて→「3.12300000000000004」を四捨五入→「312」
             PassSec = PassSec / 100;             // 「312」を100で割る
             
-            mytext = document.getElementById("my_text");
-            mytext.setAttribute("value", PassSec.toFixed(2));
+            // mytext = document.getElementById("my_text");
+            // mytext.setAttribute("value", PassSec.toFixed(2));
         }
 
         // 繰り返し処理の中止
@@ -54,13 +55,21 @@
                 PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
 
                 this.el.addEventListener('click', () => {
-                    // console.log('clicked!');
+                    // console.log(hitFlag);
                     // console.log(model.getAttribute('position'));
-                    // クリックされたら、モデルを非表示にする
-                    model.removeAttribute('gltf-model');
-                    model.setAttribute('gltf-model', '#akaeiModel_02');
-                    hitCount++;
-                    setTimeout(rePaintModel, 2300, "該当modelを削除し、別の場所に再描画します", hitCount);
+                    
+                    if(!hitFlag){       //hitFlag がfalseの時の処理
+                        hitCount++;
+                        hitFlag = true;
+
+                        // クリックされたら、モデル０１を非表示にして、モデル０２に切り替え
+                        model.removeAttribute('gltf-model');
+                        model.setAttribute('gltf-model', '#akaeiModel_02');
+
+                        // hitFlag デフォルトは false クリックされたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
+                        setTimeout(rePaintModel, 2300, "該当modelを削除し、別の場所に再描画します", hitCount);
+                    }
+
                 });
 
                 
@@ -70,22 +79,39 @@
                     mySky.setAttribute("visible","false");
 
                     //　my_text , ranking1~5 を非表示
-                    mytext = document.getElementById("my_text");
-                    mytext.setAttribute("value", "");
-                    myRank1 = document.getElementById("ranking1");
-                    myRank1.setAttribute("value", "");
-                    myRank2 = document.getElementById("ranking2");
-                    myRank2.setAttribute("value", "");
-                    myRank3 = document.getElementById("ranking3");
-                    myRank3.setAttribute("value", "");
-                    myRank4 = document.getElementById("ranking4");
-                    myRank4.setAttribute("value", "");
-                    myRank5 = document.getElementById("ranking5");
-                    myRank5.setAttribute("value", "");
+                    document.getElementById("my_text").setAttribute("value", "");
+                    document.getElementById("ranking1").setAttribute("value", "");
+                    document.getElementById("ranking2").setAttribute("value", "");
+                    document.getElementById("ranking3").setAttribute("value", "");
+                    document.getElementById("ranking4").setAttribute("value", "");
+                    document.getElementById("ranking5").setAttribute("value", "");
 
                     //movie再生
                     videosphere.setAttribute("visible","true");
                     video.play();
+
+                    setTimeout(stopMovie, 5000, "movieを停止します", 1);
+                };
+
+                const stopMovie = function (msg1, movieID) {
+                    //　背景a-skyを表示
+                    mySky = document.getElementById('aSky');
+                    mySky.setAttribute("visible","true");
+
+                    //　my_text , ranking1~5 を非表示
+                    document.getElementById("my_text").setAttribute("value", "");
+                    document.getElementById("ranking1").setAttribute("value", "");
+                    document.getElementById("ranking2").setAttribute("value", "");
+                    document.getElementById("ranking3").setAttribute("value", "");
+                    document.getElementById("ranking4").setAttribute("value", "");
+                    document.getElementById("ranking5").setAttribute("value", "");
+
+                    //movie stop
+                    videosphere.setAttribute("visible","false");
+                    video.pause();
+
+                    //Particle非表示
+                    document.getElementById("particle").setAttribute("visible", "false");
                 };
 
 
@@ -115,7 +141,7 @@
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
-                            hitFlag = true;
+                            hitFlag = false;
                             mytext = document.getElementById("my_text");
                             mytext.setAttribute("value", "Look for the stingray again");
 
@@ -151,7 +177,10 @@
                                 });
                             });
 
-                         
+                            //
+                            document.getElementById("my_text").setAttribute("value", "Congratulations. Your clear time is " + PassSec + " seconds.");
+                            //Particle表示
+                            document.getElementById("particle").setAttribute("visible", "true");
 
                             
                             // //fetch de PUT
@@ -164,8 +193,9 @@
                             //     )
                             // });
 
-
-                            setTimeout(playMovie, 3000, "movieを再生します", 1);
+                            
+                            
+                            setTimeout(playMovie, 5000, "movieを再生します", 1);
 
                             break;
 
@@ -186,7 +216,7 @@
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
-                            hitFlag = true;
+                            hitFlag = false;
                             mytext = document.getElementById("my_text");
                             // mytext.setAttribute("value", "Look for the stingray again");
                             break;
@@ -206,7 +236,7 @@
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
-                            hitFlag = true;
+                            hitFlag = false;
                             mytext = document.getElementById("my_text");
                             // mytext.setAttribute("value", "Look for the stingray again");
                             break;
@@ -256,9 +286,6 @@
         <!-- マウスカーソル -->
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
 
-        <!-- 実際にVRで表示されるモデル内側に指定リソースを表示する球体オブジェクト -->
-        <a-videosphere id="videosphere" src='#video' visible="false"></a-videosphere>
-
         <!-- Controller -->
         <a-entity laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
         <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
@@ -269,9 +296,9 @@
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
                 <!-- 当たり判定オブジェクト -->
-                <a-entity position="0 -0.05 0" hit-box>
-                    <a-entity class="raycastable collidable" geometry="primitive:cylinder"
-                        material="color:red; opacity: 0.0" scale="0.1 0.2 0.18" position="0 0.2 0" visible="true"></a-entity>
+                <a-entity position="0 -0.05 0" hit-box id="hit-boxed">
+                    <a-entity id="hit-box-cylinder" class="raycastable collidable" geometry="primitive:cylinder"
+                        material="color:red; opacity: 0.3" scale="0.1 0.2 0.18" position="0 0.2 0"></a-entity>
                 </a-entity>
             </a-entity>
         </a-entity>
@@ -279,17 +306,23 @@
         <!-- 360度画像を表示 -->
         <a-sky id="aSky" src="#sky01"></a-sky> <!--最初は正門の写真-->
 
+        <!-- 実際にVRで表示されるモデル内側に指定リソースを表示する球体オブジェクト 　この球体に３６０videoを投影-->
+        <a-videosphere id="videosphere" src='#video' visible="false"></a-videosphere>
+
+        <!-- Particle -->
+        <a-entity id="particle" visible="false" position="0 3 0" particle-system="preset:star; color: #f216b0,#f24535"></a-entity>
         
 
         <a-camera id="my_camera">
             <a-cursor></a-cursor>
             <input type="button" value="start" onClick="OnStartButtonClick();">
             <a-text id="my_text" value="Look for the stingray　**26**" position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
-            <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff"></a-text>
-            <a-text id="ranking2" value="" position="-1 1.00 -3" color="#ffffff"></a-text>
-            <a-text id="ranking3" value="" position="-1 0.75 -3" color="#ffffff"></a-text>
-            <a-text id="ranking4" value="" position="-1 0.50 -3" color="#ffffff"></a-text>
-            <a-text id="ranking5" value="" position="-1 0.25 -3" color="#ffffff"></a-text>
+            <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
+            <a-text id="ranking2" value="" position="-1 1.00 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
+            <a-text id="ranking3" value="" position="-1 0.75 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
+            <a-text id="ranking4" value="" position="-1 0.50 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
+            <a-text id="ranking5" value="" position="-1 0.25 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
+            
         </a-camera>
     </a-scene>
 </body>

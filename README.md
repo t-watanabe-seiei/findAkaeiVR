@@ -508,4 +508,17 @@ curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&tim
 
 ## ScoreControllerでの戻り値の修正
     index（Top5をGETで返す）
-    show(userID) 自己ベスト
+    show(userID) 自己の記録をすべて返す
+
+## moveTest.blade作成　
+    public/js/aframe-particle-system-component.min.js を利用して、particle
+
+
+## 360video　を再生するときは、
+        <a-assets>
+            <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
+        </a-assets>
+
+        <a-videosphere id="videosphere" src='#video' visible="false"></a-videosphere>
+
+        
