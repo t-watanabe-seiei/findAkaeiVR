@@ -20,8 +20,6 @@
             PassSec = Math.round(PassSec * 100); // 100をかけて→「3.12300000000000004」を四捨五入→「312」
             PassSec = PassSec / 100;             // 「312」を100で割る
             
-            // mytext = document.getElementById("my_text");
-            // mytext.setAttribute("value", PassSec.toFixed(2));
         }
 
         // 繰り返し処理の中止
@@ -74,6 +72,10 @@
 
                 
                 const playMovie = function (msg1, movieID) {
+                    // akaei　非表示
+                    model2 = document.getElementById('target3DModel');
+                    model2.setAttribute("visible","false");
+
                     //　背景a-skyを非表示
                     mySky = document.getElementById('aSky');
                     mySky.setAttribute("visible","false");
@@ -90,10 +92,14 @@
                     videosphere.setAttribute("visible","true");
                     video.play();
 
-                    setTimeout(stopMovie, 5000, "movieを停止します", 1);
+                    setTimeout(stopMovie, 9000, "movieを停止します", 1);
                 };
 
                 const stopMovie = function (msg1, movieID) {
+                    // akaei　表示
+                    model2 = document.getElementById('target3DModel');
+                    model2.setAttribute("visible","true");
+
                     //　背景a-skyを表示
                     mySky = document.getElementById('aSky');
                     mySky.setAttribute("visible","true");
@@ -157,7 +163,7 @@
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({userid: '20110001',time: PassSec,}
+                                body: JSON.stringify({userid: '2',time: PassSec,}
                                 )
                             });
 
@@ -168,8 +174,8 @@
                                 datas.forEach((data,index) => {
                                     console.log(index + "st : " + data.userid + " -> " + data.time);
                                     myRankElement = document.getElementById("ranking" + (index + 1));
-                                    myRankElement.setAttribute("value" , (index+1) + "st : " + data.userid + " -> " + data.time);
-                                    if(data.userid == 20110001){
+                                    myRankElement.setAttribute("value" , (index+1) + "st : " + data.time);
+                                    if(data.time == PassSec){
                                         myRankElement.setAttribute("Color","red");
                                     }
                                 });
@@ -192,8 +198,8 @@
                             // });
 
                             
-                            
-                            setTimeout(playMovie, 5000, "movieを再生します", 1);
+                            //15秒後に動画再生
+                            setTimeout(playMovie, 15000, "movieを再生します", 1);
 
                             break;
 
@@ -296,7 +302,7 @@
                 <!-- 当たり判定オブジェクト -->
                 <a-entity position="0 -0.05 0" hit-box id="hit-boxed">
                     <a-entity id="hit-box-cylinder" class="raycastable collidable" geometry="primitive:cylinder"
-                        material="color:red; opacity: 0.0" scale="0.1 0.2 0.18" position="0 0.2 0"></a-entity>
+                        material="color:red; opacity: 0.0" scale="0.14 0.3 0.14" position="0 0.21 0"></a-entity>
                 </a-entity>
             </a-entity>
         </a-entity>
