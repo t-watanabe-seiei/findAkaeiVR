@@ -151,8 +151,6 @@
                             //タイマーの時間を表示
                             console.log(PassSec);
 
-
-
                             //fetch de POST 自分の記録をPOST
                             fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
                                 method: "POST",
@@ -298,7 +296,7 @@
                 <!-- 当たり判定オブジェクト -->
                 <a-entity position="0 -0.05 0" hit-box id="hit-boxed">
                     <a-entity id="hit-box-cylinder" class="raycastable collidable" geometry="primitive:cylinder"
-                        material="color:red; opacity: 0.3" scale="0.1 0.2 0.18" position="0 0.2 0"></a-entity>
+                        material="color:red; opacity: 0.0" scale="0.1 0.2 0.18" position="0 0.2 0"></a-entity>
                 </a-entity>
             </a-entity>
         </a-entity>
@@ -316,7 +314,7 @@
         <a-camera id="my_camera">
             <a-cursor></a-cursor>
             <input type="button" value="start" onClick="OnStartButtonClick();">
-            <a-text id="my_text" value="Look for the stingray　**26**" position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
+            <a-text id="my_text" value="Look for the stingray!" position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
             <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
             <a-text id="ranking2" value="" position="-1 1.00 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
             <a-text id="ranking3" value="" position="-1 0.75 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
