@@ -514,11 +514,54 @@ curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&tim
     public/js/aframe-particle-system-component.min.js を利用して、particle
 
 
-## 360video　を再生するときは、
+## 360video　を再生するときは、a-videosphere
         <a-assets>
             <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
         </a-assets>
 
         <a-videosphere id="videosphere" src='#video' visible="false"></a-videosphere>
 
-        
+# UbuntuにLaravelをインストール
+    Ubuntu
+    php
+    git
+    node.js
+    npm
+    ssh
+    git clone (/var/www/html でユーザ権限で実行)
+    composer install
+    mv .env.example .env
+    php artisan key:generate
+    ln -s findAkaeiVR/public app
+    .env の中の MIX_ASSET_URL="/app"　へ修正
+    npm install
+    npm audit fix
+    touch daatbase/database.sqlite
+    phpliteadmin.php
+    chmod -R 777 storage
+    sudo chmod 664 /var/www/html/findAkaeiVR/database/database.sqlite
+    sudo chown www-data:www-data /var/www/html/findAkaeiVR/database/database.sqlite
+    sudo chmod 775 /var/www/html/findAkaeiVR/database
+    sudo chown -R www-data:www-data /var/www/html/findAkaeiVR/database
+    sudo service apache2 restart
+    (sudo apt-get install php-curl)　※不要かも
+    /etc/apache2/apache2.conf の中の "var/www/html" no  AllowOverride None →　AllowOverride All に変更
+
+# Laravel/UI インストール
+    composer require laravel/ui
+    php artisan ui bootstrap --auth
+    npm install
+    npm audit fix
+    npm run dev
+    welcome -> login でエラー   views/layouts/app.blade.php を書き換え
+        @vite(['resources/sass/app.scss', 'resources/js/app.js'])　←　削除
+
+        以下を追記
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+        <link 
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet" 
+            integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+            crossorigin="anonymous"
+        />
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
