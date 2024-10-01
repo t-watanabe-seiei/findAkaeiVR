@@ -372,7 +372,7 @@
         <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ -->
-        <a-entity id="akaeiGroup" position="-0.3 1.3 0.2" rotation="0 90 0" scale="0.4 0.4 0.4">
+        <a-entity id="akaeiGroup" position="-0.3 1.0 0.2" rotation="0 90 0" scale="0.4 0.4 0.4">
             <!-- 3Dモデル -->
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
