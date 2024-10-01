@@ -48,9 +48,6 @@
                 const videosphere = document.getElementById("videosphere");
 
 
-                //タイマースタート
-                PassSec = 0;
-                PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
 
                 this.el.addEventListener('click', () => {
                     // console.log(hitFlag);
@@ -104,13 +101,18 @@
                     mySky = document.getElementById('aSky');
                     mySky.setAttribute("visible","true");
 
-                    //　my_text , ranking1~5 を非表示
-                    document.getElementById("my_text").setAttribute("value", "");
+                    //　ranking1~5 を非表示
                     document.getElementById("ranking1").setAttribute("value", "");
                     document.getElementById("ranking2").setAttribute("value", "");
                     document.getElementById("ranking3").setAttribute("value", "");
                     document.getElementById("ranking4").setAttribute("value", "");
                     document.getElementById("ranking5").setAttribute("value", "");
+                    
+                    document.getElementById("ranking1").setAttribute("Color","#ffffff");
+                    document.getElementById("ranking2").setAttribute("Color","#ffffff");
+                    document.getElementById("ranking3").setAttribute("Color","#ffffff");
+                    document.getElementById("ranking4").setAttribute("Color","#ffffff");
+                    document.getElementById("ranking5").setAttribute("Color","#ffffff");
 
                     //movie stop
                     videosphere.setAttribute("visible","false");
@@ -122,9 +124,8 @@
                     //クリックできるように
                     hitFlag = false;
 
-                    //タイマー再スタート
-                    PassSec = 0;
-                    PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
+                    document.getElementById("my_text").setAttribute("value", "Please look for Akaei.");
+
                 };
 
 
@@ -183,13 +184,13 @@
                                     myRankElement = document.getElementById("ranking" + (index + 1));
                                     myRankElement.setAttribute("value" , (index+1) + "st : " + data.time);
                                     if(data.time == PassSec){
-                                        myRankElement.setAttribute("Color","red");
+                                        myRankElement.setAttribute("Color","#faa7de");
                                     }
                                 });
                             });
 
                             //
-                            document.getElementById("my_text").setAttribute("value", "Congratulations. Your clear time is " + PassSec + " seconds.");
+                            document.getElementById("my_text").setAttribute("value", "Congratulations. Your clear time is " + PassSec + " seconds. Please watch the introductory video of club.");
                             //Particle表示
                             document.getElementById("particle").setAttribute("visible", "true");
 
@@ -212,6 +213,10 @@
                             break;
 
                         case 1:
+                            //タイマースタート
+                            PassSec = 0;
+                            PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
+
                             //　背景を変更 a-sky
                             mySky = document.getElementById('aSky');
                             mySky.setAttribute('src', '#sky02');
@@ -379,7 +384,7 @@
         <a-camera id="my_camera">
             <a-cursor></a-cursor>
             <input type="button" value="start" onClick="OnStartButtonClick();">
-            <a-text id="my_text" value="Look for the stingray!" position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
+            <a-text id="my_text" value="Please look for Akaei." position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
             <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
             <a-text id="ranking2" value="" position="-1 1.00 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
             <a-text id="ranking3" value="" position="-1 0.75 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
