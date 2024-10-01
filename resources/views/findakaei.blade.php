@@ -118,6 +118,9 @@
 
                     //Particle非表示
                     document.getElementById("particle").setAttribute("visible", "false");
+
+                    //クリックできるように
+                    hitFlag = false;
                 };
 
 
@@ -125,7 +128,7 @@
                     console.log(msg1);
                     console.log(hitCount);
 
-                    switch (hitCount % 3) {
+                    switch (hitCount % 6) {
                         case 0:
                             // //movie
                             // videosphere.setAttribute("visible","true");
@@ -147,7 +150,7 @@
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
-                            hitFlag = false;
+                            
                             mytext = document.getElementById("my_text");
                             mytext.setAttribute("value", "Look for the stingray again");
 
@@ -197,6 +200,7 @@
                             //     )
                             // });
 
+                            hitFlag = true;
                             
                             //15秒後に動画再生
                             setTimeout(playMovie, 15000, "movieを再生します", 1);
@@ -245,6 +249,54 @@
                             // mytext.setAttribute("value", "Look for the stingray again");
                             break;
 
+                        case 3:
+                            //　背景を変更 a-sky
+                            document.getElementById('aSky').setAttribute('src', '#sky04');
+
+                            //akaeiGroupの一を変更
+                            model1 = document.getElementById('akaeiGroup');
+                            model1.setAttribute('position', '4 0.3 0');
+                            model1.setAttribute('rotation', '0 -120 0');
+                            model1.setAttribute('scale', "0.5 0.5 0.5");
+
+                            model2 = document.getElementById('target3DModel');
+                            model2.removeAttribute('gltf-model');
+                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            hitFlag = false;
+                            break;
+                        
+                        case 4:
+                            //　背景を変更 a-sky
+                            document.getElementById('aSky').setAttribute('src', '#sky05');
+
+                            //akaeiGroupの一を変更
+                            model1 = document.getElementById('akaeiGroup');
+                            model1.setAttribute('position', '0 0 0');
+                            model1.setAttribute('rotation', '0 0 0');
+                            model1.setAttribute('scale', "1 1 1")
+
+                            model2 = document.getElementById('target3DModel');
+                            model2.removeAttribute('gltf-model');
+                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            hitFlag = false;
+                            break;
+
+                        case 5:
+                            //　背景を変更 a-sky
+                            document.getElementById('aSky').setAttribute('src', '#sky06');
+
+                            //akaeiGroupの一を変更
+                            model1 = document.getElementById('akaeiGroup');
+                            model1.setAttribute('position', '-7 1 0.3');
+                            model1.setAttribute('rotation', '0 90 0');
+                            model1.setAttribute('scale', "0.6 0.6 0.6")
+
+                            model2 = document.getElementById('target3DModel');
+                            model2.removeAttribute('gltf-model');
+                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            hitFlag = false;
+                            break;
+
                         default:
                             break;
                     }
@@ -281,6 +333,9 @@
             <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
+            <img id="sky04" src={{ asset('cg/R0010041.JPG') }} crossorigin="anonymous" >  
+            <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
+            <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
             <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
             preload="auto" muted loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
