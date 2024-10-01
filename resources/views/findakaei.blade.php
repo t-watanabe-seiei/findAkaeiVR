@@ -126,6 +126,18 @@
 
                     document.getElementById("my_text").setAttribute("value", "Please look for Akaei.");
 
+                    
+                    //akaeiGroupの一を変更
+                    model1 = document.getElementById('akaeiGroup');
+                    // console.log(model1.getAttribute('position'));
+                    model1.setAttribute('position', '-0.3 1.3 0.2');
+                    model1.setAttribute('rotation', '0 90 0');
+                    model1.setAttribute('scale', "0.4 0.4 0.4");
+
+                    model2 = document.getElementById('target3DModel');
+                    model2.removeAttribute('gltf-model');
+                    model2.setAttribute('gltf-model', '#akaeiModel_01');
+
                 };
 
 
@@ -148,13 +160,13 @@
                             //akaeiGroupの一を変更
                             model1 = document.getElementById('akaeiGroup');
                             // console.log(model1.getAttribute('position'));
-                            model1.setAttribute('position', '-0.3 1.3 0.2');
+                            model1.setAttribute('position', '-0.3 1.4 0.2');
                             model1.setAttribute('rotation', '0 90 0');
-                            model1.setAttribute('scale', "0.4 0.4 0.4")
+                            model1.setAttribute('scale', "0.4 0.4 0.4");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            model2.setAttribute('gltf-model', '#akaeiModel_03');
                             
                             mytext = document.getElementById("my_text");
                             mytext.setAttribute("value", "Look for the stingray again");
@@ -339,6 +351,7 @@
         <a-assets>
             <a-asset-item id="akaeiModel_01" src={{ asset('cg/akaei_oldMan_idle.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_02" src={{ asset('cg/akaei_TrunToRunning.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_03" src={{ asset('cg/akaei_HouseDancing.glb') }}></a-asset-item>
             <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
