@@ -121,10 +121,14 @@
 
                     //クリックできるように
                     hitFlag = false;
+
+                    //タイマー再スタート
+                    PassSec = 0;
+                    PassageID = setInterval('showPassage()',10);   // タイマーをセット(0.01s間隔)
                 };
 
 
-                const rePaintModel = function (msg1, hitCount) {
+                const rePaintModel = async function (msg1, hitCount) {
                     console.log(msg1);
                     console.log(hitCount);
 
@@ -161,7 +165,7 @@
                             console.log(PassSec);
 
                             //fetch de POST 自分の記録をPOST
-                            fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
+                            await fetch("{{ env('MIX_ASSET_URL') }}" + '/api/Scores', {  
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json"
