@@ -33,6 +33,7 @@
                 // akaeiModel_01のエンティティを取得
                 const model = document.getElementById('target3DModel');
                 let hitFlag = false;
+                let minionFlag = false;
                 let hitCount = 0;
                 let mySky;
                 let model1;
@@ -59,10 +60,17 @@
 
                         // クリックされたら、モデル０１を非表示にして、モデル０２に切り替え
                         model.removeAttribute('gltf-model');
-                        model.setAttribute('gltf-model', '#akaeiModel_02');
 
-                        // hitFlag デフォルトは false クリックされたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
-                        setTimeout(rePaintModel, 900, "該当modelを削除し、別の場所に再描画します", hitCount);
+                        if(!minionFlag){
+                            model.setAttribute('gltf-model', '#akaeiModel_02');
+                            // hitFlag デフォルトは false クリックされたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
+                            setTimeout(rePaintModel, 2300, "該当modelを削除し、別の場所に再描画します", hitCount);
+                        }else{
+                            model.setAttribute('gltf-model', '#akaeiModel_05');
+                            // hitFlag デフォルトは false クリックされたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
+                            setTimeout(rePaintModel, 900, "該当modelを削除し、別の場所に再描画します", hitCount);
+                        }
+
                     }
 
                 });
@@ -133,8 +141,12 @@
                     model1.setAttribute('scale', "1.4 1.4 1.4");
 
                     model2 = document.getElementById('target3DModel');
-                    model2.removeAttribute('gltf-model');
-                    model2.setAttribute('gltf-model', '#akaeiModel_01');
+                    model2.removeAttribute('gltf-model');                    
+                    if(!minionFlag){
+                        model2.setAttribute('gltf-model', '#akaeiModel_01');
+                    }else{
+                        model2.setAttribute('gltf-model', '#akaeiModel_04');
+                    }
 
                 };
 
@@ -163,10 +175,14 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_03');
-                            
-                            mytext = document.getElementById("my_text");
-                            mytext.setAttribute("value", "Look for the stingray again");
+
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_03');
+                                minionFlag = true;
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_06');
+                                minionFlag = false;
+                            }
 
                             //タイマーSTOP
                             stopShowing();
@@ -241,7 +257,12 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_04');
+                            }
                             hitFlag = false;
                             mytext = document.getElementById("my_text");
                             mytext.setAttribute("value", "");
@@ -260,7 +281,11 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_04');
+                            }
                             hitFlag = false;
                             break;
 
@@ -276,7 +301,11 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_04');
+                            }
                             hitFlag = false;
                             break;
                         
@@ -292,7 +321,11 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_04');
+                            }
                             hitFlag = false;
                             break;
 
@@ -308,7 +341,11 @@
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
-                            model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            if(!minionFlag){
+                                model2.setAttribute('gltf-model', '#akaeiModel_01');
+                            }else{
+                                model2.setAttribute('gltf-model', '#akaeiModel_04');
+                            }
                             hitFlag = false;
                             break;
 
@@ -343,9 +380,12 @@
 <body>
     <a-scene>
         <a-assets>
-            <a-asset-item id="akaeiModel_01" src={{ asset('cg/wait4.glb') }}></a-asset-item>
-            <a-asset-item id="akaeiModel_02" src={{ asset('cg/walking.glb') }}></a-asset-item>
-            <a-asset-item id="akaeiModel_03" src={{ asset('cg/dance.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_01" src={{ asset('cg/akaei_oldMan_idle.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_02" src={{ asset('cg/akaei_TrunToRunning.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_03" src={{ asset('cg/akaei_HouseDancing.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_04" src={{ asset('cg/minion_wait.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_05" src={{ asset('cg/minion_walking.glb') }}></a-asset-item>
+            <a-asset-item id="akaeiModel_06" src={{ asset('cg/minion_dance.glb') }}></a-asset-item>
             <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
@@ -366,7 +406,7 @@
         <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
-        <a-entity id="akaeiGroup" position="-2 0.6 1" rotation="0 90 0" scale="5.4 5.4 5.4">
+        <a-entity id="akaeiGroup" position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
             <!-- 3Dモデル -->
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
