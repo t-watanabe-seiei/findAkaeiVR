@@ -343,7 +343,7 @@
 </head>
 
 <body>
-    <a-scene ar-mode-ui="enabled: false"></a-scene>
+    <a-scene>
         <a-assets>
             <a-asset-item id="akaeiModel_01" src={{ asset('cg/akaei_oldMan_idle.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_02" src={{ asset('cg/akaei_TrunToRunning.glb') }}></a-asset-item>
