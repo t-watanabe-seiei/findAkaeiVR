@@ -235,9 +235,9 @@
                             //akaeiGroupの一を変更 position_2
                             model1 = document.getElementById('akaeiGroup');
                             // model1.setAttribute('position', '42 -1.6 3');
-                            model1.setAttribute('position', '10 0.7 0.1');
+                            model1.setAttribute('position', '10 -1.0 -1.29');
                             model1.setAttribute('rotation', '0 -90 0');
-                            model1.setAttribute('scale', "5 5 5")
+                            model1.setAttribute('scale', "3 3 3");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -254,9 +254,9 @@
 
                             //akaeiGroupの一を変更 position_3
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '-7 1 0.3');
+                            model1.setAttribute('position', '-4.8 1 0.3');
                             model1.setAttribute('rotation', '0 90 0');
-                            model1.setAttribute('scale', "1.6 1.6 1.6")
+                            model1.setAttribute('scale', "1.4 1.4 1.4");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -290,7 +290,7 @@
                             model1 = document.getElementById('akaeiGroup');
                             model1.setAttribute('position', '-0.2 0 -0.2');
                             model1.setAttribute('rotation', '0 0 0');
-                            model1.setAttribute('scale', "1 1 1")
+                            model1.setAttribute('scale', "1 1 1");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -306,7 +306,7 @@
                             model1 = document.getElementById('akaeiGroup');
                             model1.setAttribute('position', '-7 1 0.3');
                             model1.setAttribute('rotation', '0 90 0');
-                            model1.setAttribute('scale', "1.6 1.6 1.6")
+                            model1.setAttribute('scale', "1.6 1.6 1.6");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
