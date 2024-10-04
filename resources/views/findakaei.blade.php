@@ -77,6 +77,9 @@
                     mySky = document.getElementById('aSky');
                     mySky.setAttribute("visible","false");
 
+                    //Particle非表示
+                    document.getElementById("particle").setAttribute("visible", "false");
+
                     //　my_text , ranking1~5 を非表示
                     document.getElementById("my_text").setAttribute("value", "");
                     document.getElementById("ranking1").setAttribute("value", "");
@@ -89,7 +92,7 @@
                     videosphere.setAttribute("visible","true");
                     video.play();
 
-                    setTimeout(stopMovie, 9000, "movieを停止します", 1);
+                    setTimeout(stopMovie, 49000, "movieを停止します", 1);
                 };
 
                 const stopMovie = function (msg1, movieID) {
@@ -118,9 +121,6 @@
                     videosphere.setAttribute("visible","false");
                     video.pause();
 
-                    //Particle非表示
-                    document.getElementById("particle").setAttribute("visible", "false");
-
                     //クリックできるように
                     hitFlag = false;
 
@@ -130,7 +130,7 @@
                     model1 = document.getElementById('akaeiGroup');
                     model1.setAttribute('position', '-1.0 0.6 1.0');
                     model1.setAttribute('rotation', '0 90 0');
-                    model1.setAttribute('scale', "0.9 0.9 0.9");
+                    model1.setAttribute('scale', "1.1 1.1 1.1");
 
                     model2 = document.getElementById('target3DModel');
                     model2.removeAttribute('gltf-model');
@@ -159,7 +159,7 @@
                             model1 = document.getElementById('akaeiGroup');
                             model1.setAttribute('position', '-1.0 0.6 1.0');
                             model1.setAttribute('rotation', '0 90 0');
-                            model1.setAttribute('scale', "0.9 0.9 0.9");
+                            model1.setAttribute('scale', "1.4 1.4 1.4");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -234,9 +234,10 @@
 
                             //akaeiGroupの一を変更 position_2
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '42 -1.6 3');
+                            // model1.setAttribute('position', '42 -1.6 3');
+                            model1.setAttribute('position', '10 0.7 0.1');
                             model1.setAttribute('rotation', '0 -90 0');
-                            model1.setAttribute('scale', "12 12 12")
+                            model1.setAttribute('scale', "5 5 5")
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -287,7 +288,7 @@
 
                             //akaeiGroupの一を変更 position_5
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '0.2 0 0.2');
+                            model1.setAttribute('position', '-0.2 0 -0.2');
                             model1.setAttribute('rotation', '0 0 0');
                             model1.setAttribute('scale', "1 1 1")
 
@@ -366,8 +367,8 @@
         <a-entity laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
         <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
 
-        <!-- クリックしたいentityグループ -->
-        <a-entity id="akaeiGroup" position="-1.0 0.6 1.0" rotation="0 90 0" scale="0.9 0.9 0.9">
+        <!-- クリックしたいentityグループ position_1-->
+        <a-entity id="akaeiGroup" position="-1.0 0.6 1.0" rotation="0 90 0" scale="1.1 1.1 1.1">
             <!-- 3Dモデル -->
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
