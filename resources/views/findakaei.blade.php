@@ -157,9 +157,9 @@
 
                             //akaeiGroupの一を変更 position_1 <a-entity id="akaeiGroup" position="-1.0 0.6 1.0" rotation="0 90 0" scale="0.9 0.9 0.9">
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '-2 -0.6 1');
+                            model1.setAttribute('position', '-2 0 1');
                             model1.setAttribute('rotation', '0 120 0');
-                            model1.setAttribute('scale', "1.4 1.4 1.4");
+                            model1.setAttribute('scale', "2.4 2.4 2.4");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
