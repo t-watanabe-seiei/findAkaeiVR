@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>seieiVR</title>
+    <title>seieiVR2</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
@@ -393,7 +393,7 @@
             <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
             <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
             <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
-            preload="auto" muted loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
+            preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
         </a-assets>
@@ -408,7 +408,7 @@
         <!-- クリックしたいentityグループ position_1-->
         <a-entity id="akaeiGroup" position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
             <!-- 3Dモデル -->
-            <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
+            <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer sphere data-color="red" >
 
                 <!-- 当たり判定オブジェクト -->
                 <a-entity position="0 -0.05 0" hit-box id="hit-boxed">

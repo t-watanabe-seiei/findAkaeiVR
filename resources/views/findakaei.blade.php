@@ -353,7 +353,7 @@
             <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
             <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
             <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
-            preload="auto" muted loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
+            preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
         </a-assets>

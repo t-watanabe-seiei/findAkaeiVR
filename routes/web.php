@@ -6,11 +6,11 @@ Route::get('/welcome', function () {
     return view('welcome');
 });
 
-Route::get('/', function () {
+Route::get('/vr', function () {
     return view('findakaei');
 });
 
-Route::get('/vr', function () {
+Route::get('/', function () {
     return view('findminion');
 });
 
