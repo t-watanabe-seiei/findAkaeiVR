@@ -10,6 +10,10 @@ Route::get('/', function () {
     return view('findakaei');
 });
 
+Route::get('/vr', function () {
+    return view('findminion');
+});
+
 Route::get('/movie', function () {
     return view('movieTest');
 });
