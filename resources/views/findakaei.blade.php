@@ -128,7 +128,7 @@
 
                     //akaeiGroupの一を変更 position_1 <a-entity id="akaeiGroup" position="-1.0 0.6 1.0" rotation="0 90 0" scale="0.9 0.9 0.9">
                     model1 = document.getElementById('akaeiGroup');
-                    model1.setAttribute('position', '-1.5 0 -1.8');
+                    model1.setAttribute('position', '-2 -0.6 1');
                     model1.setAttribute('rotation', '0 60 0');
                     model1.setAttribute('scale', "1.1 1.1 1.1");
 
@@ -157,7 +157,7 @@
 
                             //akaeiGroupの一を変更 position_1 <a-entity id="akaeiGroup" position="-1.0 0.6 1.0" rotation="0 90 0" scale="0.9 0.9 0.9">
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '-1.5 0 -1.8');
+                            model1.setAttribute('position', '-2 -0.6 1');
                             model1.setAttribute('rotation', '0 60 0');
                             model1.setAttribute('scale', "1.4 1.4 1.4");
 
@@ -237,7 +237,7 @@
                             // model1.setAttribute('position', '42 -1.6 3');
                             model1.setAttribute('position', '10 -1.0 -1.9');
                             model1.setAttribute('rotation', '0 -90 0');
-                            model1.setAttribute('scale', "2 2 2");
+                            model1.setAttribute('scale', "3 3 3");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -254,7 +254,7 @@
 
                             //akaeiGroupの一を変更 position_3
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '-4.8 1 0.3');
+                            model1.setAttribute('position', '-4.8 1.0 -0.21');
                             model1.setAttribute('rotation', '0 90 0');
                             model1.setAttribute('scale', "1.4 1.4 1.4");
 
@@ -368,7 +368,7 @@
         <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
-        <a-entity id="akaeiGroup" position="-1.5 0 -1.8" rotation="0 60 0" scale="1.1 1.1 1.1">
+        <a-entity id="akaeiGroup" position="-2 -0.6 1" rotation="0 60 0" scale="1.1 1.1 1.1">
             <!-- 3Dモデル -->
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
