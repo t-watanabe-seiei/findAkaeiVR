@@ -237,7 +237,7 @@
                             // model1.setAttribute('position', '42 -1.6 3');
                             model1.setAttribute('position', '10 -0.88 -1.9');
                             model1.setAttribute('rotation', '0 -90 0');
-                            model1.setAttribute('scale', "2.5 2.5 2.5");
+                            model1.setAttribute('scale', "2.7 2.7 2.7");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -256,7 +256,7 @@
                             model1 = document.getElementById('akaeiGroup');
                             model1.setAttribute('position', '-1.325 1.0 4.00');
                             model1.setAttribute('rotation', '0 150 0');
-                            model1.setAttribute('scale', "1.2 1.2 1.2");
+                            model1.setAttribute('scale', "1.4 1.4 1.4");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
