@@ -256,7 +256,7 @@
                             model1 = document.getElementById('akaeiGroup');
                             model1.setAttribute('position', '-1.325 1.0 4.00');
                             model1.setAttribute('rotation', '0 150 0');
-                            model1.setAttribute('scale', "1.4 1.4 1.4");
+                            model1.setAttribute('scale', "1.2 1.2 1.2");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -272,9 +272,9 @@
 
                             //akaeiGroupの一を変更 position_4
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '4.9 0 0.13');
+                            model1.setAttribute('position', '5.5 0 0.13');
                             model1.setAttribute('rotation', '0 -120 0');
-                            model1.setAttribute('scale', "2.2 2.2 2.2");
+                            model1.setAttribute('scale', "3 3 3");
 
                             model2 = document.getElementById('target3DModel');
                             model2.removeAttribute('gltf-model');
@@ -288,7 +288,7 @@
 
                             //akaeiGroupの一を変更 position_5
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '-0.2 0 -0.2');
+                            model1.setAttribute('position', '-0.5 0 -0.5');
                             model1.setAttribute('rotation', '0 0 0');
                             model1.setAttribute('scale', "1 1 1");
 
