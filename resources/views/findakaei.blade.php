@@ -235,7 +235,7 @@
                             //akaeiGroupの一を変更 position_2
                             model1 = document.getElementById('akaeiGroup');
                             // model1.setAttribute('position', '42 -1.6 3');
-                            model1.setAttribute('position', '10 -0.920 -1.9');
+                            model1.setAttribute('position', '10 -0.88 -1.9');
                             model1.setAttribute('rotation', '0 -90 0');
                             model1.setAttribute('scale', "2.5 2.5 2.5");
 
@@ -272,7 +272,7 @@
 
                             //akaeiGroupの一を変更 position_4
                             model1 = document.getElementById('akaeiGroup');
-                            model1.setAttribute('position', '5.5 0 0.13');
+                            model1.setAttribute('position', '6.0 0 0.13');
                             model1.setAttribute('rotation', '0 -120 0');
                             model1.setAttribute('scale', "3 3 3");
 
