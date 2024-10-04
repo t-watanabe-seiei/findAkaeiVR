@@ -244,7 +244,7 @@
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
                             hitFlag = false;
                             mytext = document.getElementById("my_text");
-                            // mytext.setAttribute("value", "Look for the stingray again");
+                            mytext.setAttribute("value", "");
                             break;
 
                         case 2:
@@ -262,8 +262,6 @@
                             model2.removeAttribute('gltf-model');
                             model2.setAttribute('gltf-model', '#akaeiModel_01');
                             hitFlag = false;
-                            mytext = document.getElementById("my_text");
-                            // mytext.setAttribute("value", "Look for the stingray again");
                             break;
 
                         case 3:
@@ -391,7 +389,7 @@
         
 
         <a-camera id="my_camera">
-            <a-cursor></a-cursor>
+            <!-- <a-cursor></a-cursor> -->
             <input type="button" value="start" onClick="OnStartButtonClick();">
             <a-text id="my_text" value="Please look for Akaei." position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
             <a-text id="ranking1" value="" position="-1 1.25 -3" color="#ffffff" scale="0.7 0.7 0.7" ></a-text>
