@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>seieiVR2</title>
+    <title>seieiVR3</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
