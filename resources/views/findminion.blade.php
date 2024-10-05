@@ -100,7 +100,7 @@
                     videosphere.setAttribute("visible","true");
                     video.play();
 
-                    setTimeout(stopMovie, 49000, "movieを停止します", 1);
+                    setTimeout(stopMovie, 9000, "movieを停止します", 1);
                 };
 
                 const stopMovie = function (msg1, movieID) {
@@ -392,7 +392,7 @@
             <img id="sky04" src={{ asset('cg/R0010041.JPG') }} crossorigin="anonymous" >  
             <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
             <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
-            <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
+            <video id="video" src="{{ asset('cg/R0010008_st_002.MP4') }}"
             preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
