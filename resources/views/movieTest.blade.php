@@ -31,11 +31,11 @@
   </head>
   <body>
     <a-scene>
-      <a-assets timeout="11000"> <!--  タイムアウト時間　11秒  -->
+      <a-assets timeout="11000"> <!--  タイムアウト時間　11秒  preload="auto" なし-->
           <a-asset-item id="akaeiModel_01" src="{{ asset('cg/akaei_oldMan_idle.glb') }}"></a-asset-item>
           
           <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
-          preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
+          loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
 
       </a-assets>
 
