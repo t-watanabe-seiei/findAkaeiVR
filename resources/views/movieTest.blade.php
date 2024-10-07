@@ -15,7 +15,7 @@
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script>
       if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register("{{ asset('js/service-worker.js') }}")
+          navigator.serviceWorker.register("{{ asset('service-worker.js') }}")
           .then(function(registration) {
               console.log('Service Worker registered with scope:', registration.scope);
           }).catch(function(error) {
@@ -45,7 +45,7 @@
           <a-asset-item id="akaeiModel_01" src="{{ asset('cg/akaei_oldMan_idle.glb') }}"></a-asset-item>
           
           <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
-          preload="auto"></video>
+          preload="auto" loop="false" crossorigin="anonymous"></video>
 
       </a-assets>
 
