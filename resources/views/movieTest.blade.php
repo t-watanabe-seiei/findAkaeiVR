@@ -14,6 +14,16 @@
     
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script>
+      if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register("{{ asset('js/service-worker.js') }}")
+          .then(function(registration) {
+              console.log('Service Worker registered with scope:', registration.scope);
+          }).catch(function(error) {
+              console.log('Service Worker registration failed:', error);
+          });
+      }
+
+
       AFRAME.registerComponent('hit-box', {
         init: function () {
           const video = document.getElementById("video");
@@ -31,7 +41,7 @@
   </head>
   <body>
     <a-scene>
-      <a-assets timeout="188000">
+      <a-assets timeout="8000">
           <a-asset-item id="akaeiModel_01" src="{{ asset('cg/akaei_oldMan_idle.glb') }}"></a-asset-item>
           
           <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
