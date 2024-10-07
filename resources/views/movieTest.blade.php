@@ -31,7 +31,7 @@
   </head>
   <body>
     <a-scene>
-      <a-assets timeout="6000"> <!--  タイムアウト時間　6秒  -->
+      <a-assets timeout="11000"> <!--  タイムアウト時間　11秒  -->
           <a-asset-item id="akaeiModel_01" src="{{ asset('cg/akaei_oldMan_idle.glb') }}"></a-asset-item>
           
           <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
