@@ -15,14 +15,28 @@ self.addEventListener('install', function(event) {
     );
 });
 
+// self.addEventListener('fetch', function(event) {
+//     event.respondWith(
+//         caches.match(event.request)
+//         .then(function(response) {
+//             if (response) {
+//                 return response;  // キャッシュされたリソースを返す
+//             }
+//             return fetch(event.request);  // ネットワークから取得
+//         })
+//     );
+// });
+
+
 self.addEventListener('fetch', function(event) {
     event.respondWith(
-        caches.match(event.request)
-        .then(function(response) {
-            if (response) {
-                return response;  // キャッシュされたリソースを返す
-            }
-            return fetch(event.request);  // ネットワークから取得
+        caches.match(event.request).then(function(response) {
+            return response || fetch(event.request).then(function(response) {
+                return caches.open(CACHE_NAME).then(function(cache) {
+                    cache.put(event.request, response.clone());
+                    return response;
+                });
+            });
         })
     );
 });
