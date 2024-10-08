@@ -1,7 +1,7 @@
 const CACHE_NAME = 'my-cache';
 const urlsToCache = [
     '/find',
-    '/find/cg/R0010008_st_001.MP4'
+    '/find/cg/R0010049_st.MP4'
 ];
 
 self.addEventListener('install', function(event) {
