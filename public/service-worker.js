@@ -1,7 +1,7 @@
 const CACHE_NAME = 'my-cache';
 const urlsToCache = [
-    "{{ asset('/') }}",
-    "{{ asset('/cg/akaei_oldMan_idle.glb') }}"
+    "{{ env('MIX_ASSET_URL') }}" ,
+    "{{ env('MIX_ASSET_URL') }}" + '/cg/akaei_oldMan_idle.glb'
 ];
 
 self.addEventListener('install', function(event) {
