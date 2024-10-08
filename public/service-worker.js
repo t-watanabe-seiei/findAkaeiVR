@@ -1,7 +1,7 @@
 const CACHE_NAME = 'my-cache';
 const urlsToCache = [
     '/find',
-    '/find/cg/akaei_oldMan_idle.glb'
+    '/find/cg/R0010008_st_001.MP4'
 ];
 
 self.addEventListener('install', function(event) {
@@ -9,8 +9,6 @@ self.addEventListener('install', function(event) {
         caches.open(CACHE_NAME)
         .then(function(cache) {
             console.log('Opened cache');
-            console.log("Asset URL: /");
-            console.log("Video URL: /cg/akaei_oldMan_idle.glb");
 
             return cache.addAll(urlsToCache);
         })
