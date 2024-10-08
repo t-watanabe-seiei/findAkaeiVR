@@ -57,6 +57,7 @@ $subdirectories = false;
 // $databases = array(
 // 	array(
 // 		'path'=> '/home/runner/findAkaeiVR/database/database.sqlite',
+//		'path'=> '/home/seiei9/seiei.online/public_html/2024oc.seiei.online/findAkaeiVR/database/database.sqlite',
 // 		'name'=> 'main'
 // 	)
 // );
