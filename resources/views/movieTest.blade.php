@@ -15,7 +15,7 @@
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script>
       if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register("{{ env('MIX_ASSET_URL') }}" + "{{ asset('service-worker.js') }}")
+          navigator.serviceWorker.register("{{ asset('service-worker.js') }}")
           .then(function(registration) {
               console.log('Service Worker registered with scope:', registration.scope);
           }).catch(function(error) {
