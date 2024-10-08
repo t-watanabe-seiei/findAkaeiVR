@@ -1,7 +1,7 @@
 const CACHE_NAME = 'my-cache';
 const urlsToCache = [
-    "{{ env('MIX_ASSET_URL') }}" ,
-    "{{ env('MIX_ASSET_URL') }}" + '/cg/akaei_oldMan_idle.glb'
+    '/',
+    '/cg/akaei_oldMan_idle.glb'
 ];
 
 self.addEventListener('install', function(event) {
@@ -9,6 +9,9 @@ self.addEventListener('install', function(event) {
         caches.open(CACHE_NAME)
         .then(function(cache) {
             console.log('Opened cache');
+            console.log("Asset URL: /");
+            console.log("Video URL: /cg/akaei_oldMan_idle.glb");
+
             return cache.addAll(urlsToCache);
         })
     );
