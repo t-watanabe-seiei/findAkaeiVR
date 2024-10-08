@@ -57,6 +57,7 @@
                 let myRankElement;
                 
                 const video = document.getElementById("video");
+                const video2 = document.getElementById("video2");
                 const videosphere = document.getElementById("videosphere");
 
 
@@ -106,6 +107,15 @@
                     document.getElementById("ranking3").setAttribute("value", "");
                     document.getElementById("ranking4").setAttribute("value", "");
                     document.getElementById("ranking5").setAttribute("value", "");
+
+                    //movie切り替え
+                    if(!minionFlag){
+                        // src属性を#video1に変更
+                        videosphere.setAttribute('src', '#video');
+                    }else{
+                        // src属性を#video2に変更
+                        videosphere.setAttribute('src', '#video2');
+                    }
 
                     //movie再生
                     videosphere.setAttribute("visible","true");
@@ -406,6 +416,8 @@
             <video id="video" src="{{ asset('cg/R0010049_st.MP4') }}"
             preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
+            <video id="video2" src="{{ asset('cg/R0010011_st.MP4') }}"
+            preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
 
         </a-assets>
 

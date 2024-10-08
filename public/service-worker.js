@@ -1,7 +1,9 @@
 const CACHE_NAME = 'my-cache';  // キャッシュの名前を設定
 const urlsToCache = [
     '/find',  // キャッシュするルートURL
-    '/find/cg/R0010049_st.MP4'  // キャッシュする動画ファイルのURL
+    '/find/cg/R0010049_st.MP4',  // キャッシュする動画ファイルのURL
+    '/find/cg/R0010011_st.MP4'  // 新しく追加する動画ファイルのURL
+    
 ];
 
 // Service Workerのインストールイベント
