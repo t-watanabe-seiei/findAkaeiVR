@@ -1,8 +1,9 @@
 const CACHE_NAME = 'my-cache';
 const urlsToCache = [
-    'http://2024oc.seiei.online/find/',
-    'http://2024oc.seiei.online/find/cg/akaei_oldMan_idle.glb'
+    '{{ url('/') }}/',
+    '{{ url('/') }}/cg/akaei_oldMan_idle.glb'
 ];
+
 
 self.addEventListener('install', function(event) {
     event.waitUntil(
