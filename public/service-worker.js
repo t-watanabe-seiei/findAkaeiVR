@@ -20,6 +20,12 @@ self.addEventListener('install', function(event) {
 
 // フェッチイベント（ネットワークリクエスト）の処理
 self.addEventListener('fetch', function(event) {
+    // 'chrome-extension'スキームのリクエストを無視
+    if (event.request.url.startsWith('chrome-extension://')) {
+        console.error('Service Worker does not support chrome-extension scheme:', event.request.url);
+        return;
+    }
+
     event.respondWith(
         // キャッシュ内にリクエストに対応するレスポンスがあるか確認
         caches.match(event.request).then(function(response) {
@@ -38,18 +44,3 @@ self.addEventListener('fetch', function(event) {
         })
     );
 });
-
-
-// self.addEventListener('fetch', function(event) {
-//     event.respondWith(
-//         caches.match(event.request)
-//         .then(function(response) {
-//             if (response) {
-//                 return response;  // キャッシュされたリソースを返す
-//             }
-//             return fetch(event.request);  // ネットワークから取得
-//         })
-//     );
-// });
-
-
