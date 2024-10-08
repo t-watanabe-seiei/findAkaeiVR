@@ -9,7 +9,18 @@
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
-    <script>  
+    <script>
+        // serviceWorker 
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register("{{ asset('service-worker.js') }}")
+            .then(function(registration) {
+                console.log('Service Worker registered with scope:', registration.scope);
+            }).catch(function(error) {
+                console.log('Service Worker registration failed:', error);
+            });
+        }
+
+
         let PassSec;   // 秒数カウント用変数
         let mytext;
         let PassageID;
@@ -392,7 +403,7 @@
             <img id="sky04" src={{ asset('cg/R0010041.JPG') }} crossorigin="anonymous" >  
             <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
             <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
-            <video id="video" src="{{ asset('cg/R0010008_st_002.MP4') }}"
+            <video id="video" src="{{ asset('cg/R0010049_st.MP4') }}"
             preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
