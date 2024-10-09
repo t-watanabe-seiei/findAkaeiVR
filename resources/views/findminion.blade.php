@@ -112,14 +112,18 @@
                     if(!minionFlag){
                         // src属性を#video1に変更
                         videosphere.setAttribute('src', '#video');
+                        //movie再生
+                        videosphere.setAttribute("visible","true");
+                        video.play();
                     }else{
                         // src属性を#video2に変更
                         videosphere.setAttribute('src', '#video2');
+                        //movie再生
+                        videosphere.setAttribute("visible","true");
+                        video2.play();
                     }
 
-                    //movie再生
-                    videosphere.setAttribute("visible","true");
-                    video.play();
+
 
                     setTimeout(stopMovie, 9000, "movieを停止します", 1);
                 };
@@ -148,7 +152,12 @@
 
                     //movie stop
                     videosphere.setAttribute("visible","false");
-                    video.pause();
+                    if(!minionFlag){
+                        video.pause();
+                    }else{
+                        video2.pause();
+                    }
+
 
                     //クリックできるように
                     hitFlag = false;
