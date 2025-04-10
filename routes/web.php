@@ -10,6 +10,14 @@ Route::get('/vr', function () {
     return view('findakaei');
 });
 
+Route::get('/train', function () {
+    return view('train');
+});
+
+Route::get('/sakura', function () {
+    return view('findsakura');
+});
+
 Route::get('/', function () {
     return view('findminion');
 });

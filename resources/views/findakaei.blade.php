@@ -346,13 +346,20 @@
             <a-asset-item id="akaeiModel_01" src={{ asset('cg/akaei_oldMan_idle.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_02" src={{ asset('cg/akaei_TrunToRunning.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_03" src={{ asset('cg/akaei_HouseDancing.glb') }}></a-asset-item>
-            <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
+            <!-- <img id="sky01" src={{ asset('cg/R0010034.JPG') }} crossorigin="anonymous" >  
             <img id="sky02" src={{ asset('cg/R0010035.JPG') }} crossorigin="anonymous" >
             <img id="sky03" src={{ asset('cg/R0010036.JPG') }} crossorigin="anonymous" >
             <img id="sky04" src={{ asset('cg/R0010041.JPG') }} crossorigin="anonymous" >  
             <img id="sky05" src={{ asset('cg/R0010056.JPG') }} crossorigin="anonymous" >
             <img id="sky06" src={{ asset('cg/R0010064.JPG') }} crossorigin="anonymous" >
-            <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}"
+            <video id="video" src="{{ asset('cg/R0010008_st_001.MP4') }}" -->
+            <img id="sky01" src={{ asset('cg/R0010095.JPG') }} crossorigin="anonymous" >  
+            <img id="sky02" src={{ asset('cg/R0010109.JPG') }} crossorigin="anonymous" >
+            <img id="sky03" src={{ asset('cg/R0010111.JPG') }} crossorigin="anonymous" >
+            <img id="sky04" src={{ asset('cg/R0010114.JPG') }} crossorigin="anonymous" >  
+            <img id="sky05" src={{ asset('cg/R0010131.JPG') }} crossorigin="anonymous" >
+            <img id="sky06" src={{ asset('cg/R0010143.JPG') }} crossorigin="anonymous" >
+            <video id="video" src="{{ asset('cg/R0010149_st.MP4') }}"
             preload="auto" loop="false" webkit-playsinline playsinline crossorigin="anonymous"></video>
             
 
