@@ -546,6 +546,8 @@ curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&tim
     sudo service apache2 restart
     (sudo apt-get install php-curl)　※不要かも
     /etc/apache2/apache2.conf の中の "var/www/html" no  AllowOverride None →　AllowOverride All に変更
+### 設定ファイルを書き換えたら Apache を再起動するのを忘れないようにしましょう。
+    $ sudo service apache2 restart
 
 # Laravel/UI インストール
     composer require laravel/ui
@@ -568,3 +570,43 @@ curl -X POST http://2024oc.seiei.online/find/api/Scores  -d 'userid=20230003&tim
         <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
         
+# ubuntu に Laravel をインストールその２  2025.06.17
+
+## まず、Ubuntu上のApacheはwww-dataというユーザーによって実行されているため、このユーザーに所有権を移動する。
+    $ sudo chown -R www-data:www-data /var/www/html
+## そしたら、www-dataグループにユーザーを追加する
+    $ sudo usermod -aG www-data t-watanabe
+## 次に、所有者とグループに入っている人に書込実行読込の権限を与え、それ以外のユーザーには読込と実行のみできるようにする。
+    $ sudo chmod 775 -R /var/www/html
+
+# Laravel をインストールしたら TOP 以外 Not found（Ubuntu）
+https://laraweb.net/environment/10542/
+解決策（１）Apacheの設定ファイル（AllowOverride All）
+    /etc/apache2/apache2.conf
+Ubuntu のリポジトリから取得出来る Apache2 はオリジナルの Apache2 とはディレクトリの構成や設定の方法が違います。
+それを以下のように変更。
+<Directory /var/www/html/findAkaeiVR>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+</Directory>
+設定ファイルを書き換えたら Apache を再起動するのを忘れないようにしましょう。
+    $ sudo service apache2 restart
+
+解決策（２）mod_rewrite を有効にする
+.htaccessファイルを有効化する上で mod_rewrite.so モジュールが必要です。
+
+１．まずはmod_rewriteが利用可能となっているかを確認
+    $ cat /etc/apache2/mods-available/rewrite.load
+
+    上記のコマンドを打って以下が表示されればOK
+        LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
+    使えることが確認できたら a2enmod というコマンドを実行します。
+        $ sudo a2enmod rewrite
+    a2enmod はUbuntuで Apache2 のモジュールを有効にするコマンドです。a2enmodを実行すると以下の様なメッセージが出てきます。
+        Enabling module rewrite.
+        To activate the new configuration, you need to run:service apache2 restart
+    忘れずに restart しましょう。
+        $ sudo service apache2 restart
+以上です。
+
