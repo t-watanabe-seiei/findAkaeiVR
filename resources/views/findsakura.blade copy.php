@@ -7,7 +7,6 @@
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script>  
@@ -28,140 +27,6 @@
             clearInterval( PassageID );   // タイマーのクリア
             // console.log(PassSec);
         }
-
-        // ボールを撃つコンポーネント
-        AFRAME.registerComponent('shoot', {
-            init: function () {
-                this.shoot = this.shoot.bind(this);
-                this.onKeyDown = this.onKeyDown.bind(this);
-                
-                // スペースキーのイベントリスナーを追加
-                window.addEventListener('keydown', this.onKeyDown);
-                
-                // VRコントローラーのイベントリスナーを追加
-                const leftController = document.getElementById('leftController');
-                const rightController = document.getElementById('rightController');
-                if (leftController) leftController.addEventListener('triggerdown', this.shoot);
-                if (rightController) rightController.addEventListener('triggerdown', this.shoot);
-            },
-            
-            onKeyDown: function (event) {
-                // スペースキーが押された場合
-                if (event.code === 'Space') {
-                    event.preventDefault(); // デフォルトのスペースキー動作を防ぐ
-                    this.shoot(event);
-                    console.log('space key pressed');
-                }
-            },
-            
-            shoot: function (event) {
-                console.log('Shoot function called, event type:', event.type);
-                
-                const sceneEl = this.el.sceneEl;
-                const camera = this.el;
-                
-                // ボールエンティティを作成
-                const ball = document.createElement('a-sphere');
-                ball.setAttribute('radius', 0.1);
-                ball.setAttribute('color', 'red');
-                ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8;');
-                
-                // 位置と方向を計算
-                const position = new THREE.Vector3();
-                const direction = new THREE.Vector3();
-                
-                if (event.type === 'triggerdown') {
-                    // VRコントローラーからの発射
-                    event.target.object3D.getWorldPosition(position);
-                    event.target.object3D.getWorldDirection(direction);
-                    console.log('Shooting from VR controller');
-                } else {
-                    // スペースキーからの発射（カメラの向いている方向）
-                    camera.object3D.getWorldPosition(position);
-                    camera.object3D.getWorldDirection(direction);
-                    console.log('Shooting from camera, position:', position, 'direction:', direction);
-                }
-                
-                // カメラの少し前にボールを配置
-                const startPos = position.clone().add(direction.clone().multiplyScalar(-0.5));
-                ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
-                sceneEl.appendChild(ball);
-                
-                console.log('Ball created at position:', startPos);
-                
-                // 物理エンジンを使わずに、シンプルなアニメーションで実装
-                const targetPos = startPos.clone().add(direction.clone().multiplyScalar(-20));
-                ball.setAttribute('animation', {
-                    property: 'position',
-                    to: `${targetPos.x} ${targetPos.y} ${targetPos.z}`,
-                    dur: 2000,
-                    easing: 'linear'
-                });
-                
-                console.log('Ball animation started to:', targetPos);
-                
-                // リアルタイム衝突検出（アニメーション中に連続チェック）
-                let animationFrameId;
-                let hasHit = false;
-                
-                const checkCollision = () => {
-                    if (hasHit || !ball.parentNode) {
-                        return; // 既に当たったか削除されている場合は終了
-                    }
-                    
-                    // エイの位置を取得
-                    const akaeiGroup = document.getElementById('akaeiGroup');
-                    if (akaeiGroup) {
-                        const akaeiPos = akaeiGroup.getAttribute('position');
-                        const ballCurrentPos = ball.getAttribute('position');
-                        
-                        // リアルタイムでボールとエイの距離を計算
-                        const distance = new THREE.Vector3(
-                            ballCurrentPos.x - akaeiPos.x,
-                            ballCurrentPos.y - akaeiPos.y,
-                            ballCurrentPos.z - akaeiPos.z
-                        ).length();
-                        
-                        console.log('Current distance to target:', distance.toFixed(2));
-                        
-                        if (distance < 0.3) { // 0.8m以内なら当たり判定（より厳しく）
-                            hasHit = true;
-                            console.log('Ball hit akaei during animation!');
-                            const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
-                            if (hitBoxComponent) {
-                                hitBoxComponent.emit('click');
-                            }
-                            
-                            // ボールを即座に削除
-                            if (ball.parentNode) {
-                                ball.parentNode.removeChild(ball);
-                                console.log('Ball removed after hit');
-                            }
-                            return;
-                        }
-                    }
-                    
-                    // 次のフレームでも衝突チェックを継続
-                    animationFrameId = requestAnimationFrame(checkCollision);
-                };
-                
-                // 衝突チェック開始
-                animationFrameId = requestAnimationFrame(checkCollision);
-                
-                // アニメーション完了時の処理（当たらなかった場合）
-                setTimeout(() => {
-                    if (animationFrameId) {
-                        cancelAnimationFrame(animationFrameId);
-                    }
-                    
-                    if (!hasHit && ball.parentNode) {
-                        console.log('Ball missed target');
-                        ball.parentNode.removeChild(ball);
-                        console.log('Ball removed after timeout');
-                    }
-                }, 2000);
-            }
-        });
         
         AFRAME.registerComponent('hit-box', {
             init: function () {
@@ -476,7 +341,7 @@
 </head>
 
 <body>
-    <a-scene physics="gravity: -9.8">
+    <a-scene>
         <a-assets>
             <!-- <a-asset-item id="akaeiModel_01" src={{ asset('cg/praying3.glb') }}></a-asset-item>
             <a-asset-item id="akaeiModel_02" src={{ asset('cg/TrunToRunning3.glb') }}></a-asset-item>
@@ -507,11 +372,11 @@
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
-        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
+        <a-entity laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
+        <a-entity laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
-        <a-entity id="akaeiGroup" static-body position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
+        <a-entity id="akaeiGroup" position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
             <!-- 3Dモデル -->
             <a-entity id="target3DModel" class="collidable" gltf-model="#akaeiModel_01" scale="1 1 1" rotation="0 0 0" animation-mixer>
 
@@ -533,7 +398,7 @@
         <a-entity id="particle" visible="false" position="0 3 0" particle-system="preset:star; color: #f216b0,#f24535"></a-entity>
         
 
-        <a-camera id="my_camera" shoot>
+        <a-camera id="my_camera">
             <!-- <a-cursor></a-cursor> -->
             <input type="button" value="start" onClick="OnStartButtonClick();">
             <a-text id="my_text" value="Please look for Akaei." position="0 -0.1 -2" scale="0.4 0.4 0.4" align="center" color="#ffffff"></a-text>
