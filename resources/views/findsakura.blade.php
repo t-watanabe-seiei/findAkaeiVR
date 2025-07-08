@@ -124,7 +124,7 @@
                         
                         console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 0.3) { // 0.8m以内なら当たり判定（より厳しく）
+                        if (distance < 1.1) { // 1.1m以内なら当たり判定（より厳しく）
                             hasHit = true;
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
@@ -518,7 +518,7 @@
                 <!-- 当たり判定オブジェクト -->
                 <a-entity position="0 -0.05 0" hit-box id="hit-boxed">
                     <a-entity id="hit-box-cylinder" class="raycastable collidable" geometry="primitive:cylinder"
-                        material="color:red; opacity: 0.0" scale="0.14 0.3 0.14" position="0 0.21 0"></a-entity>
+                        material="color:red; opacity: 0.3" scale="0.14 0.3 0.14" position="0 0.21 0"></a-entity>
                 </a-entity>
             </a-entity>
         </a-entity>
