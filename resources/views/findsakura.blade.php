@@ -29,140 +29,7 @@
             // console.log(PassSec);
         }
 
-        // VRコントローラー用のshootコンポーネント
-        AFRAME.registerComponent('vr-controller-shoot', {
-            init: function () {
-                this.onTriggerDown = this.onTriggerDown.bind(this);
-                this.onTriggerUp = this.onTriggerUp.bind(this);
-                
-                // 複数のイベントタイプをリスンする
-                this.el.addEventListener('triggerdown', this.onTriggerDown);
-                this.el.addEventListener('triggertouchstart', this.onTriggerDown);
-                this.el.addEventListener('gripdown', this.onTriggerDown);
-                this.el.addEventListener('abuttondown', this.onTriggerDown);
-                this.el.addEventListener('bbuttondown', this.onTriggerDown);
-                this.el.addEventListener('xbuttondown', this.onTriggerDown);
-                this.el.addEventListener('ybuttondown', this.onTriggerDown);
-                
-                console.log('VR controller shoot component initialized for:', this.el.id);
-                
-                // VRが利用可能かチェック
-                this.el.sceneEl.addEventListener('loaded', () => {
-                    if (this.el.sceneEl.is('vr-mode')) {
-                        console.log('VR mode is active for controller:', this.el.id);
-                    }
-                });
-            },
-            
-            onTriggerDown: function (event) {
-                console.log('VR controller event triggered:', event.type, 'on controller:', this.el.id);
-                this.shootBall(this.el);
-            },
-            
-            shootBall: function (controller) {
-                console.log('Shooting ball from VR controller:', controller.id);
-                
-                const sceneEl = controller.sceneEl;
-                
-                // ボールエンティティを作成
-                const ball = document.createElement('a-sphere');
-                ball.setAttribute('radius', 0.1);
-                ball.setAttribute('color', 'red');
-                ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8;');
-                
-                // コントローラーの位置と方向を取得
-                const position = new THREE.Vector3();
-                const direction = new THREE.Vector3();
-                
-                controller.object3D.getWorldPosition(position);
-                controller.object3D.getWorldDirection(direction);
-                
-                // raycasterがある場合はその方向も使用
-                const raycaster = controller.components.raycaster;
-                if (raycaster && raycaster.raycaster) {
-                    const raycasterDirection = raycaster.raycaster.ray.direction.clone().normalize();
-                    direction.copy(raycasterDirection);
-                    console.log('Using raycaster direction for VR:', direction);
-                }
-                
-                // コントローラーの少し前にボールを配置
-                const startPos = position.clone().add(direction.clone().multiplyScalar(0.3));
-                ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
-                sceneEl.appendChild(ball);
-                
-                console.log('VR Ball created at position:', startPos);
-                console.log('VR Ball direction:', direction);
-                
-                // ボールを飛ばす
-                const targetPos = startPos.clone().add(direction.clone().multiplyScalar(20));
-                ball.setAttribute('animation', {
-                    property: 'position',
-                    to: `${targetPos.x} ${targetPos.y} ${targetPos.z}`,
-                    dur: 2000,
-                    easing: 'linear'
-                });
-                
-                // 衝突検出
-                this.startCollisionDetection(ball);
-            },
-            
-            startCollisionDetection: function (ball) {
-                let animationFrameId;
-                let hasHit = false;
-                
-                const checkCollision = () => {
-                    if (hasHit || !ball.parentNode) {
-                        return;
-                    }
-                    
-                    const akaeiGroup = document.getElementById('akaeiGroup');
-                    if (akaeiGroup) {
-                        const akaeiPos = akaeiGroup.getAttribute('position');
-                        const ballCurrentPos = ball.getAttribute('position');
-                        
-                        const distance = new THREE.Vector3(
-                            ballCurrentPos.x - akaeiPos.x,
-                            ballCurrentPos.y - akaeiPos.y,
-                            ballCurrentPos.z - akaeiPos.z
-                        ).length();
-                        
-                        console.log('VR Ball distance to target:', distance.toFixed(2));
-                        
-                        if (distance < 1.2) {
-                            hasHit = true;
-                            console.log('VR Ball hit akaei!');
-                            const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
-                            if (hitBoxComponent) {
-                                hitBoxComponent.emit('click');
-                            }
-                            
-                            if (ball.parentNode) {
-                                ball.parentNode.removeChild(ball);
-                                console.log('VR Ball removed after hit');
-                            }
-                            return;
-                        }
-                    }
-                    
-                    animationFrameId = requestAnimationFrame(checkCollision);
-                };
-                
-                animationFrameId = requestAnimationFrame(checkCollision);
-                
-                setTimeout(() => {
-                    if (animationFrameId) {
-                        cancelAnimationFrame(animationFrameId);
-                    }
-                    
-                    if (!hasHit && ball.parentNode) {
-                        console.log('VR Ball missed target');
-                        ball.parentNode.removeChild(ball);
-                    }
-                }, 2000);
-            }
-        });
-
-        // ボールを撃つコンポーネント（デスクトップ用）
+        // ボールを撃つコンポーネント
         AFRAME.registerComponent('shoot', {
             init: function () {
                 this.shoot = this.shoot.bind(this);
@@ -170,20 +37,25 @@
                 
                 // スペースキーのイベントリスナーを追加
                 window.addEventListener('keydown', this.onKeyDown);
-                console.log('Desktop shoot component initialized');
+                
+                // VRコントローラーのイベントリスナーを追加
+                const leftController = document.getElementById('leftController');
+                const rightController = document.getElementById('rightController');
+                if (leftController) leftController.addEventListener('triggerdown', this.shoot);
+                if (rightController) rightController.addEventListener('triggerdown', this.shoot);
             },
             
             onKeyDown: function (event) {
                 // スペースキーが押された場合
                 if (event.code === 'Space') {
-                    event.preventDefault();
+                    event.preventDefault(); // デフォルトのスペースキー動作を防ぐ
                     this.shoot(event);
-                    console.log('Space key pressed for desktop shooting');
+                    console.log('space key pressed');
                 }
             },
             
             shoot: function (event) {
-                console.log('Desktop shoot function called');
+                console.log('Shoot function called, event type:', event.type);
                 
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
@@ -194,24 +66,41 @@
                 ball.setAttribute('color', 'red');
                 ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8;');
                 
-                // カメラの位置と方向を取得
+                // 位置と方向を計算
                 const position = new THREE.Vector3();
                 const direction = new THREE.Vector3();
                 
-                camera.object3D.getWorldPosition(position);
-                camera.object3D.getWorldDirection(direction);
-                
-                console.log('Desktop shooting from camera, position:', position, 'direction:', direction);
+                if (event.type === 'triggerdown') {
+                    // VRコントローラーからの発射（raycasterの方向を使用）
+                    const raycaster = event.target.components.raycaster;
+                    if (raycaster) {
+                        // raycasterの原点と方向を取得
+                        const raycasterRay = raycaster.raycaster.ray;
+                        position.copy(raycasterRay.origin);
+                        direction.copy(raycasterRay.direction);
+                        console.log('Shooting from VR controller raycaster');
+                    } else {
+                        // フォールバック: コントローラーの位置と方向
+                        event.target.object3D.getWorldPosition(position);
+                        event.target.object3D.getWorldDirection(direction);
+                        console.log('Shooting from VR controller fallback');
+                    }
+                } else {
+                    // スペースキーからの発射（カメラの向いている方向）
+                    camera.object3D.getWorldPosition(position);
+                    camera.object3D.getWorldDirection(direction);
+                    console.log('Shooting from camera, position:', position, 'direction:', direction);
+                }
                 
                 // カメラの少し前にボールを配置
-                const startPos = position.clone().add(direction.clone().multiplyScalar(0.3));
+                const startPos = position.clone().add(direction.clone().multiplyScalar(-0.5));
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-                console.log('Desktop Ball created at position:', startPos);
+                console.log('Ball created at position:', startPos);
                 
-                // ボールを飛ばす
-                const targetPos = startPos.clone().add(direction.clone().multiplyScalar(20));
+                // 物理エンジンを使わずに、シンプルなアニメーションで実装
+                const targetPos = startPos.clone().add(direction.clone().multiplyScalar(-20));
                 ball.setAttribute('animation', {
                     property: 'position',
                     to: `${targetPos.x} ${targetPos.y} ${targetPos.z}`,
@@ -219,59 +108,66 @@
                     easing: 'linear'
                 });
                 
-                console.log('Desktop Ball animation started to:', targetPos);
+                console.log('Ball animation started to:', targetPos);
                 
-                // リアルタイム衝突検出
+                // リアルタイム衝突検出（アニメーション中に連続チェック）
                 let animationFrameId;
                 let hasHit = false;
                 
                 const checkCollision = () => {
                     if (hasHit || !ball.parentNode) {
-                        return;
+                        return; // 既に当たったか削除されている場合は終了
                     }
                     
+                    // エイの位置を取得
                     const akaeiGroup = document.getElementById('akaeiGroup');
                     if (akaeiGroup) {
                         const akaeiPos = akaeiGroup.getAttribute('position');
                         const ballCurrentPos = ball.getAttribute('position');
                         
+                        // リアルタイムでボールとエイの距離を計算
                         const distance = new THREE.Vector3(
                             ballCurrentPos.x - akaeiPos.x,
                             ballCurrentPos.y - akaeiPos.y,
                             ballCurrentPos.z - akaeiPos.z
                         ).length();
                         
-                        console.log('Desktop Ball distance to target:', distance.toFixed(2));
+                        console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 0.8) { // デスクトップ用により厳密な判定
+                        if (distance < 1.2) { // VRコントローラー用により緩い判定
                             hasHit = true;
-                            console.log('Desktop Ball hit akaei!');
+                            console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
                             if (hitBoxComponent) {
                                 hitBoxComponent.emit('click');
                             }
                             
+                            // ボールを即座に削除
                             if (ball.parentNode) {
                                 ball.parentNode.removeChild(ball);
-                                console.log('Desktop Ball removed after hit');
+                                console.log('Ball removed after hit');
                             }
                             return;
                         }
                     }
                     
+                    // 次のフレームでも衝突チェックを継続
                     animationFrameId = requestAnimationFrame(checkCollision);
                 };
                 
+                // 衝突チェック開始
                 animationFrameId = requestAnimationFrame(checkCollision);
                 
+                // アニメーション完了時の処理（当たらなかった場合）
                 setTimeout(() => {
                     if (animationFrameId) {
                         cancelAnimationFrame(animationFrameId);
                     }
                     
                     if (!hasHit && ball.parentNode) {
-                        console.log('Desktop Ball missed target');
+                        console.log('Ball missed target');
                         ball.parentNode.removeChild(ball);
+                        console.log('Ball removed after timeout');
                     }
                 }, 2000);
             }
@@ -621,14 +517,8 @@
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" 
-                  laser-controls="hand: left" 
-                  raycaster="objects: .collidable; far: 10" 
-                  vr-controller-shoot></a-entity>
-        <a-entity id="rightController" 
-                  laser-controls="hand: right" 
-                  raycaster="objects: .collidable; far: 10" 
-                  vr-controller-shoot></a-entity>
+        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 10" vr-controller></a-entity>
+        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 10" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
         <a-entity id="akaeiGroup" static-body position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
