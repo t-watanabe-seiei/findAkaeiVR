@@ -507,8 +507,8 @@
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
-        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
+        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
+        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
         <a-entity id="akaeiGroup" static-body position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
