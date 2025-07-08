@@ -70,17 +70,17 @@
                 const position = new THREE.Vector3();
                 const direction = new THREE.Vector3();
                 
-                if (event.type === 'triggerdown') {
-                    // VRコントローラーからの発射
-                    event.target.object3D.getWorldPosition(position);
-                    event.target.object3D.getWorldDirection(direction);
-                    console.log('Shooting from VR controller');
-                } else {
+                // if (event.type === 'triggerdown') {
+                //     // VRコントローラーからの発射
+                //     event.target.object3D.getWorldPosition(position);
+                //     event.target.object3D.getWorldDirection(direction);
+                //     console.log('Shooting from VR controller');
+                // } else {
                     // スペースキーからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
                     camera.object3D.getWorldDirection(direction);
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
-                }
+                // }
                 
                 // カメラの少し前にボールを配置
                 const startPos = position.clone().add(direction.clone().multiplyScalar(-0.5));
@@ -122,7 +122,7 @@
                             ballCurrentPos.z - akaeiPos.z
                         ).length();
                         
-                        console.log('Current distance to target:', distance.toFixed(2));
+                        // console.log('Current distance to target:', distance.toFixed(2));
                         
                         if (distance < 1.1) { // 1.1m以内なら当たり判定（より厳しく）
                             hasHit = true;
