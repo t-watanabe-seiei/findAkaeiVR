@@ -125,7 +125,7 @@
                         
                         console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 3.1) { // 1.1m以内なら当たり判定（より厳しく）
+                        if (distance < 5.1) { // 1.1m以内なら当たり判定（より厳しく）
                             hasHit = true;
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
