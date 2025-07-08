@@ -71,10 +71,20 @@
                 const direction = new THREE.Vector3();
                 
                 if (event.type === 'triggerdown') {
-                    // VRコントローラーからの発射
-                    event.target.object3D.getWorldPosition(position);
-                    event.target.object3D.getWorldDirection(direction);
-                    console.log('Shooting from VR controller');
+                    // VRコントローラーからの発射（raycasterの方向を使用）
+                    const raycaster = event.target.components.raycaster;
+                    if (raycaster) {
+                        // raycasterの原点と方向を取得
+                        const raycasterRay = raycaster.raycaster.ray;
+                        position.copy(raycasterRay.origin);
+                        direction.copy(raycasterRay.direction);
+                        console.log('Shooting from VR controller raycaster');
+                    } else {
+                        // フォールバック: コントローラーの位置と方向
+                        event.target.object3D.getWorldPosition(position);
+                        event.target.object3D.getWorldDirection(direction);
+                        console.log('Shooting from VR controller fallback');
+                    }
                 } else {
                     // スペースキーからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
@@ -124,7 +134,7 @@
                         
                         console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 0.3) { // 0.8m以内なら当たり判定（より厳しく）
+                        if (distance < 1.2) { // VRコントローラー用により緩い判定
                             hasHit = true;
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
@@ -507,8 +517,8 @@
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
-        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 50" vr-controller></a-entity>
+        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 10" vr-controller></a-entity>
+        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 10" vr-controller></a-entity>
 
         <!-- クリックしたいentityグループ position_1-->
         <a-entity id="akaeiGroup" static-body position="-2 -0.6 1" rotation="0 120 0" scale="1.4 1.4 1.4">
