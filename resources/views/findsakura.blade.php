@@ -64,23 +64,24 @@
                 const ball = document.createElement('a-sphere');
                 ball.setAttribute('radius', 0.1);
                 ball.setAttribute('color', 'red');
+                ball.setAttribute('dynamic-body', 'shape: sphere; mass: 1;');
                 ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8;');
                 
                 // 位置と方向を計算
                 const position = new THREE.Vector3();
                 const direction = new THREE.Vector3();
                 
-                // if (event.type === 'triggerdown') {
-                //     // VRコントローラーからの発射
-                //     event.target.object3D.getWorldPosition(position);
-                //     event.target.object3D.getWorldDirection(direction);
-                //     console.log('Shooting from VR controller');
-                // } else {
+                if (event.type === 'triggerdown') {
+                    // VRコントローラーからの発射
+                    event.target.object3D.getWorldPosition(position);
+                    event.target.object3D.getWorldDirection(direction);
+                    console.log('Shooting from VR controller');
+                } else {
                     // スペースキーからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
                     camera.object3D.getWorldDirection(direction);
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
-                // }
+                }
                 
                 // カメラの少し前にボールを配置
                 const startPos = position.clone().add(direction.clone().multiplyScalar(-0.5));
@@ -122,9 +123,9 @@
                             ballCurrentPos.z - akaeiPos.z
                         ).length();
                         
-                        // console.log('Current distance to target:', distance.toFixed(2));
+                        console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 1.1) { // 1.1m以内なら当たり判定（より厳しく）
+                        if (distance < 3.1) { // 1.1m以内なら当たり判定（より厳しく）
                             hasHit = true;
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
@@ -518,7 +519,7 @@
                 <!-- 当たり判定オブジェクト -->
                 <a-entity position="0 -0.05 0" hit-box id="hit-boxed">
                     <a-entity id="hit-box-cylinder" class="raycastable collidable" geometry="primitive:cylinder"
-                        material="color:red; opacity: 0.3" scale="0.14 0.3 0.14" position="0 0.21 0"></a-entity>
+                        material="color:blue; opacity: 0.3" scale="0.14 0.3 0.14" position="0 0.21 0"></a-entity>
                 </a-entity>
             </a-entity>
         </a-entity>
