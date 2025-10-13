@@ -34,9 +34,21 @@
             init: function () {
                 this.shoot = this.shoot.bind(this);
                 this.onKeyDown = this.onKeyDown.bind(this);
+                this.onClick = this.onClick.bind(this);
+                this.onTouchStart = this.onTouchStart.bind(this);
                 
                 // スペースキーのイベントリスナーを追加
                 window.addEventListener('keydown', this.onKeyDown);
+                
+                // A-Frameのcanvasエレメントにのみイベントリスナーを追加
+                const canvas = this.el.sceneEl.canvas;
+                if (canvas) {
+                    // マウスクリックのイベントリスナーを追加
+                    canvas.addEventListener('click', this.onClick);
+                    
+                    // スマホタップのイベントリスナーを追加
+                    canvas.addEventListener('touchstart', this.onTouchStart);
+                }
                 
                 // VRコントローラーのイベントリスナーを追加
                 const leftController = document.getElementById('leftController');
@@ -54,6 +66,19 @@
                 }
             },
             
+            onClick: function (event) {
+                // マウスクリックの場合（A-Frameのcanvas上でのみ）
+                this.shoot(event);
+                console.log('mouse clicked on canvas');
+            },
+            
+            onTouchStart: function (event) {
+                // スマホタップの場合（A-Frameのcanvas上でのみ）
+                event.preventDefault(); // デフォルトのタッチ動作を防ぐ
+                this.shoot(event);
+                console.log('screen tapped on canvas');
+            },
+            
             shoot: function (event) {
                 console.log('Shoot function called, event type:', event.type);
                 
@@ -65,7 +90,7 @@
                 ball.setAttribute('radius', 0.1);
                 ball.setAttribute('color', 'red');
                 ball.setAttribute('dynamic-body', 'shape: sphere; mass: 1;');
-                ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8;');
+                ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8; opacity: 1; transparent: true;');
                 
                 // 位置と方向を計算
                 const position = new THREE.Vector3();
@@ -77,7 +102,7 @@
                     event.target.object3D.getWorldDirection(direction);
                     console.log('Shooting from VR controller');
                 } else {
-                    // スペースキーからの発射（カメラの向いている方向）
+                    // スペースキー、マウスクリック、スマホタップからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
                     camera.object3D.getWorldDirection(direction);
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
@@ -130,14 +155,43 @@
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
                             if (hitBoxComponent) {
-                                hitBoxComponent.emit('click');
+                                // 'click'イベントではなく、独自の'ball-hit'イベントを発火
+                                hitBoxComponent.emit('ball-hit');
                             }
                             
-                            // ボールを即座に削除
-                            if (ball.parentNode) {
-                                ball.parentNode.removeChild(ball);
-                                console.log('Ball removed after hit');
-                            }
+                            // アニメーションを停止
+                            ball.removeAttribute('animation');
+                            
+                            // ボールが跳ね返るアニメーション
+                            const bounceDirection = direction.clone().multiplyScalar(2); // 反対方向に跳ね返る
+                            const bouncePos = ballCurrentPos.clone().add(bounceDirection);
+                            
+                            // 跳ね返りアニメーション + フェードアウト
+                            ball.setAttribute('animation__bounce', {
+                                property: 'position',
+                                to: `${bouncePos.x} ${bouncePos.y} ${bouncePos.z}`,
+                                dur: 300,
+                                easing: 'easeOutQuad'
+                            });
+                            
+                            ball.setAttribute('animation__fade', {
+                                property: 'material.opacity',
+                                to: 0,
+                                dur: 300,
+                                easing: 'linear'
+                            });
+                            
+                            // 色を変更してヒットを視覚的に表現
+                            ball.setAttribute('color', 'yellow');
+                            
+                            // 跳ね返りアニメーション後にボールを削除
+                            setTimeout(() => {
+                                if (ball.parentNode) {
+                                    ball.parentNode.removeChild(ball);
+                                    console.log('Ball removed after bounce');
+                                }
+                            }, 300);
+                            
                             return;
                         }
                     }
@@ -185,7 +239,8 @@
 
 
 
-                this.el.addEventListener('click', () => {
+                // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
+                this.el.addEventListener('ball-hit', () => {
                     // console.log(hitFlag);
                     // console.log(model.getAttribute('position'));
                     
@@ -193,11 +248,11 @@
                         hitCount++;
                         hitFlag = true;
 
-                        // クリックされたら、モデル０１を非表示にして、モデル０２に切り替え
+                        // ボールがヒットしたら、モデル０１を非表示にして、モデル０２に切り替え
                         model.removeAttribute('gltf-model');
                         model.setAttribute('gltf-model', '#akaeiModel_02');
 
-                        // hitFlag デフォルトは false クリックされたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
+                        // hitFlag デフォルトは false ボールがヒットしたら、2.3秒後にrePaintModel()を実行し、モデルを01に戻して、hitFlagもfalseに戻す
                         setTimeout(rePaintModel, 2300, "該当modelを削除し、別の場所に再描画します", hitCount);
                     }
 
@@ -504,8 +559,8 @@
 
         </a-assets>
 
-        <!-- マウスカーソル -->
-        <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .raycastable"></a-entity>
+        <!-- マウスカーソル（raycasterによるクリックイベントは無効化） -->
+        <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .disabled-raycast"></a-entity>
 
         <!-- Controller -->
         <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
