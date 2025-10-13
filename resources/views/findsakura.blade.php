@@ -89,7 +89,6 @@
                 const ball = document.createElement('a-sphere');
                 ball.setAttribute('radius', 0.1);
                 ball.setAttribute('color', 'red');
-                ball.setAttribute('dynamic-body', 'shape: sphere; mass: 1;');
                 ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8; opacity: 1; transparent: true;');
                 
                 // 位置と方向を計算
@@ -115,56 +114,62 @@
                 
                 console.log('Ball created at position:', startPos);
                 
-                // 物理エンジンを使わずに、シンプルなアニメーションで実装
-                const targetPos = startPos.clone().add(direction.clone().multiplyScalar(-20));
-                ball.setAttribute('animation', {
-                    property: 'position',
-                    to: `${targetPos.x} ${targetPos.y} ${targetPos.z}`,
-                    dur: 2000,
-                    easing: 'linear'
-                });
+                // 物理演算で放物線を描く
+                const gravity = -4.9; // 重力加速度 (m/s^2)
+                const initialSpeed = 10; // 初速度 (m/s)
+                const velocity = direction.clone().multiplyScalar(-initialSpeed); // 初速度ベクトル
                 
-                console.log('Ball animation started to:', targetPos);
-                
-                // リアルタイム衝突検出（アニメーション中に連続チェック）
                 let animationFrameId;
                 let hasHit = false;
+                let startTime = Date.now();
+                let lastPosition = startPos.clone();
                 
-                const checkCollision = () => {
+                const updateBallPosition = () => {
                     if (hasHit || !ball.parentNode) {
                         return; // 既に当たったか削除されている場合は終了
                     }
                     
-                    // エイの位置を取得
+                    // 経過時間（秒）
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    
+                    // 放物線運動の計算
+                    // x, z方向は等速直線運動
+                    // y方向は重力による等加速度運動: y = y0 + v0*t + 0.5*g*t^2
+                    const currentPos = new THREE.Vector3(
+                        startPos.x + velocity.x * elapsedTime,
+                        startPos.y + velocity.y * elapsedTime + 0.5 * gravity * elapsedTime * elapsedTime,
+                        startPos.z + velocity.z * elapsedTime
+                    );
+                    
+                    // ボールの位置を更新
+                    ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                    
+                    // エイの位置を取得して衝突判定
                     const akaeiGroup = document.getElementById('akaeiGroup');
                     if (akaeiGroup) {
                         const akaeiPos = akaeiGroup.getAttribute('position');
-                        const ballCurrentPos = ball.getAttribute('position');
                         
                         // リアルタイムでボールとエイの距離を計算
                         const distance = new THREE.Vector3(
-                            ballCurrentPos.x - akaeiPos.x,
-                            ballCurrentPos.y - akaeiPos.y,
-                            ballCurrentPos.z - akaeiPos.z
+                            currentPos.x - akaeiPos.x,
+                            currentPos.y - akaeiPos.y,
+                            currentPos.z - akaeiPos.z
                         ).length();
                         
                         console.log('Current distance to target:', distance.toFixed(2));
                         
-                        if (distance < 0.5) { // 0.5m以内なら当たり判定（より厳しく）
+                        if (distance < 0.5) { // 0.5m以内なら当たり判定
                             hasHit = true;
                             console.log('Ball hit akaei during animation!');
                             const hitBoxComponent = akaeiGroup.querySelector('[hit-box]');
                             if (hitBoxComponent) {
-                                // 'click'イベントではなく、独自の'ball-hit'イベントを発火
+                                // 独自の'ball-hit'イベントを発火
                                 hitBoxComponent.emit('ball-hit');
                             }
                             
-                            // アニメーションを停止
-                            ball.removeAttribute('animation');
-                            
                             // ボールが跳ね返るアニメーション
                             const bounceDirection = direction.clone().multiplyScalar(2); // 反対方向に跳ね返る
-                            const bouncePos = ballCurrentPos.clone().add(bounceDirection);
+                            const bouncePos = currentPos.clone().add(bounceDirection);
                             
                             // 跳ね返りアニメーション + フェードアウト
                             ball.setAttribute('animation__bounce', {
@@ -196,25 +201,24 @@
                         }
                     }
                     
-                    // 次のフレームでも衝突チェックを継続
-                    animationFrameId = requestAnimationFrame(checkCollision);
-                };
-                
-                // 衝突チェック開始
-                animationFrameId = requestAnimationFrame(checkCollision);
-                
-                // アニメーション完了時の処理（当たらなかった場合）
-                setTimeout(() => {
-                    if (animationFrameId) {
-                        cancelAnimationFrame(animationFrameId);
+                    // 地面に落ちたら削除（y < -2）
+                    if (currentPos.y < -2 || elapsedTime > 3) {
+                        console.log('Ball fell to ground or timeout');
+                        if (ball.parentNode) {
+                            ball.parentNode.removeChild(ball);
+                            console.log('Ball removed');
+                        }
+                        return;
                     }
                     
-                    if (!hasHit && ball.parentNode) {
-                        console.log('Ball missed target');
-                        ball.parentNode.removeChild(ball);
-                        console.log('Ball removed after timeout');
-                    }
-                }, 2000);
+                    lastPosition = currentPos.clone();
+                    
+                    // 次のフレームでも位置更新を継続
+                    animationFrameId = requestAnimationFrame(updateBallPosition);
+                };
+                
+                // 物理演算開始
+                animationFrameId = requestAnimationFrame(updateBallPosition);
             }
         });
         
