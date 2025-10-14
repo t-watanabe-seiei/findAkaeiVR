@@ -378,25 +378,25 @@
                             }, 50);
                         }
                         
-                        // 2.5秒後にanime03に切り替え（1秒間再生）
+                        // 2.5秒後にanime03に切り替え（0.8秒間再生）
                         setTimeout(() => {
                             if (modelEntity && modelEntity.parentNode) {
                                 modelEntity.removeAttribute('animation-mixer'); // 一旦削除
                                 setTimeout(() => {
                                     modelEntity.setAttribute('animation-mixer', 'clip: anime03; loop: repeat; timeScale: 1');
-                                    console.log('Playing anime03 for 1 second');
+                                    console.log('Playing anime03 for 0.8 seconds');
                                 }, 50);
                             }
                             
-                            // 1秒後にフェードアウト開始
+                            // 0.8秒後にフェードアウト開始
                             setTimeout(() => {
                                 if (modelGroup && modelGroup.parentNode) {
                                     console.log('Starting fadeout');
-                                    // フェードアウトアニメーション（0.5秒かけて縮小）
+                                    // フェードアウトアニメーション（0.8秒かけて縮小）
                                     modelGroup.setAttribute('animation__fadeout', {
                                         property: 'scale',
                                         to: '0 0 0',
-                                        dur: 500,
+                                        dur: 800,
                                         easing: 'easeInQuad'
                                     });
                                     
@@ -411,9 +411,9 @@
                                                 this.respawnModel(modelId, gltfModelSrc);
                                             }, 3000);
                                         }
-                                    }, 500);
+                                    }, 800);
                                 }
-                            }, 1000); // anime03を1秒間再生
+                            }, 800); // anime03を0.8秒間再生
                         }, 2500); // anime02を2.5秒間再生
                     }
                 });
@@ -424,7 +424,7 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムな位置を生成
+                // ランダムな位置を生成（12か所）
                 const positions = [
                     { x: -4, y: 0, z: -3, rotation: 45 },
                     { x: -2, y: 0, z: -5, rotation: 30 },
@@ -432,7 +432,13 @@
                     { x: 4, y: 0, z: -3, rotation: -45 },
                     { x: -3, y: 0, z: -2, rotation: 45 },
                     { x: 0, y: 0, z: -4, rotation: 0 },
-                    { x: 3, y: 0, z: -2, rotation: -45 }
+                    { x: 3, y: 0, z: -2, rotation: -45 },
+                    // 新規追加の5か所
+                    { x: -5, y: 0, z: -4, rotation: 60 },
+                    { x: 5, y: 0, z: -4, rotation: -60 },
+                    { x: -1, y: 0, z: -6, rotation: 15 },
+                    { x: 1, y: 0, z: -6, rotation: -15 },
+                    { x: 0, y: 0, z: -3, rotation: 0 }
                 ];
                 const randomPos = positions[Math.floor(Math.random() * positions.length)];
                 
