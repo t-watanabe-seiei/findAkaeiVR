@@ -11,6 +11,38 @@
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script>  
+        // GLBモデルの品質を向上させるコンポーネント
+        AFRAME.registerComponent('enhance-materials', {
+            init: function () {
+                this.el.addEventListener('model-loaded', () => {
+                    const mesh = this.el.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.traverse((node) => {
+                            if (node.isMesh && node.material) {
+                                // マテリアルの品質設定
+                                if (node.material.map) {
+                                    node.material.map.anisotropy = 16; // テクスチャのアニソトロピックフィルタリング
+                                }
+                                node.material.needsUpdate = true;
+                                
+                                // メタルネスとラフネスマップがあれば設定
+                                if (node.material.metalnessMap) {
+                                    node.material.metalnessMap.anisotropy = 16;
+                                }
+                                if (node.material.roughnessMap) {
+                                    node.material.roughnessMap.anisotropy = 16;
+                                }
+                                if (node.material.normalMap) {
+                                    node.material.normalMap.anisotropy = 16;
+                                }
+                            }
+                        });
+                        console.log('Model materials enhanced');
+                    }
+                });
+            }
+        });
+        
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
@@ -415,6 +447,7 @@
                 const newModelEntity = document.createElement('a-entity');
                 newModelEntity.setAttribute('gltf-model', gltfModelSrc);
                 newModelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                newModelEntity.setAttribute('enhance-materials', ''); // マテリアル品質向上
                 newModelGroup.appendChild(newModelEntity);
                 
                 // 当たり判定オブジェクトを作成
@@ -472,7 +505,14 @@
 </head>
 
 <body>
-    <a-scene physics="gravity: -9.8">
+    <a-scene 
+        physics="gravity: -9.8"
+        renderer="antialias: true; 
+                  colorManagement: true; 
+                  sortObjects: true; 
+                  physicallyCorrectLights: true; 
+                  exposure: 1;
+                  toneMapping: ACESFilmic">
         <a-assets>
             <!-- 3Dモデル -->
             <a-asset-item id="model_01" src={{ asset('cg/ishimaru.glb') }}></a-asset-item>
@@ -483,6 +523,11 @@
             <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
         </a-assets>
 
+        <!-- ライティング設定（3Dモデルをきれいに表示） -->
+        <a-entity light="type: ambient; color: #BBB; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 1.0" position="1 2 1"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.5" position="-1 1 -1"></a-entity>
+
         <!-- マウスカーソル（raycasterによるクリックイベントは無効化） -->
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .disabled-raycast"></a-entity>
 
@@ -492,7 +537,7 @@
 
         <!-- モデル01グループ -->
         <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1">
-            <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat"></a-entity>
+            <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_01" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 1 0.3" class="collidable"></a-entity>
@@ -501,7 +546,7 @@
 
         <!-- モデル02グループ -->
         <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1">
-            <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat"></a-entity>
+            <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_02" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 1 0.3" class="collidable"></a-entity>
@@ -510,7 +555,7 @@
 
         <!-- モデル03グループ -->
         <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1">
-            <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat"></a-entity>
+            <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 1 0.3" class="collidable"></a-entity>
