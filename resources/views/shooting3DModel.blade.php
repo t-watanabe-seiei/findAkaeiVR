@@ -449,10 +449,10 @@
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
                         scoreText.setAttribute('value', `${score}`);
-                        scoreText.setAttribute('position', '0 2.5 0'); // モデルの上2.5m
+                        scoreText.setAttribute('position', '0 0.5 0'); // モデルの上0.5m
                         scoreText.setAttribute('align', 'center');
                         scoreText.setAttribute('color', '#FFD700'); // ゴールド色
-                        scoreText.setAttribute('width', '4');
+                        scoreText.setAttribute('width', '6'); // フォントサイズを大きく（4→6）
                         scoreText.setAttribute('font', 'roboto');
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
@@ -462,7 +462,7 @@
                         setTimeout(() => {
                             scoreText.setAttribute('animation__fadeup', {
                                 property: 'position',
-                                to: '0 3.5 0',
+                                to: '0 1 0', // 0.5m上から1m上に移動
                                 dur: 1500,
                                 easing: 'easeOutQuad'
                             });
