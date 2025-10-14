@@ -15,7 +15,8 @@ Route::get('/train', function () {
 });
 
 Route::get('/', function () {
-    return view('findsakura');
+    // return view('findsakura');
+    return view('shooting3DModel');
 });
 
 Route::get('/minion', function () {
