@@ -23,20 +23,57 @@
                 window.addEventListener('keydown', this.onKeyDown);
                 
                 // A-Frameのcanvasエレメントにのみイベントリスナーを追加
-                const canvas = this.el.sceneEl.canvas;
-                if (canvas) {
-                    // マウスクリックのイベントリスナーを追加
-                    canvas.addEventListener('click', this.onClick);
-                    
-                    // スマホタップのイベントリスナーを追加
-                    canvas.addEventListener('touchstart', this.onTouchStart);
-                }
+                this.setupCanvasListeners();
                 
                 // VRコントローラーのイベントリスナーを追加
+                this.setupControllerListeners();
+                
+                // VRモードの変更を監視
+                this.el.sceneEl.addEventListener('enter-vr', () => {
+                    console.log('Entered VR mode');
+                    // VRモードに入ったらリスナーを再設定
+                    setTimeout(() => {
+                        this.setupCanvasListeners();
+                        this.setupControllerListeners();
+                    }, 100);
+                });
+                
+                this.el.sceneEl.addEventListener('exit-vr', () => {
+                    console.log('Exited VR mode');
+                    // VRモードを出たらリスナーを再設定
+                    setTimeout(() => {
+                        this.setupCanvasListeners();
+                    }, 100);
+                });
+            },
+            
+            setupCanvasListeners: function() {
+                const canvas = this.el.sceneEl.canvas;
+                if (canvas) {
+                    // 既存のリスナーを削除してから再追加
+                    canvas.removeEventListener('click', this.onClick);
+                    canvas.removeEventListener('touchstart', this.onTouchStart);
+                    
+                    canvas.addEventListener('click', this.onClick);
+                    canvas.addEventListener('touchstart', this.onTouchStart);
+                    console.log('Canvas listeners set up');
+                }
+            },
+            
+            setupControllerListeners: function() {
                 const leftController = document.getElementById('leftController');
                 const rightController = document.getElementById('rightController');
-                if (leftController) leftController.addEventListener('triggerdown', this.shoot);
-                if (rightController) rightController.addEventListener('triggerdown', this.shoot);
+                
+                if (leftController) {
+                    leftController.removeEventListener('triggerdown', this.shoot);
+                    leftController.addEventListener('triggerdown', this.shoot);
+                    console.log('Left controller listener set up');
+                }
+                if (rightController) {
+                    rightController.removeEventListener('triggerdown', this.shoot);
+                    rightController.addEventListener('triggerdown', this.shoot);
+                    console.log('Right controller listener set up');
+                }
             },
             
             onKeyDown: function (event) {
@@ -62,7 +99,8 @@
             },
             
             shoot: function (event) {
-                console.log('Shoot function called, event type:', event.type);
+                console.log('=== Shoot function called ===');
+                console.log('Event type:', event.type);
                 
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
@@ -74,57 +112,67 @@
                 ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8; opacity: 1; transparent: true;');
                 
                 // 位置と方向を計算
-                const position = new THREE.Vector3();
-                const direction = new THREE.Vector3();
+                let position = new THREE.Vector3();
+                let direction = new THREE.Vector3();
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
+                    console.log('Shooting from VR controller');
                     const controller = event.target;
-                    controller.object3D.getWorldPosition(position);
                     
-                    // raycasterの方向を取得
-                    const raycaster = controller.components.raycaster;
-                    if (raycaster && raycaster.raycaster) {
-                        direction.copy(raycaster.raycaster.ray.direction).normalize();
+                    // コントローラーの位置を取得
+                    controller.object3D.getWorldPosition(position);
+                    console.log('Controller position:', position);
+                    
+                    // raycasterコンポーネントから方向を取得
+                    const raycasterComponent = controller.components.raycaster;
+                    if (raycasterComponent && raycasterComponent.raycaster) {
+                        // raycasterの方向をコピー
+                        direction.copy(raycasterComponent.raycaster.ray.direction).normalize();
                         console.log('Using raycaster direction:', direction);
                     } else {
-                        // raycasterがない場合はコントローラーの向きを使用
-                        const rotation = new THREE.Euler();
-                        rotation.setFromQuaternion(controller.object3D.quaternion);
+                        // raycasterがない場合はコントローラーのローカル前方向を使用
                         direction.set(0, 0, -1);
-                        direction.applyEuler(rotation);
-                        console.log('Using controller direction:', direction);
+                        direction.applyQuaternion(controller.object3D.quaternion);
+                        direction.normalize();
+                        console.log('Using controller quaternion direction:', direction);
                     }
-                    
-                    console.log('Shooting from VR controller, position:', position, 'direction:', direction);
                 } else {
-                    // スペースキー、マウスクリック、スマホタップからの発射（カメラの向いている方向）
+                    // スペースキー、マウスクリック、スマホタップからの発射
+                    console.log('Shooting from camera/input');
                     
                     // VRモードかどうかを確認
                     const isVRMode = sceneEl.is('vr-mode');
-                    console.log('VR Mode:', isVRMode);
+                    console.log('Is VR Mode:', isVRMode);
                     
-                    if (isVRMode && sceneEl.camera) {
-                        // VRモード時は実際のVRカメラを使用
-                        sceneEl.camera.getWorldPosition(position);
-                        const cameraRotation = new THREE.Euler();
-                        cameraRotation.setFromQuaternion(sceneEl.camera.quaternion);
-                        direction.set(0, 0, -1);
-                        direction.applyEuler(cameraRotation);
-                        direction.normalize();
-                        console.log('Shooting from VR camera');
+                    if (isVRMode) {
+                        // VRモード時
+                        if (sceneEl.camera) {
+                            // シーンのアクティブカメラから取得
+                            sceneEl.camera.getWorldPosition(position);
+                            direction.set(0, 0, -1);
+                            direction.applyQuaternion(sceneEl.camera.quaternion);
+                            direction.normalize();
+                            console.log('VR Mode - Using scene.camera');
+                        } else {
+                            // フォールバック
+                            camera.object3D.getWorldPosition(position);
+                            direction.set(0, 0, -1);
+                            direction.applyQuaternion(camera.object3D.quaternion);
+                            direction.normalize();
+                            console.log('VR Mode - Using camera.object3D');
+                        }
                     } else {
-                        // 通常モード時はa-cameraエンティティを使用
+                        // 通常モード時
                         camera.object3D.getWorldPosition(position);
-                        const cameraRotation = new THREE.Euler();
-                        cameraRotation.setFromQuaternion(camera.object3D.quaternion);
                         direction.set(0, 0, -1);
-                        direction.applyEuler(cameraRotation);
+                        direction.applyQuaternion(camera.object3D.quaternion);
                         direction.normalize();
-                        console.log('Shooting from normal camera');
+                        console.log('Normal Mode - Using camera.object3D');
                     }
                     
-                    console.log('Shooting from camera, position:', position, 'direction:', direction);
+                    console.log('Camera position:', position);
+                    console.log('Camera direction:', direction);
                 }
                 
                 // コントローラー/カメラの少し前にボールを配置
@@ -132,7 +180,7 @@
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-                console.log('Ball created at position:', startPos, 'with velocity direction:', direction);
+                console.log('Ball created at:', startPos);
                 
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
@@ -140,23 +188,27 @@
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 console.log('Initial velocity:', velocity);
+                console.log('=== Starting ball animation ===');
                 
                 let animationFrameId;
                 let hasHit = false;
                 let startTime = Date.now();
-                let lastPosition = startPos.clone();
+                let frameCount = 0;
                 
                 const updateBallPosition = () => {
                     if (hasHit || !ball.parentNode) {
-                        return; // 既に当たったか削除されている場合は終了
+                        if (frameCount < 5) {
+                            console.log('Animation stopped. hasHit:', hasHit, 'ball.parentNode:', !!ball.parentNode);
+                        }
+                        return;
                     }
+                    
+                    frameCount++;
                     
                     // 経過時間（秒）
                     const elapsedTime = (Date.now() - startTime) / 1000;
                     
                     // 放物線運動の計算
-                    // x, z方向は等速直線運動
-                    // y方向は重力による等加速度運動: y = y0 + v0*t + 0.5*g*t^2
                     const currentPos = new THREE.Vector3(
                         startPos.x + velocity.x * elapsedTime,
                         startPos.y + velocity.y * elapsedTime + 0.5 * gravity * elapsedTime * elapsedTime,
@@ -165,6 +217,10 @@
                     
                     // ボールの位置を更新
                     ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                    
+                    if (frameCount <= 3) {
+                        console.log(`Frame ${frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
+                    }
                     
                     // 各モデルの位置を取得して衝突判定
                     const models = [
@@ -175,24 +231,20 @@
                     
                     for (let modelInfo of models) {
                         const modelGroup = document.getElementById(modelInfo.id);
-                        if (modelGroup && modelGroup.parentNode) { // モデルが存在し、まだ削除されていない場合
+                        if (modelGroup && modelGroup.parentNode) {
                             const modelPos = modelGroup.getAttribute('position');
                             
-                            // リアルタイムでボールとモデルの距離を計算
                             const distance = new THREE.Vector3(
                                 currentPos.x - modelPos.x,
                                 currentPos.y - modelPos.y,
                                 currentPos.z - modelPos.z
                             ).length();
                             
-                            // console.log(`Distance to ${modelInfo.id}:`, distance.toFixed(2));
-                            
-                            if (distance < 0.5) { // 0.5m以内なら当たり判定
+                            if (distance < 0.5) {
                                 hasHit = true;
                                 console.log(`Ball hit ${modelInfo.id}!`);
                                 const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
                                 if (hitBoxComponent) {
-                                    // 独自の'ball-hit'イベントを発火
                                     hitBoxComponent.emit('ball-hit');
                                 }
                                 
@@ -230,15 +282,16 @@
                     
                     // 地面に落ちたら削除（y < -2）
                     if (currentPos.y < -2 || elapsedTime > 3) {
-                        console.log('Ball fell to ground or timeout');
+                        if (elapsedTime > 3) {
+                            console.log('Ball timeout after 3 seconds');
+                        } else {
+                            console.log('Ball fell to ground');
+                        }
                         if (ball.parentNode) {
                             ball.parentNode.removeChild(ball);
-                            console.log('Ball removed');
                         }
                         return;
                     }
-                    
-                    lastPosition = currentPos.clone();
                     
                     // 次のフレームでも位置更新を継続
                     animationFrameId = requestAnimationFrame(updateBallPosition);
