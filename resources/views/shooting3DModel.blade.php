@@ -86,21 +86,33 @@
                     const raycaster = controller.components.raycaster;
                     if (raycaster && raycaster.raycaster) {
                         direction.copy(raycaster.raycaster.ray.direction).normalize();
+                        console.log('Using raycaster direction:', direction);
                     } else {
                         // raycasterがない場合はコントローラーの向きを使用
-                        controller.object3D.getWorldDirection(direction);
+                        const rotation = new THREE.Euler();
+                        rotation.setFromQuaternion(controller.object3D.quaternion);
+                        direction.set(0, 0, -1);
+                        direction.applyEuler(rotation);
+                        console.log('Using controller direction:', direction);
                     }
                     
                     console.log('Shooting from VR controller, position:', position, 'direction:', direction);
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
-                    camera.object3D.getWorldDirection(direction);
+                    
+                    // カメラの向きを正しく取得
+                    const cameraRotation = new THREE.Euler();
+                    cameraRotation.setFromQuaternion(camera.object3D.quaternion);
+                    direction.set(0, 0, -1); // カメラのローカル座標での前方向
+                    direction.applyEuler(cameraRotation); // ワールド座標に変換
+                    direction.normalize();
+                    
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
                 }
                 
                 // コントローラー/カメラの少し前にボールを配置
-                const startPos = position.clone().add(direction.clone().multiplyScalar(0.2));
+                const startPos = position.clone().add(direction.clone().multiplyScalar(0.3));
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
@@ -109,7 +121,7 @@
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
                 const initialSpeed = 10; // 初速度 (m/s)
-                const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル（方向はそのまま）
+                const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 let animationFrameId;
                 let hasHit = false;
