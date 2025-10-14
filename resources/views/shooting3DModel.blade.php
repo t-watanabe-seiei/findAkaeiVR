@@ -99,14 +99,30 @@
                     console.log('Shooting from VR controller, position:', position, 'direction:', direction);
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射（カメラの向いている方向）
-                    camera.object3D.getWorldPosition(position);
                     
-                    // カメラの向きを正しく取得
-                    const cameraRotation = new THREE.Euler();
-                    cameraRotation.setFromQuaternion(camera.object3D.quaternion);
-                    direction.set(0, 0, -1); // カメラのローカル座標での前方向
-                    direction.applyEuler(cameraRotation); // ワールド座標に変換
-                    direction.normalize();
+                    // VRモードかどうかを確認
+                    const isVRMode = sceneEl.is('vr-mode');
+                    console.log('VR Mode:', isVRMode);
+                    
+                    if (isVRMode && sceneEl.camera) {
+                        // VRモード時は実際のVRカメラを使用
+                        sceneEl.camera.getWorldPosition(position);
+                        const cameraRotation = new THREE.Euler();
+                        cameraRotation.setFromQuaternion(sceneEl.camera.quaternion);
+                        direction.set(0, 0, -1);
+                        direction.applyEuler(cameraRotation);
+                        direction.normalize();
+                        console.log('Shooting from VR camera');
+                    } else {
+                        // 通常モード時はa-cameraエンティティを使用
+                        camera.object3D.getWorldPosition(position);
+                        const cameraRotation = new THREE.Euler();
+                        cameraRotation.setFromQuaternion(camera.object3D.quaternion);
+                        direction.set(0, 0, -1);
+                        direction.applyEuler(cameraRotation);
+                        direction.normalize();
+                        console.log('Shooting from normal camera');
+                    }
                     
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
                 }
@@ -116,12 +132,14 @@
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-                console.log('Ball created at position:', startPos);
+                console.log('Ball created at position:', startPos, 'with velocity direction:', direction);
                 
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
                 const initialSpeed = 10; // 初速度 (m/s)
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
+                
+                console.log('Initial velocity:', velocity);
                 
                 let animationFrameId;
                 let hasHit = false;
