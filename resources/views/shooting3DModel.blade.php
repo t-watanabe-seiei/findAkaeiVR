@@ -629,14 +629,15 @@
             <a-asset-item id="model_03" src={{ asset('cg/ohnomi.glb') }}></a-asset-item>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010114.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
         <!-- ライティング設定（3Dモデルをきれいに表示） -->
-        <a-entity light="type: ambient; color: #BBB; intensity: 0.8"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 1.0" position="1 2 1"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 0.5" position="-1 1 -1"></a-entity>
+        <a-entity light="type: ambient; color: #DDD; intensity: 1.2"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 1.5" position="1 2 1"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 -1"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0 1 2"></a-entity>
 
         <!-- マウスカーソル（raycasterによるクリックイベントは無効化） -->
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .disabled-raycast"></a-entity>
