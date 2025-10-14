@@ -629,8 +629,8 @@
             <a-asset-item id="model_03" src={{ asset('cg/ohnomi.glb') }}></a-asset-item>
             
             <!-- 背景画像 -->
-            <!-- <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" > -->
-            <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010114.JPG') }} crossorigin="anonymous" >
+            <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
         <!-- ライティング設定（3Dモデルをきれいに表示） -->
