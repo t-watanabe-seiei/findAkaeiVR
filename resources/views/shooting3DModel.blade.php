@@ -353,6 +353,61 @@
             }
         });
         
+        // モデルをカメラに向かって移動させるコンポーネント
+        AFRAME.registerComponent('approach-camera', {
+            init: function() {
+                this.speed = 0.25; // 毎秒0.25メートル（以前の半分）
+                this.camera = null;
+                this.isMoving = true;
+            },
+            
+            tick: function(time, timeDelta) {
+                if (!this.isMoving) return;
+                
+                // カメラの取得（初回または未設定の場合）
+                if (!this.camera) {
+                    const sceneEl = this.el.sceneEl;
+                    this.camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+                    if (!this.camera) return;
+                }
+                
+                // モデルとカメラの位置を取得
+                const modelPos = this.el.object3D.position;
+                const cameraPos = new THREE.Vector3();
+                this.camera.object3D.getWorldPosition(cameraPos);
+                
+                // カメラへの方向ベクトルを計算
+                const direction = new THREE.Vector3();
+                direction.subVectors(cameraPos, modelPos);
+                direction.y = 0; // Y軸方向は移動しない（地面を滑るように）
+                
+                const distance = direction.length();
+                
+                // カメラに十分近づいたら停止（0.5m以内）
+                if (distance < 0.5) {
+                    this.isMoving = false;
+                    return;
+                }
+                
+                // 方向を正規化して速度を適用
+                direction.normalize();
+                const moveDistance = this.speed * (timeDelta / 1000); // timeDeltaはミリ秒
+                direction.multiplyScalar(moveDistance);
+                
+                // 新しい位置を設定
+                modelPos.add(direction);
+                
+                // カメラと反対方向を向くように回転（Y軸のみ、180度回転）
+                const angle = Math.atan2(direction.x, direction.z);
+                this.el.object3D.rotation.y = angle; // カメラの反対方向を向く（Math.PIを削除）
+            },
+            
+            // 外部から移動を停止できるメソッド
+            stop: function() {
+                this.isMoving = false;
+            }
+        });
+        
         AFRAME.registerComponent('hit-box', {
             init: function () {
                 const modelGroup = this.el.parentEl; // 親エンティティ（modelGroup）を取得
@@ -368,53 +423,49 @@
                     if(!hitFlag) {
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
+                        
+                        // カメラへの移動を停止
+                        const approachComponent = modelGroup.components['approach-camera'];
+                        if (approachComponent) {
+                            approachComponent.stop();
+                            console.log('Stopped approaching camera');
+                        }
 
-                        // anime02に切り替え（2.5秒間再生）
+                        // anime02に切り替え（1.5秒間再生）
                         if (modelEntity) {
                             modelEntity.removeAttribute('animation-mixer'); // 一旦削除
                             setTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
-                                console.log('Playing anime02 for 2.5 seconds');
+                                console.log('Playing anime02 for 1.5 seconds');
                             }, 50);
                         }
                         
-                        // 2.5秒後にanime03に切り替え（0.8秒間再生）
+                        // 1.5秒後にフェードアウト開始（anime03はスキップ）
                         setTimeout(() => {
-                            if (modelEntity && modelEntity.parentNode) {
-                                modelEntity.removeAttribute('animation-mixer'); // 一旦削除
+                            if (modelGroup && modelGroup.parentNode) {
+                                console.log('Starting fadeout');
+                                // フェードアウトアニメーション（0.5秒かけて縮小）
+                                modelGroup.setAttribute('animation__fadeout', {
+                                    property: 'scale',
+                                    to: '0 0 0',
+                                    dur: 500,
+                                    easing: 'easeInQuad'
+                                });
+                                
+                                // フェードアウト完了後に削除して、3秒後に再描画
                                 setTimeout(() => {
-                                    modelEntity.setAttribute('animation-mixer', 'clip: anime03; loop: repeat; timeScale: 1');
-                                    console.log('Playing anime03 for 0.8 seconds');
-                                }, 50);
+                                    if (modelGroup.parentNode) {
+                                        modelGroup.parentNode.removeChild(modelGroup);
+                                        console.log('Model removed');
+                                        
+                                        // 3秒後に別の場所に再描画
+                                        setTimeout(() => {
+                                            this.respawnModel(modelId, gltfModelSrc);
+                                        }, 3000);
+                                    }
+                                }, 500);
                             }
-                            
-                            // 0.8秒後にフェードアウト開始
-                            setTimeout(() => {
-                                if (modelGroup && modelGroup.parentNode) {
-                                    console.log('Starting fadeout');
-                                    // フェードアウトアニメーション（0.8秒かけて縮小）
-                                    modelGroup.setAttribute('animation__fadeout', {
-                                        property: 'scale',
-                                        to: '0 0 0',
-                                        dur: 800,
-                                        easing: 'easeInQuad'
-                                    });
-                                    
-                                    // フェードアウト完了後に削除して、3秒後に再描画
-                                    setTimeout(() => {
-                                        if (modelGroup.parentNode) {
-                                            modelGroup.parentNode.removeChild(modelGroup);
-                                            console.log('Model removed');
-                                            
-                                            // 3秒後に別の場所に再描画
-                                            setTimeout(() => {
-                                                this.respawnModel(modelId, gltfModelSrc);
-                                            }, 3000);
-                                        }
-                                    }, 800);
-                                }
-                            }, 800); // anime03を0.8秒間再生
-                        }, 2500); // anime02を2.5秒間再生
+                        }, 1500); // anime02を1.5秒間再生
                     }
                 });
             },
@@ -433,12 +484,12 @@
                     { x: -3, y: 0, z: -2, rotation: 45 },
                     { x: 0, y: 0, z: -4, rotation: 0 },
                     { x: 3, y: 0, z: -2, rotation: -45 },
-                    // 新規追加の5か所
-                    { x: -5, y: 0, z: -4, rotation: 60 },
-                    { x: 5, y: 0, z: -4, rotation: -60 },
-                    { x: -1, y: 0, z: -6, rotation: 15 },
-                    { x: 1, y: 0, z: -6, rotation: -15 },
-                    { x: 0, y: 0, z: -3, rotation: 0 }
+                    // 新規追加の5か所（遠く：9m〜15m）
+                    { x: -8, y: 0, z: -12, rotation: 60 },   // 距離: 約14.4m
+                    { x: 8, y: 0, z: -12, rotation: -60 },   // 距離: 約14.4m
+                    { x: -3, y: 0, z: -15, rotation: 20 },   // 距離: 約15.3m
+                    { x: 3, y: 0, z: -15, rotation: -20 },   // 距離: 約15.3m
+                    { x: 0, y: 0, z: -10, rotation: 0 }      // 距離: 10m
                 ];
                 const randomPos = positions[Math.floor(Math.random() * positions.length)];
                 
@@ -448,6 +499,7 @@
                 newModelGroup.setAttribute('position', `${randomPos.x} ${randomPos.y} ${randomPos.z}`);
                 newModelGroup.setAttribute('rotation', `0 ${randomPos.rotation} 0`);
                 newModelGroup.setAttribute('scale', '0 0 0'); // 最初は見えない状態
+                newModelGroup.setAttribute('approach-camera', ''); // カメラに向かって移動
                 
                 // 3Dモデルエンティティを作成
                 const newModelEntity = document.createElement('a-entity');
@@ -542,7 +594,7 @@
         <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
 
         <!-- モデル01グループ -->
-        <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1">
+        <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1" approach-camera>
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_01" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -551,7 +603,7 @@
         </a-entity>
 
         <!-- モデル02グループ -->
-        <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1">
+        <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1" approach-camera>
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_02" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -560,7 +612,7 @@
         </a-entity>
 
         <!-- モデル03グループ -->
-        <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1">
+        <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1" approach-camera>
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
