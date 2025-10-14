@@ -79,9 +79,19 @@
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
-                    event.target.object3D.getWorldPosition(position);
-                    event.target.object3D.getWorldDirection(direction);
-                    console.log('Shooting from VR controller');
+                    const controller = event.target;
+                    controller.object3D.getWorldPosition(position);
+                    
+                    // raycasterの方向を取得
+                    const raycaster = controller.components.raycaster;
+                    if (raycaster && raycaster.raycaster) {
+                        direction.copy(raycaster.raycaster.ray.direction).normalize();
+                    } else {
+                        // raycasterがない場合はコントローラーの向きを使用
+                        controller.object3D.getWorldDirection(direction);
+                    }
+                    
+                    console.log('Shooting from VR controller, position:', position, 'direction:', direction);
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射（カメラの向いている方向）
                     camera.object3D.getWorldPosition(position);
@@ -89,8 +99,8 @@
                     console.log('Shooting from camera, position:', position, 'direction:', direction);
                 }
                 
-                // カメラの少し前にボールを配置
-                const startPos = position.clone().add(direction.clone().multiplyScalar(-0.5));
+                // コントローラー/カメラの少し前にボールを配置
+                const startPos = position.clone().add(direction.clone().multiplyScalar(0.2));
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
@@ -99,7 +109,7 @@
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
                 const initialSpeed = 10; // 初速度 (m/s)
-                const velocity = direction.clone().multiplyScalar(-initialSpeed); // 初速度ベクトル
+                const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル（方向はそのまま）
                 
                 let animationFrameId;
                 let hasHit = false;
@@ -145,7 +155,7 @@
                                 currentPos.z - modelPos.z
                             ).length();
                             
-                            console.log(`Distance to ${modelInfo.id}:`, distance.toFixed(2));
+                            // console.log(`Distance to ${modelInfo.id}:`, distance.toFixed(2));
                             
                             if (distance < 0.5) { // 0.5m以内なら当たり判定
                                 hasHit = true;
@@ -157,7 +167,7 @@
                                 }
                                 
                                 // ボールが跳ね返るアニメーション
-                                const bounceDirection = direction.clone().multiplyScalar(2);
+                                const bounceDirection = direction.clone().multiplyScalar(-2);
                                 const bouncePos = currentPos.clone().add(bounceDirection);
                                 
                                 ball.setAttribute('animation__bounce', {
