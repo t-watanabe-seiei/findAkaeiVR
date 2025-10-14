@@ -11,6 +11,9 @@
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script>  
+        // ボール管理用のグローバル配列
+        window.activeBalls = [];
+        
         // ボールを撃つコンポーネント
         AFRAME.registerComponent('shoot', {
             init: function () {
@@ -45,6 +48,121 @@
                         this.setupCanvasListeners();
                     }, 100);
                 });
+            },
+            
+            tick: function(time, timeDelta) {
+                // アクティブなボールを更新（VRモード対応）
+                if (window.activeBalls.length > 0) {
+                    const currentTime = Date.now();
+                    for (let i = window.activeBalls.length - 1; i >= 0; i--) {
+                        const ballData = window.activeBalls[i];
+                        if (ballData && ballData.ball && ballData.ball.parentNode) {
+                            this.updateBallPosition(ballData, currentTime);
+                        } else {
+                            // ボールが削除されている場合は配列から削除
+                            window.activeBalls.splice(i, 1);
+                        }
+                    }
+                }
+            },
+            
+            updateBallPosition: function(ballData, currentTime) {
+                if (ballData.hasHit) {
+                    return; // 既に当たった場合は終了
+                }
+                
+                const { ball, startPos, velocity, startTime, direction, frameCount } = ballData;
+                const gravity = -4.9;
+                
+                // 経過時間（秒）
+                const elapsedTime = (currentTime - startTime) / 1000;
+                
+                // 放物線運動の計算
+                const currentPos = new THREE.Vector3(
+                    startPos.x + velocity.x * elapsedTime,
+                    startPos.y + velocity.y * elapsedTime + 0.5 * gravity * elapsedTime * elapsedTime,
+                    startPos.z + velocity.z * elapsedTime
+                );
+                
+                // ボールの位置を更新
+                ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                
+                ballData.frameCount++;
+                if (ballData.frameCount <= 3) {
+                    console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
+                }
+                
+                // 各モデルの位置を取得して衝突判定
+                const models = [
+                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
+                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
+                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' }
+                ];
+                
+                for (let modelInfo of models) {
+                    const modelGroup = document.getElementById(modelInfo.id);
+                    if (modelGroup && modelGroup.parentNode) {
+                        const modelPos = modelGroup.getAttribute('position');
+                        
+                        const distance = new THREE.Vector3(
+                            currentPos.x - modelPos.x,
+                            currentPos.y - modelPos.y,
+                            currentPos.z - modelPos.z
+                        ).length();
+                        
+                        if (distance < 0.5) {
+                            ballData.hasHit = true;
+                            console.log(`Ball hit ${modelInfo.id}!`);
+                            const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                            if (hitBoxComponent) {
+                                hitBoxComponent.emit('ball-hit');
+                            }
+                            
+                            // ボールが跳ね返るアニメーション
+                            const bounceDirection = direction.clone().multiplyScalar(-2);
+                            const bouncePos = currentPos.clone().add(bounceDirection);
+                            
+                            ball.setAttribute('animation__bounce', {
+                                property: 'position',
+                                to: `${bouncePos.x} ${bouncePos.y} ${bouncePos.z}`,
+                                dur: 300,
+                                easing: 'easeOutQuad'
+                            });
+                            
+                            ball.setAttribute('animation__fade', {
+                                property: 'material.opacity',
+                                to: 0,
+                                dur: 300,
+                                easing: 'linear'
+                            });
+                            
+                            ball.setAttribute('color', 'yellow');
+                            
+                            setTimeout(() => {
+                                if (ball.parentNode) {
+                                    ball.parentNode.removeChild(ball);
+                                    console.log('Ball removed after bounce');
+                                }
+                            }, 300);
+                            
+                            return;
+                        }
+                    }
+                }
+                
+                // 地面に落ちたら削除（y < -2）
+                if (currentPos.y < -2 || elapsedTime > 3) {
+                    if (elapsedTime > 3) {
+                        console.log('Ball timeout after 3 seconds');
+                    } else {
+                        console.log('Ball fell to ground');
+                    }
+                    if (ball.parentNode) {
+                        ball.parentNode.removeChild(ball);
+                    }
+                    ballData.hasHit = true; // 削除済みフラグ
+                    return;
+                }
             },
             
             setupCanvasListeners: function() {
@@ -188,117 +306,18 @@
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 console.log('Initial velocity:', velocity);
-                console.log('=== Starting ball animation ===');
+                console.log('=== Ball added to activeBalls array ===');
                 
-                let animationFrameId;
-                let hasHit = false;
-                let startTime = Date.now();
-                let frameCount = 0;
-                
-                const updateBallPosition = () => {
-                    if (hasHit || !ball.parentNode) {
-                        if (frameCount < 5) {
-                            console.log('Animation stopped. hasHit:', hasHit, 'ball.parentNode:', !!ball.parentNode);
-                        }
-                        return;
-                    }
-                    
-                    frameCount++;
-                    
-                    // 経過時間（秒）
-                    const elapsedTime = (Date.now() - startTime) / 1000;
-                    
-                    // 放物線運動の計算
-                    const currentPos = new THREE.Vector3(
-                        startPos.x + velocity.x * elapsedTime,
-                        startPos.y + velocity.y * elapsedTime + 0.5 * gravity * elapsedTime * elapsedTime,
-                        startPos.z + velocity.z * elapsedTime
-                    );
-                    
-                    // ボールの位置を更新
-                    ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
-                    
-                    if (frameCount <= 3) {
-                        console.log(`Frame ${frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
-                    }
-                    
-                    // 各モデルの位置を取得して衝突判定
-                    const models = [
-                        { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
-                        { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
-                        { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' }
-                    ];
-                    
-                    for (let modelInfo of models) {
-                        const modelGroup = document.getElementById(modelInfo.id);
-                        if (modelGroup && modelGroup.parentNode) {
-                            const modelPos = modelGroup.getAttribute('position');
-                            
-                            const distance = new THREE.Vector3(
-                                currentPos.x - modelPos.x,
-                                currentPos.y - modelPos.y,
-                                currentPos.z - modelPos.z
-                            ).length();
-                            
-                            if (distance < 0.5) {
-                                hasHit = true;
-                                console.log(`Ball hit ${modelInfo.id}!`);
-                                const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
-                                if (hitBoxComponent) {
-                                    hitBoxComponent.emit('ball-hit');
-                                }
-                                
-                                // ボールが跳ね返るアニメーション
-                                const bounceDirection = direction.clone().multiplyScalar(-2);
-                                const bouncePos = currentPos.clone().add(bounceDirection);
-                                
-                                ball.setAttribute('animation__bounce', {
-                                    property: 'position',
-                                    to: `${bouncePos.x} ${bouncePos.y} ${bouncePos.z}`,
-                                    dur: 300,
-                                    easing: 'easeOutQuad'
-                                });
-                                
-                                ball.setAttribute('animation__fade', {
-                                    property: 'material.opacity',
-                                    to: 0,
-                                    dur: 300,
-                                    easing: 'linear'
-                                });
-                                
-                                ball.setAttribute('color', 'yellow');
-                                
-                                setTimeout(() => {
-                                    if (ball.parentNode) {
-                                        ball.parentNode.removeChild(ball);
-                                        console.log('Ball removed after bounce');
-                                    }
-                                }, 300);
-                                
-                                return;
-                            }
-                        }
-                    }
-                    
-                    // 地面に落ちたら削除（y < -2）
-                    if (currentPos.y < -2 || elapsedTime > 3) {
-                        if (elapsedTime > 3) {
-                            console.log('Ball timeout after 3 seconds');
-                        } else {
-                            console.log('Ball fell to ground');
-                        }
-                        if (ball.parentNode) {
-                            ball.parentNode.removeChild(ball);
-                        }
-                        return;
-                    }
-                    
-                    // 次のフレームでも位置更新を継続
-                    animationFrameId = requestAnimationFrame(updateBallPosition);
-                };
-                
-                // 物理演算開始
-                animationFrameId = requestAnimationFrame(updateBallPosition);
+                // ボールデータを配列に追加（A-Frameのtickで更新される）
+                window.activeBalls.push({
+                    ball: ball,
+                    startPos: startPos,
+                    velocity: velocity,
+                    direction: direction,
+                    startTime: Date.now(),
+                    hasHit: false,
+                    frameCount: 0
+                });
             }
         });
         
