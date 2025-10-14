@@ -383,9 +383,10 @@
                 
                 const distance = direction.length();
                 
-                // カメラに十分近づいたら停止（0.5m以内）
-                if (distance < 0.5) {
+                // カメラに十分近づいたら停止（0.9m以内）
+                if (distance < 0.9) {
                     this.isMoving = false;
+                    console.log('Model stopped: reached 0.9m from camera');
                     return;
                 }
                 
@@ -423,6 +424,56 @@
                     if(!hitFlag) {
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
+                        
+                        // カメラとモデルの距離を計算してスコア化
+                        const sceneEl = document.querySelector('a-scene');
+                        const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+                        
+                        let distance = 0;
+                        if (camera) {
+                            const modelPos = new THREE.Vector3();
+                            const cameraPos = new THREE.Vector3();
+                            
+                            modelGroup.object3D.getWorldPosition(modelPos);
+                            camera.object3D.getWorldPosition(cameraPos);
+                            
+                            // 距離を計算（メートル単位）
+                            distance = modelPos.distanceTo(cameraPos);
+                            console.log('Hit distance from camera:', distance.toFixed(2), 'm');
+                        }
+                        
+                        // スコアを表示（距離を10倍して整数化）
+                        const score = Math.round(distance * 10);
+                        console.log('Score:', score);
+                        
+                        // スコアテキストをモデルの上に表示
+                        const scoreText = document.createElement('a-text');
+                        scoreText.setAttribute('value', `${score}`);
+                        scoreText.setAttribute('position', '0 2.5 0'); // モデルの上2.5m
+                        scoreText.setAttribute('align', 'center');
+                        scoreText.setAttribute('color', '#FFD700'); // ゴールド色
+                        scoreText.setAttribute('width', '4');
+                        scoreText.setAttribute('font', 'roboto');
+                        scoreText.setAttribute('shader', 'msdf');
+                        scoreText.setAttribute('anchor', 'center');
+                        modelGroup.appendChild(scoreText);
+                        
+                        // スコアテキストをフェードアウトさせる
+                        setTimeout(() => {
+                            scoreText.setAttribute('animation__fadeup', {
+                                property: 'position',
+                                to: '0 3.5 0',
+                                dur: 1500,
+                                easing: 'easeOutQuad'
+                            });
+                            scoreText.setAttribute('animation__fadeout', {
+                                property: 'material.opacity',
+                                from: 1,
+                                to: 0,
+                                dur: 1500,
+                                easing: 'linear'
+                            });
+                        }, 100);
                         
                         // カメラへの移動を停止
                         const approachComponent = modelGroup.components['approach-camera'];
