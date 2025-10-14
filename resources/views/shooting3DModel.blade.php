@@ -215,6 +215,10 @@
                 const modelEntity = modelGroup.querySelector('[gltf-model]'); // gltf-modelを持つエンティティを取得
                 let hitFlag = false;
 
+                // モデルの情報を保存
+                const modelId = modelGroup.id;
+                const gltfModelSrc = modelEntity ? modelEntity.getAttribute('gltf-model') : null;
+
                 // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
                 this.el.addEventListener('ball-hit', () => {
                     if(!hitFlag) {
@@ -252,11 +256,16 @@
                                         easing: 'easeInQuad'
                                     });
                                     
-                                    // フェードアウト完了後に削除
+                                    // フェードアウト完了後に削除して、3秒後に再描画
                                     setTimeout(() => {
                                         if (modelGroup.parentNode) {
                                             modelGroup.parentNode.removeChild(modelGroup);
                                             console.log('Model removed');
+                                            
+                                            // 3秒後に別の場所に再描画
+                                            setTimeout(() => {
+                                                this.respawnModel(modelId, gltfModelSrc);
+                                            }, 3000);
                                         }
                                     }, 500);
                                 }
@@ -264,6 +273,68 @@
                         }, 2500); // anime02を2.5秒間再生
                     }
                 });
+            },
+
+            // モデルを再描画する関数
+            respawnModel: function(modelId, gltfModelSrc) {
+                console.log('Respawning model:', modelId);
+                const sceneEl = document.querySelector('a-scene');
+                
+                // ランダムな位置を生成
+                const positions = [
+                    { x: -4, y: 0, z: -3, rotation: 45 },
+                    { x: -2, y: 0, z: -5, rotation: 30 },
+                    { x: 2, y: 0, z: -5, rotation: -30 },
+                    { x: 4, y: 0, z: -3, rotation: -45 },
+                    { x: -3, y: 0, z: -2, rotation: 45 },
+                    { x: 0, y: 0, z: -4, rotation: 0 },
+                    { x: 3, y: 0, z: -2, rotation: -45 }
+                ];
+                const randomPos = positions[Math.floor(Math.random() * positions.length)];
+                
+                // 新しいモデルグループを作成
+                const newModelGroup = document.createElement('a-entity');
+                newModelGroup.setAttribute('id', modelId);
+                newModelGroup.setAttribute('position', `${randomPos.x} ${randomPos.y} ${randomPos.z}`);
+                newModelGroup.setAttribute('rotation', `0 ${randomPos.rotation} 0`);
+                newModelGroup.setAttribute('scale', '0 0 0'); // 最初は見えない状態
+                
+                // 3Dモデルエンティティを作成
+                const newModelEntity = document.createElement('a-entity');
+                newModelEntity.setAttribute('gltf-model', gltfModelSrc);
+                newModelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                newModelGroup.appendChild(newModelEntity);
+                
+                // 当たり判定オブジェクトを作成
+                const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
+                const newHitBox = document.createElement('a-entity');
+                newHitBox.setAttribute('id', hitBoxId);
+                newHitBox.setAttribute('hit-box', '');
+                newHitBox.setAttribute('position', '0 0.5 0');
+                
+                const hitBoxCylinder = document.createElement('a-entity');
+                hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
+                hitBoxCylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                hitBoxCylinder.setAttribute('scale', '0.3 1 0.3');
+                hitBoxCylinder.setAttribute('class', 'collidable');
+                
+                newHitBox.appendChild(hitBoxCylinder);
+                newModelGroup.appendChild(newHitBox);
+                
+                // シーンに追加
+                sceneEl.appendChild(newModelGroup);
+                console.log('Model added to scene');
+                
+                // フェードインアニメーション
+                setTimeout(() => {
+                    newModelGroup.setAttribute('animation__fadein', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 1000,
+                        easing: 'easeOutQuad'
+                    });
+                    console.log('Model fading in');
+                }, 100);
             }
         });
 
