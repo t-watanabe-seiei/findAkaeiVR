@@ -1073,6 +1073,45 @@
 
 
 
+        // 自動VRモード切り替えコンポーネント
+        AFRAME.registerComponent('auto-enter-vr', {
+            init: function () {
+                const sceneEl = this.el;
+                
+                // シーンが読み込まれたら実行
+                sceneEl.addEventListener('loaded', () => {
+                    console.log('Scene loaded, checking for VR device...');
+                    window.updateDebug('Checking VR device...');
+                    
+                    // VRデバイスが利用可能かチェック
+                    if (navigator.xr) {
+                        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                            if (supported) {
+                                console.log('VR device detected! Auto-entering VR mode...');
+                                window.updateDebug('VR device found! Entering VR...');
+                                
+                                // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
+                                setTimeout(() => {
+                                    sceneEl.enterVR();
+                                    console.log('Entered VR mode automatically');
+                                    window.updateDebug('VR mode activated');
+                                }, 1000);
+                            } else {
+                                console.log('VR not supported on this device');
+                                window.updateDebug('VR not supported');
+                            }
+                        }).catch((err) => {
+                            console.log('Error checking VR support:', err);
+                            window.updateDebug('VR check failed');
+                        });
+                    } else {
+                        console.log('WebXR not available');
+                        window.updateDebug('WebXR not available');
+                    }
+                });
+            }
+        });
+
         // Controller
         AFRAME.registerComponent("vr-controller", {
             dependencies: ["raycaster"],// Important
@@ -1099,7 +1138,9 @@
                   sortObjects: true; 
                   physicallyCorrectLights: true; 
                   exposure: 1;
-                  toneMapping: ACESFilmic">
+                  toneMapping: ACESFilmic"
+        vr-mode-ui="enabled: true"
+        auto-enter-vr>
         <a-assets>
             <!-- 3Dモデル -->
             <a-asset-item id="model_01" src={{ asset('cg/ishimaru.glb') }}></a-asset-item>
