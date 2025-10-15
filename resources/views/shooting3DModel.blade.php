@@ -108,10 +108,8 @@
                     }
                     
                     this.clickBlocked = true;
-                } else if (window.gameEnded) {
-                    this.clickBlocked = true; // ゲーム終了時もブロック
                 } else {
-                    // ゲーム中でない場合は.clickableを復元
+                    // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
                     const leftController = document.getElementById('leftController');
                     const rightController = document.getElementById('rightController');
                     
@@ -130,7 +128,12 @@
                         }
                     }
                     
-                    this.clickBlocked = false;
+                    // スタートメニューに対してのみクリックをブロック
+                    if (window.gameEnded) {
+                        this.clickBlocked = true; // スタートメニューはブロック（リザルトメニューは別）
+                    } else {
+                        this.clickBlocked = false;
+                    }
                 }
             },
             
@@ -1052,12 +1055,12 @@
         </a-entity>
 
         <!-- タイマーとスコア表示 -->
-        <a-entity id="timerDisplay" position="0 2.5 -3" visible="false">
+        <a-entity id="timerDisplay" position="0 2.0 -3" visible="false">
             <!-- タイマー（左側） -->
             <a-text 
                 id="timerText"
                 value="TIME: 60s" 
-                position="-1.5 0 0" 
+                position="-0.8 0 0" 
                 align="center" 
                 color="#FFFF00" 
                 width="4"
@@ -1069,7 +1072,7 @@
             <a-text 
                 id="currentScore"
                 value="SCORE: 0.0" 
-                position="1.5 0 0" 
+                position="0.8 0 0" 
                 align="center" 
                 color="#00FF00" 
                 width="4"
