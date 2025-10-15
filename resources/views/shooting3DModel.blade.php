@@ -76,15 +76,60 @@
             tick: function() {
                 // ゲーム中はメニューを完全に非表示・無効化
                 if (window.gameStarted && !window.gameEnded) {
-                    if (this.el.getAttribute('visible') !== false) {
+                    const isVisible = this.el.getAttribute('visible');
+                    const scale = this.el.getAttribute('scale');
+                    
+                    // メニューが表示されている場合のみ非表示にする（無限ループ防止）
+                    if (isVisible !== false) {
+                        console.log('WARNING: Menu visible during game! Force hiding...');
                         this.el.setAttribute('visible', false);
-                        this.el.setAttribute('scale', '0 0 0');
-                        console.log('Force hiding menu during game');
                     }
+                    if (scale && (scale.x !== 0 || scale.y !== 0 || scale.z !== 0)) {
+                        this.el.setAttribute('scale', '0 0 0');
+                    }
+                    
+                    // VRコントローラーのraycasterターゲットから.clickableを除外
+                    const leftController = document.getElementById('leftController');
+                    const rightController = document.getElementById('rightController');
+                    
+                    if (leftController) {
+                        const currentObjects = leftController.getAttribute('raycaster').objects;
+                        if (currentObjects && currentObjects.includes('.clickable')) {
+                            leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                            console.log('Removed .clickable from left controller raycaster');
+                        }
+                    }
+                    if (rightController) {
+                        const currentObjects = rightController.getAttribute('raycaster').objects;
+                        if (currentObjects && currentObjects.includes('.clickable')) {
+                            rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                            console.log('Removed .clickable from right controller raycaster');
+                        }
+                    }
+                    
                     this.clickBlocked = true;
                 } else if (window.gameEnded) {
                     this.clickBlocked = true; // ゲーム終了時もブロック
                 } else {
+                    // ゲーム中でない場合は.clickableを復元
+                    const leftController = document.getElementById('leftController');
+                    const rightController = document.getElementById('rightController');
+                    
+                    if (leftController) {
+                        const currentObjects = leftController.getAttribute('raycaster').objects;
+                        if (currentObjects && !currentObjects.includes('.clickable')) {
+                            leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                            console.log('Restored .clickable to left controller raycaster');
+                        }
+                    }
+                    if (rightController) {
+                        const currentObjects = rightController.getAttribute('raycaster').objects;
+                        if (currentObjects && !currentObjects.includes('.clickable')) {
+                            rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                            console.log('Restored .clickable to right controller raycaster');
+                        }
+                    }
+                    
                     this.clickBlocked = false;
                 }
             },
@@ -264,6 +309,20 @@
                 
                 // クリックブロックフラグを解除
                 this.clickBlocked = false;
+                
+                // すべてのモデルを非表示にする
+                const models = document.querySelectorAll('[id^="modelGroup_"]');
+                console.log('Hiding', models.length, 'models for restart');
+                models.forEach(model => {
+                    model.setAttribute('visible', false);
+                    console.log('Model hidden:', model.id);
+                });
+                
+                // タイマー表示を非表示
+                const timerDisplay = document.getElementById('timerDisplay');
+                if (timerDisplay) {
+                    timerDisplay.setAttribute('visible', false);
+                }
                 
                 // リザルトメニューを非表示
                 const resultMenu = document.getElementById('resultMenu');
@@ -507,8 +566,23 @@
             },
             
             shoot: function (event) {
+                // イベントの伝播を完全に停止（メニューへの影響を防ぐ）
+                if (event && event.stopPropagation) {
+                    event.stopPropagation();
+                }
+                if (event && event.preventDefault) {
+                    event.preventDefault();
+                }
+                
                 // ゲームが開始されていない場合は撃てない
                 if (!window.gameStarted) {
+                    console.log('Game not started, ignoring shoot');
+                    return;
+                }
+                
+                // ゲーム終了後は撃てない
+                if (window.gameEnded) {
+                    console.log('Game ended, ignoring shoot');
                     return;
                 }
                 
