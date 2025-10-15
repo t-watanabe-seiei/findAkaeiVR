@@ -58,6 +58,7 @@
             init: function() {
                 this.startGame = this.startGame.bind(this);
                 this.handleClick = this.handleClick.bind(this);
+                this.clickBlocked = false; // クリックブロックフラグ
                 
                 // メニュー内のすべてのクリック可能な要素にイベントを追加
                 const clickableElements = this.el.querySelectorAll('.clickable');
@@ -72,11 +73,36 @@
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
             
+            tick: function() {
+                // ゲーム中はメニューを完全に非表示・無効化
+                if (window.gameStarted && !window.gameEnded) {
+                    if (this.el.getAttribute('visible') !== false) {
+                        this.el.setAttribute('visible', false);
+                        this.el.setAttribute('scale', '0 0 0');
+                        console.log('Force hiding menu during game');
+                    }
+                    this.clickBlocked = true;
+                } else if (window.gameEnded) {
+                    this.clickBlocked = true; // ゲーム終了時もブロック
+                } else {
+                    this.clickBlocked = false;
+                }
+            },
+            
             handleClick: function(event) {
                 console.log('=== Menu Click Detected ===');
                 console.log('Menu visible:', this.el.getAttribute('visible'));
                 console.log('Game started:', window.gameStarted);
                 console.log('Game ended:', window.gameEnded);
+                console.log('Click blocked:', this.clickBlocked);
+                
+                // クリックがブロックされている場合は即座に拒否
+                if (this.clickBlocked) {
+                    console.log('Click BLOCKED by flag');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return false;
+                }
                 
                 // メニューが非表示またはゲーム中の場合は無視
                 if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
@@ -128,6 +154,12 @@
                 const timerDisplay = document.getElementById('timerDisplay');
                 if (timerDisplay) {
                     timerDisplay.setAttribute('visible', true);
+                }
+                
+                // スコア表示を初期化
+                const currentScoreText = document.getElementById('currentScore');
+                if (currentScoreText) {
+                    currentScoreText.setAttribute('value', 'SCORE: 0.0');
                 }
                 
                 // 1分タイマーを開始
@@ -229,6 +261,9 @@
                 window.gameEnded = false;
                 window.totalScore = 0;
                 window.gameTimeLeft = 60;
+                
+                // クリックブロックフラグを解除
+                this.clickBlocked = false;
                 
                 // リザルトメニューを非表示
                 const resultMenu = document.getElementById('resultMenu');
@@ -680,6 +715,12 @@
                         window.totalScore += score;
                         console.log('Total Score:', window.totalScore.toFixed(1));
                         
+                        // リアルタイムスコア表示を更新
+                        const currentScoreText = document.getElementById('currentScore');
+                        if (currentScoreText) {
+                            currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                        }
+                        
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
                         scoreText.setAttribute('value', `${score.toFixed(1)}`);
@@ -936,14 +977,27 @@
             </a-text>
         </a-entity>
 
-        <!-- タイマー表示 -->
+        <!-- タイマーとスコア表示 -->
         <a-entity id="timerDisplay" position="0 2.5 -3" visible="false">
+            <!-- タイマー（左側） -->
             <a-text 
                 id="timerText"
                 value="TIME: 60s" 
-                position="0 0 0" 
+                position="-1.5 0 0" 
                 align="center" 
-                color="#FFFFFF" 
+                color="#FFFF00" 
+                width="4"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- スコア（右側） -->
+            <a-text 
+                id="currentScore"
+                value="SCORE: 0.0" 
+                position="1.5 0 0" 
+                align="center" 
+                color="#00FF00" 
                 width="4"
                 font="roboto"
                 shader="msdf">
