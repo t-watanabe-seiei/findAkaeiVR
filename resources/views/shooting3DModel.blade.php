@@ -1364,12 +1364,12 @@
                 // ランダムな位置を生成（12か所）
                 const positions = [
                     { x: -4, y: 0, z: -3, rotation: 45 },
-                    // { x: -2, y: 0, z: -5, rotation: 30 },
-                    // { x: 2, y: 0, z: -5, rotation: -30 },
-                    // { x: 4, y: 0, z: -3, rotation: -45 },
-                    // { x: -3, y: 0, z: -2, rotation: 45 },
-                    // { x: 0, y: 0, z: -4, rotation: 0 },
-                    // { x: 3, y: 0, z: -2, rotation: -45 },
+                    { x: -2, y: 0, z: -5, rotation: 30 },
+                    { x: 2, y: 0, z: -5, rotation: -30 },
+                    { x: 4, y: 0, z: -3, rotation: -45 },
+                    { x: -3, y: 0, z: -2, rotation: 45 },
+                    { x: 0, y: 0, z: -4, rotation: 0 },
+                    { x: 3, y: 0, z: -2, rotation: -45 },
                     // 新規追加の5か所（遠く：9m〜15m）
                     // { x: -8, y: 0, z: -12, rotation: 60 },   // 距離: 約14.4m
                     // { x: 8, y: 0, z: -12, rotation: -60 },   // 距離: 約14.4m
