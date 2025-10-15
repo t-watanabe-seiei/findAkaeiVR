@@ -58,17 +58,20 @@
             init: function() {
                 this.startGame = this.startGame.bind(this);
                 this.handleClick = this.handleClick.bind(this);
+                this.handleTouch = this.handleTouch.bind(this);
                 this.clickBlocked = false; // クリックブロックフラグ
                 
                 // メニュー内のすべてのクリック可能な要素にイベントを追加
                 const clickableElements = this.el.querySelectorAll('.clickable');
                 clickableElements.forEach(element => {
                     element.addEventListener('click', this.handleClick);
-                    console.log('Click listener added to:', element.id || element.tagName);
+                    element.addEventListener('touchstart', this.handleTouch); // スマホ対応
+                    console.log('Click and Touch listeners added to:', element.id || element.tagName);
                 });
                 
                 // メニュー全体にもイベントを追加
                 this.el.addEventListener('click', this.handleClick);
+                this.el.addEventListener('touchstart', this.handleTouch); // スマホ対応
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
@@ -163,6 +166,32 @@
                 this.startGame(event);
             },
             
+            handleTouch: function(event) {
+                console.log('=== Menu Touch Detected ===');
+                console.log('Menu visible:', this.el.getAttribute('visible'));
+                console.log('Game started:', window.gameStarted);
+                console.log('Game ended:', window.gameEnded);
+                console.log('Click blocked:', this.clickBlocked);
+                
+                // タッチイベントを優先的に処理
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // クリックがブロックされている場合は即座に拒否
+                if (this.clickBlocked) {
+                    console.log('Touch BLOCKED by flag');
+                    return false;
+                }
+                
+                // メニューが非表示またはゲーム中の場合は無視
+                if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
+                    console.log('Ignoring touch - menu not visible or game in progress');
+                    return false;
+                }
+                
+                this.startGame(event);
+            },
+            
             startGame: function(event) {
                 console.log('Game Start triggered!');
                 
@@ -190,12 +219,17 @@
                     this.el.setAttribute('visible', false);
                 }, 500);
                 
-                // モデルを表示して移動開始
-                const models = document.querySelectorAll('[id^="modelGroup_"]');
-                console.log('Found', models.length, 'models to show');
-                models.forEach(model => {
-                    model.setAttribute('visible', true);
-                    console.log('Model visible:', model.id);
+                // 初期の3つのモデルのみを表示して移動開始
+                const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
+                console.log('Showing initial 3 models');
+                initialModelIds.forEach(modelId => {
+                    const model = document.getElementById(modelId);
+                    if (model) {
+                        model.setAttribute('visible', true);
+                        console.log('Model visible:', modelId);
+                    } else {
+                        console.error('Model not found:', modelId);
+                    }
                 });
                 
                 // タイマー表示を表示
@@ -316,24 +350,64 @@
                 // 動的に生成されたモデルを削除（IDに"modelGroup_"を含むがオリジナルの3つ以外）
                 const sceneEl = document.querySelector('a-scene');
                 const allModels = sceneEl.querySelectorAll('[id^="modelGroup_"]');
+                const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
+                
+                console.log('Total models found:', allModels.length);
                 allModels.forEach(model => {
                     const modelId = model.getAttribute('id');
                     // オリジナルの3つ以外を削除
-                    if (modelId !== 'modelGroup_01' && modelId !== 'modelGroup_02' && modelId !== 'modelGroup_03') {
+                    if (!initialModelIds.includes(modelId)) {
                         console.log('Removing dynamically created model:', modelId);
-                        model.parentNode.removeChild(model);
+                        if (model.parentNode) {
+                            model.parentNode.removeChild(model);
+                        }
+                    } else {
+                        console.log('Keeping initial model:', modelId);
                     }
                 });
                 
                 // 初期の3つのモデルを初期位置にリセット
                 const initialModels = [
-                    { id: 'modelGroup_01', position: '-3 0 -2', rotation: '0 45 0' },
-                    { id: 'modelGroup_02', position: '0 0 -4', rotation: '0 0 0' },
-                    { id: 'modelGroup_03', position: '3 0 -2', rotation: '0 -45 0' }
+                    { id: 'modelGroup_01', position: '-3 0 -2', rotation: '0 45 0', gltfModel: '#model_01' },
+                    { id: 'modelGroup_02', position: '0 0 -4', rotation: '0 0 0', gltfModel: '#model_02' },
+                    { id: 'modelGroup_03', position: '3 0 -2', rotation: '0 -45 0', gltfModel: '#model_03' }
                 ];
                 
                 initialModels.forEach(modelInfo => {
-                    const model = document.getElementById(modelInfo.id);
+                    let model = document.getElementById(modelInfo.id);
+                    
+                    // モデルが存在しない場合は再作成
+                    if (!model) {
+                        console.warn('Initial model not found, recreating:', modelInfo.id);
+                        model = document.createElement('a-entity');
+                        model.setAttribute('id', modelInfo.id);
+                        model.setAttribute('approach-camera', '');
+                        
+                        // 3Dモデルエンティティを作成
+                        const gltfEntity = document.createElement('a-entity');
+                        gltfEntity.setAttribute('gltf-model', modelInfo.gltfModel);
+                        gltfEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                        gltfEntity.setAttribute('enhance-materials', '');
+                        model.appendChild(gltfEntity);
+                        
+                        // 当たり判定を作成
+                        const hitBoxId = modelInfo.id.replace('modelGroup', 'hit-boxed');
+                        const hitBox = document.createElement('a-entity');
+                        hitBox.setAttribute('id', hitBoxId);
+                        hitBox.setAttribute('hit-box', '');
+                        hitBox.setAttribute('position', '0 0.5 0');
+                        
+                        const cylinder = document.createElement('a-entity');
+                        cylinder.setAttribute('geometry', 'primitive: cylinder');
+                        cylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                        cylinder.setAttribute('scale', '0.3 1 0.3');
+                        cylinder.setAttribute('class', 'collidable');
+                        hitBox.appendChild(cylinder);
+                        model.appendChild(hitBox);
+                        
+                        sceneEl.appendChild(model);
+                    }
+                    
                     if (model) {
                         // 位置と回転をリセット
                         model.setAttribute('position', modelInfo.position);
@@ -354,6 +428,8 @@
                         }
                         
                         console.log('Reset model to initial position:', modelInfo.id);
+                    } else {
+                        console.error('Failed to create/find model:', modelInfo.id);
                     }
                 });
                 
@@ -389,17 +465,31 @@
         AFRAME.registerComponent('result-menu', {
             init: function() {
                 this.restart = this.restart.bind(this);
+                this.restartTouch = this.restartTouch.bind(this);
                 
                 // RESTARTボタンにクリックイベントを追加
                 const restartButton = this.el.querySelector('#restartButton');
                 if (restartButton) {
                     restartButton.addEventListener('click', this.restart);
-                    console.log('Restart button listener added');
+                    restartButton.addEventListener('touchstart', this.restartTouch); // スマホ対応
+                    console.log('Restart button click and touch listeners added');
                 }
             },
             
-            restart: function() {
+            restart: function(event) {
                 console.log('Restart button clicked');
+                
+                // スタートメニューコンポーネントのrestartGame関数を呼び出す
+                const startMenu = document.getElementById('startMenu');
+                if (startMenu && startMenu.components['start-menu']) {
+                    startMenu.components['start-menu'].restartGame();
+                }
+            },
+            
+            restartTouch: function(event) {
+                console.log('Restart button touched');
+                event.preventDefault();
+                event.stopPropagation();
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1233,27 +1323,27 @@
         <!-- モデル01グループ（初期非表示） -->
         <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_01" hit-box position="0 0.5 0">
+            <a-entity id="hit-boxed_01" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 1 0.3" class="collidable"></a-entity>
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル02グループ（初期非表示） -->
         <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_02" hit-box position="0 0.5 0">
+            <a-entity id="hit-boxed_02" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 1 0.3" class="collidable"></a-entity>
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル03グループ（初期非表示） -->
         <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_03" hit-box position="0 0.5 0">
+            <a-entity id="hit-boxed_03" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 1 0.3" class="collidable"></a-entity>
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
