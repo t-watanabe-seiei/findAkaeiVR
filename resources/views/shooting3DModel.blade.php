@@ -53,6 +53,16 @@
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
+        // デバッグ表示用のヘルパー関数
+        window.updateDebug = function(message) {
+            const debugText = document.getElementById('debugText');
+            if (debugText) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugText.setAttribute('value', `${timestamp}: ${message}`);
+            }
+            console.log('DEBUG:', message);
+        };
+        
         // スタートメニューコンポーネント
         AFRAME.registerComponent('start-menu', {
             init: function() {
@@ -195,6 +205,7 @@
             
             startGame: function(event) {
                 console.log('Game Start triggered!');
+                window.updateDebug('Game Started!');
                 
                 // クリックブロックを有効化（ゲーム中のメニュークリックを防ぐ）
                 this.clickBlocked = true;
@@ -274,6 +285,7 @@
                     if (window.gameTimeLeft <= 0) {
                         console.log('=== Timer reached 0 ===');
                         console.log('gameEnded before set:', window.gameEnded);
+                        window.updateDebug('Timer ended!');
                         
                         clearInterval(window.gameTimer);
                         window.gameTimer = null; // タイマーをクリア
@@ -304,9 +316,11 @@
                         
                         if (currentResultMenu) {
                             console.log('Calling showResult...');
+                            window.updateDebug('Showing result...');
                             self.showResult(currentResultMenu);
                         } else {
                             console.error('ERROR: Result menu element NOT FOUND!');
+                            window.updateDebug('ERROR: Result menu NOT FOUND!');
                             // デバッグ: DOM内のすべての要素を確認
                             const allEntities = document.querySelectorAll('a-entity');
                             console.log('Total a-entity count:', allEntities.length);
@@ -321,6 +335,7 @@
             
             showResult: function(resultMenu) {
                 console.log('=== showResult function called ===');
+                window.updateDebug(`Result: Score ${window.totalScore.toFixed(1)}`);
                 console.log('resultMenu parameter:', resultMenu);
                 console.log('resultMenu is null?', resultMenu === null);
                 console.log('resultMenu is undefined?', resultMenu === undefined);
@@ -390,161 +405,12 @@
             },
             
             restartGame: function() {
-                console.log('=== Restarting game ===');
+                console.log('=== Restarting game - Full reload ===');
+                window.updateDebug('Restarting...');
                 
-                // 既存のタイマーをクリア
-                if (window.gameTimer) {
-                    clearInterval(window.gameTimer);
-                    window.gameTimer = null;
-                    console.log('Cleared timer in restart');
-                }
-                
-                // アクティブなボールをすべて削除
-                if (window.activeBalls && window.activeBalls.length > 0) {
-                    window.activeBalls.forEach(ballData => {
-                        if (ballData && ballData.ball && ballData.ball.parentNode) {
-                            ballData.ball.parentNode.removeChild(ballData.ball);
-                        }
-                    });
-                    window.activeBalls = [];
-                    console.log('Cleared all active balls');
-                }
-                
-                // ゲーム状態をリセット
-                window.gameStarted = false;
-                window.gameEnded = false;
-                window.totalScore = 0;
-                window.gameTimeLeft = 60;
-                
-                console.log('Game state reset: started=', window.gameStarted, 'ended=', window.gameEnded);
-                
-                // クリックブロックフラグを解除
-                this.clickBlocked = false;
-                
-                // 動的に生成されたモデルを削除（IDに"modelGroup_"を含むがオリジナルの3つ以外）
-                const sceneEl = document.querySelector('a-scene');
-                const allModels = sceneEl.querySelectorAll('[id^="modelGroup_"]');
-                const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
-                
-                console.log('Total models found:', allModels.length);
-                allModels.forEach(model => {
-                    const modelId = model.getAttribute('id');
-                    // オリジナルの3つ以外を削除
-                    if (!initialModelIds.includes(modelId)) {
-                        console.log('Removing dynamically created model:', modelId);
-                        if (model.parentNode) {
-                            model.parentNode.removeChild(model);
-                        }
-                    } else {
-                        console.log('Keeping initial model:', modelId);
-                    }
-                });
-                
-                // 初期の3つのモデルを初期位置にリセット
-                const initialModels = [
-                    { id: 'modelGroup_01', position: '-3 0 -2', rotation: '0 45 0', gltfModel: '#model_01' },
-                    { id: 'modelGroup_02', position: '0 0 -4', rotation: '0 0 0', gltfModel: '#model_02' },
-                    { id: 'modelGroup_03', position: '3 0 -2', rotation: '0 -45 0', gltfModel: '#model_03' }
-                ];
-                
-                initialModels.forEach(modelInfo => {
-                    let model = document.getElementById(modelInfo.id);
-                    
-                    // モデルが存在しない場合は再作成
-                    if (!model) {
-                        console.warn('Initial model not found, recreating:', modelInfo.id);
-                        model = document.createElement('a-entity');
-                        model.setAttribute('id', modelInfo.id);
-                        model.setAttribute('approach-camera', '');
-                        
-                        // 3Dモデルエンティティを作成
-                        const gltfEntity = document.createElement('a-entity');
-                        gltfEntity.setAttribute('gltf-model', modelInfo.gltfModel);
-                        gltfEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                        gltfEntity.setAttribute('enhance-materials', '');
-                        model.appendChild(gltfEntity);
-                        
-                        // 当たり判定を作成
-                        const hitBoxId = modelInfo.id.replace('modelGroup', 'hit-boxed');
-                        const hitBox = document.createElement('a-entity');
-                        hitBox.setAttribute('id', hitBoxId);
-                        hitBox.setAttribute('hit-box', '');
-                        hitBox.setAttribute('position', '0 0.3 0'); // HTMLと同じ位置に修正
-                        
-                        const cylinder = document.createElement('a-entity');
-                        cylinder.setAttribute('geometry', 'primitive: cylinder');
-                        cylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                        cylinder.setAttribute('scale', '0.3 0.4 0.3'); // HTMLと同じスケールに修正
-                        cylinder.setAttribute('class', 'collidable');
-                        hitBox.appendChild(cylinder);
-                        model.appendChild(hitBox);
-                        
-                        sceneEl.appendChild(model);
-                        console.log('Model recreated:', modelInfo.id);
-                    }
-                    
-                    if (model) {
-                        // 位置と回転をリセット
-                        model.setAttribute('position', modelInfo.position);
-                        model.setAttribute('rotation', modelInfo.rotation);
-                        model.setAttribute('scale', '1 1 1');
-                        model.setAttribute('visible', false);
-                        
-                        // approach-cameraコンポーネントをリセット
-                        const approachComponent = model.components['approach-camera'];
-                        if (approachComponent) {
-                            approachComponent.reset();
-                        }
-                        
-                        // アニメーションをリセット（anime01に戻す）
-                        const gltfEntity = model.querySelector('[gltf-model]');
-                        if (gltfEntity) {
-                            gltfEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                        }
-                        
-                        console.log('Reset model to initial position:', modelInfo.id);
-                    } else {
-                        console.error('Failed to create/find model:', modelInfo.id);
-                    }
-                });
-                
-                // すべてのモデルを非表示にする（念のため）
-                const models = document.querySelectorAll('[id^="modelGroup_"]');
-                console.log('Hiding', models.length, 'models for restart');
-                models.forEach(model => {
-                    model.setAttribute('visible', false);
-                });
-                
-                // タイマー表示を非表示
-                const timerDisplay = document.getElementById('timerDisplay');
-                if (timerDisplay) {
-                    timerDisplay.setAttribute('visible', false);
-                }
-                
-                // リザルトメニューを非表示
-                const resultMenu = document.getElementById('resultMenu');
-                if (resultMenu) {
-                    resultMenu.setAttribute('visible', false);
-                    resultMenu.setAttribute('scale', '0 0 0'); // スケールもリセット
-                    console.log('Result menu hidden');
-                }
-                
-                // スタートメニューを再表示（アニメーション付き）
-                const startMenu = document.getElementById('startMenu');
-                if (startMenu) {
-                    startMenu.setAttribute('visible', true);
-                    startMenu.setAttribute('scale', '0 0 0');
-                    
-                    // スケールアニメーション
-                    startMenu.setAttribute('animation', {
-                        property: 'scale',
-                        to: '1 1 1',
-                        dur: 300,
-                        easing: 'easeOutQuad'
-                    });
-                    
-                    console.log('Start menu shown with animation');
-                }
+                // ページを完全にリロードして初期状態に戻す
+                // これにより、すべての状態がクリーンにリセットされる
+                location.reload();
             }
         });
         
@@ -1330,6 +1196,20 @@
                 align="center" 
                 color="#00FF00" 
                 width="4"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+        </a-entity>
+
+        <!-- デバッグ情報表示（VRゴーグル用） -->
+        <a-entity id="debugDisplay" position="0 2.6 -3" visible="true">
+            <a-text 
+                id="debugText"
+                value="DEBUG: Ready" 
+                position="0 0 0" 
+                align="center" 
+                color="#FF00FF" 
+                width="3"
                 font="roboto"
                 shader="msdf">
             </a-text>
