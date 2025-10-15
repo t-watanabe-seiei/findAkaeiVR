@@ -57,25 +57,50 @@
         AFRAME.registerComponent('start-menu', {
             init: function() {
                 this.startGame = this.startGame.bind(this);
+                this.handleClick = this.handleClick.bind(this);
                 
                 // メニュー内のすべてのクリック可能な要素にイベントを追加
                 const clickableElements = this.el.querySelectorAll('.clickable');
                 clickableElements.forEach(element => {
-                    element.addEventListener('click', this.startGame);
+                    element.addEventListener('click', this.handleClick);
                     console.log('Click listener added to:', element.id || element.tagName);
                 });
                 
                 // メニュー全体にもイベントを追加
-                this.el.addEventListener('click', this.startGame);
+                this.el.addEventListener('click', this.handleClick);
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
             
-            startGame: function(event) {
-                if (window.gameStarted) return; // 既に開始している場合は何もしない
+            handleClick: function(event) {
+                console.log('=== Menu Click Detected ===');
+                console.log('Menu visible:', this.el.getAttribute('visible'));
+                console.log('Game started:', window.gameStarted);
+                console.log('Game ended:', window.gameEnded);
                 
+                // メニューが非表示またはゲーム中の場合は無視
+                if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
+                    console.log('Ignoring click - menu not visible or game in progress');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return false;
+                }
+                
+                this.startGame(event);
+            },
+            
+            startGame: function(event) {
                 console.log('Game Start triggered!');
+                
+                // 既存のタイマーがあればクリア
+                if (window.gameTimer) {
+                    clearInterval(window.gameTimer);
+                    window.gameTimer = null;
+                    console.log('Cleared existing timer');
+                }
+                
                 window.gameStarted = true;
+                window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
                 window.gameTimeLeft = 60; // タイマーを60秒に設定
                 
@@ -191,6 +216,13 @@
             
             restartGame: function() {
                 console.log('Restarting game...');
+                
+                // 既存のタイマーをクリア
+                if (window.gameTimer) {
+                    clearInterval(window.gameTimer);
+                    window.gameTimer = null;
+                    console.log('Cleared timer in restart');
+                }
                 
                 // ゲーム状態をリセット
                 window.gameStarted = false;
