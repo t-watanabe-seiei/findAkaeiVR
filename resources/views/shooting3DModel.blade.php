@@ -11,6 +11,9 @@
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script>  
+        // ゲーム状態管理
+        window.gameStarted = false;
+        
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
             init: function () {
@@ -45,6 +48,52 @@
         
         // ボール管理用のグローバル配列
         window.activeBalls = [];
+        
+        // スタートメニューコンポーネント
+        AFRAME.registerComponent('start-menu', {
+            init: function() {
+                this.startGame = this.startGame.bind(this);
+                
+                // メニュー内のすべてのクリック可能な要素にイベントを追加
+                const clickableElements = this.el.querySelectorAll('.clickable');
+                clickableElements.forEach(element => {
+                    element.addEventListener('click', this.startGame);
+                    console.log('Click listener added to:', element.id || element.tagName);
+                });
+                
+                // メニュー全体にもイベントを追加
+                this.el.addEventListener('click', this.startGame);
+                
+                console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
+            },
+            
+            startGame: function(event) {
+                if (window.gameStarted) return; // 既に開始している場合は何もしない
+                
+                console.log('Game Start triggered!');
+                window.gameStarted = true;
+                
+                // メニューを非表示（フェードアウト効果付き）
+                this.el.setAttribute('animation', {
+                    property: 'scale',
+                    to: '0 0 0',
+                    dur: 500,
+                    easing: 'easeInQuad'
+                });
+                
+                setTimeout(() => {
+                    this.el.setAttribute('visible', false);
+                }, 500);
+                
+                // モデルを表示して移動開始
+                const models = document.querySelectorAll('[id^="modelGroup_"]');
+                console.log('Found', models.length, 'models to show');
+                models.forEach(model => {
+                    model.setAttribute('visible', true);
+                    console.log('Model visible:', model.id);
+                });
+            }
+        });
         
         // ボールを撃つコンポーネント
         AFRAME.registerComponent('shoot', {
@@ -249,6 +298,11 @@
             },
             
             shoot: function (event) {
+                // ゲームが開始されていない場合は撃てない
+                if (!window.gameStarted) {
+                    return;
+                }
+                
                 console.log('=== Shoot function called ===');
                 console.log('Event type:', event.type);
                 
@@ -362,6 +416,8 @@
             },
             
             tick: function(time, timeDelta) {
+                // ゲームが開始されていない場合は移動しない
+                if (!window.gameStarted) return;
                 if (!this.isMoving) return;
                 
                 // カメラの取得（初回または未設定の場合）
@@ -639,15 +695,64 @@
         <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 -1"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0 1 2"></a-entity>
 
-        <!-- マウスカーソル（raycasterによるクリックイベントは無効化） -->
-        <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .disabled-raycast"></a-entity>
+        <!-- マウスカーソル（スタートメニューとゲームオブジェクトをターゲット） -->
+        <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .clickable, .collidable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
-        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable; far: 5" vr-controller></a-entity>
+        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
+        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
 
-        <!-- モデル01グループ -->
-        <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1" approach-camera>
+        <!-- スタートメニュー（半透明） -->
+        <a-entity id="startMenu" position="0 1.6 -3" start-menu>
+            <!-- 背景パネル（半透明） -->
+            <a-plane 
+                id="menuBackground"
+                position="0 0 0" 
+                width="3" 
+                height="2" 
+                color="#000000" 
+                opacity="0.7" 
+                material="transparent: true"
+                class="clickable">
+            </a-plane>
+            
+            <!-- タイトルテキスト -->
+            <a-text 
+                value="VR SHOOTING GAME" 
+                position="0 0.5 0.01" 
+                align="center" 
+                color="#FFFFFF" 
+                width="2.5"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- スタートボタンの背景 -->
+            <a-plane 
+                id="startButton"
+                position="0 -0.3 0.01" 
+                width="1.5" 
+                height="0.5" 
+                color="#FFD700" 
+                opacity="0.9"
+                material="transparent: true"
+                class="clickable">
+            </a-plane>
+            
+            <!-- スタートボタンテキスト -->
+            <a-text 
+                value="START" 
+                position="0 -0.3 0.02" 
+                align="center" 
+                color="#000000" 
+                width="2"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+        </a-entity>
+
+        <!-- モデル01グループ（初期非表示） -->
+        <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_01" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -655,8 +760,8 @@
             </a-entity>
         </a-entity>
 
-        <!-- モデル02グループ -->
-        <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1" approach-camera>
+        <!-- モデル02グループ（初期非表示） -->
+        <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_02" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -664,8 +769,8 @@
             </a-entity>
         </a-entity>
 
-        <!-- モデル03グループ -->
-        <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1" approach-camera>
+        <!-- モデル03グループ（初期非表示） -->
+        <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1" approach-camera visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 0.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
