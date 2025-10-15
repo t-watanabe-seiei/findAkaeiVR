@@ -196,6 +196,13 @@
             startGame: function(event) {
                 console.log('Game Start triggered!');
                 
+                // クリックブロックを有効化（ゲーム中のメニュークリックを防ぐ）
+                this.clickBlocked = true;
+                
+                // メニューを即座に非表示
+                this.el.setAttribute('visible', false);
+                console.log('Start menu hidden immediately');
+                
                 // 既存のタイマーがあればクリア
                 if (window.gameTimer) {
                     clearInterval(window.gameTimer);
@@ -207,18 +214,6 @@
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
                 window.gameTimeLeft = 60; // タイマーを60秒に設定
-                
-                // メニューを非表示（フェードアウト効果付き）
-                this.el.setAttribute('animation', {
-                    property: 'scale',
-                    to: '0 0 0',
-                    dur: 500,
-                    easing: 'easeInQuad'
-                });
-                
-                setTimeout(() => {
-                    this.el.setAttribute('visible', false);
-                }, 500);
                 
                 // 初期の3つのモデルのみを表示して移動開始
                 const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
@@ -374,6 +369,13 @@
                     console.log('Comment updated:', comment);
                 }
                 
+                // スタートメニューを確実に非表示
+                const startMenu = document.getElementById('startMenu');
+                if (startMenu) {
+                    startMenu.setAttribute('visible', false);
+                    console.log('Start menu hidden in showResult');
+                }
+                
                 // リザルトメニューを表示
                 console.log('Setting result menu visible and animating...');
                 resultMenu.setAttribute('visible', true);
@@ -523,13 +525,25 @@
                 const resultMenu = document.getElementById('resultMenu');
                 if (resultMenu) {
                     resultMenu.setAttribute('visible', false);
+                    resultMenu.setAttribute('scale', '0 0 0'); // スケールもリセット
+                    console.log('Result menu hidden');
                 }
                 
-                // スタートメニューを再表示
+                // スタートメニューを再表示（アニメーション付き）
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu) {
                     startMenu.setAttribute('visible', true);
-                    startMenu.setAttribute('scale', '1 1 1');
+                    startMenu.setAttribute('scale', '0 0 0');
+                    
+                    // スケールアニメーション
+                    startMenu.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 300,
+                        easing: 'easeOutQuad'
+                    });
+                    
+                    console.log('Start menu shown with animation');
                 }
             }
         });
