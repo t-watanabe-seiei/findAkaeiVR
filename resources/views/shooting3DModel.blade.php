@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>seieiVR</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
@@ -282,6 +283,18 @@
                 }
                 this.controllersUpdated = true;
                 
+                // BGMを再生（音量70%）
+                const bgmSound = document.getElementById('sound_bgm');
+                if (bgmSound) {
+                    bgmSound.volume = 0.7; // 音量を70%に設定
+                    bgmSound.currentTime = 0; // 最初から再生
+                    bgmSound.play().then(() => {
+                        console.log('BGM started playing at 70% volume');
+                    }).catch(err => {
+                        console.log('BGM play failed:', err);
+                    });
+                }
+                
                 // 既存のタイマーがあればクリア
                 if (window.gameTimer) {
                     clearInterval(window.gameTimer);
@@ -470,6 +483,105 @@
                     easing: 'easeOutBack'
                 });
                 console.log('Result menu should be visible now');
+                
+                // スコアをデータベースに保存
+                this.saveScoreToDatabase(window.totalScore);
+            },
+            
+            saveScoreToDatabase: function(score) {
+                console.log('Saving score to database:', score);
+                
+                fetch('/api/shooting-scores', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                    body: JSON.stringify({
+                        name: 'noName', // デフォルト名
+                        score: score,
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Score saved successfully:', data);
+                    window.updateDebug('Score saved to DB');
+                    // スコア保存後にランキングを取得
+                    this.fetchAndDisplayRankings();
+                })
+                .catch(error => {
+                    console.error('Error saving score:', error);
+                    window.updateDebug('Score save failed');
+                });
+            },
+            
+            fetchAndDisplayRankings: function() {
+                console.log('Fetching top 5 rankings...');
+                
+                fetch('/api/shooting-scores/top5')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Rankings fetched:', data);
+                        if (data.success && data.data) {
+                            this.displayRankings(data.data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching rankings:', error);
+                    });
+            },
+            
+            displayRankings: function(rankings) {
+                const rankingDisplay = document.querySelector('#rankingDisplay');
+                if (!rankingDisplay) {
+                    console.error('Ranking display element not found');
+                    return;
+                }
+                
+                // 既存のランキング表示をクリア
+                while (rankingDisplay.firstChild) {
+                    rankingDisplay.removeChild(rankingDisplay.firstChild);
+                }
+                
+                // 現在のプレイヤーのスコア
+                const currentScore = window.totalScore;
+                
+                // ランキングを表示（上から順に5位まで）
+                rankings.forEach((item, index) => {
+                    const rank = index + 1;
+                    const yPosition = 0.1 - (index * 0.25); // 0.25間隔で配置
+                    
+                    // 日付をフォーマット
+                    const date = new Date(item.created_at);
+                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    
+                    // ランキング行のテキスト
+                    const rankingText = `${rank}. ${item.score.toFixed(1)}pt  ${item.name}  ${dateStr}`;
+                    
+                    // 自分のスコアかどうかを判定（スコアが一致し、名前が一致する場合）
+                    const isCurrentPlayer = (Math.abs(item.score - currentScore) < 0.01) && (item.name === 'noName');
+                    
+                    // 色を決定
+                    let textColor = '#FFFFFF'; // デフォルトは白
+                    if (isCurrentPlayer) {
+                        textColor = '#FF1493'; // 自分のスコアはピンク（DeepPink）
+                    }
+                    // 1位も白色で表示
+                    
+                    // A-Frameテキストエンティティを作成
+                    const textEntity = document.createElement('a-text');
+                    textEntity.setAttribute('value', rankingText);
+                    textEntity.setAttribute('position', `0 ${yPosition} 0`);
+                    textEntity.setAttribute('align', 'center');
+                    textEntity.setAttribute('color', textColor);
+                    textEntity.setAttribute('width', '4.5');
+                    textEntity.setAttribute('font', 'roboto');
+                    textEntity.setAttribute('shader', 'msdf');
+                    
+                    rankingDisplay.appendChild(textEntity);
+                });
+                
+                console.log('Rankings displayed:', rankings.length, 'entries');
             },
             
             restartGame: function() {
@@ -955,6 +1067,17 @@
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
                         
+                        // ヒット音を再生
+                        const hitSound = document.getElementById('sound_hit');
+                        if (hitSound) {
+                            hitSound.currentTime = 0; // 最初から再生
+                            hitSound.play().then(() => {
+                                console.log('Hit sound played');
+                            }).catch(err => {
+                                console.log('Hit sound play failed:', err);
+                            });
+                        }
+                        
                         // カメラとモデルの距離を計算してスコア化
                         const sceneEl = document.querySelector('a-scene');
                         const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
@@ -1215,6 +1338,10 @@
             <a-asset-item id="model_02" src={{ asset('cg/oda.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/ohnomi.glb') }}></a-asset-item>
             
+            <!-- サウンド -->
+            <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm01.mp3') }} preload="auto"></audio>
+            
             <!-- 背景画像 -->
             <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
@@ -1311,14 +1438,14 @@
         </a-entity>
 
         <!-- デバッグ情報表示（VRゴーグル用） -->
-        <a-entity id="debugDisplay" position="0 2.6 -3" visible="true">
+        <a-entity id="debugDisplay" position="0 2.75 -3" visible="true">
             <a-text 
                 id="debugText"
                 value="DEBUG: Ready" 
                 position="0 0 0" 
                 align="center" 
                 color="#FF00FF" 
-                width="3"
+                width="2.0"
                 font="roboto"
                 shader="msdf">
             </a-text>
@@ -1326,11 +1453,11 @@
 
         <!-- リザルト画面（半透明） -->
         <a-entity id="resultMenu" position="0 1.6 -3" visible="false" result-menu>
-            <!-- 背景パネル（半透明） -->
+            <!-- 背景パネル（半透明・拡大） -->
             <a-plane 
                 position="0 0 0" 
-                width="4" 
-                height="3.5" 
+                width="6" 
+                height="5" 
                 color="#000000" 
                 opacity="0.8" 
                 material="transparent: true">
@@ -1339,7 +1466,7 @@
             <!-- GAME OVERテキスト -->
             <a-text 
                 value="GAME OVER" 
-                position="0 1.2 0.01" 
+                position="0 2.0 0.01" 
                 align="center" 
                 color="#FF0000" 
                 width="3.5"
@@ -1351,7 +1478,7 @@
             <a-text 
                 id="resultScore"
                 value="SCORE: 0.0" 
-                position="0 0.5 0.01" 
+                position="0 1.4 0.01" 
                 align="center" 
                 color="#FFD700" 
                 width="4"
@@ -1363,7 +1490,7 @@
             <a-text 
                 id="resultComment"
                 value="KEEP PRACTICING!" 
-                position="0 -0.2 0.01" 
+                position="0 0.9 0.01" 
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
@@ -1371,10 +1498,26 @@
                 shader="msdf">
             </a-text>
             
+            <!-- ランキングタイトル -->
+            <a-text 
+                value="TOP 5 RANKING" 
+                position="0 0.4 0.01" 
+                align="center" 
+                color="#FFD700" 
+                width="3"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- ランキング表示エリア -->
+            <a-entity id="rankingDisplay" position="0 0 0.01">
+                <!-- JavaScriptで動的に生成 -->
+            </a-entity>
+            
             <!-- RESTARTボタンの背景 -->
             <a-plane 
                 id="restartButton"
-                position="0 -1 0.01" 
+                position="0 -2.0 0.01" 
                 width="2" 
                 height="0.6" 
                 color="#00FF00" 
@@ -1386,7 +1529,7 @@
             <!-- RESTARTボタンテキスト -->
             <a-text 
                 value="RESTART" 
-                position="0 -1 0.02" 
+                position="0 -2.0 0.02" 
                 align="center" 
                 color="#000000" 
                 width="3"
