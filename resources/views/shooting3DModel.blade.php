@@ -18,6 +18,9 @@
         window.totalScore = 0;
         window.gameTimer = null;
         window.gameTimeLeft = 60; // 60秒
+        window.comboCount = 0; // 連続ヒット数
+        window.maxComboCount = 0; // 最大連続ヒット数
+        window.lastBallHit = false; // 最後のボールがヒットしたかどうか
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -306,6 +309,9 @@
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
                 window.gameTimeLeft = 60; // タイマーを60秒に設定
+                window.comboCount = 0; // コンボカウントをリセット
+                window.maxComboCount = 0; // 最大コンボカウントをリセット
+                window.lastBallHit = false; // ヒット状態をリセット
                 
                 // 初期の3つのモデルのみを表示して移動開始
                 const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
@@ -431,6 +437,7 @@
                 
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
+                const maxComboText = document.getElementById('maxComboText');
                 
                 console.log('Score text element:', scoreText ? 'found' : 'NOT FOUND');
                 console.log('Comment text element:', commentText ? 'found' : 'NOT FOUND');
@@ -442,6 +449,12 @@
                 if (scoreText) {
                     scoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
                     console.log('Score updated:', window.totalScore.toFixed(1));
+                }
+                
+                // 最大コンボ数を表示
+                if (maxComboText) {
+                    maxComboText.setAttribute('value', `MAX COMBO: ${window.maxComboCount}`);
+                    console.log('Max Combo updated:', window.maxComboCount);
                 }
                 
                 // スコアに応じたコメント
@@ -779,6 +792,19 @@
                     } else {
                         console.log('Ball fell to ground');
                     }
+                    
+                    // ヒットしなかった場合、コンボをリセット
+                    if (!ballData.hasHit) {
+                        console.log('Ball missed - Resetting combo');
+                        window.comboCount = 0;
+                        window.lastBallHit = false;
+                        // コンボ表示を非表示
+                        const comboDisplay = document.getElementById('comboDisplay');
+                        if (comboDisplay) {
+                            comboDisplay.setAttribute('visible', false);
+                        }
+                    }
+                    
                     if (ball.parentNode) {
                         ball.parentNode.removeChild(ball);
                     }
@@ -1103,6 +1129,22 @@
                         window.totalScore += score;
                         console.log('Total Score:', window.totalScore.toFixed(1));
                         
+                        // コンボカウントを増やす
+                        window.comboCount++;
+                        window.lastBallHit = true;
+                        console.log('Combo Count:', window.comboCount);
+                        
+                        // 最大コンボ数を更新
+                        if (window.comboCount > window.maxComboCount) {
+                            window.maxComboCount = window.comboCount;
+                            console.log('New Max Combo:', window.maxComboCount);
+                        }
+                        
+                        // コンボ表示を更新（2連続以上の場合）
+                        if (window.comboCount >= 2) {
+                            this.showCombo(window.comboCount, modelGroup);
+                        }
+                        
                         // リアルタイムスコア表示を更新
                         const currentScoreText = document.getElementById('currentScore');
                         if (currentScoreText) {
@@ -1182,6 +1224,56 @@
                         }, 1500); // anime02を1.5秒間再生
                     }
                 });
+            },
+            
+            showCombo: function(comboCount, modelGroup) {
+                // モデルの上にコンボテキストを表示
+                if (modelGroup) {
+                    // 既存のコンボテキストを削除
+                    const existingCombo = modelGroup.querySelector('.combo-text');
+                    if (existingCombo) {
+                        modelGroup.removeChild(existingCombo);
+                    }
+                    
+                    // コンボテキストを作成
+                    const comboText = document.createElement('a-text');
+                    comboText.setAttribute('value', `Combo ${comboCount}!`);
+                    comboText.setAttribute('position', '0 1.0 0'); // スコアの上（スコアは0.5なので1.0）
+                    comboText.setAttribute('align', 'center');
+                    comboText.setAttribute('color', '#FF6600'); // オレンジ色
+                    comboText.setAttribute('width', '6');
+                    comboText.setAttribute('font', 'roboto');
+                    comboText.setAttribute('shader', 'msdf');
+                    comboText.setAttribute('anchor', 'center');
+                    comboText.classList.add('combo-text');
+                    modelGroup.appendChild(comboText);
+                    
+                    // コンボテキストをフェードアウトさせる
+                    setTimeout(() => {
+                        comboText.setAttribute('animation__fadeup', {
+                            property: 'position',
+                            to: '0 1.5 0', // 1.0m上から1.5m上に移動
+                            dur: 1500,
+                            easing: 'easeOutQuad'
+                        });
+                        comboText.setAttribute('animation__fadeout', {
+                            property: 'material.opacity',
+                            from: 1,
+                            to: 0,
+                            dur: 1500,
+                            easing: 'linear'
+                        });
+                        
+                        // アニメーション後に削除
+                        setTimeout(() => {
+                            if (comboText.parentNode) {
+                                comboText.parentNode.removeChild(comboText);
+                            }
+                        }, 1500);
+                    }, 100);
+                    
+                    console.log('Combo displayed on model:', comboCount);
+                }
             },
 
             // モデルを再描画する関数
@@ -1486,11 +1578,23 @@
                 shader="msdf">
             </a-text>
             
-            <!-- コメント表示 -->
+            <!-- 最大コンボ表示（スコアのすぐ下） -->
+            <a-text 
+                id="maxComboText"
+                value="MAX COMBO: 0" 
+                position="0 1.0 0.01" 
+                align="center" 
+                color="#FF6600" 
+                width="3"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- コメント表示（コンボの下） -->
             <a-text 
                 id="resultComment"
                 value="KEEP PRACTICING!" 
-                position="0 0.9 0.01" 
+                position="0 0.6 0.01" 
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
@@ -1498,10 +1602,10 @@
                 shader="msdf">
             </a-text>
             
-            <!-- ランキングタイトル -->
+            <!-- ランキングタイトル（0.2上げる：-0.1→0.1） -->
             <a-text 
                 value="TOP 5 RANKING" 
-                position="0 0.4 0.01" 
+                position="0 0.1 0.01" 
                 align="center" 
                 color="#FFD700" 
                 width="3"
@@ -1509,8 +1613,8 @@
                 shader="msdf">
             </a-text>
             
-            <!-- ランキング表示エリア -->
-            <a-entity id="rankingDisplay" position="0 0 0.01">
+            <!-- ランキング表示エリア（0.2上げる：-0.5→-0.3） -->
+            <a-entity id="rankingDisplay" position="0 -0.3 0.01">
                 <!-- JavaScriptで動的に生成 -->
             </a-entity>
             
