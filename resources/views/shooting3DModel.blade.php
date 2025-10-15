@@ -1121,18 +1121,39 @@
                             console.log('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
-                        // スコアを表示（距離を10倍して小数第一位まで）
-                        const score = Math.round(distance * 100) / 10; // 小数第一位まで
-                        console.log('Score:', score);
+                        // 基本スコアを計算（距離を10倍して小数第一位まで）
+                        let baseScore = Math.round(distance * 100) / 10; // 小数第一位まで
                         
-                        // 合計スコアに加算
-                        window.totalScore += score;
-                        console.log('Total Score:', window.totalScore.toFixed(1));
-                        
-                        // コンボカウントを増やす
+                        // コンボカウントを増やす（スコア計算前に）
                         window.comboCount++;
                         window.lastBallHit = true;
                         console.log('Combo Count:', window.comboCount);
+                        
+                        // コンボ倍率を計算
+                        let comboMultiplier = 1.0;
+                        let comboBonus = '';
+                        let bonusTier = 0; // ボーナスレベル（0=なし, 1=1.1x, 2=1.2x, 3=1.3x）
+                        if (window.comboCount >= 6) {
+                            comboMultiplier = 1.3;
+                            comboBonus = 'x1.3';
+                            bonusTier = 3;
+                        } else if (window.comboCount >= 4) {
+                            comboMultiplier = 1.2;
+                            comboBonus = 'x1.2';
+                            bonusTier = 2;
+                        } else if (window.comboCount >= 2) {
+                            comboMultiplier = 1.1;
+                            comboBonus = 'x1.1';
+                            bonusTier = 1;
+                        }
+                        
+                        // 最終スコアを計算
+                        const finalScore = baseScore * comboMultiplier;
+                        console.log('Base Score:', baseScore, 'Multiplier:', comboMultiplier, 'Final Score:', finalScore);
+                        
+                        // 合計スコアに加算
+                        window.totalScore += finalScore;
+                        console.log('Total Score:', window.totalScore.toFixed(1));
                         
                         // 最大コンボ数を更新
                         if (window.comboCount > window.maxComboCount) {
@@ -1153,25 +1174,78 @@
                         
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
-                        scoreText.setAttribute('value', `${score.toFixed(1)}`);
+                        const scoreDisplay = comboBonus ? `${finalScore.toFixed(1)} (${comboBonus})` : `${finalScore.toFixed(1)}`;
+                        scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('position', '0 0.5 0'); // モデルの上0.5m
                         scoreText.setAttribute('align', 'center');
-                        scoreText.setAttribute('color', '#FFD700'); // ゴールド色
-                        scoreText.setAttribute('width', '6'); // フォントサイズを大きく（4→6）
-                        scoreText.setAttribute('font', 'roboto');
+                        scoreText.setAttribute('color', comboBonus ? '#FF6600' : '#FFD700'); // ボーナス時はオレンジ、通常は金色
+                        scoreText.setAttribute('width', comboBonus ? '6.6' : '6'); // ボーナス時は1.1倍大きく（6→6.6）
+                        scoreText.setAttribute('font', comboBonus ? 'mozillavr' : 'roboto'); // ボーナス時はフォント変更
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
                         modelGroup.appendChild(scoreText);
                         
+                        // ボーナス時のエフェクト
+                        if (comboBonus) {
+                            // ボーナスレベルに応じて使用するパーティクルを選択
+                            let particleId = 'particle-tier1'; // デフォルト
+                            
+                            if (bonusTier === 1) {
+                                // 1.1倍: Tier1パーティクル（シアン、サイズ0.1、20個）
+                                particleId = 'particle-tier1';
+                            } else if (bonusTier === 2) {
+                                // 1.2倍: Tier2パーティクル（オレンジ、サイズ0.15、30個）
+                                particleId = 'particle-tier2';
+                            } else if (bonusTier === 3) {
+                                // 1.3倍: Tier3パーティクル（マゼンタ、サイズ0.2、40個）
+                                particleId = 'particle-tier3';
+                            }
+                            
+                            // パーティクルエフェクトを表示
+                            const particle = document.getElementById(particleId);
+                            if (particle) {
+                                const modelPos = new THREE.Vector3();
+                                modelGroup.object3D.getWorldPosition(modelPos);
+                                particle.setAttribute('position', `${modelPos.x} ${modelPos.y + 0.5} ${modelPos.z}`);
+                                particle.setAttribute('visible', true);
+                                
+                                // 1.5秒後に非表示
+                                setTimeout(() => {
+                                    particle.setAttribute('visible', false);
+                                }, 1500);
+                            }
+                            
+                            // スコアテキストを拡大縮小アニメーション（ボーナスレベルに応じて拡大率を変更）
+                            const scaleMultiplier = 1.1 + (bonusTier * 0.2); // 1.3, 1.5, 1.7
+                            scoreText.setAttribute('scale', `${scaleMultiplier} ${scaleMultiplier} ${scaleMultiplier}`);
+                            scoreText.setAttribute('animation__scale', {
+                                property: 'scale',
+                                to: '1 1 1',
+                                dur: 400,
+                                easing: 'easeOutElastic'
+                            });
+                            
+                            // 追加エフェクト: スコアテキストを回転
+                            scoreText.setAttribute('animation__rotate', {
+                                property: 'rotation',
+                                from: '0 0 -15',
+                                to: '0 0 15',
+                                dur: 400,
+                                easing: 'easeInOutSine',
+                                loop: 2,
+                                dir: 'alternate'
+                            });
+                        }
+                        
                         // スコアテキストをフェードアウトさせる
                         setTimeout(() => {
-                            scoreText.setAttribute('animation__fadeup', {
+                            scoreText.setAttribute('animation__scoreup', {
                                 property: 'position',
                                 to: '0 1 0', // 0.5m上から1m上に移動
                                 dur: 1500,
                                 easing: 'easeOutQuad'
                             });
-                            scoreText.setAttribute('animation__fadeout', {
+                            scoreText.setAttribute('animation__scorefade', {
                                 property: 'material.opacity',
                                 from: 1,
                                 to: 0,
@@ -1199,9 +1273,9 @@
                         // 1.5秒後にフェードアウト開始（anime03はスキップ）
                         setTimeout(() => {
                             if (modelGroup && modelGroup.parentNode) {
-                                console.log('Starting fadeout');
+                                console.log('Starting fadeout for modelGroup');
                                 // フェードアウトアニメーション（0.5秒かけて縮小）
-                                modelGroup.setAttribute('animation__fadeout', {
+                                modelGroup.setAttribute('animation__modelfadeout', {
                                     property: 'scale',
                                     to: '0 0 0',
                                     dur: 500,
@@ -1290,18 +1364,18 @@
                 // ランダムな位置を生成（12か所）
                 const positions = [
                     { x: -4, y: 0, z: -3, rotation: 45 },
-                    { x: -2, y: 0, z: -5, rotation: 30 },
-                    { x: 2, y: 0, z: -5, rotation: -30 },
-                    { x: 4, y: 0, z: -3, rotation: -45 },
-                    { x: -3, y: 0, z: -2, rotation: 45 },
-                    { x: 0, y: 0, z: -4, rotation: 0 },
-                    { x: 3, y: 0, z: -2, rotation: -45 },
+                    // { x: -2, y: 0, z: -5, rotation: 30 },
+                    // { x: 2, y: 0, z: -5, rotation: -30 },
+                    // { x: 4, y: 0, z: -3, rotation: -45 },
+                    // { x: -3, y: 0, z: -2, rotation: 45 },
+                    // { x: 0, y: 0, z: -4, rotation: 0 },
+                    // { x: 3, y: 0, z: -2, rotation: -45 },
                     // 新規追加の5か所（遠く：9m〜15m）
-                    { x: -8, y: 0, z: -12, rotation: 60 },   // 距離: 約14.4m
-                    { x: 8, y: 0, z: -12, rotation: -60 },   // 距離: 約14.4m
-                    { x: -3, y: 0, z: -15, rotation: 20 },   // 距離: 約15.3m
-                    { x: 3, y: 0, z: -15, rotation: -20 },   // 距離: 約15.3m
-                    { x: 0, y: 0, z: -10, rotation: 0 }      // 距離: 10m
+                    // { x: -8, y: 0, z: -12, rotation: 60 },   // 距離: 約14.4m
+                    // { x: 8, y: 0, z: -12, rotation: -60 },   // 距離: 約14.4m
+                    // { x: -3, y: 0, z: -15, rotation: 20 },   // 距離: 約15.3m
+                    // { x: 3, y: 0, z: -15, rotation: -20 },   // 距離: 約15.3m
+                    // { x: 0, y: 0, z: -10, rotation: 0 }      // 距離: 10m
                 ];
                 const randomPos = positions[Math.floor(Math.random() * positions.length)];
                 
@@ -1673,8 +1747,18 @@
         <!-- 360度画像を表示 -->
         <a-sky id="aSky" src="#sky02"></a-sky>
 
-        <!-- Particle -->
-        <a-entity id="particle" visible="false" position="0 3 0" particle-system="preset: star; color: #f216b0,#f24535"></a-entity>
+        <!-- Particle Effects - 3 Tiers -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 20 particles -->
+        <a-entity id="particle-tier1" visible="false" position="0 3 0" 
+                  particle-system="preset: default; color: #00FFFF; particleCount: 20; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+        
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 30 particles -->
+        <a-entity id="particle-tier2" visible="false" position="0 3 0" 
+                  particle-system="preset: default; color: #FF6600; particleCount: 30; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+        
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 40 particles -->
+        <a-entity id="particle-tier3" visible="false" position="0 3 0" 
+                  particle-system="preset: default; color: #FF00FF; particleCount: 40; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
 
         <a-camera id="my_camera" shoot>
