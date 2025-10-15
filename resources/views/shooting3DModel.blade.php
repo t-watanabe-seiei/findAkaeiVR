@@ -176,23 +176,21 @@
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
                     console.log('Touch BLOCKED by flag');
-                    event.preventDefault();
-                    event.stopPropagation();
                     return false;
                 }
                 
                 // メニューが非表示またはゲーム中の場合は無視
                 if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
                     console.log('Ignoring touch - menu not visible or game in progress');
-                    event.preventDefault();
-                    event.stopPropagation();
                     return false;
                 }
                 
-                // 有効なタッチの場合のみイベントを処理
+                // 有効なタッチの場合はイベントを停止してゲーム開始
+                console.log('Valid touch - starting game!');
                 event.preventDefault();
                 event.stopPropagation();
                 this.startGame(event);
+                return true;
             },
             
             startGame: function(event) {
@@ -256,7 +254,18 @@
                 const resultMenu = document.getElementById('resultMenu');
                 const self = this; // thisのコンテキストを保存
                 
-                console.log('Starting timer, resultMenu:', resultMenu ? 'found' : 'NOT FOUND');
+                console.log('=== Starting timer ===');
+                console.log('ResultMenu element:', resultMenu);
+                console.log('ResultMenu exists:', resultMenu ? 'YES' : 'NO');
+                console.log('Current gameEnded:', window.gameEnded);
+                console.log('Current gameStarted:', window.gameStarted);
+                
+                // 既存のタイマーがあればクリア
+                if (window.gameTimer) {
+                    console.log('Clearing existing timer before start');
+                    clearInterval(window.gameTimer);
+                    window.gameTimer = null;
+                }
                 
                 window.gameTimer = setInterval(() => {
                     window.gameTimeLeft--;
@@ -268,16 +277,20 @@
                     
                     // 時間切れ
                     if (window.gameTimeLeft <= 0) {
+                        console.log('=== Timer reached 0 ===');
+                        console.log('gameEnded before set:', window.gameEnded);
+                        
                         clearInterval(window.gameTimer);
                         window.gameTimer = null; // タイマーをクリア
                         window.gameEnded = true;
                         window.gameStarted = false;
                         
-                        console.log('Game Over! Total Score:', window.totalScore);
-                        console.log('Preparing to show result menu...');
+                        console.log('gameEnded after set:', window.gameEnded);
+                        console.log('Total Score:', window.totalScore);
                         
                         // すべてのモデルを非表示
                         const models = document.querySelectorAll('[id^="modelGroup_"]');
+                        console.log('Hiding models, count:', models.length);
                         models.forEach(model => {
                             model.setAttribute('visible', false);
                         });
@@ -290,22 +303,46 @@
                         
                         // リザルト画面を表示（再度取得して確実に存在することを確認）
                         const currentResultMenu = document.getElementById('resultMenu');
+                        console.log('=== Looking for result menu ===');
+                        console.log('Result menu element:', currentResultMenu);
+                        console.log('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
+                        
                         if (currentResultMenu) {
-                            console.log('Result menu found, showing...');
+                            console.log('Calling showResult...');
                             self.showResult(currentResultMenu);
                         } else {
-                            console.error('Result menu NOT FOUND!');
+                            console.error('ERROR: Result menu element NOT FOUND!');
+                            // デバッグ: DOM内のすべての要素を確認
+                            const allEntities = document.querySelectorAll('a-entity');
+                            console.log('Total a-entity count:', allEntities.length);
+                            const menuEntities = document.querySelectorAll('[result-menu]');
+                            console.log('Entities with result-menu attribute:', menuEntities.length);
                         }
                     }
                 }, 1000);
+                
+                console.log('Timer started, interval ID:', window.gameTimer);
             },
             
             showResult: function(resultMenu) {
-                console.log('=== showResult called ===');
-                console.log('Result menu visible before:', resultMenu.getAttribute('visible'));
+                console.log('=== showResult function called ===');
+                console.log('resultMenu parameter:', resultMenu);
+                console.log('resultMenu is null?', resultMenu === null);
+                console.log('resultMenu is undefined?', resultMenu === undefined);
+                
+                if (!resultMenu) {
+                    console.error('ERROR: resultMenu is null or undefined!');
+                    return;
+                }
+                
+                console.log('Result menu visible attribute before:', resultMenu.getAttribute('visible'));
+                console.log('Result menu position:', resultMenu.getAttribute('position'));
                 
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
+                
+                console.log('Score text element:', scoreText ? 'found' : 'NOT FOUND');
+                console.log('Comment text element:', commentText ? 'found' : 'NOT FOUND');
                 
                 console.log('Score text:', scoreText ? 'found' : 'NOT FOUND');
                 console.log('Comment text:', commentText ? 'found' : 'NOT FOUND');
@@ -351,7 +388,7 @@
             },
             
             restartGame: function() {
-                console.log('Restarting game...');
+                console.log('=== Restarting game ===');
                 
                 // 既存のタイマーをクリア
                 if (window.gameTimer) {
@@ -360,11 +397,24 @@
                     console.log('Cleared timer in restart');
                 }
                 
+                // アクティブなボールをすべて削除
+                if (window.activeBalls && window.activeBalls.length > 0) {
+                    window.activeBalls.forEach(ballData => {
+                        if (ballData && ballData.ball && ballData.ball.parentNode) {
+                            ballData.ball.parentNode.removeChild(ballData.ball);
+                        }
+                    });
+                    window.activeBalls = [];
+                    console.log('Cleared all active balls');
+                }
+                
                 // ゲーム状態をリセット
                 window.gameStarted = false;
                 window.gameEnded = false;
                 window.totalScore = 0;
                 window.gameTimeLeft = 60;
+                
+                console.log('Game state reset: started=', window.gameStarted, 'ended=', window.gameEnded);
                 
                 // クリックブロックフラグを解除
                 this.clickBlocked = false;
@@ -681,13 +731,13 @@
                 const canvas = this.el.sceneEl.canvas;
                 if (canvas) {
                     // 既存のリスナーを削除してから再追加
-                    canvas.removeEventListener('click', this.onClick);
-                    canvas.removeEventListener('touchstart', this.onTouchStart);
+                    canvas.removeEventListener('click', this.onClick, true);
+                    canvas.removeEventListener('touchstart', this.onTouchStart, true);
                     
-                    // captureフェーズで捕捉して、バブリングを防ぐ
-                    canvas.addEventListener('click', this.onClick, true);
-                    canvas.addEventListener('touchstart', this.onTouchStart, { passive: false, capture: true });
-                    console.log('Canvas listeners set up (with capture)');
+                    // 通常のバブリングフェーズで捕捉（captureを使わない）
+                    canvas.addEventListener('click', this.onClick);
+                    canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+                    console.log('Canvas listeners set up (bubble phase)');
                 }
             },
             
