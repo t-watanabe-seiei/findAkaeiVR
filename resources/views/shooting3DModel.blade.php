@@ -13,6 +13,10 @@
     <script>  
         // ゲーム状態管理
         window.gameStarted = false;
+        window.gameEnded = false;
+        window.totalScore = 0;
+        window.gameTimer = null;
+        window.gameTimeLeft = 60; // 60秒
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -72,6 +76,8 @@
                 
                 console.log('Game Start triggered!');
                 window.gameStarted = true;
+                window.totalScore = 0; // スコアをリセット
+                window.gameTimeLeft = 60; // タイマーを60秒に設定
                 
                 // メニューを非表示（フェードアウト効果付き）
                 this.el.setAttribute('animation', {
@@ -92,6 +98,142 @@
                     model.setAttribute('visible', true);
                     console.log('Model visible:', model.id);
                 });
+                
+                // タイマー表示を表示
+                const timerDisplay = document.getElementById('timerDisplay');
+                if (timerDisplay) {
+                    timerDisplay.setAttribute('visible', true);
+                }
+                
+                // 1分タイマーを開始
+                this.startTimer();
+            },
+            
+            startTimer: function() {
+                const timerText = document.getElementById('timerText');
+                const resultMenu = document.getElementById('resultMenu');
+                
+                window.gameTimer = setInterval(() => {
+                    window.gameTimeLeft--;
+                    
+                    // タイマー表示を更新
+                    if (timerText) {
+                        timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
+                    }
+                    
+                    // 時間切れ
+                    if (window.gameTimeLeft <= 0) {
+                        clearInterval(window.gameTimer);
+                        window.gameEnded = true;
+                        window.gameStarted = false;
+                        
+                        console.log('Game Over! Total Score:', window.totalScore);
+                        
+                        // すべてのモデルを非表示
+                        const models = document.querySelectorAll('[id^="modelGroup_"]');
+                        models.forEach(model => {
+                            model.setAttribute('visible', false);
+                        });
+                        
+                        // タイマー非表示
+                        const timerDisplay = document.getElementById('timerDisplay');
+                        if (timerDisplay) {
+                            timerDisplay.setAttribute('visible', false);
+                        }
+                        
+                        // リザルト画面を表示
+                        if (resultMenu) {
+                            this.showResult(resultMenu);
+                        }
+                    }
+                }, 1000);
+            },
+            
+            showResult: function(resultMenu) {
+                const scoreText = document.getElementById('resultScore');
+                const commentText = document.getElementById('resultComment');
+                
+                // スコアを表示（小数第一位まで）
+                if (scoreText) {
+                    scoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                }
+                
+                // スコアに応じたコメント
+                let comment = '';
+                if (window.totalScore >= 1000) {
+                    comment = 'AMAZING! PERFECT SNIPER!';
+                } else if (window.totalScore >= 800) {
+                    comment = 'EXCELLENT! GREAT JOB!';
+                } else if (window.totalScore >= 600) {
+                    comment = 'VERY GOOD! NICE SHOOTING!';
+                } else if (window.totalScore >= 400) {
+                    comment = 'GOOD! KEEP IT UP!';
+                } else if (window.totalScore >= 200) {
+                    comment = 'NOT BAD! TRY AGAIN!';
+                } else {
+                    comment = 'KEEP PRACTICING!';
+                }
+                
+                if (commentText) {
+                    commentText.setAttribute('value', comment);
+                }
+                
+                // リザルトメニューを表示
+                resultMenu.setAttribute('visible', true);
+                resultMenu.setAttribute('scale', '0 0 0');
+                resultMenu.setAttribute('animation', {
+                    property: 'scale',
+                    to: '1 1 1',
+                    dur: 500,
+                    easing: 'easeOutBack'
+                });
+            },
+            
+            restartGame: function() {
+                console.log('Restarting game...');
+                
+                // ゲーム状態をリセット
+                window.gameStarted = false;
+                window.gameEnded = false;
+                window.totalScore = 0;
+                window.gameTimeLeft = 60;
+                
+                // リザルトメニューを非表示
+                const resultMenu = document.getElementById('resultMenu');
+                if (resultMenu) {
+                    resultMenu.setAttribute('visible', false);
+                }
+                
+                // スタートメニューを再表示
+                const startMenu = document.getElementById('startMenu');
+                if (startMenu) {
+                    startMenu.setAttribute('visible', true);
+                    startMenu.setAttribute('scale', '1 1 1');
+                }
+            }
+        });
+        
+        // リザルト画面コンポーネント
+        AFRAME.registerComponent('result-menu', {
+            init: function() {
+                this.restart = this.restart.bind(this);
+                
+                // RESTARTボタンにクリックイベントを追加
+                const restartButton = this.el.querySelector('#restartButton');
+                if (restartButton) {
+                    restartButton.addEventListener('click', this.restart);
+                    console.log('Restart button listener added');
+                }
+            },
+            
+            restart: function() {
+                console.log('Restart button clicked');
+                
+                // スタートメニューコンポーネントのrestartGame関数を呼び出す
+                const startMenu = document.getElementById('startMenu');
+                if (startMenu && startMenu.components['start-menu']) {
+                    startMenu.components['start-menu'].restartGame();
+                }
             }
         });
         
@@ -498,13 +640,17 @@
                             console.log('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
-                        // スコアを表示（距離を10倍して整数化）
-                        const score = Math.round(distance * 10);
+                        // スコアを表示（距離を10倍して小数第一位まで）
+                        const score = Math.round(distance * 100) / 10; // 小数第一位まで
                         console.log('Score:', score);
+                        
+                        // 合計スコアに加算
+                        window.totalScore += score;
+                        console.log('Total Score:', window.totalScore.toFixed(1));
                         
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
-                        scoreText.setAttribute('value', `${score}`);
+                        scoreText.setAttribute('value', `${score.toFixed(1)}`);
                         scoreText.setAttribute('position', '0 0.5 0'); // モデルの上0.5m
                         scoreText.setAttribute('align', 'center');
                         scoreText.setAttribute('color', '#FFD700'); // ゴールド色
@@ -579,6 +725,12 @@
 
             // モデルを再描画する関数
             respawnModel: function(modelId, gltfModelSrc) {
+                // ゲームが終了している場合はリスポーンしない
+                if (window.gameEnded || !window.gameStarted) {
+                    console.log('Game ended, no respawn');
+                    return;
+                }
+                
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
@@ -745,9 +897,96 @@
                 position="0 -0.3 0.02" 
                 align="center" 
                 color="#000000" 
-                width="2"
+                width="2.5"
+                font="roboto"
+                shader="msdf"
+                baseline="center">
+            </a-text>
+        </a-entity>
+
+        <!-- タイマー表示 -->
+        <a-entity id="timerDisplay" position="0 2.5 -3" visible="false">
+            <a-text 
+                id="timerText"
+                value="TIME: 60s" 
+                position="0 0 0" 
+                align="center" 
+                color="#FFFFFF" 
+                width="4"
                 font="roboto"
                 shader="msdf">
+            </a-text>
+        </a-entity>
+
+        <!-- リザルト画面（半透明） -->
+        <a-entity id="resultMenu" position="0 1.6 -3" visible="false" result-menu>
+            <!-- 背景パネル（半透明） -->
+            <a-plane 
+                position="0 0 0" 
+                width="4" 
+                height="3.5" 
+                color="#000000" 
+                opacity="0.8" 
+                material="transparent: true">
+            </a-plane>
+            
+            <!-- GAME OVERテキスト -->
+            <a-text 
+                value="GAME OVER" 
+                position="0 1.2 0.01" 
+                align="center" 
+                color="#FF0000" 
+                width="3.5"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- スコア表示 -->
+            <a-text 
+                id="resultScore"
+                value="SCORE: 0.0" 
+                position="0 0.5 0.01" 
+                align="center" 
+                color="#FFD700" 
+                width="4"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- コメント表示 -->
+            <a-text 
+                id="resultComment"
+                value="KEEP PRACTICING!" 
+                position="0 -0.2 0.01" 
+                align="center" 
+                color="#FFFFFF" 
+                width="3"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
+            <!-- RESTARTボタンの背景 -->
+            <a-plane 
+                id="restartButton"
+                position="0 -1 0.01" 
+                width="2" 
+                height="0.6" 
+                color="#00FF00" 
+                opacity="0.9"
+                material="transparent: true"
+                class="clickable">
+            </a-plane>
+            
+            <!-- RESTARTボタンテキスト -->
+            <a-text 
+                value="RESTART" 
+                position="0 -1 0.02" 
+                align="center" 
+                color="#000000" 
+                width="3"
+                font="roboto"
+                shader="msdf"
+                baseline="center">
             </a-text>
         </a-entity>
 
