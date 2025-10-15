@@ -70,6 +70,7 @@
                 this.handleClick = this.handleClick.bind(this);
                 this.handleTouch = this.handleTouch.bind(this);
                 this.clickBlocked = false; // クリックブロックフラグ
+                this.controllersUpdated = false; // コントローラー更新フラグ
                 
                 // メニュー内のすべてのクリック可能な要素にイベントを追加
                 const clickableElements = this.el.querySelectorAll('.clickable');
@@ -90,55 +91,49 @@
                 // ゲーム中はメニューを完全に非表示・無効化
                 if (window.gameStarted && !window.gameEnded) {
                     const isVisible = this.el.getAttribute('visible');
-                    const scale = this.el.getAttribute('scale');
                     
                     // メニューが表示されている場合のみ非表示にする（無限ループ防止）
-                    if (isVisible !== false) {
+                    // visible属性はブーリアンまたは文字列で返される可能性があるため厳密にチェック
+                    if (isVisible === true || isVisible === 'true') {
                         console.log('WARNING: Menu visible during game! Force hiding...');
                         this.el.setAttribute('visible', false);
-                    }
-                    if (scale && (scale.x !== 0 || scale.y !== 0 || scale.z !== 0)) {
                         this.el.setAttribute('scale', '0 0 0');
                     }
                     
-                    // VRコントローラーのraycasterターゲットから.clickableを除外
-                    const leftController = document.getElementById('leftController');
-                    const rightController = document.getElementById('rightController');
-                    
-                    if (leftController) {
-                        const currentObjects = leftController.getAttribute('raycaster').objects;
-                        if (currentObjects && currentObjects.includes('.clickable')) {
+                    // VRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
+                    if (!this.controllersUpdated) {
+                        const leftController = document.getElementById('leftController');
+                        const rightController = document.getElementById('rightController');
+                        
+                        if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
                             console.log('Removed .clickable from left controller raycaster');
                         }
-                    }
-                    if (rightController) {
-                        const currentObjects = rightController.getAttribute('raycaster').objects;
-                        if (currentObjects && currentObjects.includes('.clickable')) {
+                        if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
                             console.log('Removed .clickable from right controller raycaster');
                         }
+                        
+                        this.controllersUpdated = true;
                     }
                     
                     this.clickBlocked = true;
                 } else {
                     // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
-                    const leftController = document.getElementById('leftController');
-                    const rightController = document.getElementById('rightController');
-                    
-                    if (leftController) {
-                        const currentObjects = leftController.getAttribute('raycaster').objects;
-                        if (currentObjects && !currentObjects.includes('.clickable')) {
+                    if (this.controllersUpdated) {
+                        const leftController = document.getElementById('leftController');
+                        const rightController = document.getElementById('rightController');
+                        
+                        if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
                             console.log('Restored .clickable to left controller raycaster');
                         }
-                    }
-                    if (rightController) {
-                        const currentObjects = rightController.getAttribute('raycaster').objects;
-                        if (currentObjects && !currentObjects.includes('.clickable')) {
+                        if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
                             console.log('Restored .clickable to right controller raycaster');
                         }
+                        
+                        this.controllersUpdated = false;
                     }
                     
                     // スタートメニューに対してのみクリックをブロック
@@ -210,9 +205,24 @@
                 // クリックブロックを有効化（ゲーム中のメニュークリックを防ぐ）
                 this.clickBlocked = true;
                 
-                // メニューを即座に非表示
+                // メニューを即座に完全に非表示（visible + scale）
                 this.el.setAttribute('visible', false);
-                console.log('Start menu hidden immediately');
+                this.el.setAttribute('scale', '0 0 0');
+                console.log('Start menu hidden immediately (visible=false, scale=0)');
+                
+                // VRコントローラーから.clickableを即座に除外
+                const leftController = document.getElementById('leftController');
+                const rightController = document.getElementById('rightController');
+                
+                if (leftController) {
+                    leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                    console.log('Removed .clickable from left controller');
+                }
+                if (rightController) {
+                    rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                    console.log('Removed .clickable from right controller');
+                }
+                this.controllersUpdated = true;
                 
                 // 既存のタイマーがあればクリア
                 if (window.gameTimer) {
