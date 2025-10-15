@@ -65,13 +65,13 @@
                 const clickableElements = this.el.querySelectorAll('.clickable');
                 clickableElements.forEach(element => {
                     element.addEventListener('click', this.handleClick);
-                    element.addEventListener('touchstart', this.handleTouch); // スマホ対応
+                    element.addEventListener('touchstart', this.handleTouch, { passive: false }); // スマホ対応
                     console.log('Click and Touch listeners added to:', element.id || element.tagName);
                 });
                 
                 // メニュー全体にもイベントを追加
                 this.el.addEventListener('click', this.handleClick);
-                this.el.addEventListener('touchstart', this.handleTouch); // スマホ対応
+                this.el.addEventListener('touchstart', this.handleTouch, { passive: false }); // スマホ対応
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
@@ -173,22 +173,25 @@
                 console.log('Game ended:', window.gameEnded);
                 console.log('Click blocked:', this.clickBlocked);
                 
-                // タッチイベントを優先的に処理
-                event.preventDefault();
-                event.stopPropagation();
-                
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
                     console.log('Touch BLOCKED by flag');
+                    event.preventDefault();
+                    event.stopPropagation();
                     return false;
                 }
                 
                 // メニューが非表示またはゲーム中の場合は無視
                 if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
                     console.log('Ignoring touch - menu not visible or game in progress');
+                    event.preventDefault();
+                    event.stopPropagation();
                     return false;
                 }
                 
+                // 有効なタッチの場合のみイベントを処理
+                event.preventDefault();
+                event.stopPropagation();
                 this.startGame(event);
             },
             
@@ -251,6 +254,9 @@
             startTimer: function() {
                 const timerText = document.getElementById('timerText');
                 const resultMenu = document.getElementById('resultMenu');
+                const self = this; // thisのコンテキストを保存
+                
+                console.log('Starting timer, resultMenu:', resultMenu ? 'found' : 'NOT FOUND');
                 
                 window.gameTimer = setInterval(() => {
                     window.gameTimeLeft--;
@@ -263,10 +269,12 @@
                     // 時間切れ
                     if (window.gameTimeLeft <= 0) {
                         clearInterval(window.gameTimer);
+                        window.gameTimer = null; // タイマーをクリア
                         window.gameEnded = true;
                         window.gameStarted = false;
                         
                         console.log('Game Over! Total Score:', window.totalScore);
+                        console.log('Preparing to show result menu...');
                         
                         // すべてのモデルを非表示
                         const models = document.querySelectorAll('[id^="modelGroup_"]');
@@ -280,21 +288,32 @@
                             timerDisplay.setAttribute('visible', false);
                         }
                         
-                        // リザルト画面を表示
-                        if (resultMenu) {
-                            this.showResult(resultMenu);
+                        // リザルト画面を表示（再度取得して確実に存在することを確認）
+                        const currentResultMenu = document.getElementById('resultMenu');
+                        if (currentResultMenu) {
+                            console.log('Result menu found, showing...');
+                            self.showResult(currentResultMenu);
+                        } else {
+                            console.error('Result menu NOT FOUND!');
                         }
                     }
                 }, 1000);
             },
             
             showResult: function(resultMenu) {
+                console.log('=== showResult called ===');
+                console.log('Result menu visible before:', resultMenu.getAttribute('visible'));
+                
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
+                
+                console.log('Score text:', scoreText ? 'found' : 'NOT FOUND');
+                console.log('Comment text:', commentText ? 'found' : 'NOT FOUND');
                 
                 // スコアを表示（小数第一位まで）
                 if (scoreText) {
                     scoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                    console.log('Score updated:', window.totalScore.toFixed(1));
                 }
                 
                 // スコアに応じたコメント
@@ -315,9 +334,11 @@
                 
                 if (commentText) {
                     commentText.setAttribute('value', comment);
+                    console.log('Comment updated:', comment);
                 }
                 
                 // リザルトメニューを表示
+                console.log('Setting result menu visible and animating...');
                 resultMenu.setAttribute('visible', true);
                 resultMenu.setAttribute('scale', '0 0 0');
                 resultMenu.setAttribute('animation', {
@@ -326,6 +347,7 @@
                     dur: 500,
                     easing: 'easeOutBack'
                 });
+                console.log('Result menu should be visible now');
             },
             
             restartGame: function() {
@@ -395,17 +417,18 @@
                         const hitBox = document.createElement('a-entity');
                         hitBox.setAttribute('id', hitBoxId);
                         hitBox.setAttribute('hit-box', '');
-                        hitBox.setAttribute('position', '0 0.5 0');
+                        hitBox.setAttribute('position', '0 0.3 0'); // HTMLと同じ位置に修正
                         
                         const cylinder = document.createElement('a-entity');
                         cylinder.setAttribute('geometry', 'primitive: cylinder');
                         cylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                        cylinder.setAttribute('scale', '0.3 1 0.3');
+                        cylinder.setAttribute('scale', '0.3 0.4 0.3'); // HTMLと同じスケールに修正
                         cylinder.setAttribute('class', 'collidable');
                         hitBox.appendChild(cylinder);
                         model.appendChild(hitBox);
                         
                         sceneEl.appendChild(model);
+                        console.log('Model recreated:', modelInfo.id);
                     }
                     
                     if (model) {
@@ -1089,12 +1112,12 @@
                 const newHitBox = document.createElement('a-entity');
                 newHitBox.setAttribute('id', hitBoxId);
                 newHitBox.setAttribute('hit-box', '');
-                newHitBox.setAttribute('position', '0 0.5 0');
+                newHitBox.setAttribute('position', '0 0.3 0'); // HTMLと同じ位置に修正
                 
                 const hitBoxCylinder = document.createElement('a-entity');
                 hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
                 hitBoxCylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                hitBoxCylinder.setAttribute('scale', '0.3 1 0.3');
+                hitBoxCylinder.setAttribute('scale', '0.3 0.4 0.3'); // HTMLと同じスケールに修正
                 hitBoxCylinder.setAttribute('class', 'collidable');
                 
                 newHitBox.appendChild(hitBoxCylinder);
