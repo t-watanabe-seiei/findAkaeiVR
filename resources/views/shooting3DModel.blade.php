@@ -313,12 +313,55 @@
                 // クリックブロックフラグを解除
                 this.clickBlocked = false;
                 
-                // すべてのモデルを非表示にする
+                // 動的に生成されたモデルを削除（IDに"modelGroup_"を含むがオリジナルの3つ以外）
+                const sceneEl = document.querySelector('a-scene');
+                const allModels = sceneEl.querySelectorAll('[id^="modelGroup_"]');
+                allModels.forEach(model => {
+                    const modelId = model.getAttribute('id');
+                    // オリジナルの3つ以外を削除
+                    if (modelId !== 'modelGroup_01' && modelId !== 'modelGroup_02' && modelId !== 'modelGroup_03') {
+                        console.log('Removing dynamically created model:', modelId);
+                        model.parentNode.removeChild(model);
+                    }
+                });
+                
+                // 初期の3つのモデルを初期位置にリセット
+                const initialModels = [
+                    { id: 'modelGroup_01', position: '-3 0 -2', rotation: '0 45 0' },
+                    { id: 'modelGroup_02', position: '0 0 -4', rotation: '0 0 0' },
+                    { id: 'modelGroup_03', position: '3 0 -2', rotation: '0 -45 0' }
+                ];
+                
+                initialModels.forEach(modelInfo => {
+                    const model = document.getElementById(modelInfo.id);
+                    if (model) {
+                        // 位置と回転をリセット
+                        model.setAttribute('position', modelInfo.position);
+                        model.setAttribute('rotation', modelInfo.rotation);
+                        model.setAttribute('scale', '1 1 1');
+                        model.setAttribute('visible', false);
+                        
+                        // approach-cameraコンポーネントをリセット
+                        const approachComponent = model.components['approach-camera'];
+                        if (approachComponent) {
+                            approachComponent.reset();
+                        }
+                        
+                        // アニメーションをリセット（anime01に戻す）
+                        const gltfEntity = model.querySelector('[gltf-model]');
+                        if (gltfEntity) {
+                            gltfEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                        }
+                        
+                        console.log('Reset model to initial position:', modelInfo.id);
+                    }
+                });
+                
+                // すべてのモデルを非表示にする（念のため）
                 const models = document.querySelectorAll('[id^="modelGroup_"]');
                 console.log('Hiding', models.length, 'models for restart');
                 models.forEach(model => {
                     model.setAttribute('visible', false);
-                    console.log('Model hidden:', model.id);
                 });
                 
                 // タイマー表示を非表示
@@ -373,6 +416,10 @@
                 this.onKeyDown = this.onKeyDown.bind(this);
                 this.onClick = this.onClick.bind(this);
                 this.onTouchStart = this.onTouchStart.bind(this);
+                
+                // 重複発火防止用のタイマー
+                this.lastShootTime = 0;
+                this.shootCooldown = 200; // 200ms以内の重複を防ぐ
                 
                 // スペースキーのイベントリスナーを追加
                 window.addEventListener('keydown', this.onKeyDown);
@@ -524,9 +571,10 @@
                     canvas.removeEventListener('click', this.onClick);
                     canvas.removeEventListener('touchstart', this.onTouchStart);
                     
-                    canvas.addEventListener('click', this.onClick);
-                    canvas.addEventListener('touchstart', this.onTouchStart);
-                    console.log('Canvas listeners set up');
+                    // captureフェーズで捕捉して、バブリングを防ぐ
+                    canvas.addEventListener('click', this.onClick, true);
+                    canvas.addEventListener('touchstart', this.onTouchStart, { passive: false, capture: true });
+                    console.log('Canvas listeners set up (with capture)');
                 }
             },
             
@@ -556,14 +604,33 @@
             },
             
             onClick: function (event) {
+                // 重複発火を防ぐ（touchstartとclickの両方が発火する場合に対応）
+                const currentTime = Date.now();
+                if (currentTime - this.lastShootTime < this.shootCooldown) {
+                    console.log('Click ignored (too soon after last shoot)');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return;
+                }
+                
                 // マウスクリックの場合（A-Frameのcanvas上でのみ）
                 this.shoot(event);
                 console.log('mouse clicked on canvas');
             },
             
             onTouchStart: function (event) {
+                // 重複発火を防ぐ
+                const currentTime = Date.now();
+                if (currentTime - this.lastShootTime < this.shootCooldown) {
+                    console.log('Touch ignored (too soon after last shoot)');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return;
+                }
+                
                 // スマホタップの場合（A-Frameのcanvas上でのみ）
                 event.preventDefault(); // デフォルトのタッチ動作を防ぐ
+                event.stopPropagation(); // イベントの伝播を防ぐ
                 this.shoot(event);
                 console.log('screen tapped on canvas');
             },
@@ -588,6 +655,9 @@
                     console.log('Game ended, ignoring shoot');
                     return;
                 }
+                
+                // 最後のshoot時刻を更新
+                this.lastShootTime = Date.now();
                 
                 console.log('=== Shoot function called ===');
                 console.log('Event type:', event.type);
@@ -748,6 +818,13 @@
             // 外部から移動を停止できるメソッド
             stop: function() {
                 this.isMoving = false;
+            },
+            
+            // リセットメソッド（リスタート時に使用）
+            reset: function() {
+                this.isMoving = true;
+                this.camera = null;
+                console.log('Approach-camera component reset');
             }
         });
         
