@@ -72,17 +72,13 @@
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
-                // メニュー内のすべてのクリック可能な要素にイベントを追加
+                // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
                 const clickableElements = this.el.querySelectorAll('.clickable');
                 clickableElements.forEach(element => {
                     element.addEventListener('click', this.handleClick);
-                    element.addEventListener('touchstart', this.handleTouch, { passive: false }); // スマホ対応
+                    element.addEventListener('touchstart', this.handleTouch, { passive: false, capture: true }); // captureフェーズで処理
                     console.log('Click and Touch listeners added to:', element.id || element.tagName);
                 });
-                
-                // メニュー全体にもイベントを追加
-                this.el.addEventListener('click', this.handleClick);
-                this.el.addEventListener('touchstart', this.handleTouch, { passive: false }); // スマホ対応
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
@@ -100,11 +96,16 @@
                         this.el.setAttribute('scale', '0 0 0');
                     }
                     
-                    // VRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
+                    // マウスカーソルとVRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
                     if (!this.controllersUpdated) {
+                        const mouseCursor = document.getElementById('mouseCursor');
                         const leftController = document.getElementById('leftController');
                         const rightController = document.getElementById('rightController');
                         
+                        if (mouseCursor) {
+                            mouseCursor.setAttribute('raycaster', 'objects: .collidable');
+                            console.log('Removed .clickable from mouse cursor raycaster');
+                        }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
                             console.log('Removed .clickable from left controller raycaster');
@@ -121,9 +122,14 @@
                 } else {
                     // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
                     if (this.controllersUpdated) {
+                        const mouseCursor = document.getElementById('mouseCursor');
                         const leftController = document.getElementById('leftController');
                         const rightController = document.getElementById('rightController');
                         
+                        if (mouseCursor) {
+                            mouseCursor.setAttribute('raycaster', 'objects: .clickable, .collidable');
+                            console.log('Restored .clickable to mouse cursor raycaster');
+                        }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
                             console.log('Restored .clickable to left controller raycaster');
@@ -152,6 +158,14 @@
                 console.log('Game ended:', window.gameEnded);
                 console.log('Click blocked:', this.clickBlocked);
                 
+                // ゲーム中は完全にブロック（最優先チェック）
+                if (window.gameStarted && !window.gameEnded) {
+                    console.log('Click BLOCKED - Game in progress');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return false;
+                }
+                
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
                     console.log('Click BLOCKED by flag');
@@ -160,9 +174,18 @@
                     return false;
                 }
                 
-                // メニューが非表示またはゲーム中の場合は無視
-                if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
-                    console.log('Ignoring click - menu not visible or game in progress');
+                // メニューが非表示の場合は無視
+                const isVisible = this.el.getAttribute('visible');
+                if (isVisible === false || isVisible === 'false') {
+                    console.log('Click BLOCKED - Menu not visible');
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // ゲーム終了時は無視
+                if (window.gameEnded) {
+                    console.log('Click BLOCKED - Game ended');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -178,15 +201,36 @@
                 console.log('Game ended:', window.gameEnded);
                 console.log('Click blocked:', this.clickBlocked);
                 
-                // クリックがブロックされている場合は即座に拒否
-                if (this.clickBlocked) {
-                    console.log('Touch BLOCKED by flag');
+                // ゲーム中は完全にブロック（最優先チェック）
+                if (window.gameStarted && !window.gameEnded) {
+                    console.log('Touch BLOCKED - Game in progress');
+                    event.preventDefault();
+                    event.stopPropagation();
                     return false;
                 }
                 
-                // メニューが非表示またはゲーム中の場合は無視
-                if (!this.el.getAttribute('visible') || window.gameStarted || window.gameEnded) {
-                    console.log('Ignoring touch - menu not visible or game in progress');
+                // クリックがブロックされている場合は即座に拒否
+                if (this.clickBlocked) {
+                    console.log('Touch BLOCKED by flag');
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return false;
+                }
+                
+                // メニューが非表示の場合は無視
+                const isVisible = this.el.getAttribute('visible');
+                if (isVisible === false || isVisible === 'false') {
+                    console.log('Touch BLOCKED - Menu not visible');
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return false;
+                }
+                
+                // ゲーム終了時は無視
+                if (window.gameEnded) {
+                    console.log('Touch BLOCKED - Game ended');
+                    event.preventDefault();
+                    event.stopPropagation();
                     return false;
                 }
                 
@@ -205,15 +249,29 @@
                 // クリックブロックを有効化（ゲーム中のメニュークリックを防ぐ）
                 this.clickBlocked = true;
                 
-                // メニューを即座に完全に非表示（visible + scale）
+                // メニューを即座に完全に非表示（visible + scale + raycastable）
                 this.el.setAttribute('visible', false);
                 this.el.setAttribute('scale', '0 0 0');
-                console.log('Start menu hidden immediately (visible=false, scale=0)');
+                this.el.object3D.visible = false; // THREE.jsレベルでも非表示
                 
-                // VRコントローラーから.clickableを即座に除外
+                // メニュー内のすべてのクリック可能要素のクラスを削除
+                const clickableElements = this.el.querySelectorAll('.clickable');
+                clickableElements.forEach(element => {
+                    element.classList.remove('clickable');
+                    element.classList.add('non-clickable'); // 一時的なクラス
+                });
+                
+                console.log('Start menu hidden immediately (visible=false, scale=0, class removed)');
+                
+                // マウスカーソルとVRコントローラーから.clickableを即座に除外
+                const mouseCursor = document.getElementById('mouseCursor');
                 const leftController = document.getElementById('leftController');
                 const rightController = document.getElementById('rightController');
                 
+                if (mouseCursor) {
+                    mouseCursor.setAttribute('raycaster', 'objects: .collidable');
+                    console.log('Removed .clickable from mouse cursor');
+                }
                 if (leftController) {
                     leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
                     console.log('Removed .clickable from left controller');
