@@ -26,6 +26,6 @@ Route::get('/movie', function () {
     return view('movieTest');
 });
 
-Auth::routes();
+// Auth::routes(); // Commented out - laravel/ui not installed
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
