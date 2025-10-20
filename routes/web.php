@@ -14,10 +14,9 @@ Route::get('/train', function () {
     return view('train');
 });
 
-Route::get('/', function () {
-    // return view('findsakura');
+Route::match(['get', 'head'], '/', function () {
     return view('shooting3DModel');
-});
+})->name('home.index');
 
 Route::get('/minion', function () {
     return view('findminion');
