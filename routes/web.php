@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ShootingScoreController;
 
 Route::get('/welcome', function () {
     return view('welcome0');
@@ -27,11 +26,6 @@ Route::get('/minion', function () {
 Route::get('/movie', function () {
     return view('movieTest');
 });
-
-// スコア保存API
-Route::post('/api/shooting-scores', [ShootingScoreController::class, 'store']);
-Route::get('/api/shooting-scores', [ShootingScoreController::class, 'index']);
-Route::get('/api/shooting-scores/top5', [ShootingScoreController::class, 'top5']);
 
 Auth::routes();
 
