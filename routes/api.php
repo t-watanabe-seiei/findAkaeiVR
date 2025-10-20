@@ -11,6 +11,7 @@ Route::get('/user', function (Request $request) {
 Route::resource('/Scores', App\Http\Controllers\ScoreController::class);
 
 // Shooting Score API endpoints
+// Note: These routes are automatically prefixed with /api by Laravel 11
+Route::get('/shooting-scores/top5', [ShootingScoreController::class, 'top5']);
 Route::post('/shooting-scores', [ShootingScoreController::class, 'store']);
 Route::get('/shooting-scores', [ShootingScoreController::class, 'index']);
-Route::get('/shooting-scores/top5', [ShootingScoreController::class, 'top5']);
