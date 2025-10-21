@@ -537,11 +537,54 @@
                         console.log('Rankings fetched:', data);
                         if (data.success && data.data) {
                             this.displayRankings(data.data);
+                            
+                            // トップ5に入っているかチェック
+                            const currentScore = window.totalScore;
+                            const isInTop5 = data.data.some(item => 
+                                Math.abs(item.score - currentScore) < 0.01 && item.name === 'noName'
+                            );
+                            
+                            if (isInTop5) {
+                                console.log('🎉 Congratulations! You made it to Top 5!');
+                                this.celebrateTop5();
+                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching rankings:', error);
                     });
+            },
+            
+            celebrateTop5: function() {
+                // リザルトメニューの位置を取得
+                const resultMenu = document.querySelector('#resultMenu');
+                if (!resultMenu) return;
+                
+                const position = resultMenu.getAttribute('position');
+                
+                // 豪華なパーティクルエフェクトを表示
+                const celebrationParticle = document.querySelector('#particle-celebration');
+                if (celebrationParticle) {
+                    // リザルトメニューの位置に配置
+                    celebrationParticle.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+                    celebrationParticle.setAttribute('visible', 'true');
+                    
+                    // パーティクルを開始
+                    const particleSystem = celebrationParticle.components['particle-system'];
+                    if (particleSystem) {
+                        particleSystem.startParticles();
+                    }
+                    
+                    // 5秒後にパーティクルを停止
+                    setTimeout(() => {
+                        if (particleSystem) {
+                            particleSystem.stopParticles();
+                        }
+                        celebrationParticle.setAttribute('visible', 'false');
+                    }, 5000);
+                }
+                
+                console.log('Top 5 celebration particles activated!');
             },
             
             displayRankings: function(rankings) {
@@ -1759,6 +1802,21 @@
         <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 40 particles -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
                   particle-system="preset: default; color: #FF00FF; particleCount: 40; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+        
+        <!-- Top 5 Celebration Particle - 豪華なゴールドパーティクル -->
+        <a-entity id="particle-celebration" visible="false" position="0 2 -3">
+            <!-- メインゴールドパーティクル：大量の金色パーティクル -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 100; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            
+            <!-- 輝く星パーティクル：キラキラ効果 -->
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 50; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            
+            <!-- 紙吹雪効果：カラフルな紙吹雪 -->
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 80; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
+            
+            <!-- 輪っか状に広がるパーティクル -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 60; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+        </a-entity>
         
 
         <a-camera id="my_camera" shoot>
