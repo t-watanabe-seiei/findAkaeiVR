@@ -504,7 +504,7 @@
             saveScoreToDatabase: function(score) {
                 console.log('Saving score to database:', score);
                 
-                fetch('/api/shooting-scores', {
+                fetch('api/shooting-scores', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -531,7 +531,7 @@
             fetchAndDisplayRankings: function() {
                 console.log('Fetching top 5 rankings...');
                 
-                fetch('/api/shooting-scores/top5')
+                fetch('api/shooting-scores/top5')
                     .then(response => response.json())
                     .then(data => {
                         console.log('Rankings fetched:', data);
