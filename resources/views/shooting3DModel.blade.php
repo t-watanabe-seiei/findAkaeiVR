@@ -313,14 +313,58 @@
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
                 
-                // 初期の3つのモデルのみを表示して移動開始
+                // ランダムパターン設定（5パターン）
+                const movementPatterns = [
+                    // パターン1: 左後方からカメラへ（速い）
+                    { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 3000 },
+                    // パターン2: 右後方からカメラへ（普通）
+                    { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 3000 },
+                    // パターン3: 正面奥からカメラへ（遅い）
+                    { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 3000 },
+                    // パターン4: 左から右へ横移動（固定終点）
+                    { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 },
+                    // パターン5: 右から左へ横移動（固定終点）
+                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 }
+                ];
+                
+                // 初期の3つのモデルにランダムパターンを適用
                 const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
-                console.log('Showing initial 3 models');
+                console.log('Showing initial 3 models with random patterns');
                 initialModelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model) {
+                        // ランダムにパターンを選択
+                        const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                        
+                        // 始点位置を設定
+                        model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
+                        
+                        // 角度を計算
+                        let rotation;
+                        if (randomPattern.useCamera) {
+                            rotation = Math.atan2(randomPattern.startPos.x, -randomPattern.startPos.z) * (180 / Math.PI);
+                        } else {
+                            const dx = randomPattern.endPos.x - randomPattern.startPos.x;
+                            const dz = randomPattern.endPos.z - randomPattern.startPos.z;
+                            rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
+                        }
+                        model.setAttribute('rotation', `0 ${rotation} 0`);
+                        
+                        // approach-cameraコンポーネントの設定
+                        const cameraConfig = {
+                            speed: randomPattern.speed,
+                            startPos: randomPattern.startPos,
+                            useCamera: randomPattern.useCamera,
+                            autoRespawn: true,
+                            waitTime: randomPattern.waitTime
+                        };
+                        if (randomPattern.endPos) {
+                            cameraConfig.endPos = randomPattern.endPos;
+                        }
+                        model.setAttribute('approach-camera', cameraConfig);
+                        
                         model.setAttribute('visible', true);
-                        console.log('Model visible:', modelId);
+                        console.log('Model visible with random pattern:', modelId, randomPattern);
                     } else {
                         console.error('Model not found:', modelId);
                     }
@@ -807,14 +851,22 @@
                                 easing: 'easeOutQuad'
                             });
                             
+                            // GLBモデルのフェードアウト（scaleを0に）
                             ball.setAttribute('animation__fade', {
-                                property: 'material.opacity',
-                                to: 0,
+                                property: 'scale',
+                                to: '0 0 0',
                                 dur: 300,
-                                easing: 'linear'
+                                easing: 'easeInQuad'
                             });
                             
-                            ball.setAttribute('color', 'yellow');
+                            // ヒット時の回転を速くする
+                            ball.setAttribute('animation__spin', {
+                                property: 'rotation',
+                                to: '0 720 0',
+                                dur: 300,
+                                loop: false,
+                                easing: 'linear'
+                            });
                             
                             setTimeout(() => {
                                 if (ball.parentNode) {
@@ -957,11 +1009,36 @@
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
                 
-                // ボールエンティティを作成
-                const ball = document.createElement('a-sphere');
-                ball.setAttribute('radius', 0.1);
-                ball.setAttribute('color', 'red');
-                ball.setAttribute('material', 'color: red; metalness: 0.1; roughness: 0.8; opacity: 1; transparent: true;');
+                // ボールエンティティを作成（GLBモデルを使用）
+                const ball = document.createElement('a-entity');
+                ball.setAttribute('gltf-model', 'cg/poke_ball_04.glb');
+                ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
+                ball.setAttribute('rotation', '0 0 0');
+                
+                // モデルが読み込まれたら明るくする
+                ball.addEventListener('model-loaded', () => {
+                    const mesh = ball.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.traverse((node) => {
+                            if (node.isMesh && node.material) {
+                                // マテリアルを明るくする
+                                node.material.emissive = new THREE.Color(0x444444); // 発光色を追加
+                                node.material.emissiveIntensity = 0.1; // 発光強度
+                                node.material.needsUpdate = true
+                                console.log('Ball material brightened');
+                            }
+                        });
+                    }
+                });
+                
+                // 回転アニメーションを追加（飛んでいる間に回転）
+                ball.setAttribute('animation__spin', {
+                    property: 'rotation',
+                    to: '720 90 0',
+                    dur: 1000,
+                    loop: true,
+                    easing: 'linear'
+                });
                 
                 // 位置と方向を計算
                 let position = new THREE.Vector3();
@@ -1055,56 +1132,106 @@
             }
         });
         
-        // モデルをカメラに向かって移動させるコンポーネント
+        // モデルを個別の経路で移動させるコンポーネント
         AFRAME.registerComponent('approach-camera', {
+            schema: {
+                speed: { type: 'number', default: 0.25 },        // 移動速度（m/s）
+                startPos: { type: 'vec3', default: {x: 0, y: 0, z: -5} }, // 始点
+                endPos: { type: 'vec3', default: {x: 0, y: 0, z: -1} },   // 終点
+                useCamera: { type: 'boolean', default: true },   // カメラを終点にするか
+                autoRespawn: { type: 'boolean', default: true }, // 自動再描画
+                waitTime: { type: 'number', default: 3000 }      // 終点到着後の待機時間（ms）
+            },
+            
             init: function() {
-                this.speed = 0.25; // 毎秒0.25メートル（以前の半分）
-                this.camera = null;
                 this.isMoving = true;
+                this.hasReachedEnd = false;
+                this.reachedTime = 0;
+                this.startPosition = null;
+                this.targetPosition = null;
+                this.isRespawning = false; // 再描画中フラグ
+                
+                // 始点を設定（コンポーネント指定がなければ現在位置）
+                if (this.data.startPos.x === 0 && this.data.startPos.y === 0 && this.data.startPos.z === -5) {
+                    // デフォルト値の場合は現在位置を使用
+                    const currentPos = this.el.getAttribute('position');
+                    this.startPosition = new THREE.Vector3(currentPos.x, currentPos.y, currentPos.z);
+                } else {
+                    this.startPosition = new THREE.Vector3(this.data.startPos.x, this.data.startPos.y, this.data.startPos.z);
+                }
+                
+                console.log('approach-camera initialized:', {
+                    speed: this.data.speed,
+                    useCamera: this.data.useCamera,
+                    endPos: this.data.endPos,
+                    autoRespawn: this.data.autoRespawn
+                });
             },
             
             tick: function(time, timeDelta) {
                 // ゲームが開始されていない場合は移動しない
                 if (!window.gameStarted) return;
-                if (!this.isMoving) return;
-                
-                // カメラの取得（初回または未設定の場合）
-                if (!this.camera) {
-                    const sceneEl = this.el.sceneEl;
-                    this.camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
-                    if (!this.camera) return;
+                if (!this.isMoving) {
+                    // 終点に到着している場合、待機時間をチェック
+                    if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning) {
+                        const elapsed = Date.now() - this.reachedTime;
+                        if (elapsed >= this.data.waitTime) {
+                            console.log('Auto-respawn triggered after', this.data.waitTime, 'ms');
+                            this.isRespawning = true; // 再描画中フラグを立てる
+                            this.despawnAndRespawn();
+                        }
+                    }
+                    return;
                 }
                 
-                // モデルとカメラの位置を取得
-                const modelPos = this.el.object3D.position;
-                const cameraPos = new THREE.Vector3();
-                this.camera.object3D.getWorldPosition(cameraPos);
+                // 終点を取得（初回のみ設定）
+                if (!this.targetPosition) {
+                    if (this.data.useCamera) {
+                        const sceneEl = this.el.sceneEl;
+                        const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+                        if (!camera) return;
+                        
+                        this.targetPosition = new THREE.Vector3();
+                        camera.object3D.getWorldPosition(this.targetPosition);
+                        this.targetPosition.y = 0; // 地面レベルに調整
+                        console.log('Target set to camera position:', this.targetPosition);
+                    } else {
+                        // useCameraがfalseの場合はendPosを使用
+                        this.targetPosition = new THREE.Vector3(this.data.endPos.x, this.data.endPos.y, this.data.endPos.z);
+                        console.log('Target set to fixed endPos:', this.targetPosition);
+                    }
+                }
                 
-                // カメラへの方向ベクトルを計算
+                // モデルの現在位置を取得
+                const modelPos = this.el.object3D.position;
+                
+                // 終点への方向ベクトルを計算
                 const direction = new THREE.Vector3();
-                direction.subVectors(cameraPos, modelPos);
+                direction.subVectors(this.targetPosition, modelPos);
                 direction.y = 0; // Y軸方向は移動しない（地面を滑るように）
                 
                 const distance = direction.length();
                 
-                // カメラに十分近づいたら停止（0.9m以内）
+                // 終点に到着したか判定（0.9m以内）
                 if (distance < 0.9) {
                     this.isMoving = false;
-                    console.log('Model stopped: reached 0.9m from camera');
+                    this.hasReachedEnd = true;
+                    this.reachedTime = Date.now();
+                    console.log('Model reached end position. Waiting for', this.data.waitTime, 'ms before respawn');
                     return;
                 }
                 
                 // 方向を正規化して速度を適用
                 direction.normalize();
-                const moveDistance = this.speed * (timeDelta / 1000); // timeDeltaはミリ秒
+                const moveDistance = this.data.speed * (timeDelta / 1000); // timeDeltaはミリ秒
                 direction.multiplyScalar(moveDistance);
                 
                 // 新しい位置を設定
                 modelPos.add(direction);
                 
-                // カメラと反対方向を向くように回転（Y軸のみ、180度回転）
+                // 進行方向を向くように回転（Y軸のみ）
                 const angle = Math.atan2(direction.x, direction.z);
-                this.el.object3D.rotation.y = angle; // カメラの反対方向を向く（Math.PIを削除）
+                this.el.object3D.rotation.y = angle;
             },
             
             // 外部から移動を停止できるメソッド
@@ -1112,10 +1239,49 @@
                 this.isMoving = false;
             },
             
+            // モデルを消去して再描画
+            despawnAndRespawn: function() {
+                const modelGroup = this.el;
+                const modelId = modelGroup.id;
+                const modelEntity = modelGroup.querySelector('[gltf-model]');
+                const gltfModelSrc = modelEntity ? modelEntity.getAttribute('gltf-model') : null;
+                
+                if (!gltfModelSrc) {
+                    console.error('Could not find gltf-model for respawn');
+                    return;
+                }
+                
+                console.log('Despawning model:', modelId);
+                
+                // フェードアウト
+                modelGroup.setAttribute('animation__fadeout', {
+                    property: 'scale',
+                    to: '0 0 0',
+                    dur: 500,
+                    easing: 'easeInQuad'
+                });
+                
+                // フェードアウト後に削除して再生成
+                setTimeout(() => {
+                    if (modelGroup.parentNode) {
+                        modelGroup.parentNode.removeChild(modelGroup);
+                    }
+                    
+                    // hit-boxコンポーネントのrespawnModel関数を呼び出し
+                    // グローバルに再描画関数を登録
+                    if (window.respawnModelGlobal) {
+                        window.respawnModelGlobal(modelId, gltfModelSrc);
+                    }
+                }, 500);
+            },
+            
             // リセットメソッド（リスタート時に使用）
             reset: function() {
                 this.isMoving = true;
-                this.camera = null;
+                this.hasReachedEnd = false;
+                this.reachedTime = 0;
+                this.targetPosition = null;
+                this.isRespawning = false; // 再描画中フラグもリセット
                 console.log('Approach-camera component reset');
             }
         });
@@ -1129,6 +1295,11 @@
                 // モデルの情報を保存
                 const modelId = modelGroup.id;
                 const gltfModelSrc = modelEntity ? modelEntity.getAttribute('gltf-model') : null;
+                
+                // グローバルなrespawn関数を登録（初回のみ）
+                if (!window.respawnModelGlobal) {
+                    window.respawnModelGlobal = this.respawnModel.bind(this);
+                }
 
                 // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
                 this.el.addEventListener('ball-hit', () => {
@@ -1404,31 +1575,97 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムな位置を生成（12か所）
-                const positions = [
-                    { x: -4, y: 0, z: -3, rotation: 45 },
-                    { x: -2, y: 0, z: -5, rotation: 30 },
-                    { x: 2, y: 0, z: -5, rotation: -30 },
-                    { x: 4, y: 0, z: -3, rotation: -45 },
-                    { x: -3, y: 0, z: -2, rotation: 45 },
-                    { x: 0, y: 0, z: -4, rotation: 0 },
-                    { x: 3, y: 0, z: -2, rotation: -45 },
-                    // 新規追加の5か所（遠く：9m〜15m）
-                    // { x: -8, y: 0, z: -12, rotation: 60 },   // 距離: 約14.4m
-                    // { x: 8, y: 0, z: -12, rotation: -60 },   // 距離: 約14.4m
-                    // { x: -3, y: 0, z: -15, rotation: 20 },   // 距離: 約15.3m
-                    // { x: 3, y: 0, z: -15, rotation: -20 },   // 距離: 約15.3m
-                    // { x: 0, y: 0, z: -10, rotation: 0 }      // 距離: 10m
+                // ランダムパターン設定（5パターン）
+                const movementPatterns = [
+                    // パターン1: 左後方からカメラへ（速い）
+                    {
+                        startPos: { x: -3, y: 0, z: -2 },
+                        speed: 0.4,
+                        useCamera: true,
+                        waitTime: 3000
+                    },
+                    // パターン2: 右後方からカメラへ（普通）
+                    {
+                        startPos: { x: 0, y: 0, z: -4 },
+                        speed: 0.3,
+                        useCamera: true,
+                        waitTime: 3000
+                    },
+                    // パターン3: 正面奥からカメラへ（遅い）
+                    {
+                        startPos: { x: 3, y: 0, z: -2 },
+                        speed: 0.2,
+                        useCamera: true,
+                        waitTime: 3000
+                    },
+                    // パターン4: 左から右へ横移動（固定終点）
+                    {
+                        startPos: { x: -6, y: 0, z: -8 },
+                        endPos: { x: 6, y: 0, z: -8 },
+                        speed: 0.35,
+                        useCamera: false,
+                        waitTime: 3000
+                    },
+                    // パターン5: 右から左へ横移動（固定終点）
+                    {
+                        startPos: { x: 6, y: 0, z: -8 },
+                        endPos: { x: -6, y: 0, z: -8 },
+                        speed: 0.35,
+                        useCamera: false,
+                        waitTime: 3000
+                    }
                 ];
-                const randomPos = positions[Math.floor(Math.random() * positions.length)];
+                
+                // ランダムにパターンを選択
+                const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                
+                let startPos = randomPattern.startPos;
+                let endPos = randomPattern.endPos || null;
+                let speed = randomPattern.speed;
+                let useCamera = randomPattern.useCamera;
+                let waitTime = randomPattern.waitTime;
+                
+                // 始点から終点への角度を計算
+                let rotation;
+                if (useCamera) {
+                    // カメラ方向への角度（始点から原点方向）
+                    rotation = Math.atan2(startPos.x, -startPos.z) * (180 / Math.PI);
+                } else {
+                    // 固定終点への角度
+                    const dx = endPos.x - startPos.x;
+                    const dz = endPos.z - startPos.z;
+                    rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
+                }
+                
+                console.log('Selected random pattern:', {
+                    startPos: startPos,
+                    endPos: endPos,
+                    speed: speed,
+                    useCamera: useCamera
+                });
                 
                 // 新しいモデルグループを作成
                 const newModelGroup = document.createElement('a-entity');
                 newModelGroup.setAttribute('id', modelId);
-                newModelGroup.setAttribute('position', `${randomPos.x} ${randomPos.y} ${randomPos.z}`);
-                newModelGroup.setAttribute('rotation', `0 ${randomPos.rotation} 0`);
+                newModelGroup.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
+                newModelGroup.setAttribute('rotation', `0 ${rotation} 0`);
                 newModelGroup.setAttribute('scale', '0 0 0'); // 最初は見えない状態
-                newModelGroup.setAttribute('approach-camera', ''); // カメラに向かって移動
+                
+                // 個別設定でapproach-cameraコンポーネントを追加
+                const cameraConfig = {
+                    speed: speed,
+                    startPos: startPos,
+                    useCamera: useCamera,
+                    autoRespawn: true,
+                    waitTime: waitTime
+                };
+                
+                // endPosが設定されている場合は追加
+                if (endPos) {
+                    cameraConfig.endPos = endPos;
+                }
+                
+                newModelGroup.setAttribute('approach-camera', cameraConfig);
                 
                 // 3Dモデルエンティティを作成
                 const newModelEntity = document.createElement('a-entity');
@@ -1455,7 +1692,7 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(newModelGroup);
-                console.log('Model added to scene');
+                console.log('Model added to scene with random pattern:', randomPattern);
                 
                 // フェードインアニメーション
                 setTimeout(() => {
@@ -1761,7 +1998,9 @@
         </a-entity>
 
         <!-- モデル01グループ（初期非表示） -->
-        <a-entity id="modelGroup_01" position="-3 0 -2" rotation="0 45 0" scale="1 1 1" approach-camera visible="false">
+        <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
+                  visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_01" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -1770,7 +2009,9 @@
         </a-entity>
 
         <!-- モデル02グループ（初期非表示） -->
-        <a-entity id="modelGroup_02" position="0 0 -4" rotation="0 0 0" scale="1 1 1" approach-camera visible="false">
+        <a-entity id="modelGroup_02" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000" 
+                  visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_02" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
@@ -1779,7 +2020,10 @@
         </a-entity>
 
         <!-- モデル03グループ（初期非表示） -->
-        <a-entity id="modelGroup_03" position="3 0 -2" rotation="0 -45 0" scale="1 1 1" approach-camera visible="false">
+        <!-- 例: 固定終点を使う場合は useCamera: false; endPos: x y z を指定 -->
+        <a-entity id="modelGroup_03" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
+                  approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000" 
+                  visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
