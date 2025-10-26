@@ -15,11 +15,13 @@ class ShootingScoreController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'score' => 'required|numeric',
+            'level' => 'nullable|integer|min:1|max:2',
         ]);
         
         $shootingScore = ShootingScore::create([
             'name' => $validated['name'] ?? 'noName',
             'score' => $validated['score'],
+            'level' => $validated['level'] ?? 1,
         ]);
         
         return response()->json([
@@ -45,11 +47,14 @@ class ShootingScoreController extends Controller
     }
     
     /**
-     * 上位5件のスコアを取得
+     * 上位5件のスコアを取得（レベル別）
      */
-    public function top5()
+    public function top5(Request $request)
     {
-        $scores = ShootingScore::orderBy('score', 'desc')
+        $level = $request->query('level', 1); // デフォルトはレベル1
+        
+        $scores = ShootingScore::where('level', $level)
+                               ->orderBy('score', 'desc')
                                ->take(5)
                                ->get();
         

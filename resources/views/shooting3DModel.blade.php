@@ -21,6 +21,8 @@
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
+        window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
+        window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -53,6 +55,36 @@
                 });
             }
         });
+
+        // テキストを常にカメラの方向へ向けるコンポーネント（Y軸のみ回転: ビルボード）
+        AFRAME.registerComponent('face-camera', {
+            init: function() {
+                this.cameraEl = null;
+            },
+            tick: function () {
+                // カメラ要素をキャッシュ
+                if (!this.cameraEl) {
+                    const sceneEl = this.el.sceneEl;
+                    if (sceneEl && sceneEl.camera) {
+                        this.cameraEl = sceneEl.camera.el;
+                    }
+                    if (!this.cameraEl) return;
+                }
+
+                const cameraPos = new THREE.Vector3();
+                const textPos = new THREE.Vector3();
+                
+                this.cameraEl.object3D.getWorldPosition(cameraPos);
+                this.el.object3D.getWorldPosition(textPos);
+
+                // カメラ方向を向く（lookAt使用）
+                this.el.object3D.lookAt(cameraPos);
+                
+                // X軸とZ軸の回転をリセット（Y軸のみ保持）
+                const currentRotation = this.el.object3D.rotation;
+                this.el.object3D.rotation.set(0, currentRotation.y, 0);
+            }
+        });
         
         // ボール管理用のグローバル配列
         window.activeBalls = [];
@@ -71,10 +103,30 @@
         AFRAME.registerComponent('start-menu', {
             init: function() {
                 this.startGame = this.startGame.bind(this);
+                this.selectLevel = this.selectLevel.bind(this);
                 this.handleClick = this.handleClick.bind(this);
                 this.handleTouch = this.handleTouch.bind(this);
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
+                
+                // レベル選択ボタンのイベントリスナーを追加
+                const level1Button = document.getElementById('level1Button');
+                const level2Button = document.getElementById('level2Button');
+                
+                if (level1Button) {
+                    level1Button.addEventListener('click', () => this.selectLevel(1));
+                    level1Button.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.selectLevel(1);
+                    });
+                }
+                if (level2Button) {
+                    level2Button.addEventListener('click', () => this.selectLevel(2));
+                    level2Button.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.selectLevel(2);
+                    });
+                }
                 
                 // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
                 const clickableElements = this.el.querySelectorAll('.clickable');
@@ -85,6 +137,14 @@
                 });
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
+            },
+            
+            selectLevel: function(level) {
+                console.log('Level selected:', level);
+                window.gameLevel = level;
+                
+                // レベルを保存してゲーム開始
+                this.startGame({ type: 'level-select' });
             },
             
             tick: function() {
@@ -248,7 +308,14 @@
             
             startGame: function(event) {
                 console.log('Game Start triggered!');
-                window.updateDebug('Game Started!');
+                
+                // レベル選択イベントの場合、window.gameLevelを使用
+                if (event && event.type === 'level-select' && window.gameLevel) {
+                    window.currentLevel = window.gameLevel;
+                    console.log('Level set to:', window.currentLevel);
+                }
+                
+                window.updateDebug('Game Started! Level: ' + window.currentLevel);
                 
                 // クリックブロックを有効化（ゲーム中のメニュークリックを防ぐ）
                 this.clickBlocked = true;
@@ -313,17 +380,17 @@
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
                 
-                // ランダムパターン設定（5パターン）
+                // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
                 const movementPatterns = [
-                    // パターン1: 左後方からカメラへ（速い）
+                    // パターン1: 左後方からカメラへ（速い）- 距離: 約11.2m
                     { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 3000 },
-                    // パターン2: 右後方からカメラへ（普通）
+                    // パターン2: 右後方からカメラへ（普通）- 距離: 約11.2m
                     { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 3000 },
-                    // パターン3: 正面奥からカメラへ（遅い）
+                    // パターン3: 正面奥からカメラへ（遅い）- 距離: 約12.0m
                     { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 3000 },
-                    // パターン4: 左から右へ横移動（固定終点）
+                    // パターン4: 左から右へ横移動（固定終点）- 距離: 12m
                     { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 },
-                    // パターン5: 右から左へ横移動（固定終点）
+                    // パターン5: 右から左へ横移動（固定終点）- 距離: 12m
                     { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 }
                 ];
                 
@@ -482,12 +549,22 @@
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
                 const maxComboText = document.getElementById('maxComboText');
+                const levelText = document.getElementById('resultLevel');
                 
                 console.log('Score text element:', scoreText ? 'found' : 'NOT FOUND');
                 console.log('Comment text element:', commentText ? 'found' : 'NOT FOUND');
                 
                 console.log('Score text:', scoreText ? 'found' : 'NOT FOUND');
                 console.log('Comment text:', commentText ? 'found' : 'NOT FOUND');
+                
+                // レベルを表示
+                if (levelText) {
+                    const levelName = window.currentLevel === 2 ? 'Level 2 - HARD' : 'Level 1 - EASY';
+                    const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
+                    levelText.setAttribute('value', levelName);
+                    levelText.setAttribute('color', levelColor);
+                    console.log('Level updated:', levelName);
+                }
                 
                 // スコアを表示（小数第一位まで）
                 if (scoreText) {
@@ -546,7 +623,7 @@
             },
             
             saveScoreToDatabase: function(score) {
-                console.log('Saving score to database:', score);
+                console.log('Saving score to database:', score, 'Level:', window.currentLevel);
                 
                 fetch('api/shooting-scores', {
                     method: 'POST',
@@ -557,11 +634,17 @@
                     body: JSON.stringify({
                         name: 'noName', // デフォルト名
                         score: score,
+                        level: window.currentLevel || 1, // レベル情報を追加
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     console.log('Score saved successfully:', data);
+                    if (data && data.data && data.data.id) {
+                        window.lastSavedScoreId = data.data.id;
+                    } else {
+                        window.lastSavedScoreId = null;
+                    }
                     window.updateDebug('Score saved to DB');
                     // スコア保存後にランキングを取得
                     this.fetchAndDisplayRankings();
@@ -573,9 +656,9 @@
             },
             
             fetchAndDisplayRankings: function() {
-                console.log('Fetching top 5 rankings...');
+                console.log('Fetching top 5 rankings for Level:', window.currentLevel);
                 
-                fetch('api/shooting-scores/top5')
+                fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}`)
                     .then(response => response.json())
                     .then(data => {
                         console.log('Rankings fetched:', data);
@@ -584,8 +667,10 @@
                             
                             // トップ5に入っているかチェック
                             const currentScore = window.totalScore;
+                            const currentId = window.lastSavedScoreId || null;
                             const isInTop5 = data.data.some(item => 
-                                Math.abs(item.score - currentScore) < 0.01 && item.name === 'noName'
+                                (currentId && item.id === currentId) ||
+                                (Math.abs(item.score - currentScore) < 0.01 && item.name === 'noName')
                             );
                             
                             if (isInTop5) {
@@ -643,8 +728,22 @@
                     rankingDisplay.removeChild(rankingDisplay.firstChild);
                 }
                 
-                // 現在のプレイヤーのスコア
+                // レベル表示を追加（一番上）
+                const levelHeader = document.createElement('a-text');
+                const levelName = window.currentLevel === 2 ? 'Level 2 Rankings' : 'Level 1 Rankings';
+                const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
+                levelHeader.setAttribute('value', levelName);
+                levelHeader.setAttribute('position', '0 0.4 0');
+                levelHeader.setAttribute('align', 'center');
+                levelHeader.setAttribute('color', levelColor);
+                levelHeader.setAttribute('width', '4');
+                levelHeader.setAttribute('font', 'roboto');
+                levelHeader.setAttribute('shader', 'msdf');
+                rankingDisplay.appendChild(levelHeader);
+                
+                // 現在のプレイヤーのスコアと保存ID
                 const currentScore = window.totalScore;
+                const currentId = window.lastSavedScoreId || null;
                 
                 // ランキングを表示（上から順に5位まで）
                 rankings.forEach((item, index) => {
@@ -658,8 +757,9 @@
                     // ランキング行のテキスト
                     const rankingText = `${rank}. ${item.score.toFixed(1)}pt  ${item.name}  ${dateStr}`;
                     
-                    // 自分のスコアかどうかを判定（スコアが一致し、名前が一致する場合）
-                    const isCurrentPlayer = (Math.abs(item.score - currentScore) < 0.01) && (item.name === 'noName');
+                    // 自分のスコアかどうかを判定：ID一致があれば最優先、なければスコア±0.01 & 名前一致
+                    const isCurrentPlayer = (currentId && item.id === currentId) ||
+                                             ((Math.abs(item.score - currentScore) < 0.01) && (item.name === 'noName'));
                     
                     // 色を決定
                     let textColor = '#FFFFFF'; // デフォルトは白
@@ -1386,18 +1486,62 @@
                             currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
                         }
                         
+                        // 距離に応じたスコアテキストのサイズを決定（3段階）
+                        let scoreWidth = 8; // 基準サイズ
+                        if (distance > 8) {
+                            scoreWidth = 16; // 遠距離（8m以上）：2倍
+                        } else if (distance > 4) {
+                            scoreWidth = 12; // 中距離（4-8m）：1.5倍
+                        }
+                        // 4m以内は通常サイズ（8 = 1倍）
+                        
+                        // ボーナス時はさらに1.2倍
+                        if (comboBonus) {
+                            scoreWidth = scoreWidth * 1.2;
+                        }
+                        
+                        console.log('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
+                        
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
                         const scoreDisplay = comboBonus ? `${finalScore.toFixed(1)} (${comboBonus})` : `${finalScore.toFixed(1)}`;
                         scoreText.setAttribute('value', scoreDisplay);
-                        scoreText.setAttribute('position', '0 0.5 0'); // モデルの上0.5m
                         scoreText.setAttribute('align', 'center');
                         scoreText.setAttribute('color', comboBonus ? '#FF6600' : '#FFD700'); // ボーナス時はオレンジ、通常は金色
-                        scoreText.setAttribute('width', comboBonus ? '6.6' : '6'); // ボーナス時は1.1倍大きく（6→6.6）
+                        scoreText.setAttribute('width', scoreWidth); // 距離に応じたサイズ
                         scoreText.setAttribute('font', comboBonus ? 'mozillavr' : 'roboto'); // ボーナス時はフォント変更
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
-                        modelGroup.appendChild(scoreText);
+                        
+                        // ワールド座標を取得
+                        const scoreModelPos = new THREE.Vector3();
+                        modelGroup.object3D.getWorldPosition(scoreModelPos);
+                        
+                        // ワールド座標に配置
+                        scoreText.setAttribute('position', `${scoreModelPos.x} ${scoreModelPos.y + 0.5} ${scoreModelPos.z}`);
+                        
+                        // カメラの方を向く（独自face-cameraコンポーネント）
+                        scoreText.setAttribute('face-camera', '');
+                        
+                        // シーンに直接追加
+                        sceneEl.appendChild(scoreText);
+                        console.log('Score text added to scene at world position');
+                        
+                        // 通常ヒット時（コンボなし）のパーティクル表示
+                        if (!comboBonus) {
+                            const normalParticle = document.getElementById('particle-normal');
+                            if (normalParticle) {
+                                const normalParticlePos = new THREE.Vector3();
+                                modelGroup.object3D.getWorldPosition(normalParticlePos);
+                                normalParticle.setAttribute('position', `${normalParticlePos.x} ${normalParticlePos.y + 0.5} ${normalParticlePos.z}`);
+                                normalParticle.setAttribute('visible', true);
+                                
+                                // 1秒後に非表示
+                                setTimeout(() => {
+                                    normalParticle.setAttribute('visible', false);
+                                }, 1000);
+                            }
+                        }
                         
                         // ボーナス時のエフェクト
                         if (comboBonus) {
@@ -1439,23 +1583,15 @@
                                 easing: 'easeOutElastic'
                             });
                             
-                            // 追加エフェクト: スコアテキストを回転
-                            scoreText.setAttribute('animation__rotate', {
-                                property: 'rotation',
-                                from: '0 0 -15',
-                                to: '0 0 15',
-                                dur: 400,
-                                easing: 'easeInOutSine',
-                                loop: 2,
-                                dir: 'alternate'
-                            });
+                            // 注意: animation__rotateは削除（face-cameraと競合するため）
                         }
                         
-                        // スコアテキストをフェードアウトさせる
+                        // スコアテキストをフェードアウトさせる（ワールド座標で上に移動）
                         setTimeout(() => {
+                            const currentPos = scoreText.getAttribute('position');
                             scoreText.setAttribute('animation__scoreup', {
                                 property: 'position',
-                                to: '0 1 0', // 0.5m上から1m上に移動
+                                to: `${currentPos.x} ${currentPos.y + 0.5} ${currentPos.z}`, // 現在位置から0.5m上に移動
                                 dur: 1500,
                                 easing: 'easeOutQuad'
                             });
@@ -1466,6 +1602,13 @@
                                 dur: 1500,
                                 easing: 'linear'
                             });
+                            
+                            // アニメーション完了後に削除
+                            setTimeout(() => {
+                                if (scoreText.parentNode) {
+                                    scoreText.parentNode.removeChild(scoreText);
+                                }
+                            }, 1500);
                         }, 100);
                         
                         // カメラへの移動を停止
@@ -1523,24 +1666,61 @@
                         modelGroup.removeChild(existingCombo);
                     }
                     
+                    // カメラとモデルの距離を取得
+                    const sceneEl = document.querySelector('a-scene');
+                    const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+                    let distance = 0;
+                    
+                    if (camera) {
+                        const modelPos = new THREE.Vector3();
+                        const cameraPos = new THREE.Vector3();
+                        modelGroup.object3D.getWorldPosition(modelPos);
+                        camera.object3D.getWorldPosition(cameraPos);
+                        distance = modelPos.distanceTo(cameraPos);
+                    }
+                    
+                    // 距離に応じたコンボテキストのサイズを決定（3段階）
+                    let comboWidth = 8; // 基準サイズ
+                    if (distance > 8) {
+                        comboWidth = 16; // 遠距離（8m以上）：2倍
+                    } else if (distance > 4) {
+                        comboWidth = 12; // 中距離（4-8m）：1.5倍
+                    }
+                    // 4m以内は通常サイズ（8 = 1倍）
+                    
+                    console.log('Combo - Distance:', distance.toFixed(2), 'm, Combo width:', comboWidth);
+                    
                     // コンボテキストを作成
                     const comboText = document.createElement('a-text');
                     comboText.setAttribute('value', `Combo ${comboCount}!`);
-                    comboText.setAttribute('position', '0 1.0 0'); // スコアの上（スコアは0.5なので1.0）
                     comboText.setAttribute('align', 'center');
                     comboText.setAttribute('color', '#FF6600'); // オレンジ色
-                    comboText.setAttribute('width', '6');
+                    comboText.setAttribute('width', comboWidth); // 距離に応じたサイズ
                     comboText.setAttribute('font', 'roboto');
                     comboText.setAttribute('shader', 'msdf');
                     comboText.setAttribute('anchor', 'center');
                     comboText.classList.add('combo-text');
-                    modelGroup.appendChild(comboText);
                     
-                    // コンボテキストをフェードアウトさせる
+                    // ワールド座標を取得
+                    const comboModelPos = new THREE.Vector3();
+                    modelGroup.object3D.getWorldPosition(comboModelPos);
+                    
+                    // スコアの上に配置（スコアは+0.5なので+1.0）
+                    comboText.setAttribute('position', `${comboModelPos.x} ${comboModelPos.y + 1.0} ${comboModelPos.z}`);
+                    
+                    // カメラの方を向く（独自face-cameraコンポーネント）
+                    comboText.setAttribute('face-camera', '');
+                    
+                    // シーンに直接追加
+                    sceneEl.appendChild(comboText);
+                    console.log('Combo text added to scene at world position');
+                    
+                    // コンボテキストをフェードアウトさせる（ワールド座標で上に移動）
                     setTimeout(() => {
+                        const currentPos = comboText.getAttribute('position');
                         comboText.setAttribute('animation__fadeup', {
                             property: 'position',
-                            to: '0 1.5 0', // 1.0m上から1.5m上に移動
+                            to: `${currentPos.x} ${currentPos.y + 0.5} ${currentPos.z}`, // 現在位置から0.5m上に移動
                             dur: 1500,
                             easing: 'easeOutQuad'
                         });
@@ -1575,53 +1755,84 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムパターン設定（5パターン）
-                const movementPatterns = [
-                    // パターン1: 左後方からカメラへ（速い）
+                // ランダムパターン設定（8パターン）
+                const allMovementPatterns = [
+                    // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: -3, y: 0, z: -2 },
                         speed: 0.4,
                         useCamera: true,
                         waitTime: 3000
                     },
-                    // パターン2: 右後方からカメラへ（普通）
+                    // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
                         speed: 0.3,
                         useCamera: true,
                         waitTime: 3000
                     },
-                    // パターン3: 正面奥からカメラへ（遅い）
+                    // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -2 },
                         speed: 0.2,
                         useCamera: true,
                         waitTime: 3000
                     },
-                    // パターン4: 左から右へ横移動（固定終点）
+                    // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
-                        startPos: { x: -6, y: 0, z: -8 },
-                        endPos: { x: 6, y: 0, z: -8 },
-                        speed: 0.35,
-                        useCamera: false,
+                        startPos: { x: 4, y: 0, z: -3 },
+                        speed: 0.3,
+                        useCamera: true,
                         waitTime: 3000
                     },
-                    // パターン5: 右から左へ横移動（固定終点）
+                    // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
+                    {
+                        startPos: { x: 7, y: 0, z: 10 },
+                        speed: 0.3,
+                        useCamera: true,
+                        waitTime: 5000
+                    },
+                    // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
+                    {
+                        startPos: { x: -2, y: 0, z: 6 },
+                        speed: 0.3,
+                        useCamera: true,
+                        waitTime: 5000
+                    },
+                    // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
+                    {
+                        startPos: { x: -6, y: 2, z: -8 },
+                        endPos: { x: 6, y: 2, z: -8 },
+                        speed: 0.35,
+                        useCamera: false,
+                        waitTime: 1000
+                    },
+                    // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: 6, y: 0, z: -8 },
                         endPos: { x: -6, y: 0, z: -8 },
                         speed: 0.35,
                         useCamera: false,
-                        waitTime: 3000
+                        waitTime: 1000
                     }
                 ];
+                
+                // レベルに応じてパターンをフィルタリング
+                const movementPatterns = window.currentLevel === 1 
+                    ? allMovementPatterns.slice(0, 4)  // Level 1: パターン1-4のみ
+                    : allMovementPatterns;              // Level 2: 全パターン1-8
+                
+                // スピード倍率（Level 2は2倍速）
+                const speedMultiplier = window.currentLevel === 2 ? 2.0 : 1.0;
+                
+                console.log('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
                 // ランダムにパターンを選択
                 const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
                 
                 let startPos = randomPattern.startPos;
                 let endPos = randomPattern.endPos || null;
-                let speed = randomPattern.speed;
+                let speed = randomPattern.speed * speedMultiplier; // スピード倍率を適用
                 let useCamera = randomPattern.useCamera;
                 let waitTime = randomPattern.waitTime;
                 
@@ -1831,25 +2042,61 @@
                 shader="msdf">
             </a-text>
             
-            <!-- スタートボタンの背景 -->
+            <!-- Level 1 ボタンの背景 -->
             <a-plane 
-                id="startButton"
-                position="0 -0.3 0.01" 
-                width="1.5" 
-                height="0.5" 
-                color="#FFD700" 
+                id="level1Button"
+                position="-1.2 -0.5 0.01" 
+                width="1.8" 
+                height="0.6" 
+                color="#00FF00" 
                 opacity="0.9"
                 material="transparent: true"
                 class="clickable">
             </a-plane>
             
-            <!-- スタートボタンテキスト -->
+            <!-- Level 1 ボタンテキスト -->
             <a-text 
-                value="START" 
-                position="0 -0.3 0.02" 
+                value="Level 1&#10;EASY" 
+                position="-1.2 -0.5 0.02" 
                 align="center" 
                 color="#000000" 
-                width="2.5"
+                width="3"
+                font="roboto"
+                shader="msdf"
+                baseline="center">
+            </a-text>
+            
+            <!-- Level 2 ボタンの背景 -->
+            <a-plane 
+                id="level2Button"
+                position="1.2 -0.5 0.01" 
+                width="1.8" 
+                height="0.6" 
+                color="#FF6600" 
+                opacity="0.9"
+                material="transparent: true"
+                class="clickable">
+            </a-plane>
+            
+            <!-- Level 2 ボタンテキスト -->
+            <a-text 
+                value="Level 2&#10;HARD" 
+                position="1.2 -0.5 0.02" 
+                align="center" 
+                color="#000000" 
+                width="3"
+                font="roboto"
+                shader="msdf"
+                baseline="center">
+            </a-text>
+            
+            <!-- 難易度説明 -->
+            <a-text 
+                value="Level 1: 3 patterns toward camera&#10;Level 2: 5 patterns + 2x speed" 
+                position="0 -1.3 0.02" 
+                align="center" 
+                color="#CCCCCC" 
+                width="5"
                 font="roboto"
                 shader="msdf"
                 baseline="center">
@@ -1932,6 +2179,18 @@
                 shader="msdf">
             </a-text>
             
+            <!-- レベル表示（スコアの上） -->
+            <a-text 
+                id="resultLevel"
+                value="Level 1" 
+                position="0 1.7 0.01" 
+                align="center" 
+                color="#00FF00" 
+                width="3"
+                font="roboto"
+                shader="msdf">
+            </a-text>
+            
             <!-- 最大コンボ表示（スコアのすぐ下） -->
             <a-text 
                 id="maxComboText"
@@ -1956,17 +2215,6 @@
                 shader="msdf">
             </a-text>
             
-            <!-- ランキングタイトル（0.2上げる：-0.1→0.1） -->
-            <a-text 
-                value="TOP 5 RANKING" 
-                position="0 0.1 0.01" 
-                align="center" 
-                color="#FFD700" 
-                width="3"
-                font="roboto"
-                shader="msdf">
-            </a-text>
-            
             <!-- ランキング表示エリア（0.2上げる：-0.5→-0.3） -->
             <a-entity id="rankingDisplay" position="0 -0.3 0.01">
                 <!-- JavaScriptで動的に生成 -->
@@ -1976,7 +2224,7 @@
             <a-plane 
                 id="restartButton"
                 position="0 -2.0 0.01" 
-                width="2" 
+                width="3.5" 
                 height="0.6" 
                 color="#00FF00" 
                 opacity="0.9"
@@ -1986,11 +2234,11 @@
             
             <!-- RESTARTボタンテキスト -->
             <a-text 
-                value="RESTART" 
+                value="Return to Start Screen" 
                 position="0 -2.0 0.02" 
                 align="center" 
                 color="#000000" 
-                width="3"
+                width="4"
                 font="roboto"
                 shader="msdf"
                 baseline="center">
@@ -2035,6 +2283,10 @@
         <a-sky id="aSky" src="#sky02"></a-sky>
 
         <!-- Particle Effects - 3 Tiers -->
+        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 10 particles -->
+        <a-entity id="particle-normal" visible="false" position="0 3 0" 
+                  particle-system="preset: default; color: #FFFFFF; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+        
         <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 20 particles -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
                   particle-system="preset: default; color: #00FFFF; particleCount: 20; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>

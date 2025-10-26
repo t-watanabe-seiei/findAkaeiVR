@@ -14,9 +14,11 @@ class ShootingScore extends Model
     protected $fillable = [
         'name',
         'score',
+        'level',
     ];
     
     protected $casts = [
         'score' => 'float',
+        'level' => 'integer',
     ];
 }
