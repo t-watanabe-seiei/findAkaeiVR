@@ -30,12 +30,33 @@
                 this.el.addEventListener('model-loaded', () => {
                     const mesh = this.el.getObject3D('mesh');
                     if (mesh) {
+                        // mattsun2.glbかどうかを判定（親のIDまたはgltf-model属性で判別）
+                        const modelSrc = this.el.getAttribute('gltf-model');
+                        const isMattsun = modelSrc && modelSrc.includes('mattsun2.glb');
+                        
                         mesh.traverse((node) => {
                             if (node.isMesh && node.material) {
                                 // マテリアルの品質設定
                                 if (node.material.map) {
                                     node.material.map.anisotropy = 16; // テクスチャのアニソトロピックフィルタリング
                                 }
+                                
+                                // mattsun2.glbの場合は明るさを増加
+                                if (isMattsun) {
+                                    // エミッシブカラーを追加して明るくする
+                                    if (!node.material.emissive) {
+                                        node.material.emissive = new THREE.Color(0x444444); // グレーのエミッシブ
+                                    } else {
+                                        node.material.emissive.multiplyScalar(1.5); // 既存のエミッシブを1.5倍
+                                    }
+                                    node.material.emissiveIntensity = 1.5; // エミッシブ強度
+                                    
+                                    // カラーも少し明るくする
+                                    if (node.material.color) {
+                                        node.material.color.multiplyScalar(1.3);
+                                    }
+                                }
+                                
                                 node.material.needsUpdate = true;
                                 
                                 // メタルネスとラフネスマップがあれば設定
@@ -50,7 +71,7 @@
                                 }
                             }
                         });
-                        console.log('Model materials enhanced');
+                        console.log('Model materials enhanced' + (isMattsun ? ' (mattsun2: brightness increased)' : ''));
                     }
                 });
             }
@@ -394,9 +415,11 @@
                     { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 }
                 ];
                 
-                // 初期の3つのモデルにランダムパターンを適用
-                const initialModelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
-                console.log('Showing initial 3 models with random patterns');
+                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 4体）
+                const initialModelIds = window.currentLevel === 1 
+                    ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
+                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
+                console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 initialModelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model) {
@@ -918,7 +941,8 @@
                 const models = [
                     { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
                     { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
-                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' }
+                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
+                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' }
                 ];
                 
                 for (let modelInfo of models) {
@@ -1994,6 +2018,7 @@
             <a-asset-item id="model_01" src={{ asset('cg/ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_02" src={{ asset('cg/oda.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/ohnomi.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/mattsun2.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
@@ -2274,6 +2299,17 @@
                   visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- モデル04グループ（初期非表示・Level 2専用） -->
+        <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
+                  visible="false">
+            <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
+            <a-entity id="hit-boxed_04" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 0.4 0.3" class="collidable"></a-entity>
             </a-entity>
