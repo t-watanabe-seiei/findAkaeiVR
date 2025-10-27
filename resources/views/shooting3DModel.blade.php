@@ -2341,11 +2341,11 @@
             
             <!-- タイトルテキスト -->
             <a-text 
-                value="VR SHOOTING GAME" 
+                value="seiei VR SHOOTING GAME" 
                 position="0 0.5 0.01" 
                 align="center" 
                 color="#FFFFFF" 
-                width="2.5"
+                width="3"
                 font="roboto"
                 shader="msdf">
             </a-text>
@@ -2404,7 +2404,7 @@
                 position="0 -1.3 0.02" 
                 align="center" 
                 color="#CCCCCC" 
-                width="4"
+                width="3"
                 font="roboto"
                 shader="msdf"
                 baseline="center">
