@@ -30,9 +30,9 @@
                 this.el.addEventListener('model-loaded', () => {
                     const mesh = this.el.getObject3D('mesh');
                     if (mesh) {
-                        // mattsun2.glbかどうかを判定（親のIDまたはgltf-model属性で判別）
+                        // fukuda.glbかどうかを判定（親のIDまたはgltf-model属性で判別）
                         const modelSrc = this.el.getAttribute('gltf-model');
-                        const isMattsun = modelSrc && modelSrc.includes('mattsun2.glb');
+                        const isMattsun = modelSrc && modelSrc.includes('fukuda.glb');
                         
                         mesh.traverse((node) => {
                             if (node.isMesh && node.material) {
@@ -41,7 +41,7 @@
                                     node.material.map.anisotropy = 16; // テクスチャのアニソトロピックフィルタリング
                                 }
                                 
-                                // mattsun2.glbの場合は明るさを増加
+                                // fukuda.glbの場合は明るさを増加
                                 if (isMattsun) {
                                     // エミッシブカラーを追加して明るくする
                                     if (!node.material.emissive) {
@@ -633,12 +633,22 @@
                 console.log('Setting result menu visible and animating...');
                 resultMenu.setAttribute('visible', true);
                 resultMenu.setAttribute('scale', '0 0 0');
-                resultMenu.setAttribute('animation', {
-                    property: 'scale',
-                    to: '1 1 1',
-                    dur: 500,
-                    easing: 'easeOutBack'
-                });
+                
+                // 既存のアニメーションをクリア
+                resultMenu.removeAttribute('animation');
+                resultMenu.removeAttribute('animation__scale');
+                
+                // 少し待ってからアニメーション開始（確実に反映させる）
+                setTimeout(() => {
+                    resultMenu.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 500,
+                        easing: 'easeOutBack'
+                    });
+                    console.log('Result menu animation started');
+                }, 50);
+                
                 console.log('Result menu should be visible now');
                 
                 // スコアをデータベースに保存
@@ -807,13 +817,279 @@
                 console.log('Rankings displayed:', rankings.length, 'entries');
             },
             
+            recreateInitialModels: function(sceneEl) {
+                console.log('Recreating initial models...');
+                
+                // モデル01を再作成
+                const model01 = document.createElement('a-entity');
+                model01.setAttribute('id', 'modelGroup_01');
+                model01.setAttribute('position', '-4 0 -8');
+                model01.setAttribute('rotation', '0 45 0');
+                model01.setAttribute('scale', '1 1 1');
+                model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model01.setAttribute('visible', 'false');
+                
+                const model01Entity = document.createElement('a-entity');
+                model01Entity.setAttribute('gltf-model', '#model_01');
+                model01Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model01Entity.setAttribute('enhance-materials', '');
+                model01.appendChild(model01Entity);
+                
+                const hitBox01 = document.createElement('a-entity');
+                hitBox01.setAttribute('id', 'hit-boxed_01');
+                hitBox01.setAttribute('hit-box', '');
+                hitBox01.setAttribute('position', '0 0.3 0');
+                const cylinder01 = document.createElement('a-entity');
+                cylinder01.setAttribute('geometry', 'primitive: cylinder');
+                cylinder01.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder01.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder01.setAttribute('class', 'collidable');
+                hitBox01.appendChild(cylinder01);
+                model01.appendChild(hitBox01);
+                sceneEl.appendChild(model01);
+                
+                // モデル02を再作成
+                const model02 = document.createElement('a-entity');
+                model02.setAttribute('id', 'modelGroup_02');
+                model02.setAttribute('position', '0 0 -10');
+                model02.setAttribute('rotation', '0 0 0');
+                model02.setAttribute('scale', '1 1 1');
+                model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model02.setAttribute('visible', 'false');
+                
+                const model02Entity = document.createElement('a-entity');
+                model02Entity.setAttribute('gltf-model', '#model_02');
+                model02Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model02Entity.setAttribute('enhance-materials', '');
+                model02.appendChild(model02Entity);
+                
+                const hitBox02 = document.createElement('a-entity');
+                hitBox02.setAttribute('id', 'hit-boxed_02');
+                hitBox02.setAttribute('hit-box', '');
+                hitBox02.setAttribute('position', '0 0.3 0');
+                const cylinder02 = document.createElement('a-entity');
+                cylinder02.setAttribute('geometry', 'primitive: cylinder');
+                cylinder02.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder02.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder02.setAttribute('class', 'collidable');
+                hitBox02.appendChild(cylinder02);
+                model02.appendChild(hitBox02);
+                sceneEl.appendChild(model02);
+                
+                // モデル03を再作成
+                const model03 = document.createElement('a-entity');
+                model03.setAttribute('id', 'modelGroup_03');
+                model03.setAttribute('position', '4 0 -8');
+                model03.setAttribute('rotation', '0 -45 0');
+                model03.setAttribute('scale', '1 1 1');
+                model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000');
+                model03.setAttribute('visible', 'false');
+                
+                const model03Entity = document.createElement('a-entity');
+                model03Entity.setAttribute('gltf-model', '#model_03');
+                model03Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model03Entity.setAttribute('enhance-materials', '');
+                model03.appendChild(model03Entity);
+                
+                const hitBox03 = document.createElement('a-entity');
+                hitBox03.setAttribute('id', 'hit-boxed_03');
+                hitBox03.setAttribute('hit-box', '');
+                hitBox03.setAttribute('position', '0 0.3 0');
+                const cylinder03 = document.createElement('a-entity');
+                cylinder03.setAttribute('geometry', 'primitive: cylinder');
+                cylinder03.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder03.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder03.setAttribute('class', 'collidable');
+                hitBox03.appendChild(cylinder03);
+                model03.appendChild(hitBox03);
+                sceneEl.appendChild(model03);
+                
+                // モデル04を再作成
+                const model04 = document.createElement('a-entity');
+                model04.setAttribute('id', 'modelGroup_04');
+                model04.setAttribute('position', '-4 0 -8');
+                model04.setAttribute('rotation', '0 45 0');
+                model04.setAttribute('scale', '1 1 1');
+                model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model04.setAttribute('visible', 'false');
+                
+                const model04Entity = document.createElement('a-entity');
+                model04Entity.setAttribute('gltf-model', '#model_04');
+                model04Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model04Entity.setAttribute('enhance-materials', '');
+                model04.appendChild(model04Entity);
+                
+                const hitBox04 = document.createElement('a-entity');
+                hitBox04.setAttribute('id', 'hit-boxed_04');
+                hitBox04.setAttribute('hit-box', '');
+                hitBox04.setAttribute('position', '0 0.3 0');
+                const cylinder04 = document.createElement('a-entity');
+                cylinder04.setAttribute('geometry', 'primitive: cylinder');
+                cylinder04.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder04.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder04.setAttribute('class', 'collidable');
+                hitBox04.appendChild(cylinder04);
+                model04.appendChild(hitBox04);
+                sceneEl.appendChild(model04);
+                
+                console.log('Initial models recreated');
+            },
+            
             restartGame: function() {
-                console.log('=== Restarting game - Full reload ===');
+                console.log('=== Restarting game - Reset without reload ===');
                 window.updateDebug('Restarting...');
                 
-                // ページを完全にリロードして初期状態に戻す
-                // これにより、すべての状態がクリーンにリセットされる
-                location.reload();
+                // ゲーム状態をリセット
+                window.gameStarted = false;
+                window.gameEnded = false;
+                window.totalScore = 0;
+                window.comboCount = 0;
+                window.maxComboCount = 0;
+                window.lastBallHit = false;
+                window.currentLevel = 1; // デフォルトに戻す
+                window.gameLevel = 1;
+                window.activeBalls = [];
+                
+                // クリックブロックフラグをリセット
+                this.clickBlocked = false;
+                this.controllersUpdated = false;
+                console.log('Click block flags reset');
+                
+                // タイマーをクリア
+                if (window.gameTimer) {
+                    clearInterval(window.gameTimer);
+                    window.gameTimer = null;
+                }
+                
+                // BGMを停止
+                const bgm = document.getElementById('sound_bgm');
+                if (bgm) {
+                    bgm.pause();
+                    bgm.currentTime = 0;
+                }
+                
+                // シーンを取得
+                const sceneEl = document.querySelector('a-scene');
+                
+                // すべてのモデルを完全に削除（動的に生成されたものも含む）
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
+                allModels.forEach(modelId => {
+                    // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
+                    const models = sceneEl.querySelectorAll(`#${modelId}`);
+                    models.forEach(model => {
+                        if (model && model.parentNode) {
+                            console.log('Removing model:', modelId);
+                            model.parentNode.removeChild(model);
+                        }
+                    });
+                });
+                
+                // すべてのボールを削除
+                window.activeBalls.forEach(ballData => {
+                    if (ballData.ball && ballData.ball.parentNode) {
+                        ballData.ball.parentNode.removeChild(ballData.ball);
+                    }
+                });
+                window.activeBalls = [];
+                
+                // シーン上の動的に生成されたテキスト（スコア・コンボ）を削除
+                const scoreTexts = sceneEl.querySelectorAll('a-text[face-camera]');
+                scoreTexts.forEach(text => {
+                    if (text.parentNode) {
+                        text.parentNode.removeChild(text);
+                    }
+                });
+                
+                // ランキング表示をクリア
+                const rankingDisplay = document.getElementById('rankingDisplay');
+                if (rankingDisplay) {
+                    while (rankingDisplay.firstChild) {
+                        rankingDisplay.removeChild(rankingDisplay.firstChild);
+                    }
+                }
+                
+                // 元のモデルを再作成（初期状態に戻す）
+                this.recreateInitialModels(sceneEl);
+                
+                // UI表示を初期状態に戻す
+                const startMenu = document.getElementById('startMenu');
+                const resultMenu = document.getElementById('resultMenu');
+                const timerDisplay = document.getElementById('timerDisplay');
+                
+                console.log('Checking UI elements:');
+                console.log('- startMenu:', startMenu ? 'found' : 'NOT FOUND');
+                console.log('- resultMenu:', resultMenu ? 'found' : 'NOT FOUND');
+                console.log('- timerDisplay:', timerDisplay ? 'found' : 'NOT FOUND');
+                
+                if (startMenu) {
+                    startMenu.setAttribute('visible', 'true');
+                    console.log('Start menu set to visible');
+                    
+                    // 強制的に前面に配置
+                    startMenu.setAttribute('position', '0 1.6 -3');
+                    startMenu.setAttribute('scale', '1 1 1');
+                    startMenu.object3D.visible = true; // THREE.jsレベルでも表示
+                    
+                    // clickableクラスを復元（startGameで削除されているため）
+                    const nonClickableElements = startMenu.querySelectorAll('.non-clickable');
+                    nonClickableElements.forEach(element => {
+                        element.classList.remove('non-clickable');
+                        element.classList.add('clickable');
+                    });
+                    console.log('Restored clickable classes to', nonClickableElements.length, 'elements');
+                    
+                    // 子要素も確認
+                    const menuBg = startMenu.querySelector('#menuBackground');
+                    const level1Btn = startMenu.querySelector('#level1Button');
+                    const level2Btn = startMenu.querySelector('#level2Button');
+                    console.log('Start menu children:', {
+                        background: menuBg ? 'found' : 'missing',
+                        level1Button: level1Btn ? 'found' : 'missing',
+                        level2Button: level2Btn ? 'found' : 'missing'
+                    });
+                }
+                
+                if (resultMenu) {
+                    resultMenu.setAttribute('visible', 'false');
+                    resultMenu.setAttribute('scale', '1 1 1'); // スケールを元に戻す
+                    console.log('Result menu set to hidden');
+                    
+                    // アニメーションをクリア（次回の表示のため）
+                    resultMenu.removeAttribute('animation');
+                    resultMenu.removeAttribute('animation__scale');
+                }
+                
+                if (timerDisplay) {
+                    timerDisplay.setAttribute('visible', 'false');
+                    console.log('Timer display set to hidden');
+                }
+                
+                // raycasterを.clickableと.collidableの両方を対象に戻す
+                const mouseCursor = document.getElementById('mouseCursor');
+                const leftController = document.getElementById('leftController');
+                const rightController = document.getElementById('rightController');
+                
+                if (mouseCursor) {
+                    mouseCursor.setAttribute('raycaster', 'objects: .clickable, .collidable');
+                    console.log('Restored .clickable to mouse cursor');
+                }
+                if (leftController) {
+                    leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                    console.log('Restored .clickable to left controller');
+                }
+                if (rightController) {
+                    rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                    console.log('Restored .clickable to right controller');
+                }
+                
+                // スコア表示をリセット
+                const currentScoreText = document.getElementById('currentScore');
+                if (currentScoreText) {
+                    currentScoreText.setAttribute('value', 'SCORE: 0.0');
+                }
+                
+                console.log('Game reset complete - Ready to start new game');
+                window.updateDebug('Ready to start');
             }
         });
         
@@ -1500,9 +1776,10 @@
                         }
                         
                         // コンボ表示を更新（2連続以上の場合）
-                        if (window.comboCount >= 2) {
-                            this.showCombo(window.comboCount, modelGroup);
-                        }
+                        // ※ showCombo関数は使用しない（スコアテキストに統合済み）
+                        // if (window.comboCount >= 2) {
+                        //     this.showCombo(window.comboCount, modelGroup);
+                        // }
                         
                         // リアルタイムスコア表示を更新
                         const currentScoreText = document.getElementById('currentScore');
@@ -1511,29 +1788,29 @@
                         }
                         
                         // 距離に応じたスコアテキストのサイズを決定（3段階）
-                        let scoreWidth = 8; // 基準サイズ
+                        let scoreWidth = 6; // 基準サイズ（近距離）
                         if (distance > 8) {
-                            scoreWidth = 16; // 遠距離（8m以上）：2倍
+                            scoreWidth = 16; // 遠距離（8m以上）：約2.7倍
                         } else if (distance > 4) {
-                            scoreWidth = 12; // 中距離（4-8m）：1.5倍
+                            scoreWidth = 10; // 中距離（4-8m）：約1.7倍
                         }
-                        // 4m以内は通常サイズ（8 = 1倍）
+                        // 4m以内は基準サイズ（6 = 1倍）
                         
-                        // ボーナス時はさらに1.2倍
+                        // ボーナス時はさらに1.1倍
                         if (comboBonus) {
-                            scoreWidth = scoreWidth * 1.2;
+                            scoreWidth = scoreWidth * 1.1;
                         }
                         
                         console.log('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
                         
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
-                        const scoreDisplay = comboBonus ? `${finalScore.toFixed(1)} (${comboBonus})` : `${finalScore.toFixed(1)}`;
+                        const scoreDisplay = comboBonus ? `Combo ${window.comboCount} ${comboBonus}\n${finalScore.toFixed(1)}pt` : `${finalScore.toFixed(1)}pt`;
                         scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('align', 'center');
                         scoreText.setAttribute('color', comboBonus ? '#FF6600' : '#FFD700'); // ボーナス時はオレンジ、通常は金色
                         scoreText.setAttribute('width', scoreWidth); // 距離に応じたサイズ
-                        scoreText.setAttribute('font', comboBonus ? 'mozillavr' : 'roboto'); // ボーナス時はフォント変更
+                        scoreText.setAttribute('font', 'mozillavr'); // コンボ時も通常時もmozillavr
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
                         
@@ -1710,7 +1987,7 @@
                     } else if (distance > 4) {
                         comboWidth = 12; // 中距離（4-8m）：1.5倍
                     }
-                    // 4m以内は通常サイズ（8 = 1倍）
+                    // 4m以内は基準サイズ（8 = 1倍）
                     
                     console.log('Combo - Distance:', distance.toFixed(2), 'm, Combo width:', comboWidth);
                     
@@ -1773,6 +2050,12 @@
                 // ゲームが終了している場合はリスポーンしない
                 if (window.gameEnded || !window.gameStarted) {
                     console.log('Game ended, no respawn');
+                    return;
+                }
+                
+                // Level 1の場合、modelGroup_04はリスポーンしない
+                if (window.currentLevel === 1 && modelId === 'modelGroup_04') {
+                    console.log('Level 1: Skipping modelGroup_04 respawn');
                     return;
                 }
                 
@@ -2018,7 +2301,7 @@
             <a-asset-item id="model_01" src={{ asset('cg/ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_02" src={{ asset('cg/oda.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/ohnomi.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/mattsun2.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/fukuda.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
@@ -2117,11 +2400,11 @@
             
             <!-- 難易度説明 -->
             <a-text 
-                value="Level 1: 3 patterns toward camera&#10;Level 2: 5 patterns + 2x speed" 
+                value="Level 1: toward camera only&#10;Level 2: toward & backward" 
                 position="0 -1.3 0.02" 
                 align="center" 
                 color="#CCCCCC" 
-                width="5"
+                width="4"
                 font="roboto"
                 shader="msdf"
                 baseline="center">
@@ -2156,7 +2439,7 @@
         </a-entity>
 
         <!-- デバッグ情報表示（VRゴーグル用） -->
-        <a-entity id="debugDisplay" position="0 2.75 -3" visible="true">
+        <a-entity id="debugDisplay" position="0 2.75 -3" visible="false">
             <a-text 
                 id="debugText"
                 value="DEBUG: Ready" 
