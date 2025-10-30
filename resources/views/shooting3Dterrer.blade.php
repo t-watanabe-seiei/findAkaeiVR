@@ -1727,8 +1727,8 @@
                 
                 const distance = direction.length();
                 
-                // 終点に到着したか判定（0.9m以内）
-                if (distance < 0.9) {
+                // 終点に到着したか判定（1.1m以内）
+                if (distance < 1.1) {
                     this.isMoving = false;
                     this.hasReachedEnd = true;
                     this.reachedTime = Date.now();
@@ -2276,14 +2276,14 @@
                         startPos: { x: 1, y: 0, z: 7 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 3000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -6, y: 0, z: 3 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 3000
                     }
                 ];
                 
