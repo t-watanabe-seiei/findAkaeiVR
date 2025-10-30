@@ -1727,8 +1727,8 @@
                 
                 const distance = direction.length();
                 
-                // 終点に到着したか判定（1.1m以内）
-                if (distance < 1.1) {
+                // 終点に到着したか判定（0.99m以内）
+                if (distance < 0.99) {
                     this.isMoving = false;
                     this.hasReachedEnd = true;
                     this.reachedTime = Date.now();
