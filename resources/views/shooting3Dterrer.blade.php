@@ -110,6 +110,10 @@
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
+        // アラート音の管理用グローバル変数
+        window.alertSoundPlaying = false;
+        window.currentAlertModel = null; // 現在アラート音を鳴らしているモデル
+        
         // デバッグ表示用のヘルパー関数
         window.updateDebug = function(message) {
             const debugText = document.getElementById('debugText');
@@ -1578,6 +1582,8 @@
                 this.startPosition = null;
                 this.targetPosition = null;
                 this.isRespawning = false; // 再描画中フラグ
+                this.isPlayingAlert = false; // アラート音再生中フラグ
+                this.alertSound = null; // アラート音の参照
                 
                 // 始点を設定（コンポーネント指定がなければ現在位置）
                 if (this.data.startPos.x === 0 && this.data.startPos.y === 0 && this.data.startPos.z === -5) {
@@ -1587,6 +1593,9 @@
                 } else {
                     this.startPosition = new THREE.Vector3(this.data.startPos.x, this.data.startPos.y, this.data.startPos.z);
                 }
+                
+                // アラート音の参照を取得
+                this.alertSound = document.getElementById('sound_alert');
                 
                 console.log('approach-camera initialized:', {
                     speed: this.data.speed,
@@ -1632,6 +1641,64 @@
                 
                 // モデルの現在位置を取得
                 const modelPos = this.el.object3D.position;
+                
+                // カメラとの距離をチェック（アラート音制御用）
+                // ゲーム終了時はアラート音を鳴らさない
+                if (!window.gameEnded) {
+                    const sceneEl = this.el.sceneEl;
+                    const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+                    if (camera) {
+                        const cameraPos = new THREE.Vector3();
+                        camera.object3D.getWorldPosition(cameraPos);
+                        
+                        // カメラとモデルの距離を計算（Y軸を含む3D距離）
+                        const distanceToCamera = modelPos.distanceTo(cameraPos);
+                        
+                        // 半径2.5m以内に入ったらアラート音を再生
+                        if (distanceToCamera <= 2.5) {
+                            if (!this.isPlayingAlert && this.alertSound) {
+                                // 既に他のモデルがアラート音を再生中の場合、停止して再スタート
+                                if (window.alertSoundPlaying && window.currentAlertModel !== this.el.id) {
+                                    this.alertSound.pause();
+                                    this.alertSound.currentTime = 0;
+                                    console.log('Alert sound restarted - new model within 2.5m');
+                                }
+                                
+                                this.alertSound.currentTime = 0; // 最初から再生
+                                this.alertSound.play().catch(err => {
+                                    console.log('Alert sound play failed:', err);
+                                });
+                                this.isPlayingAlert = true;
+                                window.alertSoundPlaying = true;
+                                window.currentAlertModel = this.el.id;
+                                console.log(`Alert sound started - ${this.el.id} within 2.5m of camera`);
+                            }
+                        } else {
+                            // 2.5mより遠い場合、このモデルがアラート音を鳴らしていたら停止
+                            if (this.isPlayingAlert && this.alertSound && window.currentAlertModel === this.el.id) {
+                                this.alertSound.pause();
+                                this.alertSound.currentTime = 0;
+                                this.isPlayingAlert = false;
+                                window.alertSoundPlaying = false;
+                                window.currentAlertModel = null;
+                                console.log(`Alert sound stopped - ${this.el.id} outside 2.5m range`);
+                            }
+                        }
+                    }
+                } else {
+                    // ゲーム終了時はアラート音を停止
+                    if (this.isPlayingAlert && this.alertSound) {
+                        this.alertSound.pause();
+                        this.alertSound.currentTime = 0;
+                        this.isPlayingAlert = false;
+                        
+                        // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
+                        if (window.currentAlertModel === this.el.id) {
+                            window.alertSoundPlaying = false;
+                            window.currentAlertModel = null;
+                        }
+                    }
+                }
                 
                 // 終点への方向ベクトルを計算
                 const direction = new THREE.Vector3();
@@ -1681,6 +1748,20 @@
                 
                 console.log('Despawning model:', modelId);
                 
+                // アラート音を停止（グローバル変数もリセット）
+                if (this.isPlayingAlert && this.alertSound) {
+                    this.alertSound.pause();
+                    this.alertSound.currentTime = 0;
+                    this.isPlayingAlert = false;
+                    
+                    // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
+                    if (window.currentAlertModel === modelId) {
+                        window.alertSoundPlaying = false;
+                        window.currentAlertModel = null;
+                    }
+                    console.log('Alert sound stopped - model despawning');
+                }
+                
                 // フェードアウト
                 modelGroup.setAttribute('animation__fadeout', {
                     property: 'scale',
@@ -1705,6 +1786,22 @@
             
             // リセットメソッド（リスタート時に使用）
             reset: function() {
+                const modelId = this.el.id;
+                
+                // アラート音を停止（グローバル変数もリセット）
+                if (this.isPlayingAlert && this.alertSound) {
+                    this.alertSound.pause();
+                    this.alertSound.currentTime = 0;
+                    this.isPlayingAlert = false;
+                    
+                    // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
+                    if (window.currentAlertModel === modelId) {
+                        window.alertSoundPlaying = false;
+                        window.currentAlertModel = null;
+                    }
+                    console.log('Alert sound stopped - component reset');
+                }
+                
                 this.isMoving = true;
                 this.hasReachedEnd = false;
                 this.reachedTime = 0;
@@ -1734,6 +1831,21 @@
                     if(!hitFlag) {
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
+                        
+                        // アラート音を停止（ヒット時・グローバル変数もリセット）
+                        const approachComponent = modelGroup.components['approach-camera'];
+                        if (approachComponent && approachComponent.isPlayingAlert && approachComponent.alertSound) {
+                            approachComponent.alertSound.pause();
+                            approachComponent.alertSound.currentTime = 0;
+                            approachComponent.isPlayingAlert = false;
+                            
+                            // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
+                            if (window.currentAlertModel === modelId) {
+                                window.alertSoundPlaying = false;
+                                window.currentAlertModel = null;
+                            }
+                            console.log('Alert sound stopped - model hit');
+                        }
                         
                         // ヒット音を再生
                         const hitSound = document.getElementById('sound_hit');
@@ -1940,8 +2052,7 @@
                             }, 1500);
                         }, 100);
                         
-                        // カメラへの移動を停止
-                        const approachComponent = modelGroup.components['approach-camera'];
+                        // カメラへの移動を停止（既に宣言済みのapproachComponentを使用）
                         if (approachComponent) {
                             approachComponent.stop();
                             console.log('Stopped approaching camera');
@@ -2136,18 +2247,16 @@
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: -6, y: 2, z: -8 },
-                        endPos: { x: 6, y: 2, z: -8 },
+                        startPos: { x: 2, y: 0, z: 5 },
                         speed: 0.35,
-                        useCamera: false,
+                        useCamera: true,
                         waitTime: 1000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 6, y: 0, z: -8 },
-                        endPos: { x: -6, y: 0, z: -8 },
+                        startPos: { x: -6, y: 0, z: 3 },
                         speed: 0.35,
-                        useCamera: false,
+                        useCamera: true,
                         waitTime: 1000
                     }
                 ];
@@ -2333,10 +2442,11 @@
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm02.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm04.mp3') }} preload="auto"></audio>
+            <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop></audio>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010143.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010143a.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
