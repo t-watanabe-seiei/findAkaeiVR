@@ -2205,8 +2205,8 @@
                 const allMovementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
-                        startPos: { x: -3, y: 0, z: -2 },
-                        speed: 0.4,
+                        startPos: { x: -3, y: 0, z: -3 },
+                        speed: 0.35,
                         useCamera: true,
                         waitTime: 3000
                     },
@@ -2219,8 +2219,8 @@
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
-                        startPos: { x: 3, y: 0, z: -2 },
-                        speed: 0.2,
+                        startPos: { x: 3, y: 0, z: -3 },
+                        speed: 0.25,
                         useCamera: true,
                         waitTime: 3000
                     },
@@ -2234,30 +2234,30 @@
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
                         startPos: { x: 7, y: 0, z: 10 },
-                        speed: 0.3,
+                        speed: 0.35,
                         useCamera: true,
                         waitTime: 5000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
-                        startPos: { x: -2, y: 0, z: 6 },
+                        startPos: { x: -6, y: 0, z: 2 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 5000
+                        waitTime: 4000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 2, y: 0, z: 5 },
+                        startPos: { x: 1, y: 0, z: 7 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 1000
+                        waitTime: 2000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -6, y: 0, z: 3 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 1000
+                        waitTime: 2000
                     }
                 ];
                 
@@ -2442,7 +2442,7 @@
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm04.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm05.mp3') }} preload="auto"></audio>
             <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop></audio>
             
             <!-- 背景画像 -->
