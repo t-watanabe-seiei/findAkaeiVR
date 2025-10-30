@@ -1606,11 +1606,31 @@
             },
             
             tick: function(time, timeDelta) {
+                // ゲームが終了している場合は、移動・再描画・アラート音をすべて停止
+                if (window.gameEnded) {
+                    // アラート音を停止
+                    if (this.isPlayingAlert && this.alertSound) {
+                        this.alertSound.pause();
+                        this.alertSound.currentTime = 0;
+                        this.isPlayingAlert = false;
+                        
+                        // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
+                        if (window.currentAlertModel === this.el.id) {
+                            window.alertSoundPlaying = false;
+                            window.currentAlertModel = null;
+                        }
+                    }
+                    // 移動を停止
+                    this.isMoving = false;
+                    return;
+                }
+                
                 // ゲームが開始されていない場合は移動しない
                 if (!window.gameStarted) return;
+                
                 if (!this.isMoving) {
-                    // 終点に到着している場合、待機時間をチェック
-                    if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning) {
+                    // 終点に到着している場合、待機時間をチェック（ゲーム中のみ）
+                    if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning && !window.gameEnded) {
                         const elapsed = Date.now() - this.reachedTime;
                         if (elapsed >= this.data.waitTime) {
                             console.log('Auto-respawn triggered after', this.data.waitTime, 'ms');
@@ -1736,6 +1756,12 @@
             
             // モデルを消去して再描画
             despawnAndRespawn: function() {
+                // ゲーム終了時は再描画しない
+                if (window.gameEnded) {
+                    console.log('Game ended, skipping despawn and respawn');
+                    return;
+                }
+                
                 const modelGroup = this.el;
                 const modelId = modelGroup.id;
                 const modelEntity = modelGroup.querySelector('[gltf-model]');
@@ -2442,7 +2468,7 @@
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm05.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto"></audio>
             <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop></audio>
             
             <!-- 背景画像 -->
