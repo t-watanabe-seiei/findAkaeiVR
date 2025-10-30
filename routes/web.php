@@ -18,6 +18,10 @@ Route::match(['get', 'head'], '/', function () {
     return view('shooting3DModel');
 })->name('home.index');
 
+Route::match(['get', 'head'], '/terrer', function () {
+    return view('shooting3Dterrer');
+})->name('terrer.index');
+
 Route::get('/minion', function () {
     return view('findminion');
 });

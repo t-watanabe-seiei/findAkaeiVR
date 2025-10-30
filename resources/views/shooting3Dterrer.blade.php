@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>seieiVR</title>
+    <title>seieiVR Terrer</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
@@ -838,11 +838,11 @@
                 const hitBox01 = document.createElement('a-entity');
                 hitBox01.setAttribute('id', 'hit-boxed_01');
                 hitBox01.setAttribute('hit-box', '');
-                hitBox01.setAttribute('position', '0 0.3 0');
+                hitBox01.setAttribute('position', '0 1.0 0');
                 const cylinder01 = document.createElement('a-entity');
                 cylinder01.setAttribute('geometry', 'primitive: cylinder');
                 cylinder01.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder01.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder01.setAttribute('scale', '1.0 2.0 1.0');
                 cylinder01.setAttribute('class', 'collidable');
                 hitBox01.appendChild(cylinder01);
                 model01.appendChild(hitBox01);
@@ -866,11 +866,11 @@
                 const hitBox02 = document.createElement('a-entity');
                 hitBox02.setAttribute('id', 'hit-boxed_02');
                 hitBox02.setAttribute('hit-box', '');
-                hitBox02.setAttribute('position', '0 0.3 0');
+                hitBox02.setAttribute('position', '0 1.0 0');
                 const cylinder02 = document.createElement('a-entity');
                 cylinder02.setAttribute('geometry', 'primitive: cylinder');
-                cylinder02.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder02.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder02.setAttribute('material', 'color: green; opacity: 0.0; transparent: true');
+                cylinder02.setAttribute('scale', '1.0 2.0 1.0');
                 cylinder02.setAttribute('class', 'collidable');
                 hitBox02.appendChild(cylinder02);
                 model02.appendChild(hitBox02);
@@ -894,11 +894,11 @@
                 const hitBox03 = document.createElement('a-entity');
                 hitBox03.setAttribute('id', 'hit-boxed_03');
                 hitBox03.setAttribute('hit-box', '');
-                hitBox03.setAttribute('position', '0 0.3 0');
+                hitBox03.setAttribute('position', '0 1.0 0');
                 const cylinder03 = document.createElement('a-entity');
                 cylinder03.setAttribute('geometry', 'primitive: cylinder');
-                cylinder03.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder03.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder03.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
+                cylinder03.setAttribute('scale', '1.0 2.0 1.0');
                 cylinder03.setAttribute('class', 'collidable');
                 hitBox03.appendChild(cylinder03);
                 model03.appendChild(hitBox03);
@@ -922,11 +922,11 @@
                 const hitBox04 = document.createElement('a-entity');
                 hitBox04.setAttribute('id', 'hit-boxed_04');
                 hitBox04.setAttribute('hit-box', '');
-                hitBox04.setAttribute('position', '0 0.3 0');
+                hitBox04.setAttribute('position', '0 1.0 0');
                 const cylinder04 = document.createElement('a-entity');
                 cylinder04.setAttribute('geometry', 'primitive: cylinder');
-                cylinder04.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder04.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder04.setAttribute('material', 'color: yellow; opacity: 0.0; transparent: true');
+                cylinder04.setAttribute('scale', '1.0 2.0 1.0');
                 cylinder04.setAttribute('class', 'collidable');
                 hitBox04.appendChild(cylinder04);
                 model04.appendChild(hitBox04);
@@ -1214,31 +1214,68 @@
                 }
                 
                 // 各モデルの位置を取得して衝突判定
+                // モデルごとに異なるヒットボックスサイズを定義
                 const models = [
-                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
-                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
-                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
-                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' }
+                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.2 },
+                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.2 },
+                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.2 },
+                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.2 }
                 ];
                 
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
-                    if (modelGroup && modelGroup.parentNode) {
+                    if (modelGroup && modelGroup.parentNode && modelGroup.getAttribute('visible')) {
                         const modelPos = modelGroup.getAttribute('position');
                         
-                        const distance = new THREE.Vector3(
-                            currentPos.x - modelPos.x,
-                            currentPos.y - modelPos.y,
-                            currentPos.z - modelPos.z
-                        ).length();
+                        // ヒットボックスの中心位置（モデルグループ + ヒットボックスのオフセット）
+                        // ヒットボックスはposition='0 1.0 0'に配置されている
+                        const hitBoxCenterY = modelPos.y + 1.0;
                         
-                        if (distance < 0.5) {
+                        // モデルごとの円柱形状での当たり判定
+                        // Y軸方向の距離チェック（円柱の高さ範囲内か）
+                        const halfHeight = modelInfo.height / 2;
+                        const yMin = hitBoxCenterY - halfHeight; // 円柱の底面
+                        const yMax = hitBoxCenterY + halfHeight; // 円柱の天面
+                        const isInHeightRange = currentPos.y >= yMin && currentPos.y <= yMax;
+                        
+                        // XZ平面での距離チェック（円柱の半径範囲内か）
+                        const xzDistance = Math.sqrt(
+                            Math.pow(currentPos.x - modelPos.x, 2) +
+                            Math.pow(currentPos.z - modelPos.z, 2)
+                        );
+                        const cylinderRadius = modelInfo.radius;
+                        
+                        // デバッグ出力（最初の数フレームのみ）
+                        if (ballData.frameCount <= 5) {
+                            console.log(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${cylinderRadius}m, H=${modelInfo.height}m`);
+                        }
+                        
+                        if (isInHeightRange && xzDistance < cylinderRadius) {
                             ballData.hasHit = true;
-                            console.log(`Ball hit ${modelInfo.id}!`);
+                            console.log(`✓ Ball HIT ${modelInfo.id}! xzDist=${xzDistance.toFixed(2)}m, y=${currentPos.y.toFixed(2)}m`);
                             const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
                             if (hitBoxComponent) {
                                 hitBoxComponent.emit('ball-hit');
                             }
+                            
+                            // ボールの回転アニメーションを停止
+                            ball.removeAttribute('animation__spin');
+                            
+                            // ボールのanime01アニメーションを再生（1回のみ）
+                            ball.setAttribute('animation-mixer', 'clip: anime01; loop: once');
+                            
+                            // ボールを明るく光らせる
+                            ball.addEventListener('model-loaded', () => {
+                                const mesh = ball.getObject3D('mesh');
+                                if (mesh) {
+                                    mesh.traverse((node) => {
+                                        if (node.isMesh && node.material) {
+                                            node.material.emissive = new THREE.Color(0xFFFFFF);
+                                            node.material.emissiveIntensity = 1.5; // さらに明るく
+                                        }
+                                    });
+                                }
+                            }, { once: true });
                             
                             // ボールが跳ね返るアニメーション
                             const bounceDirection = direction.clone().multiplyScalar(-2);
@@ -1259,19 +1296,10 @@
                                 easing: 'easeInQuad'
                             });
                             
-                            // ヒット時の回転を速くする
-                            ball.setAttribute('animation__spin', {
-                                property: 'rotation',
-                                to: '0 720 0',
-                                dur: 300,
-                                loop: false,
-                                easing: 'linear'
-                            });
-                            
                             setTimeout(() => {
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
-                                    console.log('Ball removed after bounce');
+                                    console.log('Ball removed after hit animation');
                                 }
                             }, 300);
                             
@@ -1434,7 +1462,7 @@
                 // 回転アニメーションを追加（飛んでいる間に回転）
                 ball.setAttribute('animation__spin', {
                     property: 'rotation',
-                    to: '720 90 0',
+                    to: '-1080 0 0',
                     dur: 1000,
                     loop: true,
                     easing: 'linear'
@@ -2298,10 +2326,10 @@
         auto-enter-vr>
         <a-assets>
             <!-- 3Dモデル -->
-            <a-asset-item id="model_01" src={{ asset('cg/3d_ishimaru.glb') }}></a-asset-item>
-            <a-asset-item id="model_02" src={{ asset('cg/3D_oda.glb') }}></a-asset-item>
-            <a-asset-item id="model_03" src={{ asset('cg/3D_ohnomi.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/3D_fukuda.glb') }}></a-asset-item>
+            <a-asset-item id="model_01" src="{{ asset('cg/zombie_matsubara.glb') }}"></a-asset-item>
+            <a-asset-item id="model_02" src="{{ asset('cg/zombie_fujii.glb') }}"></a-asset-item>
+            <a-asset-item id="model_03" src={{ asset('cg/zombie_isobe.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
@@ -2558,9 +2586,9 @@
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_01" hit-box position="0 0.3 0">
+            <a-entity id="hit-boxed_01" hit-box position="0 1.0 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
@@ -2569,9 +2597,9 @@
                   approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_02" hit-box position="0 0.3 0">
-                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            <a-entity id="hit-boxed_02" hit-box position="0 1.0 0">
+                <a-entity geometry="primitive: cylinder" material="color: green; opacity: 0.0; transparent: true" 
+                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
@@ -2581,9 +2609,9 @@
                   approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_03" hit-box position="0 0.3 0">
-                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            <a-entity id="hit-boxed_03" hit-box position="0 1.0 0">
+                <a-entity geometry="primitive: cylinder" material="color: red; opacity: 0.0; transparent: true" 
+                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
@@ -2592,9 +2620,9 @@
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_04" hit-box position="0 0.3 0">
-                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            <a-entity id="hit-boxed_04" hit-box position="0 1.0 0">
+                <a-entity geometry="primitive: cylinder" material="color: yellow; opacity: 0.0; transparent: true" 
+                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
