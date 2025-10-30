@@ -424,44 +424,48 @@
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
                     : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
                 console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
-                initialModelIds.forEach(modelId => {
-                    const model = document.getElementById(modelId);
-                    if (model) {
-                        // ランダムにパターンを選択
-                        const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
-                        
-                        // 始点位置を設定
-                        model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
-                        
-                        // 角度を計算
-                        let rotation;
-                        if (randomPattern.useCamera) {
-                            rotation = Math.atan2(randomPattern.startPos.x, -randomPattern.startPos.z) * (180 / Math.PI);
+                
+                // モデルを1秒ずつずらして出現させる
+                initialModelIds.forEach((modelId, index) => {
+                    setTimeout(() => {
+                        const model = document.getElementById(modelId);
+                        if (model) {
+                            // ランダムにパターンを選択
+                            const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                            
+                            // 始点位置を設定
+                            model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
+                            
+                            // 角度を計算
+                            let rotation;
+                            if (randomPattern.useCamera) {
+                                rotation = Math.atan2(randomPattern.startPos.x, -randomPattern.startPos.z) * (180 / Math.PI);
+                            } else {
+                                const dx = randomPattern.endPos.x - randomPattern.startPos.x;
+                                const dz = randomPattern.endPos.z - randomPattern.startPos.z;
+                                rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
+                            }
+                            model.setAttribute('rotation', `0 ${rotation} 0`);
+                            
+                            // approach-cameraコンポーネントの設定
+                            const cameraConfig = {
+                                speed: randomPattern.speed,
+                                startPos: randomPattern.startPos,
+                                useCamera: randomPattern.useCamera,
+                                autoRespawn: true,
+                                waitTime: randomPattern.waitTime
+                            };
+                            if (randomPattern.endPos) {
+                                cameraConfig.endPos = randomPattern.endPos;
+                            }
+                            model.setAttribute('approach-camera', cameraConfig);
+                            
+                            model.setAttribute('visible', true);
+                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern:`, randomPattern, ')');
                         } else {
-                            const dx = randomPattern.endPos.x - randomPattern.startPos.x;
-                            const dz = randomPattern.endPos.z - randomPattern.startPos.z;
-                            rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
+                            console.error('Model not found:', modelId);
                         }
-                        model.setAttribute('rotation', `0 ${rotation} 0`);
-                        
-                        // approach-cameraコンポーネントの設定
-                        const cameraConfig = {
-                            speed: randomPattern.speed,
-                            startPos: randomPattern.startPos,
-                            useCamera: randomPattern.useCamera,
-                            autoRespawn: true,
-                            waitTime: randomPattern.waitTime
-                        };
-                        if (randomPattern.endPos) {
-                            cameraConfig.endPos = randomPattern.endPos;
-                        }
-                        model.setAttribute('approach-camera', cameraConfig);
-                        
-                        model.setAttribute('visible', true);
-                        console.log('Model visible with random pattern:', modelId, randomPattern);
-                    } else {
-                        console.error('Model not found:', modelId);
-                    }
+                    }, index * 1000); // 0秒、1秒、2秒、3秒後に出現
                 });
                 
                 // タイマー表示を表示
@@ -2234,35 +2238,35 @@
                         startPos: { x: -3, y: 0, z: -3 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -3 },
                         speed: 0.25,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
                         startPos: { x: 4, y: 0, z: -3 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
                         startPos: { x: 7, y: 0, z: 10 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 5000
+                        waitTime: 4000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
@@ -2276,14 +2280,14 @@
                         startPos: { x: 1, y: 0, z: 7 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -6, y: 0, z: 3 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     }
                 ];
                 
