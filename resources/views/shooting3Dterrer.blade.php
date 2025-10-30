@@ -2332,11 +2332,11 @@
             <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
             
             <!-- サウンド -->
-            <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm01.mp3') }} preload="auto"></audio>
+            <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm02.mp3') }} preload="auto"></audio>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010143.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
