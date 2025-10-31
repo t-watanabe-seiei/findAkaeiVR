@@ -2256,15 +2256,15 @@
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
-                        startPos: { x: 4, y: 0, z: -3 },
+                        startPos: { x: 5, y: 0, z: 0 },
                         speed: 0.3,
                         useCamera: true,
                         waitTime: 4000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
-                        startPos: { x: 7, y: 0, z: 10 },
-                        speed: 0.35,
+                        startPos: { x: 6, y: 0, z: 6 },
+                        speed: 0.4
                         useCamera: true,
                         waitTime: 4000
                     },
@@ -2284,7 +2284,7 @@
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: -6, y: 0, z: 3 },
+                        startPos: { x: -3, y: 0, z: 5 },
                         speed: 0.35,
                         useCamera: true,
                         waitTime: 4000
