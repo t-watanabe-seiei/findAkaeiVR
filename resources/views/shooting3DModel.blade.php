@@ -2299,9 +2299,9 @@
         <a-assets>
             <!-- 3Dモデル -->
             <a-asset-item id="model_01" src={{ asset('cg/3d_ishimaru.glb') }}></a-asset-item>
-            <a-asset-item id="model_02" src={{ asset('cg/3D_oda.glb') }}></a-asset-item>
-            <a-asset-item id="model_03" src={{ asset('cg/3D_ohnomi.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/3D_fukuda.glb') }}></a-asset-item>
+            <a-asset-item id="model_02" src={{ asset('cg/3d_oda.glb') }}></a-asset-item>
+            <a-asset-item id="model_03" src={{ asset('cg/3d_ohnomi.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/3d_fukuda.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
