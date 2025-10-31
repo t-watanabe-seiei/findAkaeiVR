@@ -22,6 +22,10 @@ Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer');
 })->name('terrer.index');
 
+Route::match(['get', 'head'], '/insect', function () {
+    return view('shooting3DInsect');
+})->name('insect.index');
+
 Route::get('/minion', function () {
     return view('findminion');
 });

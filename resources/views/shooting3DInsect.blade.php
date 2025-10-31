@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>seieiVR Terrer</title>
+    <title>seieiVR Insect</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
@@ -2476,7 +2476,7 @@
             <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop></audio>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010143a.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010191a.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
