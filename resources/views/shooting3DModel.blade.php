@@ -2304,8 +2304,6 @@
             <a-asset-item id="model_02" src={{ asset('cg/3d_morita_pengin.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/3d_oonomi_ahiru.glb') }}></a-asset-item>
             <a-asset-item id="model_04" src={{ asset('cg/3d_matsubara_pig.glb') }}></a-asset-item>
-            <a-asset-item id="model_05" src={{ asset('cg/3d_matsubara_hitsuji.glb') }}></a-asset-item>
-            <a-asset-item id="model_06" src={{ asset('cg/3d_matsumura_rakkasei.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
