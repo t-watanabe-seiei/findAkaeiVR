@@ -2300,7 +2300,7 @@
         auto-enter-vr>
         <a-assets>
             <!-- 3Dモデル -->
-            <a-asset-item id="model_01" src={{ asset('cg/3d_isobe_fox4.glb') }}></a-asset-item>
+            <a-asset-item id="model_01" src={{ asset('cg/3d_isobe_fox5.glb') }}></a-asset-item>
             <a-asset-item id="model_02" src={{ asset('cg/3d_morita_pengin.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/3d_oonomi_ahiru.glb') }}></a-asset-item>
             <a-asset-item id="model_04" src={{ asset('cg/3d_matsubara_pig.glb') }}></a-asset-item>
