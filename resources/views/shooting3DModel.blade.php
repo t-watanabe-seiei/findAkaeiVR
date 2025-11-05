@@ -2066,61 +2066,59 @@
                 const allMovementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
-                        startPos: { x: -3, y: 0, z: -2 },
-                        speed: 0.4,
+                        startPos: { x: -3, y: 0, z: -3 },
+                        speed: 0.35,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
-                        startPos: { x: 3, y: 0, z: -2 },
-                        speed: 0.2,
+                        startPos: { x: 3, y: 0, z: -3 },
+                        speed: 0.25,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
-                        startPos: { x: 4, y: 0, z: -3 },
+                        startPos: { x: 5, y: 0, z: 0 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 3000
+                        waitTime: 4000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
-                        startPos: { x: 7, y: 0, z: 10 },
-                        speed: 0.3,
+                        startPos: { x: 6, y: 0, z: 6 },
+                        speed: 0.2,
                         useCamera: true,
-                        waitTime: 5000
+                        waitTime: 4000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
-                        startPos: { x: -2, y: 0, z: 6 },
-                        speed: 0.3,
+                        startPos: { x: -6, y: 0, z: 2 },
+                        speed: 0.2,
                         useCamera: true,
-                        waitTime: 5000
+                        waitTime: 4000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: -6, y: 2, z: -8 },
-                        endPos: { x: 6, y: 2, z: -8 },
-                        speed: 0.35,
-                        useCamera: false,
-                        waitTime: 1000
+                        startPos: { x: 1, y: 0, z: 7 },
+                        speed: 0.2,
+                        useCamera: true,
+                        waitTime: 4000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 6, y: 0, z: -8 },
-                        endPos: { x: -6, y: 0, z: -8 },
-                        speed: 0.35,
-                        useCamera: false,
-                        waitTime: 1000
+                        startPos: { x: -3, y: 0, z: 5 },
+                        speed: 0.2,
+                        useCamera: true,
+                        waitTime: 4000
                     }
                 ];
                 
@@ -2298,10 +2296,12 @@
         auto-enter-vr>
         <a-assets>
             <!-- 3Dモデル -->
-            <a-asset-item id="model_01" src={{ asset('cg/3d_ishimaru.glb') }}></a-asset-item>
-            <a-asset-item id="model_02" src={{ asset('cg/3d_oda.glb') }}></a-asset-item>
-            <a-asset-item id="model_03" src={{ asset('cg/3d_ohnomi.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/3d_fukuda.glb') }}></a-asset-item>
+            <a-asset-item id="model_01" src={{ asset('cg/3d_isobe_fox4.glb') }}></a-asset-item>
+            <a-asset-item id="model_02" src={{ asset('cg/3d_morita_pengin.glb') }}></a-asset-item>
+            <a-asset-item id="model_03" src={{ asset('cg/3d_oonomi_ahiru.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/3d_matsubara_pig.glb') }}></a-asset-item>
+            <a-asset-item id="model_05" src={{ asset('cg/3d_matsubara_hitsuji.glb') }}></a-asset-item>
+            <a-asset-item id="model_06" src={{ asset('cg/3d_matsumura_rakkasei.glb') }}></a-asset-item>
             
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
@@ -2553,7 +2553,7 @@
             </a-text>
         </a-entity>
 
-        <!-- モデル01グループ（初期非表示） -->
+        <!-- モデル01グループ（初期非表示・70%縮小） -->
         <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
