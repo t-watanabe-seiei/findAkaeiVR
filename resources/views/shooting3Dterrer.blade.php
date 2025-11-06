@@ -2306,7 +2306,7 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムパターン設定（8パターン）
+                // ランダムパターン設定（10パターン）
                 const allMovementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
@@ -2331,35 +2331,49 @@
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
-                        startPos: { x: 5, y: 0, z: 0 },
+                        startPos: { x: 4, y: 0, z: 0 },
                         speed: 0.3,
                         useCamera: true,
                         waitTime: 4000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
-                        startPos: { x: 6, y: 0, z: 6 },
+                        startPos: { x: 6, y: 0, z: 3 },
                         speed: 0.4,
                         useCamera: true,
                         waitTime: 4000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
-                        startPos: { x: -6, y: 0, z: 2 },
+                        startPos: { x: 2, y: 0, z: 2 },
                         speed: 0.3,
                         useCamera: true,
                         waitTime: 4000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 1, y: 0, z: 7 },
+                        startPos: { x: -2, y: 0, z: 3 },
                         speed: 0.35,
                         useCamera: true,
                         waitTime: 4000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: -3, y: 0, z: 5 },
+                        startPos: { x: -1, y: 0, z: 7 },
+                        speed: 0.35,
+                        useCamera: true,
+                        waitTime: 4000
+                    },
+                    // パターン9: 左斜め前からカメラへ（速い）- Level 2対象 - 距離: 7.1m
+                    {
+                        startPos: { x: -4, y: 0, z: 6 },
+                        speed: 0.4,
+                        useCamera: true,
+                        waitTime: 4000
+                    },
+                    // パターン10: 右斜め前からカメラへ（普通）- Level 2対象 - 距離: 7.1m
+                    {
+                        startPos: { x: -7, y: 0, z: 2 },
                         speed: 0.35,
                         useCamera: true,
                         waitTime: 4000
@@ -2369,7 +2383,7 @@
                 // レベルに応じてパターンをフィルタリング
                 const movementPatterns = window.currentLevel === 1 
                     ? allMovementPatterns.slice(0, 4)  // Level 1: パターン1-4のみ
-                    : allMovementPatterns;              // Level 2: 全パターン1-8
+                    : allMovementPatterns;              // Level 2: 全パターン1-10
                 
                 // スピード倍率（Level 2は2倍速）
                 const speedMultiplier = window.currentLevel === 2 ? 2.0 : 1.0;
