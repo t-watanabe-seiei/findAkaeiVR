@@ -110,6 +110,41 @@
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
+        // パターン使用状況の管理（重複スポーン防止）
+        window.usedPatterns = {}; // { modelId: patternIndex } の形式で保存
+        
+        // 使用可能なパターンを取得する関数（他のモデルが使用中のパターンを除外）
+        window.getAvailablePattern = function(patterns, modelId) {
+            // 現在使用中のパターンインデックスを取得
+            const usedIndices = Object.keys(window.usedPatterns)
+                .filter(id => id !== modelId) // 自分自身は除外
+                .map(id => window.usedPatterns[id]);
+            
+            // 使用可能なパターンをフィルタリング
+            const availableIndices = [];
+            for (let i = 0; i < patterns.length; i++) {
+                if (!usedIndices.includes(i)) {
+                    availableIndices.push(i);
+                }
+            }
+            
+            // 使用可能なパターンがない場合は全パターンから選択（安全策）
+            if (availableIndices.length === 0) {
+                console.warn('⚠️ All patterns in use, selecting random pattern');
+                const randomIndex = Math.floor(Math.random() * patterns.length);
+                window.usedPatterns[modelId] = randomIndex;
+                return { pattern: patterns[randomIndex], index: randomIndex };
+            }
+            
+            // 使用可能なパターンからランダムに選択
+            const selectedIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            window.usedPatterns[modelId] = selectedIndex;
+            
+            console.log(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
+            
+            return { pattern: patterns[selectedIndex], index: selectedIndex };
+        };
+        
         // デバッグ表示用のヘルパー関数
         window.updateDebug = function(message) {
             const debugText = document.getElementById('debugText');
@@ -400,6 +435,7 @@
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
+                window.usedPatterns = {}; // パターン使用状況をリセット
                 
                 // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
                 const movementPatterns = [
@@ -412,7 +448,9 @@
                     // パターン4: 左から右へ横移動（固定終点）- 距離: 12m
                     { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 },
                     // パターン5: 右から左へ横移動（固定終点）- 距離: 12m
-                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 }
+                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 },
+                    // パターン6: 左斜め後方からカメラへ（中速）- 距離: 約9.9m
+                    { startPos: { x: -7, y: 0, z: -7 }, speed: 0.28, useCamera: true, waitTime: 3000 }
                 ];
                 
                 // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
@@ -426,8 +464,8 @@
                     setTimeout(() => {
                         const model = document.getElementById(modelId);
                         if (model) {
-                            // ランダムにパターンを選択
-                            const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                            // 使用可能なパターンを取得（他のモデルと重複しない）
+                            const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                             
                             // 始点位置を設定
                             model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
@@ -457,7 +495,7 @@
                             model.setAttribute('approach-camera', cameraConfig);
                             
                             model.setAttribute('visible', true);
-                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern:`, randomPattern, ')');
+                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern ${patternIndex}:`, randomPattern, ')');
                         } else {
                             console.error('Model not found:', modelId);
                         }
@@ -1009,6 +1047,7 @@
                 window.currentLevel = 1; // デフォルトに戻す
                 window.gameLevel = 1;
                 window.activeBalls = [];
+                window.usedPatterns = {}; // パターン使用状況をリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
@@ -2022,6 +2061,12 @@
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
                                         
+                                        // パターン使用状況をクリア（他のモデルがこのパターンを使用可能に）
+                                        if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
+                                            delete window.usedPatterns[modelId];
+                                            console.log(`📍 Pattern freed for model ${modelId}`);
+                                        }
+                                        
                                         // 4秒後に別の場所に再描画
                                         setTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
@@ -2208,8 +2253,8 @@
                 
                 console.log('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
-                // ランダムにパターンを選択
-                const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                // 使用可能なパターンを取得（他のモデルと重複しない）
+                const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                 
                 let startPos = randomPattern.startPos;
                 let endPos = randomPattern.endPos || null;
@@ -2284,7 +2329,7 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(newModelGroup);
-                console.log('Model added to scene with random pattern:', randomPattern);
+                console.log('Model added to scene with pattern', patternIndex, ':', randomPattern);
                 
                 // フェードインアニメーション
                 setTimeout(() => {

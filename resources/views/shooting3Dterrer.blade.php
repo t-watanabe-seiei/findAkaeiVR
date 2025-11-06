@@ -114,6 +114,41 @@
         window.alertSoundPlaying = false;
         window.currentAlertModel = null; // 現在アラート音を鳴らしているモデル
         
+        // パターン使用状況の管理（重複スポーン防止）
+        window.usedPatterns = {}; // { modelId: patternIndex } の形式で保存
+        
+        // 使用可能なパターンを取得する関数（他のモデルが使用中のパターンを除外）
+        window.getAvailablePattern = function(patterns, modelId) {
+            // 現在使用中のパターンインデックスを取得
+            const usedIndices = Object.keys(window.usedPatterns)
+                .filter(id => id !== modelId) // 自分自身は除外
+                .map(id => window.usedPatterns[id]);
+            
+            // 使用可能なパターンをフィルタリング
+            const availableIndices = [];
+            for (let i = 0; i < patterns.length; i++) {
+                if (!usedIndices.includes(i)) {
+                    availableIndices.push(i);
+                }
+            }
+            
+            // 使用可能なパターンがない場合は全パターンから選択（安全策）
+            if (availableIndices.length === 0) {
+                console.warn('⚠️ All patterns in use, selecting random pattern');
+                const randomIndex = Math.floor(Math.random() * patterns.length);
+                window.usedPatterns[modelId] = randomIndex;
+                return { pattern: patterns[randomIndex], index: randomIndex };
+            }
+            
+            // 使用可能なパターンからランダムに選択
+            const selectedIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            window.usedPatterns[modelId] = selectedIndex;
+            
+            console.log(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
+            
+            return { pattern: patterns[selectedIndex], index: selectedIndex };
+        };
+        
         // デバッグ表示用のヘルパー関数
         window.updateDebug = function(message) {
             const debugText = document.getElementById('debugText');
@@ -404,6 +439,9 @@
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
+                window.bossSpawned = false; // ボス出現フラグをリセット
+                window.respawningModels = {}; // リスポーン中フラグを初期化
+                window.usedPatterns = {}; // パターン使用状況をリセット
                 
                 // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
                 const movementPatterns = [
@@ -416,7 +454,9 @@
                     // パターン4: 左奥(-6, 0, -8)から右奥(6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
                     { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
                     // パターン5: 右奥(6, 0, -8)から左奥(-6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
-                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 }
+                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
+                    // パターン6: 左斜め後方(-7, 0, -7)からカメラ(0, 0, 0)へ - 距離: 9.9m - 中速
+                    { startPos: { x: -7, y: 0, z: -7 }, speed: 0.28, useCamera: true, waitTime: 4000 }
                 ];
                 
                 // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
@@ -430,8 +470,8 @@
                     setTimeout(() => {
                         const model = document.getElementById(modelId);
                         if (model) {
-                            // ランダムにパターンを選択
-                            const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                            // 使用可能なパターンを取得（他のモデルと重複しない）
+                            const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                             
                             // 始点位置を設定
                             model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
@@ -461,7 +501,7 @@
                             model.setAttribute('approach-camera', cameraConfig);
                             
                             model.setAttribute('visible', true);
-                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern:`, randomPattern, ')');
+                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern ${patternIndex}:`, randomPattern, ')');
                         } else {
                             console.error('Model not found:', modelId);
                         }
@@ -508,6 +548,13 @@
                     // タイマー表示を更新
                     if (timerText) {
                         timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
+                    }
+                    
+                    // 60秒経過時（残り15秒）にボスを出現（1度のみ、Level 2のみ）
+                    if (window.gameTimeLeft === 15 && !window.bossSpawned && window.currentLevel === 2) {
+                        console.log('=== 60 seconds elapsed - Spawning BOSS (Level 2) ===');
+                        window.bossSpawned = true;
+                        this.spawnBoss();
                     }
                     
                     // 時間切れ
@@ -560,6 +607,84 @@
                 }, 1000);
                 
                 console.log('Timer started, interval ID:', window.gameTimer);
+            },
+            
+            spawnBoss: function() {
+                console.log('=== Spawning BOSS ===');
+                const sceneEl = document.querySelector('a-scene');
+                
+                // ランダムパターンから1つ選択
+                const bossPatterns = [
+                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.15 },
+                    { startPos: { x: 0, y: 0, z: -4 }, speed: 0.15 },
+                    { startPos: { x: 3, y: 0, z: -3 }, speed: 0.15 },
+                    { startPos: { x: 4, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: 5, y: 0, z: 3 }, speed: 0.15 },
+                    { startPos: { x: -6, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: 0, y: 0, z: 3 }, speed: 0.15 },
+                    { startPos: { x: 3, y: 0, z: 6 }, speed: 0.15 },
+                    { startPos: { x: -4, y: 0, z: 6 }, speed: 0.15 },
+                    { startPos: { x: -7, y: 0, z: 2 }, speed: 0.15 }
+                ];
+                
+                const randomPattern = bossPatterns[Math.floor(Math.random() * bossPatterns.length)];
+                const startPos = randomPattern.startPos;
+                const speed = randomPattern.speed;
+                
+                // カメラ方向への角度を計算
+                const rotation = Math.atan2(startPos.x, -startPos.z) * (180 / Math.PI);
+                
+                // ボスモデルグループを作成
+                const bossGroup = document.createElement('a-entity');
+                bossGroup.setAttribute('id', 'modelGroup_boss');
+                bossGroup.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
+                bossGroup.setAttribute('rotation', `0 ${rotation} 0`);
+                bossGroup.setAttribute('scale', '0 0 0'); // 最初は見えない状態
+                bossGroup.setAttribute('approach-camera', {
+                    speed: speed,
+                    startPos: startPos,
+                    useCamera: true,
+                    autoRespawn: false, // ボスは再出現しない
+                    waitTime: 4000
+                });
+                
+                // ボス3Dモデルエンティティを作成（1.8倍サイズ）
+                const bossEntity = document.createElement('a-entity');
+                bossEntity.setAttribute('gltf-model', '#model_boss');
+                bossEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                bossEntity.setAttribute('enhance-materials', '');
+                bossEntity.setAttribute('scale', '1.8 1.8 1.8'); // 1.8倍サイズ（1.5 × 1.2）
+                bossGroup.appendChild(bossEntity);
+                
+                // ボス当たり判定オブジェクトを作成（1.8倍サイズ）
+                const bossHitBox = document.createElement('a-entity');
+                bossHitBox.setAttribute('id', 'hit-boxed_boss');
+                bossHitBox.setAttribute('hit-box', 'isBoss: true'); // ボスフラグ
+                bossHitBox.setAttribute('position', '0 0.9 0'); // 高さも1.2倍に調整
+                
+                const bossHitBoxCylinder = document.createElement('a-entity');
+                bossHitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
+                bossHitBoxCylinder.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
+                bossHitBoxCylinder.setAttribute('scale', '1.35 2.7 1.35'); // 1.8倍サイズ（0.75*1.8, 1.5*1.8）
+                bossHitBoxCylinder.setAttribute('class', 'collidable');
+                
+                bossHitBox.appendChild(bossHitBoxCylinder);
+                bossGroup.appendChild(bossHitBox);
+                
+                // シーンに追加
+                sceneEl.appendChild(bossGroup);
+                console.log('BOSS added to scene at:', startPos);
+                
+                // フェードインアニメーション
+                setTimeout(() => {
+                    bossGroup.setAttribute('animation__fadein', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 2000,
+                        easing: 'easeOutQuad'
+                    });
+                    console.log('BOSS fading in');
+                }, 100);
             },
             
             showResult: function(resultMenu) {
@@ -1013,6 +1138,8 @@
                 window.currentLevel = 1; // デフォルトに戻す
                 window.gameLevel = 1;
                 window.activeBalls = [];
+                window.respawningModels = {}; // リスポーン中フラグをリセット
+                window.usedPatterns = {}; // パターン使用状況をリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
@@ -1285,7 +1412,8 @@
                     { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.5 },
                     { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
                     { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 }
+                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.35, height: 2.7 } // ボスは1.8倍サイズ
                 ];
                 
                 for (let modelInfo of models) {
@@ -1910,6 +2038,10 @@
         });
         
         AFRAME.registerComponent('hit-box', {
+            schema: {
+                isBoss: { type: 'boolean', default: false } // ボスかどうかのフラグ
+            },
+            
             init: function () {
                 const modelGroup = this.el.parentEl; // 親エンティティ（modelGroup）を取得
                 const modelEntity = modelGroup.querySelector('[gltf-model]'); // gltf-modelを持つエンティティを取得
@@ -1919,6 +2051,7 @@
                 // モデルの情報を保存
                 const modelId = modelGroup.id;
                 const gltfModelSrc = modelEntity ? modelEntity.getAttribute('gltf-model') : null;
+                const isBoss = this.data.isBoss; // ボスかどうか
                 
                 // グローバルなrespawn関数を登録（初回のみ）
                 if (!window.respawnModelGlobal) {
@@ -1930,14 +2063,14 @@
                     if(!hitFlag) {
                         // ヒット回数を増やす
                         hitCount++;
-                        console.log(`Model hit! (${hitCount} hits) - Level ${window.currentLevel}`, modelEntity);
+                        console.log(`Model hit! (${hitCount} hits) - ${isBoss ? 'BOSS' : 'Normal'} - Level ${window.currentLevel}`, modelEntity);
                         
-                        // 必要なヒット数を判定（Level 1: 1回、Level 2: 2回）
-                        const requiredHits = window.currentLevel === 2 ? 2 : 1;
+                        // 必要なヒット数を判定（BOSS: 7回、Level 1: 1回、Level 2: 2回）
+                        const requiredHits = isBoss ? 7 : (window.currentLevel === 2 ? 2 : 1);
                         
                         // 必要なヒット数に達していない場合
                         if (hitCount < requiredHits) {
-                            console.log(`Need ${requiredHits - hitCount} more hit(s) to destroy (Level ${window.currentLevel})`);
+                            console.log(`Need ${requiredHits - hitCount} more hit(s) to destroy (${isBoss ? 'BOSS' : 'Level ' + window.currentLevel})`);
                             
                             // ヒット音を再生
                             const hitSound = document.getElementById('sound_hit');
@@ -1977,7 +2110,7 @@
                         
                         // 必要なヒット数に達した場合、以下の処理を実行
                         hitFlag = true;
-                        console.log(`Model destroyed after ${hitCount} hits!`);
+                        console.log(`${isBoss ? 'BOSS' : 'Model'} destroyed after ${hitCount} hits!`);
                         
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
@@ -2031,6 +2164,12 @@
                         
                         // 基本スコアを計算（距離を10倍して小数第一位まで）
                         let baseScore = Math.round(distance * 100) / 10; // 小数第一位まで
+                        
+                        // ボスボーナス：7倍スコア
+                        if (isBoss) {
+                            baseScore *= 7;
+                            console.log('🎯 BOSS BONUS: Score multiplied by 7x =', baseScore);
+                        }
                         
                         // コンボカウントを増やす（スコア計算前に）
                         window.comboCount++;
@@ -2239,9 +2378,31 @@
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
                                         
+                                        // パターン使用状況をクリア（他のモデルがこのパターンを使用可能に）
+                                        if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
+                                            delete window.usedPatterns[modelId];
+                                            console.log(`📍 Pattern freed for model ${modelId}`);
+                                        }
+                                        
+                                        // リスポーン中フラグを設定（重複防止）
+                                        if (!window.respawningModels) {
+                                            window.respawningModels = {};
+                                        }
+                                        
+                                        // 既にこのモデルがリスポーン待機中なら無視
+                                        if (window.respawningModels[modelId]) {
+                                            console.log('⚠️ Model', modelId, 'already scheduled for respawn, skipping duplicate');
+                                            return;
+                                        }
+                                        
+                                        // リスポーン待機中としてマーク
+                                        window.respawningModels[modelId] = true;
+                                        
                                         // 4秒後に別の場所に再描画
                                         setTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
+                                            // リスポーン完了後、フラグをクリア
+                                            delete window.respawningModels[modelId];
                                         }, 4000);
                                     }
                                 }, 500);
@@ -2355,6 +2516,28 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
+                // 【重要】既存の同IDモデルを完全に削除（重複防止）
+                const existingModel = document.getElementById(modelId);
+                if (existingModel) {
+                    console.log('⚠️ WARNING: Model', modelId, 'already exists! Removing duplicate...');
+                    if (existingModel.parentNode) {
+                        existingModel.parentNode.removeChild(existingModel);
+                    }
+                    // 削除後、少し待機してからリスポーン
+                    setTimeout(() => {
+                        this.createNewModel(modelId, gltfModelSrc, sceneEl);
+                    }, 100);
+                    return;
+                }
+                
+                // 新規作成
+                this.createNewModel(modelId, gltfModelSrc, sceneEl);
+            },
+            
+            // モデル作成処理を分離（重複防止のため）
+            createNewModel: function(modelId, gltfModelSrc, sceneEl) {
+                console.log('Creating new model:', modelId);
+                
                 // ランダムパターン設定（10パターン）
                 const allMovementPatterns = [
                     // パターン1: 左後方(-3, 0, -3)からカメラ(0, 0, 0)へ - 距離: 4.2m - Level 1対象
@@ -2439,8 +2622,8 @@
                 
                 console.log('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
-                // ランダムにパターンを選択
-                const randomPattern = movementPatterns[Math.floor(Math.random() * movementPatterns.length)];
+                // 使用可能なパターンを取得（他のモデルと重複しない）
+                const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                 
                 let startPos = randomPattern.startPos;
                 let endPos = randomPattern.endPos || null;
@@ -2461,6 +2644,7 @@
                 }
                 
                 console.log('Selected random pattern:', {
+                    patternIndex: patternIndex,
                     startPos: startPos,
                     endPos: endPos,
                     speed: speed,
@@ -2609,6 +2793,8 @@
             <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
             <a-asset-item id="model_05" src={{ asset('cg/zombie_oda2.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
+            <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige.glb') }}></a-asset-item>
+
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
