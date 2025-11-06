@@ -17,7 +17,7 @@
         window.gameEnded = false;
         window.totalScore = 0;
         window.gameTimer = null;
-        window.gameTimeLeft = 60; // 60秒
+        window.gameTimeLeft = 75; // 75秒
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
@@ -396,7 +396,7 @@
                 window.gameStarted = true;
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
-                window.gameTimeLeft = 60; // タイマーを60秒に設定
+                window.gameTimeLeft = 75; // タイマーを70秒に設定
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
@@ -415,10 +415,10 @@
                     { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 3000 }
                 ];
                 
-                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 4体）
+                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
                 const initialModelIds = window.currentLevel === 1 
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
-                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
+                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
                 // モデルを1秒ずつずらして出現させる
@@ -936,6 +936,62 @@
                 model04.appendChild(hitBox04);
                 sceneEl.appendChild(model04);
                 
+                // モデル05を再作成（Level 2専用）
+                const model05 = document.createElement('a-entity');
+                model05.setAttribute('id', 'modelGroup_05');
+                model05.setAttribute('position', '3 0 -9');
+                model05.setAttribute('rotation', '0 -30 0');
+                model05.setAttribute('scale', '1 1 1');
+                model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model05.setAttribute('visible', 'false');
+                
+                const model05Entity = document.createElement('a-entity');
+                model05Entity.setAttribute('gltf-model', '#model_05');
+                model05Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model05Entity.setAttribute('enhance-materials', '');
+                model05.appendChild(model05Entity);
+                
+                const hitBox05 = document.createElement('a-entity');
+                hitBox05.setAttribute('id', 'hit-boxed_05');
+                hitBox05.setAttribute('hit-box', '');
+                hitBox05.setAttribute('position', '0 0.3 0');
+                const cylinder05 = document.createElement('a-entity');
+                cylinder05.setAttribute('geometry', 'primitive: cylinder');
+                cylinder05.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder05.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder05.setAttribute('class', 'collidable');
+                hitBox05.appendChild(cylinder05);
+                model05.appendChild(hitBox05);
+                sceneEl.appendChild(model05);
+                
+                // モデル06を再作成（Level 2専用）
+                const model06 = document.createElement('a-entity');
+                model06.setAttribute('id', 'modelGroup_06');
+                model06.setAttribute('position', '-3 0 -9');
+                model06.setAttribute('rotation', '0 30 0');
+                model06.setAttribute('scale', '1 1 1');
+                model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model06.setAttribute('visible', 'false');
+                
+                const model06Entity = document.createElement('a-entity');
+                model06Entity.setAttribute('gltf-model', '#model_06');
+                model06Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model06Entity.setAttribute('enhance-materials', '');
+                model06.appendChild(model06Entity);
+                
+                const hitBox06 = document.createElement('a-entity');
+                hitBox06.setAttribute('id', 'hit-boxed_06');
+                hitBox06.setAttribute('hit-box', '');
+                hitBox06.setAttribute('position', '0 0.3 0');
+                const cylinder06 = document.createElement('a-entity');
+                cylinder06.setAttribute('geometry', 'primitive: cylinder');
+                cylinder06.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder06.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder06.setAttribute('class', 'collidable');
+                hitBox06.appendChild(cylinder06);
+                model06.appendChild(hitBox06);
+                sceneEl.appendChild(model06);
+                
                 console.log('Initial models recreated');
             },
             
@@ -976,7 +1032,7 @@
                 const sceneEl = document.querySelector('a-scene');
                 
                 // すべてのモデルを完全に削除（動的に生成されたものも含む）
-                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
@@ -1222,7 +1278,9 @@
                     { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
                     { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
                     { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
-                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' }
+                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
+                    { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
+                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' }
                 ];
                 
                 for (let modelInfo of models) {
@@ -2057,9 +2115,9 @@
                     return;
                 }
                 
-                // Level 1の場合、modelGroup_04はリスポーンしない
-                if (window.currentLevel === 1 && modelId === 'modelGroup_04') {
-                    console.log('Level 1: Skipping modelGroup_04 respawn');
+                // Level 1の場合、modelGroup_04, 05, 06はリスポーンしない
+                if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06')) {
+                    console.log('Level 1: Skipping', modelId, 'respawn');
                     return;
                 }
                 
@@ -2304,10 +2362,12 @@
             <a-asset-item id="model_02" src={{ asset('cg/3d_morita_pengin.glb') }}></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/3d_oonomi_ahiru.glb') }}></a-asset-item>
             <a-asset-item id="model_04" src={{ asset('cg/3d_matsubara_pig.glb') }}></a-asset-item>
-            
+            <a-asset-item id="model_05" src={{ asset('cg/3d_matsubara_sheep.glb') }}></a-asset-item>
+            <a-asset-item id="model_06" src={{ asset('cg/3d_matsumura_tonakai.glb') }}></a-asset-item>
+
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm01.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm07.mp3') }} preload="auto"></audio>
             
             <!-- 背景画像 -->
             <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
@@ -2591,10 +2651,32 @@
 
         <!-- モデル04グループ（初期非表示・Level 2専用） -->
         <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
                   visible="false">
             <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_04" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- モデル05グループ（初期非表示・Level 2専用） -->
+        <a-entity id="modelGroup_05" position="3 0 -9" rotation="0 -30 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  visible="false">
+            <a-entity gltf-model="#model_05" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
+            <a-entity id="hit-boxed_05" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
+                          scale="0.3 0.4 0.3" class="collidable"></a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- モデル06グループ（初期非表示・Level 2専用） -->
+        <a-entity id="modelGroup_06" position="-3 0 -9" rotation="0 30 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  visible="false">
+            <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
+            <a-entity id="hit-boxed_06" hit-box position="0 0.3 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 0.4 0.3" class="collidable"></a-entity>
             </a-entity>

@@ -17,7 +17,7 @@
         window.gameEnded = false;
         window.totalScore = 0;
         window.gameTimer = null;
-        window.gameTimeLeft = 60; // 60秒
+        window.gameTimeLeft = 75; // 75秒
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
@@ -400,7 +400,7 @@
                 window.gameStarted = true;
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
-                window.gameTimeLeft = 60; // タイマーを60秒に設定
+                window.gameTimeLeft = 75; // タイマーを75秒に設定
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.lastBallHit = false; // ヒット状態をリセット
