@@ -1286,6 +1286,13 @@
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
                     if (modelGroup && modelGroup.parentNode) {
+                        // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
+                        const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                        if (!hitBox) {
+                            // hitboxが削除されている場合はスキップ（anime02再生中）
+                            continue;
+                        }
+                        
                         const modelPos = modelGroup.getAttribute('position');
                         
                         const distance = new THREE.Vector3(
@@ -1769,6 +1776,13 @@
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
                         
+                        // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
+                        const hitBox = this.el;
+                        if (hitBox && hitBox.parentNode) {
+                            hitBox.parentNode.removeChild(hitBox);
+                            console.log('Hit box removed immediately');
+                        }
+                        
                         // ヒット音を再生
                         const hitSound = document.getElementById('sound_hit');
                         if (hitSound) {
@@ -2002,16 +2016,16 @@
                                     easing: 'easeInQuad'
                                 });
                                 
-                                // フェードアウト完了後に削除して、3秒後に再描画
+                                // フェードアウト完了後に削除して、4秒後に再描画
                                 setTimeout(() => {
                                     if (modelGroup.parentNode) {
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
                                         
-                                        // 3秒後に別の場所に再描画
+                                        // 4秒後に別の場所に再描画
                                         setTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
-                                        }, 3000);
+                                        }, 4000);
                                     }
                                 }, 500);
                             }

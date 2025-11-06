@@ -408,15 +408,15 @@
                 // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
                 const movementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- 距離: 約11.2m
-                    { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 2000 },
+                    { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 4000 },
                     // パターン2: 右後方からカメラへ（普通）- 距離: 約11.2m
-                    { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 2000 },
+                    { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 4000 },
                     // パターン3: 正面奥からカメラへ（遅い）- 距離: 約12.0m
-                    { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 2000 },
+                    { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 4000 },
                     // パターン4: 左から右へ横移動（固定終点）- 距離: 12m
-                    { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 2000 },
+                    { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
                     // パターン5: 右から左へ横移動（固定終点）- 距離: 12m
-                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 2000 }
+                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 }
                 ];
                 
                 // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
@@ -834,7 +834,7 @@
                 model01.setAttribute('position', '-4 0 -8');
                 model01.setAttribute('rotation', '0 45 0');
                 model01.setAttribute('scale', '1 1 1');
-                model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
                 model01.setAttribute('visible', 'false');
                 
                 const model01Entity = document.createElement('a-entity');
@@ -862,7 +862,7 @@
                 model02.setAttribute('position', '0 0 -10');
                 model02.setAttribute('rotation', '0 0 0');
                 model02.setAttribute('scale', '1 1 1');
-                model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000');
                 model02.setAttribute('visible', 'false');
                 
                 const model02Entity = document.createElement('a-entity');
@@ -890,7 +890,7 @@
                 model03.setAttribute('position', '4 0 -8');
                 model03.setAttribute('rotation', '0 -45 0');
                 model03.setAttribute('scale', '1 1 1');
-                model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 2000');
+                model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000');
                 model03.setAttribute('visible', 'false');
                 
                 const model03Entity = document.createElement('a-entity');
@@ -918,7 +918,7 @@
                 model04.setAttribute('position', '-4 0 -8');
                 model04.setAttribute('rotation', '0 45 0');
                 model04.setAttribute('scale', '1 1 1');
-                model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
                 model04.setAttribute('visible', 'false');
                 
                 const model04Entity = document.createElement('a-entity');
@@ -946,7 +946,7 @@
                 model05.setAttribute('position', '-4 0 -8');
                 model05.setAttribute('rotation', '0 45 0');
                 model05.setAttribute('scale', '1 1 1');
-                model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
                 model05.setAttribute('visible', 'false');
                 
                 const model05Entity = document.createElement('a-entity');
@@ -974,7 +974,7 @@
                 model06.setAttribute('position', '4 0 -8');
                 model06.setAttribute('rotation', '0 -45 0');
                 model06.setAttribute('scale', '1 1 1');
-                model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
                 model06.setAttribute('visible', 'false');
                 
                 const model06Entity = document.createElement('a-entity');
@@ -1291,6 +1291,16 @@
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
                     if (modelGroup && modelGroup.parentNode && modelGroup.getAttribute('visible')) {
+                        // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
+                        const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                        if (!hitBox) {
+                            // hitboxが削除されている場合はスキップ（anime02再生中）
+                            if (ballData.frameCount <= 5) {
+                                console.log(`${modelInfo.id}: hitbox removed, skipping collision`);
+                            }
+                            continue;
+                        }
+                        
                         const modelPos = modelGroup.getAttribute('position');
                         
                         // ヒットボックスの中心位置（モデルグループ + ヒットボックスのオフセット）
@@ -1920,6 +1930,13 @@
                         hitFlag = true;
                         console.log('Model hit!', modelEntity);
                         
+                        // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
+                        const hitBox = this.el;
+                        if (hitBox && hitBox.parentNode) {
+                            hitBox.parentNode.removeChild(hitBox);
+                            console.log('Hit box removed immediately');
+                        }
+                        
                         // アラート音を停止（ヒット時・グローバル変数もリセット）
                         const approachComponent = modelGroup.components['approach-camera'];
                         if (approachComponent && approachComponent.isPlayingAlert && approachComponent.alertSound) {
@@ -2167,16 +2184,16 @@
                                     easing: 'easeInQuad'
                                 });
                                 
-                                // フェードアウト完了後に削除して、3秒後に再描画
+                                // フェードアウト完了後に削除して、4秒後に再描画
                                 setTimeout(() => {
                                     if (modelGroup.parentNode) {
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
                                         
-                                        // 3秒後に別の場所に再描画
+                                        // 4秒後に別の場所に再描画
                                         setTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
-                                        }, 3000);
+                                        }, 4000);
                                     }
                                 }, 500);
                             }
@@ -2296,56 +2313,56 @@
                         startPos: { x: -3, y: 0, z: -3 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -3 },
                         speed: 0.25,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
                         startPos: { x: 5, y: 0, z: 0 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
                         startPos: { x: 6, y: 0, z: 6 },
                         speed: 0.4,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
                         startPos: { x: -6, y: 0, z: 2 },
                         speed: 0.3,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: 1, y: 0, z: 7 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -3, y: 0, z: 5 },
                         speed: 0.35,
                         useCamera: true,
-                        waitTime: 2000
+                        waitTime: 4000
                     }
                 ];
                 
@@ -2783,7 +2800,7 @@
 
         <!-- モデル01グループ（初期非表示） -->
         <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_01" hit-box position="0 1.0 0">
@@ -2794,7 +2811,7 @@
 
         <!-- モデル02グループ（初期非表示） -->
         <a-entity id="modelGroup_02" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
-                  approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_02" hit-box position="0 1.0 0">
@@ -2806,7 +2823,7 @@
         <!-- モデル03グループ（初期非表示） -->
         <!-- 例: 固定終点を使う場合は useCamera: false; endPos: x y z を指定 -->
         <a-entity id="modelGroup_03" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_03" hit-box position="0 1.0 0">
@@ -2817,7 +2834,7 @@
 
         <!-- モデル04グループ（初期非表示・Level 2専用） -->
         <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_04" hit-box position="0 1.0 0">
@@ -2828,7 +2845,7 @@
 
         <!-- モデル05グループ（初期非表示・Level 2専用） -->
         <a-entity id="modelGroup_05" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_05" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_05" hit-box position="0 1.0 0">
@@ -2839,7 +2856,7 @@
 
         <!-- モデル06グループ（初期非表示・Level 2専用） -->
         <a-entity id="modelGroup_06" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
                   visible="false">
             <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_06" hit-box position="0 1.0 0">
