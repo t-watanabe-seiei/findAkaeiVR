@@ -850,7 +850,7 @@
                 const cylinder01 = document.createElement('a-entity');
                 cylinder01.setAttribute('geometry', 'primitive: cylinder');
                 cylinder01.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder01.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder01.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder01.setAttribute('class', 'collidable');
                 hitBox01.appendChild(cylinder01);
                 model01.appendChild(hitBox01);
@@ -878,7 +878,7 @@
                 const cylinder02 = document.createElement('a-entity');
                 cylinder02.setAttribute('geometry', 'primitive: cylinder');
                 cylinder02.setAttribute('material', 'color: green; opacity: 0.0; transparent: true');
-                cylinder02.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder02.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder02.setAttribute('class', 'collidable');
                 hitBox02.appendChild(cylinder02);
                 model02.appendChild(hitBox02);
@@ -906,7 +906,7 @@
                 const cylinder03 = document.createElement('a-entity');
                 cylinder03.setAttribute('geometry', 'primitive: cylinder');
                 cylinder03.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
-                cylinder03.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder03.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder03.setAttribute('class', 'collidable');
                 hitBox03.appendChild(cylinder03);
                 model03.appendChild(hitBox03);
@@ -934,7 +934,7 @@
                 const cylinder04 = document.createElement('a-entity');
                 cylinder04.setAttribute('geometry', 'primitive: cylinder');
                 cylinder04.setAttribute('material', 'color: yellow; opacity: 0.0; transparent: true');
-                cylinder04.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder04.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder04.setAttribute('class', 'collidable');
                 hitBox04.appendChild(cylinder04);
                 model04.appendChild(hitBox04);
@@ -962,7 +962,7 @@
                 const cylinder05 = document.createElement('a-entity');
                 cylinder05.setAttribute('geometry', 'primitive: cylinder');
                 cylinder05.setAttribute('material', 'color: purple; opacity: 0.0; transparent: true');
-                cylinder05.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder05.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder05.setAttribute('class', 'collidable');
                 hitBox05.appendChild(cylinder05);
                 model05.appendChild(hitBox05);
@@ -990,7 +990,7 @@
                 const cylinder06 = document.createElement('a-entity');
                 cylinder06.setAttribute('geometry', 'primitive: cylinder');
                 cylinder06.setAttribute('material', 'color: cyan; opacity: 0.0; transparent: true');
-                cylinder06.setAttribute('scale', '1.0 2.0 1.0');
+                cylinder06.setAttribute('scale', '0.75 1.5 0.75');
                 cylinder06.setAttribute('class', 'collidable');
                 hitBox06.appendChild(cylinder06);
                 model06.appendChild(hitBox06);
@@ -1280,12 +1280,12 @@
                 // 各モデルの位置を取得して衝突判定
                 // モデルごとに異なるヒットボックスサイズを定義
                 const models = [
-                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.2 },
-                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.2 },
-                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.2 },
-                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.2 },
-                    { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.2 },
-                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.2 }
+                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
+                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 }
                 ];
                 
                 for (let modelInfo of models) {
@@ -2345,7 +2345,7 @@
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
-                        startPos: { x: 2, y: 0, z: 2 },
+                        startPos: { x: -2, y: 0, z: -2 },
                         speed: 0.3,
                         useCamera: true,
                         waitTime: 4000
@@ -2359,7 +2359,7 @@
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: -1, y: 0, z: 7 },
+                        startPos: { x: 3, y: 0, z: 6 },
                         speed: 0.35,
                         useCamera: true,
                         waitTime: 4000
