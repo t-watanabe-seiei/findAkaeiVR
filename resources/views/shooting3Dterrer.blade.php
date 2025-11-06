@@ -407,15 +407,15 @@
                 
                 // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
                 const movementPatterns = [
-                    // パターン1: 左後方からカメラへ（速い）- 距離: 約11.2m
+                    // パターン1: 左後方(-5, 0, -10)からカメラ(0, 0, 0)へ - 距離: 11.2m - 速い
                     { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 4000 },
-                    // パターン2: 右後方からカメラへ（普通）- 距離: 約11.2m
+                    // パターン2: 右後方(5, 0, -10)からカメラ(0, 0, 0)へ - 距離: 11.2m - 普通
                     { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 4000 },
-                    // パターン3: 正面奥からカメラへ（遅い）- 距離: 約12.0m
+                    // パターン3: 正面奥(0, 0, -12)からカメラ(0, 0, 0)へ - 距離: 12.0m - 遅い
                     { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 4000 },
-                    // パターン4: 左から右へ横移動（固定終点）- 距離: 12m
+                    // パターン4: 左奥(-6, 0, -8)から右奥(6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
                     { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
-                    // パターン5: 右から左へ横移動（固定終点）- 距離: 12m
+                    // パターン5: 右奥(6, 0, -8)から左奥(-6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
                     { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 }
                 ];
                 
@@ -1914,6 +1914,7 @@
                 const modelGroup = this.el.parentEl; // 親エンティティ（modelGroup）を取得
                 const modelEntity = modelGroup.querySelector('[gltf-model]'); // gltf-modelを持つエンティティを取得
                 let hitFlag = false;
+                let hitCount = 0; // ヒット回数をカウント
 
                 // モデルの情報を保存
                 const modelId = modelGroup.id;
@@ -1927,8 +1928,56 @@
                 // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
                 this.el.addEventListener('ball-hit', () => {
                     if(!hitFlag) {
+                        // ヒット回数を増やす
+                        hitCount++;
+                        console.log(`Model hit! (${hitCount} hits) - Level ${window.currentLevel}`, modelEntity);
+                        
+                        // 必要なヒット数を判定（Level 1: 1回、Level 2: 2回）
+                        const requiredHits = window.currentLevel === 2 ? 2 : 1;
+                        
+                        // 必要なヒット数に達していない場合
+                        if (hitCount < requiredHits) {
+                            console.log(`Need ${requiredHits - hitCount} more hit(s) to destroy (Level ${window.currentLevel})`);
+                            
+                            // ヒット音を再生
+                            const hitSound = document.getElementById('sound_hit');
+                            if (hitSound) {
+                                hitSound.currentTime = 0;
+                                hitSound.play().then(() => {
+                                    console.log('Hit sound played (not destroyed yet)');
+                                }).catch(err => {
+                                    console.log('Hit sound play failed:', err);
+                                });
+                            }
+                            
+                            // ダメージエフェクトを表示（簡易的なフラッシュ）
+                            if (modelEntity) {
+                                // 一時的に赤くフラッシュ
+                                const mesh = modelEntity.getObject3D('mesh');
+                                if (mesh) {
+                                    mesh.traverse((node) => {
+                                        if (node.isMesh && node.material) {
+                                            const originalEmissive = node.material.emissive ? node.material.emissive.clone() : new THREE.Color(0x000000);
+                                            node.material.emissive = new THREE.Color(0xFF0000); // 赤
+                                            node.material.emissiveIntensity = 0.5;
+                                            
+                                            // 0.2秒後に元に戻す
+                                            setTimeout(() => {
+                                                node.material.emissive = originalEmissive;
+                                                node.material.emissiveIntensity = 0;
+                                            }, 200);
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            // まだ倒れないので処理を終了
+                            return;
+                        }
+                        
+                        // 必要なヒット数に達した場合、以下の処理を実行
                         hitFlag = true;
-                        console.log('Model hit!', modelEntity);
+                        console.log(`Model destroyed after ${hitCount} hits!`);
                         
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
@@ -2308,70 +2357,70 @@
                 
                 // ランダムパターン設定（10パターン）
                 const allMovementPatterns = [
-                    // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
+                    // パターン1: 左後方(-3, 0, -3)からカメラ(0, 0, 0)へ - 距離: 4.2m - Level 1対象
                     {
                         startPos: { x: -3, y: 0, z: -3 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
+                    // パターン2: 正面奥(0, 0, -4)からカメラ(0, 0, 0)へ - 距離: 4.0m - Level 1対象
                     {
                         startPos: { x: 0, y: 0, z: -4 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
+                    // パターン3: 右後方(3, 0, -3)からカメラ(0, 0, 0)へ - 距離: 4.2m - Level 1対象
                     {
                         startPos: { x: 3, y: 0, z: -3 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
+                    // パターン4: 右側(4, 0, 0)からカメラ(0, 0, 0)へ - 距離: 4.0m - Level 1対象
                     {
                         startPos: { x: 4, y: 0, z: 0 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
+                    // パターン5: 右前方(5, 0, 3)からカメラ(0, 0, 0)へ - 距離: 5.8m - Level 2対象
                     {
                         startPos: { x: 5, y: 0, z: 3 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
+                    // パターン6: 左側(-6, 0, 0)からカメラ(0, 0, 0)へ - 距離: 6.0m - Level 2対象
                     {
                         startPos: { x: -6, y: 0, z: 0 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
+                    // パターン7: 正面前方(0, 0, 3)からカメラ(0, 0, 0)へ - 距離: 3.0m - Level 2対象
                     {
                         startPos: { x: 0, y: 0, z: 3 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
+                    // パターン8: 右斜め前(3, 0, 6)からカメラ(0, 0, 0)へ - 距離: 6.7m - Level 2対象
                     {
                         startPos: { x: 3, y: 0, z: 6 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン9: 左斜め前からカメラへ（速い）- Level 2対象 - 距離: 7.1m
+                    // パターン9: 左斜め前(-4, 0, 6)からカメラ(0, 0, 0)へ - 距離: 7.2m - Level 2対象
                     {
                         startPos: { x: -4, y: 0, z: 6 },
                         speed: 0.25,
                         useCamera: true,
                         waitTime: 4000
                     },
-                    // パターン10: 右斜め前からカメラへ（普通）- Level 2対象 - 距離: 7.1m
+                    // パターン10: 左後方(-7, 0, 2)からカメラ(0, 0, 0)へ - 距離: 7.3m - Level 2対象
                     {
                         startPos: { x: -7, y: 0, z: 2 },
                         speed: 0.25,
