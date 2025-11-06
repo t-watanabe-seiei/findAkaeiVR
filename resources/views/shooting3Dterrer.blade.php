@@ -2791,7 +2791,7 @@
             <a-asset-item id="model_02" src="{{ asset('cg/zombie_fujii.glb') }}"></a-asset-item>
             <a-asset-item id="model_03" src={{ asset('cg/zombie_isobe.glb') }}></a-asset-item>
             <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
-            <a-asset-item id="model_05" src={{ asset('cg/zombie_oda2.glb') }}></a-asset-item>
+            <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige.glb') }}></a-asset-item>
 
