@@ -615,10 +615,10 @@
                 
                 // ランダムパターンから1つ選択（4パターン）
                 const bossPatterns = [
-                    { startPos: { x: -3, y: 0, z: 0 }, speed: 0.15 },
-                    { startPos: { x: 3, y: 0, z: 0 }, speed: 0.15 },
-                    { startPos: { x: 0, y: 0, z: 3 }, speed: 0.15 },
-                    { startPos: { x: 0, y: 0, z: -3 }, speed: 0.15 }
+                    { startPos: { x: -4, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: 4, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: 0, y: 0, z: 4 }, speed: 0.15 },
+                    { startPos: { x: 0, y: 0, z: -4 }, speed: 0.15 }
                 ];
                 
                 const randomPattern = bossPatterns[Math.floor(Math.random() * bossPatterns.length)];
@@ -2581,8 +2581,8 @@
                     },
                     // パターン7: 正面前方(0, 0, 3)からカメラ(0, 0, 0)へ - 距離: 3.0m - Level 2対象
                     {
-                        startPos: { x: 0, y: 0, z: 3 },
-                        speed: 0.25,
+                        startPos: { x: 0, y: 0, z: 4 },
+                        speed: 0.15,
                         useCamera: true,
                         waitTime: 4000
                     },
