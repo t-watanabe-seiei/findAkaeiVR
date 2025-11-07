@@ -1134,6 +1134,7 @@
                 window.activeBalls = [];
                 window.respawningModels = {}; // リスポーン中フラグをリセット
                 window.usedPatterns = {}; // パターン使用状況をリセット
+                window.bossSpawned = false; // ボス出現フラグをリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
@@ -1157,7 +1158,7 @@
                 const sceneEl = document.querySelector('a-scene');
                 
                 // すべてのモデルを完全に削除（動的に生成されたものも含む）
-                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04'];
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_boss'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
