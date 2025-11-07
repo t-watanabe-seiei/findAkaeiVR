@@ -571,11 +571,48 @@
                         console.log('gameEnded after set:', window.gameEnded);
                         console.log('Total Score:', window.totalScore);
                         
-                        // すべてのモデルを非表示
+                        // すべてのモデルにanime02と死亡音を再生してからフェードアウト
                         const models = document.querySelectorAll('[id^="modelGroup_"]');
-                        console.log('Hiding models, count:', models.length);
+                        console.log('Playing death animation for models, count:', models.length);
+                        
+                        // 死亡音を1回だけ再生
+                        const dieSound = document.getElementById('sound_zombie_die');
+                        if (dieSound) {
+                            dieSound.currentTime = 0;
+                            dieSound.play().then(() => {
+                                console.log('Zombie die sound played (time over)');
+                            }).catch(err => {
+                                console.log('Zombie die sound play failed:', err);
+                            });
+                        }
+                        
                         models.forEach(model => {
-                            model.setAttribute('visible', false);
+                            if (model.getAttribute('visible')) {
+                                // anime02に切り替え
+                                const modelEntity = model.querySelector('[gltf-model]');
+                                if (modelEntity) {
+                                    modelEntity.removeAttribute('animation-mixer');
+                                    setTimeout(() => {
+                                        modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
+                                        console.log('Playing anime02 for model:', model.id);
+                                    }, 50);
+                                }
+                                
+                                // 1.5秒後にフェードアウト
+                                setTimeout(() => {
+                                    model.setAttribute('animation__timeoverfadeout', {
+                                        property: 'scale',
+                                        to: '0 0 0',
+                                        dur: 500,
+                                        easing: 'easeInQuad'
+                                    });
+                                }, 1500);
+                                
+                                // 2秒後に完全に非表示
+                                setTimeout(() => {
+                                    model.setAttribute('visible', false);
+                                }, 2000);
+                            }
                         });
                         
                         // タイマー非表示
@@ -584,25 +621,27 @@
                             timerDisplay.setAttribute('visible', false);
                         }
                         
-                        // リザルト画面を表示（再度取得して確実に存在することを確認）
-                        const currentResultMenu = document.getElementById('resultMenu');
-                        console.log('=== Looking for result menu ===');
-                        console.log('Result menu element:', currentResultMenu);
-                        console.log('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
-                        
-                        if (currentResultMenu) {
-                            console.log('Calling showResult...');
-                            window.updateDebug('Showing result...');
-                            self.showResult(currentResultMenu);
-                        } else {
-                            console.error('ERROR: Result menu element NOT FOUND!');
-                            window.updateDebug('ERROR: Result menu NOT FOUND!');
-                            // デバッグ: DOM内のすべての要素を確認
-                            const allEntities = document.querySelectorAll('a-entity');
-                            console.log('Total a-entity count:', allEntities.length);
-                            const menuEntities = document.querySelectorAll('[result-menu]');
-                            console.log('Entities with result-menu attribute:', menuEntities.length);
-                        }
+                        // 2.5秒後にリザルト画面を表示（モデルのフェードアウト完了を待つ）
+                        setTimeout(() => {
+                            const currentResultMenu = document.getElementById('resultMenu');
+                            console.log('=== Looking for result menu ===');
+                            console.log('Result menu element:', currentResultMenu);
+                            console.log('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
+                            
+                            if (currentResultMenu) {
+                                console.log('Calling showResult...');
+                                window.updateDebug('Showing result...');
+                                self.showResult(currentResultMenu);
+                            } else {
+                                console.error('ERROR: Result menu element NOT FOUND!');
+                                window.updateDebug('ERROR: Result menu NOT FOUND!');
+                                // デバッグ: DOM内のすべての要素を確認
+                                const allEntities = document.querySelectorAll('a-entity');
+                                console.log('Total a-entity count:', allEntities.length);
+                                const menuEntities = document.querySelectorAll('[result-menu]');
+                                console.log('Entities with result-menu attribute:', menuEntities.length);
+                            }
+                        }, 2500);
                     }
                 }, 1000);
                 
@@ -668,6 +707,17 @@
                 // シーンに追加
                 sceneEl.appendChild(bossGroup);
                 console.log('BOSS added to scene at:', startPos);
+                
+                // BOSS出現音を再生
+                const appearSound = document.getElementById('sound_zombie_appear');
+                if (appearSound) {
+                    appearSound.currentTime = 0;
+                    appearSound.play().then(() => {
+                        console.log('BOSS appear sound played');
+                    }).catch(err => {
+                        console.log('BOSS appear sound play failed:', err);
+                    });
+                }
                 
                 // フェードインアニメーション
                 setTimeout(() => {
@@ -2376,6 +2426,19 @@
                             setTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
                                 console.log('Playing anime02 for 1.5 seconds');
+                                
+                                // BOSSの場合は死亡音を再生
+                                if (isBoss) {
+                                    const dieSound = document.getElementById('sound_zombie_die');
+                                    if (dieSound) {
+                                        dieSound.currentTime = 0;
+                                        dieSound.play().then(() => {
+                                            console.log('BOSS die sound played');
+                                        }).catch(err => {
+                                            console.log('BOSS die sound play failed:', err);
+                                        });
+                                    }
+                                }
                             }, 50);
                         }
                         
@@ -2819,6 +2882,8 @@
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto" crossorigin="anonymous"></audio>
             <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto" crossorigin="anonymous"></audio>
             <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop crossorigin="anonymous"></audio>
+            <audio id="sound_zombie_appear" src={{ asset('cg/sound_zombie_appear.mp3') }} preload="auto" crossorigin="anonymous"></audio>
+            <audio id="sound_zombie_die" src={{ asset('cg/sound_zombie_die.mp3') }} preload="auto" crossorigin="anonymous"></audio>
             
             <!-- 背景画像 -->
             <img id="sky02" src={{ asset('cg/R0010143a.JPG') }} crossorigin="anonymous" >
