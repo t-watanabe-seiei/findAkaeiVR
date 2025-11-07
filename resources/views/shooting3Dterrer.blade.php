@@ -2081,15 +2081,33 @@
                                 });
                             }
                             
-                            // ダメージエフェクトを表示（簡易的なフラッシュ）
+                            // ダメージエフェクトを表示（段階的なフラッシュ）
                             if (modelEntity) {
-                                // 一時的に赤くフラッシュ
+                                let flashColor;
+                                
+                                // Bossの場合は段階的に色を変更
+                                if (isBoss) {
+                                    if (hitCount >= 1 && hitCount <= 3) {
+                                        flashColor = new THREE.Color(0x0000FF); // 青フラッシュ（1-3回目）
+                                        console.log(`BOSS: Blue flash (hit ${hitCount}/10)`);
+                                    } else if (hitCount >= 4 && hitCount <= 6) {
+                                        flashColor = new THREE.Color(0xFFFF00); // 黄フラッシュ（4-6回目）
+                                        console.log(`BOSS: Yellow flash (hit ${hitCount}/10)`);
+                                    } else if (hitCount >= 7 && hitCount <= 9) {
+                                        flashColor = new THREE.Color(0xFF0000); // 赤フラッシュ（7-9回目）
+                                        console.log(`BOSS: Red flash (hit ${hitCount}/10)`);
+                                    }
+                                } else {
+                                    flashColor = new THREE.Color(0xFF0000); // 通常モデルは赤
+                                }
+                                
+                                // フラッシュエフェクトを適用
                                 const mesh = modelEntity.getObject3D('mesh');
                                 if (mesh) {
                                     mesh.traverse((node) => {
                                         if (node.isMesh && node.material) {
                                             const originalEmissive = node.material.emissive ? node.material.emissive.clone() : new THREE.Color(0x000000);
-                                            node.material.emissive = new THREE.Color(0xFF0000); // 赤
+                                            node.material.emissive = flashColor;
                                             node.material.emissiveIntensity = 0.5;
                                             
                                             // 0.2秒後に元に戻す
@@ -2615,8 +2633,8 @@
                     ? allMovementPatterns.slice(0, 4)  // Level 1: パターン1-4のみ
                     : allMovementPatterns;              // Level 2: 全パターン1-10
                 
-                // スピード倍率（Level 2は2倍速）
-                const speedMultiplier = window.currentLevel === 2 ? 2.0 : 1.0;
+                // スピード倍率（Level 2は1.2倍速）
+                const speedMultiplier = window.currentLevel === 2 ? 1.2 : 1.0;
                 
                 console.log('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
