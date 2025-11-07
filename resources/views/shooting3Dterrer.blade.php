@@ -2063,8 +2063,8 @@
                         hitCount++;
                         console.log(`Model hit! (${hitCount} hits) - ${isBoss ? 'BOSS' : 'Normal'} - Level ${window.currentLevel}`, modelEntity);
                         
-                        // 必要なヒット数を判定（BOSS: 10回、Level 1: 1回、Level 2: 2回）
-                        const requiredHits = isBoss ? 10 : (window.currentLevel === 2 ? 2 : 1);
+                        // 必要なヒット数を判定（BOSS: 15回、Level 1: 1回、Level 2: 2回）
+                        const requiredHits = isBoss ? 15 : (window.currentLevel === 2 ? 2 : 1);
                         
                         // 必要なヒット数に達していない場合
                         if (hitCount < requiredHits) {
@@ -2089,13 +2089,16 @@
                                 if (isBoss) {
                                     if (hitCount >= 1 && hitCount <= 3) {
                                         flashColor = new THREE.Color(0x0000FF); // 青フラッシュ（1-3回目）
-                                        console.log(`BOSS: Blue flash (hit ${hitCount}/10)`);
+                                        console.log(`BOSS: Blue flash (hit ${hitCount}/15)`);
                                     } else if (hitCount >= 4 && hitCount <= 6) {
-                                        flashColor = new THREE.Color(0xFFFF00); // 黄フラッシュ（4-6回目）
-                                        console.log(`BOSS: Yellow flash (hit ${hitCount}/10)`);
-                                    } else if (hitCount >= 7 && hitCount <= 9) {
-                                        flashColor = new THREE.Color(0xFF0000); // 赤フラッシュ（7-9回目）
-                                        console.log(`BOSS: Red flash (hit ${hitCount}/10)`);
+                                        flashColor = new THREE.Color(0x00FF00); // 緑フラッシュ（4-6回目）
+                                        console.log(`BOSS: Green flash (hit ${hitCount}/15)`);
+                                    } else if (hitCount >= 7 && hitCount <= 10) {
+                                        flashColor = new THREE.Color(0xFFFF00); // 黄フラッシュ（7-10回目）
+                                        console.log(`BOSS: Yellow flash (hit ${hitCount}/15)`);
+                                    } else if (hitCount >= 11 && hitCount <= 14) {
+                                        flashColor = new THREE.Color(0xFF0000); // 赤フラッシュ（11-14回目）
+                                        console.log(`BOSS: Red flash (hit ${hitCount}/15)`);
                                     }
                                 } else {
                                     flashColor = new THREE.Color(0xFF0000); // 通常モデルは赤
@@ -2809,13 +2812,13 @@
             <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
             <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
-            <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige.glb') }}></a-asset-item>
+            <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige4.glb') }}></a-asset-item>
 
 
             <!-- サウンド -->
-            <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto"></audio>
-            <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop></audio>
+            <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto" crossorigin="anonymous"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto" crossorigin="anonymous"></audio>
+            <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop crossorigin="anonymous"></audio>
             
             <!-- 背景画像 -->
             <img id="sky02" src={{ asset('cg/R0010143a.JPG') }} crossorigin="anonymous" >
@@ -2856,7 +2859,7 @@
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -2879,7 +2882,7 @@
                 align="center" 
                 color="#000000" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2903,7 +2906,7 @@
                 align="center" 
                 color="#000000" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2915,7 +2918,7 @@
                 align="center" 
                 color="#CCCCCC" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2931,7 +2934,7 @@
                 align="center" 
                 color="#FFFF00" 
                 width="4"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -2943,7 +2946,7 @@
                 align="center" 
                 color="#00FF00" 
                 width="4"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
         </a-entity>
@@ -2957,7 +2960,7 @@
                 align="center" 
                 color="#FF00FF" 
                 width="2.0"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
         </a-entity>
@@ -2981,7 +2984,7 @@
                 align="center" 
                 color="#FF0000" 
                 width="3.5"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -2993,7 +2996,7 @@
                 align="center" 
                 color="#FFD700" 
                 width="4"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -3005,7 +3008,7 @@
                 align="center" 
                 color="#00FF00" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -3017,7 +3020,7 @@
                 align="center" 
                 color="#FF6600" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -3029,7 +3032,7 @@
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf">
             </a-text>
             
@@ -3057,7 +3060,7 @@
                 align="center" 
                 color="#000000" 
                 width="4"
-                font="roboto"
+                font="mozillavr"
                 shader="msdf"
                 baseline="center">
             </a-text>
