@@ -613,18 +613,12 @@
                 console.log('=== Spawning BOSS ===');
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムパターンから1つ選択
+                // ランダムパターンから1つ選択（4パターン）
                 const bossPatterns = [
-                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.15 },
-                    { startPos: { x: 0, y: 0, z: -4 }, speed: 0.15 },
-                    { startPos: { x: 3, y: 0, z: -3 }, speed: 0.15 },
-                    { startPos: { x: 4, y: 0, z: 0 }, speed: 0.15 },
-                    { startPos: { x: 5, y: 0, z: 3 }, speed: 0.15 },
-                    { startPos: { x: -6, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: -3, y: 0, z: 0 }, speed: 0.15 },
+                    { startPos: { x: 3, y: 0, z: 0 }, speed: 0.15 },
                     { startPos: { x: 0, y: 0, z: 3 }, speed: 0.15 },
-                    { startPos: { x: 3, y: 0, z: 6 }, speed: 0.15 },
-                    { startPos: { x: -4, y: 0, z: 6 }, speed: 0.15 },
-                    { startPos: { x: -7, y: 0, z: 2 }, speed: 0.15 }
+                    { startPos: { x: 0, y: 0, z: -3 }, speed: 0.15 }
                 ];
                 
                 const randomPattern = bossPatterns[Math.floor(Math.random() * bossPatterns.length)];
@@ -2068,8 +2062,8 @@
                         hitCount++;
                         console.log(`Model hit! (${hitCount} hits) - ${isBoss ? 'BOSS' : 'Normal'} - Level ${window.currentLevel}`, modelEntity);
                         
-                        // 必要なヒット数を判定（BOSS: 7回、Level 1: 1回、Level 2: 2回）
-                        const requiredHits = isBoss ? 7 : (window.currentLevel === 2 ? 2 : 1);
+                        // 必要なヒット数を判定（BOSS: 10回、Level 1: 1回、Level 2: 2回）
+                        const requiredHits = isBoss ? 10 : (window.currentLevel === 2 ? 2 : 1);
                         
                         // 必要なヒット数に達していない場合
                         if (hitCount < requiredHits) {
@@ -2168,10 +2162,10 @@
                         // 基本スコアを計算（距離を10倍して小数第一位まで）
                         let baseScore = Math.round(distance * 100) / 10; // 小数第一位まで
                         
-                        // ボスボーナス：7倍スコア
+                        // ボスボーナス：10倍スコア
                         if (isBoss) {
-                            baseScore *= 7;
-                            console.log('🎯 BOSS BONUS: Score multiplied by 7x =', baseScore);
+                            baseScore *= 10;
+                            console.log('🎯 BOSS BONUS: Score multiplied by 10x =', baseScore);
                         }
                         
                         // コンボカウントを増やす（スコア計算前に）
