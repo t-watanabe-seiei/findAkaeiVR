@@ -1927,12 +1927,15 @@
                 
                 const distance = direction.length();
                 
-                // 終点に到着したか判定（0.99m以内）
-                if (distance < 0.99) {
+                // 終点に到着したか判定（Boss: 1.6m以内、それ以外: 0.99m以内）
+                const isBoss = this.el.id === 'modelGroup_boss';
+                const stopDistance = isBoss ? 1.6 : 0.99;
+                
+                if (distance < stopDistance) {
                     this.isMoving = false;
                     this.hasReachedEnd = true;
                     this.reachedTime = Date.now();
-                    console.log('Model reached end position. Waiting for', this.data.waitTime, 'ms before respawn');
+                    console.log(`${isBoss ? 'BOSS' : 'Model'} reached end position (${stopDistance}m). Waiting for`, this.data.waitTime, 'ms before respawn');
                     return;
                 }
                 
