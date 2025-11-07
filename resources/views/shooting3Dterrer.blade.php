@@ -656,16 +656,16 @@
                 bossEntity.setAttribute('scale', '1.8 1.8 1.8'); // 1.8倍サイズ（1.5 × 1.2）
                 bossGroup.appendChild(bossEntity);
                 
-                // ボス当たり判定オブジェクトを作成（1.8倍サイズ）
+                // ボス当たり判定オブジェクトを作成（1.8倍サイズ + すり抜け防止で拡大）
                 const bossHitBox = document.createElement('a-entity');
                 bossHitBox.setAttribute('id', 'hit-boxed_boss');
                 bossHitBox.setAttribute('hit-box', 'isBoss: true'); // ボスフラグ
-                bossHitBox.setAttribute('position', '0 0.9 0'); // 高さも1.2倍に調整
+                bossHitBox.setAttribute('position', '0 1.0 0'); // 通常モデルと同じ高さに統一
                 
                 const bossHitBoxCylinder = document.createElement('a-entity');
                 bossHitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
                 bossHitBoxCylinder.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
-                bossHitBoxCylinder.setAttribute('scale', '1.35 2.7 1.35'); // 1.8倍サイズ（0.75*1.8, 1.5*1.8）
+                bossHitBoxCylinder.setAttribute('scale', '1.8 3.2 1.8'); // すり抜け防止のため拡大（半径1.8m、高さ3.2m）
                 bossHitBoxCylinder.setAttribute('class', 'collidable');
                 
                 bossHitBox.appendChild(bossHitBoxCylinder);
@@ -1413,7 +1413,7 @@
                     { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
                     { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
                     { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.35, height: 2.7 } // ボスは1.8倍サイズ
+                    { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.8, height: 3.2 } // ボスはすり抜け防止のため大きめに設定
                 ];
                 
                 for (let modelInfo of models) {
