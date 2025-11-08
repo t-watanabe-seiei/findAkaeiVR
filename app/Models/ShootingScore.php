@@ -15,10 +15,15 @@ class ShootingScore extends Model
         'name',
         'score',
         'level',
+        'game_mode',
+        'max_combo',
+        'enemies_defeated',
     ];
     
     protected $casts = [
         'score' => 'float',
         'level' => 'integer',
+        'max_combo' => 'integer',
+        'enemies_defeated' => 'integer',
     ];
 }

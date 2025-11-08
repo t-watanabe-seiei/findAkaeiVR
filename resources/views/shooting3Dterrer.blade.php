@@ -20,6 +20,7 @@
         window.gameTimeLeft = 75; // 75秒
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
+        window.enemiesDefeated = 0; // 倒したゾンビの数
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
@@ -438,6 +439,7 @@
                 window.gameTimeLeft = 75; // タイマーを75秒に設定
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
+                window.enemiesDefeated = 0; // 倒したゾンビの数をリセット
                 window.lastBallHit = false; // ヒット状態をリセット
                 window.bossSpawned = false; // ボス出現フラグをリセット
                 window.respawningModels = {}; // リスポーン中フラグを初期化
@@ -833,7 +835,7 @@
             },
             
             saveScoreToDatabase: function(score) {
-                console.log('Saving score to database:', score, 'Level:', window.currentLevel);
+                console.log('Saving score to database:', score, 'Level:', window.currentLevel, 'Game Mode: terrer');
                 
                 fetch('api/shooting-scores', {
                     method: 'POST',
@@ -845,6 +847,9 @@
                         name: 'noName', // デフォルト名
                         score: score,
                         level: window.currentLevel || 1, // レベル情報を追加
+                        game_mode: 'terrer', // ゲームモードを追加
+                        max_combo: window.maxComboCount || 0, // 最大コンボ数
+                        enemies_defeated: window.enemiesDefeated || 0, // 倒したゾンビの数
                     })
                 })
                 .then(response => response.json())
@@ -866,9 +871,9 @@
             },
             
             fetchAndDisplayRankings: function() {
-                console.log('Fetching top 5 rankings for Level:', window.currentLevel);
+                console.log('Fetching top 5 rankings for Level:', window.currentLevel, 'Game Mode: terrer');
                 
-                fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}`)
+                fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}&game_mode=terrer`)
                     .then(response => response.json())
                     .then(data => {
                         console.log('Rankings fetched:', data);
@@ -940,14 +945,14 @@
                 
                 // レベル表示を追加（一番上）
                 const levelHeader = document.createElement('a-text');
-                const levelName = window.currentLevel === 2 ? 'Level 2 Rankings' : 'Level 1 Rankings';
+                const levelName = window.currentLevel === 2 ? 'Terrer Lv2 Ranking' : 'Terrer Lv1 Ranking';
                 const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
                 levelHeader.setAttribute('value', levelName);
-                levelHeader.setAttribute('position', '0 0.4 0');
+                levelHeader.setAttribute('position', '0 0.65 0');
                 levelHeader.setAttribute('align', 'center');
                 levelHeader.setAttribute('color', levelColor);
                 levelHeader.setAttribute('width', '4');
-                levelHeader.setAttribute('font', 'roboto');
+                levelHeader.setAttribute('font', 'mozillavr');
                 levelHeader.setAttribute('shader', 'msdf');
                 rankingDisplay.appendChild(levelHeader);
                 
@@ -960,16 +965,12 @@
                     const rank = index + 1;
                     const yPosition = 0.1 - (index * 0.25); // 0.25間隔で配置
                     
-                    // 日付をフォーマット
-                    const date = new Date(item.created_at);
-                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    // ランキング行のテキスト（名前の代わりにコンボ数と倒したゾンビ数を表示）
+                    const rankingText = `${rank}. ${item.score.toFixed(1)}pt  Combo:${item.max_combo || 0}  Zombies:${item.enemies_defeated || 0}`;
                     
-                    // ランキング行のテキスト
-                    const rankingText = `${rank}. ${item.score.toFixed(1)}pt  ${item.name}  ${dateStr}`;
-                    
-                    // 自分のスコアかどうかを判定：ID一致があれば最優先、なければスコア±0.01 & 名前一致
+                    // 自分のスコアかどうかを判定：ID一致があれば最優先、なければスコア±0.01
                     const isCurrentPlayer = (currentId && item.id === currentId) ||
-                                             ((Math.abs(item.score - currentScore) < 0.01) && (item.name === 'noName'));
+                                             (Math.abs(item.score - currentScore) < 0.01);
                     
                     // 色を決定
                     let textColor = '#FFFFFF'; // デフォルトは白
@@ -2181,6 +2182,10 @@
                         hitFlag = true;
                         console.log(`${isBoss ? 'BOSS' : 'Model'} destroyed after ${hitCount} hits!`);
                         
+                        // 倒したゾンビの数をインクリメント
+                        window.enemiesDefeated++;
+                        console.log('Enemies Defeated:', window.enemiesDefeated);
+                        
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
                         if (hitBox && hitBox.parentNode) {
@@ -2924,7 +2929,7 @@
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -2947,7 +2952,7 @@
                 align="center" 
                 color="#000000" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2971,7 +2976,7 @@
                 align="center" 
                 color="#000000" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2983,7 +2988,7 @@
                 align="center" 
                 color="#CCCCCC" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf"
                 baseline="center">
             </a-text>
@@ -2999,7 +3004,7 @@
                 align="center" 
                 color="#FFFF00" 
                 width="4"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3011,7 +3016,7 @@
                 align="center" 
                 color="#00FF00" 
                 width="4"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
         </a-entity>
@@ -3025,7 +3030,7 @@
                 align="center" 
                 color="#FF00FF" 
                 width="2.0"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
         </a-entity>
@@ -3049,7 +3054,7 @@
                 align="center" 
                 color="#FF0000" 
                 width="3.5"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3061,7 +3066,7 @@
                 align="center" 
                 color="#FFD700" 
                 width="4"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3073,7 +3078,7 @@
                 align="center" 
                 color="#00FF00" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3085,7 +3090,7 @@
                 align="center" 
                 color="#FF6600" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3097,7 +3102,7 @@
                 align="center" 
                 color="#FFFFFF" 
                 width="3"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf">
             </a-text>
             
@@ -3125,7 +3130,7 @@
                 align="center" 
                 color="#000000" 
                 width="4"
-                font="mozillavr"
+                font="roboto"
                 shader="msdf"
                 baseline="center">
             </a-text>
