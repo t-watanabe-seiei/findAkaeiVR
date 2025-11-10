@@ -199,8 +199,8 @@
         /* カメラ切り替えボタン */
         #switch-camera-button {
             position: fixed;
-            bottom: 110px;
-            right: 30px;
+            bottom: 30px;
+            left: 30px;
             width: 60px;
             height: 60px;
             background-color: rgba(255, 255, 255, 0.9);
@@ -223,6 +223,44 @@
         
         #switch-camera-button:hover {
             background-color: rgba(240, 240, 240, 0.9);
+        }
+        
+        /* 動画撮影ボタン */
+        #video-button {
+            position: fixed;
+            bottom: 110px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        
+        #video-button:active {
+            transform: scale(0.9);
+        }
+        
+        #video-button:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+        
+        #video-button.recording {
+            background-color: rgba(255, 100, 100, 0.9);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
         
         /* 撮影フラッシュエフェクト */
@@ -260,7 +298,8 @@
             align-items: center;
         }
         
-        #photo-preview img {
+        #photo-preview img,
+        #photo-preview video {
             max-width: 100%;
             max-height: 70vh;
             border-radius: 5px;
@@ -301,6 +340,9 @@
     
     <!-- カメラ切り替えボタン -->
     <button id="switch-camera-button" title="カメラを切り替え">🔄</button>
+    
+    <!-- 動画撮影ボタン -->
+    <button id="video-button" title="動画を撮る">🎥</button>
     
     <!-- カメラボタン -->
     <button id="camera-button" title="写真を撮る">📷</button>
@@ -359,6 +401,7 @@
             const scene = document.querySelector('a-scene');
             const model = document.querySelector('#fox-model');
             const cameraButton = document.getElementById('camera-button');
+            const videoButton = document.getElementById('video-button');
             const switchCameraButton = document.getElementById('switch-camera-button');
             const flash = document.getElementById('flash');
             const photoPreview = document.getElementById('photo-preview');
@@ -366,6 +409,10 @@
             const downloadButton = document.getElementById('download-button');
             const closeButton = document.getElementById('close-button');
             let capturedImageData = null;
+            let mediaRecorder = null;
+            let recordedChunks = [];
+            let isRecording = false;
+            let recordingStartTime = 0;
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -420,6 +467,171 @@
                     alert('カメラの切り替えに失敗しました。\n' + error.message);
                 }
             });
+            
+            // 動画撮影機能
+            videoButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
+            });
+            
+            function startRecording() {
+                try {
+                    const scene = document.querySelector('a-scene');
+                    const arCanvas = scene.canvas;
+                    const video = document.querySelector('video');
+                    
+                    if (!arCanvas || !video) {
+                        console.error('Canvas or video not found');
+                        alert('動画撮影の準備ができていません');
+                        return;
+                    }
+                    
+                    // 合成用の新しいキャンバスを作成
+                    const compositeCanvas = document.createElement('canvas');
+                    const screenWidth = window.innerWidth;
+                    const screenHeight = window.innerHeight;
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    compositeCanvas.width = screenWidth * dpr;
+                    compositeCanvas.height = screenHeight * dpr;
+                    const ctx = compositeCanvas.getContext('2d');
+                    
+                    // 合成処理を定期的に実行
+                    function compositeFrame() {
+                        if (!isRecording) return;
+                        
+                        ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
+                        ctx.save();
+                        ctx.scale(dpr, dpr);
+                        
+                        // 1. 背景（カメラ映像）を描画
+                        const videoAspect = video.videoWidth / video.videoHeight;
+                        const screenAspect = screenWidth / screenHeight;
+                        
+                        let drawWidth, drawHeight, offsetX, offsetY;
+                        
+                        if (videoAspect > screenAspect) {
+                            drawHeight = screenHeight;
+                            drawWidth = drawHeight * videoAspect;
+                            offsetX = (screenWidth - drawWidth) / 2;
+                            offsetY = 0;
+                        } else {
+                            drawWidth = screenWidth;
+                            drawHeight = drawWidth / videoAspect;
+                            offsetX = 0;
+                            offsetY = (screenHeight - drawHeight) / 2;
+                        }
+                        
+                        ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+                        
+                        // 2. ARコンテンツを重ねる
+                        const arAspect = arCanvas.width / arCanvas.height;
+                        const targetAspect = screenWidth / screenHeight;
+                        
+                        let arDrawWidth, arDrawHeight, arOffsetX, arOffsetY;
+                        
+                        if (arAspect > targetAspect) {
+                            arDrawHeight = screenHeight;
+                            arDrawWidth = arDrawHeight * arAspect;
+                            arOffsetX = (screenWidth - arDrawWidth) / 2;
+                            arOffsetY = 0;
+                        } else {
+                            arDrawWidth = screenWidth;
+                            arDrawHeight = arDrawWidth / arAspect;
+                            arOffsetX = 0;
+                            arOffsetY = (screenHeight - arDrawHeight) / 2;
+                        }
+                        
+                        ctx.drawImage(arCanvas, arOffsetX, arOffsetY, arDrawWidth, arDrawHeight);
+                        ctx.restore();
+                        
+                        requestAnimationFrame(compositeFrame);
+                    }
+                    
+                    // ストリームを取得
+                    const stream = compositeCanvas.captureStream(30); // 30fps
+                    
+                    // MediaRecorderの設定
+                    const options = {
+                        mimeType: 'video/webm;codecs=vp9',
+                        videoBitsPerSecond: 5000000 // 5Mbps
+                    };
+                    
+                    // mimeTypeのサポート確認
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                            options.mimeType = 'video/mp4';
+                        }
+                    }
+                    
+                    recordedChunks = [];
+                    mediaRecorder = new MediaRecorder(stream, options);
+                    
+                    mediaRecorder.ondataavailable = function(event) {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = function() {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        console.log('Recording stopped, blob size:', blob.size);
+                        
+                        // プレビューに動画を表示
+                        const videoElement = document.createElement('video');
+                        videoElement.src = URL.createObjectURL(blob);
+                        videoElement.controls = true;
+                        videoElement.style.maxWidth = '100%';
+                        videoElement.style.maxHeight = '70vh';
+                        videoElement.style.borderRadius = '5px';
+                        
+                        // プレビュー画像を動画要素に置き換え
+                        const previewContainer = document.getElementById('photo-preview');
+                        const existingPreview = document.querySelector('#photo-preview img, #photo-preview video');
+                        if (existingPreview) {
+                            existingPreview.replaceWith(videoElement);
+                        }
+                        
+                        // ダウンロードボタンの動作を変更
+                        capturedImageData = blob;
+                        photoPreview.style.display = 'flex';
+                        
+                        recordedChunks = [];
+                    };
+                    
+                    // 録画開始
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordingStartTime = Date.now();
+                    videoButton.classList.add('recording');
+                    videoButton.textContent = '⏹️';
+                    compositeFrame();
+                    
+                    console.log('Recording started with mimeType:', options.mimeType);
+                    
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    alert('動画撮影の開始に失敗しました\n' + error.message);
+                }
+            }
+            
+            function stopRecording() {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    videoButton.classList.remove('recording');
+                    videoButton.textContent = '🎥';
+                    
+                    const duration = Math.round((Date.now() - recordingStartTime) / 1000);
+                    console.log('Recording duration:', duration, 'seconds');
+                }
+            }
             
             // 写真撮影機能
             cameraButton.addEventListener('click', function(e) {
@@ -549,27 +761,40 @@
             // ダウンロードボタン
             downloadButton.addEventListener('click', async function() {
                 if (!capturedImageData) {
-                    console.error('No image data');
+                    console.error('No data to download');
                     return;
                 }
                 
                 try {
-                    // Data URLをBlobに変換
-                    const response = await fetch(capturedImageData);
-                    const blob = await response.blob();
+                    let blob;
+                    let filename;
+                    let mimeType;
+                    
+                    // Blobオブジェクトの場合（動画）
+                    if (capturedImageData instanceof Blob) {
+                        blob = capturedImageData;
+                        filename = 'AR_video_' + new Date().getTime() + '.webm';
+                        mimeType = 'video/webm';
+                    } else {
+                        // Data URLの場合（写真）
+                        const response = await fetch(capturedImageData);
+                        blob = await response.blob();
+                        filename = 'AR_photo_' + new Date().getTime() + '.jpg';
+                        mimeType = 'image/jpeg';
+                    }
                     
                     // iOSやAndroidでWeb Share APIが使える場合
                     if (navigator.share && navigator.canShare) {
-                        const file = new File([blob], 'AR_photo_' + new Date().getTime() + '.jpg', { type: 'image/jpeg' });
+                        const file = new File([blob], filename, { type: mimeType });
                         
                         if (navigator.canShare({ files: [file] })) {
                             try {
                                 await navigator.share({
                                     files: [file],
-                                    title: 'AR写真',
-                                    text: 'ARで撮影した写真'
+                                    title: mimeType.startsWith('video') ? 'AR動画' : 'AR写真',
+                                    text: mimeType.startsWith('video') ? 'ARで撮影した動画' : 'ARで撮影した写真'
                                 });
-                                console.log('Photo shared successfully');
+                                console.log('File shared successfully');
                                 return;
                             } catch (shareError) {
                                 console.log('Share cancelled or failed:', shareError);
@@ -580,35 +805,51 @@
                     // Web Share APIが使えない場合：従来のダウンロード方式
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                     
-                    if (isIOS) {
+                    if (isIOS && mimeType.startsWith('image')) {
                         // iOSの場合：画像を長押しで保存を促す
                         alert('画像を長押しして「写真に追加」を選択してください');
                     } else {
                         // その他のデバイス：通常のダウンロード
                         const link = document.createElement('a');
-                        link.download = 'AR_photo_' + new Date().getTime() + '.jpg';
+                        link.download = filename;
                         link.href = URL.createObjectURL(blob);
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
                         URL.revokeObjectURL(link.href);
-                        console.log('Photo downloaded');
+                        console.log('File downloaded:', filename);
                     }
                 } catch (error) {
-                    console.error('Error downloading photo:', error);
-                    alert('写真の保存に失敗しました');
+                    console.error('Error downloading file:', error);
+                    alert('保存に失敗しました');
                 }
             });
             
             // 閉じるボタン
             closeButton.addEventListener('click', function() {
                 photoPreview.style.display = 'none';
+                
+                // 動画要素を画像要素に戻す
+                const videoElement = document.querySelector('#photo-preview video');
+                if (videoElement) {
+                    const imgElement = document.createElement('img');
+                    imgElement.id = 'preview-image';
+                    imgElement.src = '';
+                    imgElement.alt = '撮影した写真';
+                    imgElement.style.maxWidth = '100%';
+                    imgElement.style.maxHeight = '70vh';
+                    imgElement.style.borderRadius = '5px';
+                    videoElement.replaceWith(imgElement);
+                }
+                
+                capturedImageData = null;
             });
             
             // 画面全体のタップを検出（アニメーション切り替え用）
             document.body.addEventListener('touchstart', function(e) {
-                // カメラボタン、切り替えボタン、プレビューをタップした場合は除外
+                // カメラボタン、動画ボタン、切り替えボタン、プレビューをタップした場合は除外
                 if (e.target.closest('#camera-button') || 
+                    e.target.closest('#video-button') ||
                     e.target.closest('#switch-camera-button') ||
                     e.target.closest('#photo-preview')) {
                     return;
@@ -623,8 +864,9 @@
             
             // マウスクリックも対応
             document.body.addEventListener('click', function(e) {
-                // カメラボタン、切り替えボタン、プレビューをクリックした場合は除外
+                // カメラボタン、動画ボタン、切り替えボタン、プレビューをクリックした場合は除外
                 if (e.target.closest('#camera-button') || 
+                    e.target.closest('#video-button') ||
                     e.target.closest('#switch-camera-button') ||
                     e.target.closest('#photo-preview')) {
                     return;
