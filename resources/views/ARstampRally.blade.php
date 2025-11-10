@@ -409,13 +409,56 @@
             });
             
             // ダウンロードボタン
-            downloadButton.addEventListener('click', function() {
-                if (capturedImageData) {
-                    const link = document.createElement('a');
-                    link.download = 'AR_photo_' + new Date().getTime() + '.jpg';
-                    link.href = capturedImageData;
-                    link.click();
-                    console.log('Photo downloaded');
+            downloadButton.addEventListener('click', async function() {
+                if (!capturedImageData) {
+                    console.error('No image data');
+                    return;
+                }
+                
+                try {
+                    // Data URLをBlobに変換
+                    const response = await fetch(capturedImageData);
+                    const blob = await response.blob();
+                    
+                    // iOSやAndroidでWeb Share APIが使える場合
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([blob], 'AR_photo_' + new Date().getTime() + '.jpg', { type: 'image/jpeg' });
+                        
+                        if (navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({
+                                    files: [file],
+                                    title: 'AR写真',
+                                    text: 'ARで撮影した写真'
+                                });
+                                console.log('Photo shared successfully');
+                                return;
+                            } catch (shareError) {
+                                console.log('Share cancelled or failed:', shareError);
+                            }
+                        }
+                    }
+                    
+                    // Web Share APIが使えない場合：従来のダウンロード方式
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    
+                    if (isIOS) {
+                        // iOSの場合：画像を長押しで保存を促す
+                        alert('画像を長押しして「写真に追加」を選択してください');
+                    } else {
+                        // その他のデバイス：通常のダウンロード
+                        const link = document.createElement('a');
+                        link.download = 'AR_photo_' + new Date().getTime() + '.jpg';
+                        link.href = URL.createObjectURL(blob);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+                        console.log('Photo downloaded');
+                    }
+                } catch (error) {
+                    console.error('Error downloading photo:', error);
+                    alert('写真の保存に失敗しました');
                 }
             });
             
