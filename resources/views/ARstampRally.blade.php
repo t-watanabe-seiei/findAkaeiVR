@@ -285,7 +285,8 @@
     <a-scene
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false;"
-        vr-mode-ui="enabled: false">
+        vr-mode-ui="enabled: false"
+        renderer="preserveDrawingBuffer: true;">
         
         <a-entity camera></a-entity>
         
@@ -347,55 +348,37 @@
                     flash.classList.remove('active');
                 }, 200);
                 
-                // 背景とARコンテンツを含めて撮影
-                setTimeout(() => {
-                    try {
-                        const video = document.querySelector('video');
-                        const arCanvas = scene.canvas;
-                        
-                        if (!video || !arCanvas) {
-                            console.error('Video or canvas not found');
-                            return;
+                // 次のフレームレンダリング後に撮影
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        try {
+                            // A-FrameのキャンバスとWebGLコンテキストを取得
+                            const canvas = scene.canvas;
+                            const gl = canvas.getContext('webgl') || canvas.getContext('webgl2') || canvas.getContext('experimental-webgl');
+                            
+                            if (!canvas || !gl) {
+                                console.error('Canvas or WebGL context not found');
+                                return;
+                            }
+                            
+                            console.log('Canvas size:', canvas.width, 'x', canvas.height);
+                            
+                            // canvasから直接画像を取得（背景とARモデルが両方含まれる）
+                            capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
+                            
+                            if (capturedImageData && capturedImageData.length > 100) {
+                                previewImage.src = capturedImageData;
+                                photoPreview.style.display = 'flex';
+                                console.log('Photo captured successfully! Data length:', capturedImageData.length);
+                            } else {
+                                console.error('Failed to capture image data');
+                            }
+                            
+                        } catch (error) {
+                            console.error('Error capturing photo:', error);
                         }
-                        
-                        console.log('Video size:', video.videoWidth, 'x', video.videoHeight);
-                        console.log('Canvas size:', arCanvas.width, 'x', arCanvas.height);
-                        
-                        // 新しいキャンバスを作成（ビデオの実際のサイズを使用）
-                        const canvas = document.createElement('canvas');
-                        const width = window.innerWidth;
-                        const height = window.innerHeight;
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d', { alpha: false });
-                        
-                        // 1. 背景を黒で塗りつぶし
-                        ctx.fillStyle = 'black';
-                        ctx.fillRect(0, 0, width, height);
-                        
-                        // 2. カメラ映像を描画
-                        if (video.videoWidth > 0 && video.videoHeight > 0) {
-                            ctx.drawImage(video, 0, 0, width, height);
-                            console.log('Video drawn');
-                        }
-                        
-                        // 3. ARコンテンツを重ねる（透明度を保持）
-                        ctx.globalCompositeOperation = 'source-over';
-                        if (arCanvas.width > 0 && arCanvas.height > 0) {
-                            ctx.drawImage(arCanvas, 0, 0, width, height);
-                            console.log('AR canvas drawn');
-                        }
-                        
-                        // 画像データを取得
-                        capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
-                        previewImage.src = capturedImageData;
-                        photoPreview.style.display = 'flex';
-                        console.log('Photo captured with background!');
-                        
-                    } catch (error) {
-                        console.error('Error capturing photo:', error);
-                    }
-                }, 500);
+                    });
+                });
             });
             
             // ダウンロードボタン
