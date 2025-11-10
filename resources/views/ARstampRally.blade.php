@@ -450,27 +450,58 @@
                                 return;
                             }
                             
+                            // 実際の画面サイズを取得
+                            const screenWidth = window.innerWidth;
+                            const screenHeight = window.innerHeight;
+                            
+                            // デバイスピクセル比を考慮
+                            const dpr = window.devicePixelRatio || 1;
+                            
+                            console.log('Screen:', screenWidth, 'x', screenHeight);
+                            console.log('DPR:', dpr);
                             console.log('Video:', video.videoWidth, 'x', video.videoHeight);
                             console.log('Canvas:', arCanvas.width, 'x', arCanvas.height);
                             
-                            // 撮影用の新しいキャンバスを作成
+                            // 撮影用の新しいキャンバスを作成（画面サイズに合わせる）
                             const outputCanvas = document.createElement('canvas');
-                            outputCanvas.width = arCanvas.width;
-                            outputCanvas.height = arCanvas.height;
+                            outputCanvas.width = screenWidth * dpr;
+                            outputCanvas.height = screenHeight * dpr;
                             const ctx = outputCanvas.getContext('2d');
+                            
+                            // スケーリングを設定
+                            ctx.scale(dpr, dpr);
                             
                             // 1. 背景（カメラ映像）を描画
                             ctx.save();
-                            // ビデオを反転して描画（フロントカメラの場合の対応）
-                            ctx.drawImage(video, 0, 0, outputCanvas.width, outputCanvas.height);
+                            
+                            // ビデオのアスペクト比を計算
+                            const videoAspect = video.videoWidth / video.videoHeight;
+                            const screenAspect = screenWidth / screenHeight;
+                            
+                            let drawWidth, drawHeight, offsetX, offsetY;
+                            
+                            if (videoAspect > screenAspect) {
+                                // ビデオが横長：高さを画面に合わせる
+                                drawHeight = screenHeight;
+                                drawWidth = drawHeight * videoAspect;
+                                offsetX = (screenWidth - drawWidth) / 2;
+                                offsetY = 0;
+                            } else {
+                                // ビデオが縦長：幅を画面に合わせる
+                                drawWidth = screenWidth;
+                                drawHeight = drawWidth / videoAspect;
+                                offsetX = 0;
+                                offsetY = (screenHeight - drawHeight) / 2;
+                            }
+                            
+                            ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
                             ctx.restore();
                             console.log('Background drawn');
                             
                             // 2. ARコンテンツ（3Dモデル）を重ねる
                             ctx.save();
-                            // 透明部分を保持して重ねる
                             ctx.globalCompositeOperation = 'source-over';
-                            ctx.drawImage(arCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
+                            ctx.drawImage(arCanvas, 0, 0, screenWidth, screenHeight);
                             ctx.restore();
                             console.log('AR content drawn');
                             
@@ -481,6 +512,7 @@
                                 previewImage.src = capturedImageData;
                                 photoPreview.style.display = 'flex';
                                 console.log('✓ Photo captured! Size:', Math.round(capturedImageData.length / 1024), 'KB');
+                                console.log('Output size:', outputCanvas.width, 'x', outputCanvas.height);
                             } else {
                                 console.error('Image data too small, capture failed');
                             }
