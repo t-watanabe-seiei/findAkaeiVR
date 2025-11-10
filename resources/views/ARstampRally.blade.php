@@ -404,7 +404,7 @@
         
         // ドラッグ回転用の変数
         let isDragging = false;
-        let previousTouchX = 0;
+        let previousTouchY = 0;
         let currentRotationX = 0;
         
         // ダブルタップ検出用の変数
@@ -1004,7 +1004,7 @@
                         // シングルタップ（ドラッグ準備）
                         lastTapTime = now;
                         isDragging = true;
-                        previousTouchX = e.touches[0].clientX;
+                        previousTouchY = e.touches[0].clientY;
                     }
                 }
             };
@@ -1036,14 +1036,14 @@
                         }
                     }
                 } else if (e.touches.length === 1 && isDragging) {
-                    // ドラッグ回転
+                    // ドラッグ回転（縦方向でX軸回転）
                     e.preventDefault();
-                    const currentTouchX = e.touches[0].clientX;
-                    const deltaX = currentTouchX - previousTouchX;
+                    const currentTouchY = e.touches[0].clientY;
+                    const deltaY = currentTouchY - previousTouchY;
                     
                     // 回転速度を調整（感度）
                     const rotationSpeed = 0.5;
-                    currentRotationX += deltaX * rotationSpeed;
+                    currentRotationX += deltaY * rotationSpeed;
                     
                     if (model) {
                         model.setAttribute('rotation', {
@@ -1053,7 +1053,7 @@
                         });
                     }
                     
-                    previousTouchX = currentTouchX;
+                    previousTouchY = currentTouchY;
                 }
             };
             
@@ -1073,7 +1073,7 @@
             
             // PC用：マウスドラッグで回転
             let isMouseDragging = false;
-            let previousMouseX = 0;
+            let previousMouseY = 0;
             
             document.body.addEventListener('mousedown', function(e) {
                 // ボタンをクリックした場合は除外
@@ -1085,14 +1085,14 @@
                 }
                 
                 isMouseDragging = true;
-                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
             });
             
             document.body.addEventListener('mousemove', function(e) {
                 if (isMouseDragging) {
-                    const deltaX = e.clientX - previousMouseX;
+                    const deltaY = e.clientY - previousMouseY;
                     const rotationSpeed = 0.5;
-                    currentRotationX += deltaX * rotationSpeed;
+                    currentRotationX += deltaY * rotationSpeed;
                     
                     if (model) {
                         model.setAttribute('rotation', {
@@ -1102,7 +1102,7 @@
                         });
                     }
                     
-                    previousMouseX = e.clientX;
+                    previousMouseY = e.clientY;
                 }
             });
             
