@@ -495,15 +495,31 @@
                     const compositeCanvas = document.createElement('canvas');
                     const screenWidth = window.innerWidth;
                     const screenHeight = window.innerHeight;
-                    const dpr = window.devicePixelRatio || 1;
+                    // iPhoneでのパフォーマンス向上のため、解像度を調整
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const dpr = isIOS ? Math.min(window.devicePixelRatio || 1, 2) : (window.devicePixelRatio || 1);
                     
                     compositeCanvas.width = screenWidth * dpr;
                     compositeCanvas.height = screenHeight * dpr;
-                    const ctx = compositeCanvas.getContext('2d');
+                    const ctx = compositeCanvas.getContext('2d', { 
+                        alpha: false,
+                        desynchronized: true // パフォーマンス向上
+                    });
                     
                     // 合成処理を定期的に実行
-                    function compositeFrame() {
+                    let lastFrameTime = 0;
+                    const targetFPS = isIOS ? 24 : 30; // iOSでは24fpsに制限
+                    const frameInterval = 1000 / targetFPS;
+                    
+                    function compositeFrame(timestamp) {
                         if (!isRecording) return;
+                        
+                        // フレームレート制御
+                        if (timestamp - lastFrameTime < frameInterval) {
+                            requestAnimationFrame(compositeFrame);
+                            return;
+                        }
+                        lastFrameTime = timestamp;
                         
                         ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
                         ctx.save();
@@ -553,37 +569,40 @@
                         requestAnimationFrame(compositeFrame);
                     }
                     
-                    // ストリームを取得
-                    const stream = compositeCanvas.captureStream(30); // 30fps
+                    // ストリームを取得（フレームレートを調整）
+                    const stream = compositeCanvas.captureStream(targetFPS);
                     
                     // MediaRecorderの設定（iPhoneでも再生可能な形式を優先）
                     let options = {};
+                    
+                    // ビットレートをデバイスに応じて調整
+                    const bitrate = isIOS ? 3000000 : 5000000; // iOSは3Mbps、その他は5Mbps
                     
                     // iOSではMP4をサポート、AndroidではWebMをサポート
                     if (MediaRecorder.isTypeSupported('video/mp4')) {
                         options = {
                             mimeType: 'video/mp4',
-                            videoBitsPerSecond: 5000000 // 5Mbps
+                            videoBitsPerSecond: bitrate
                         };
                     } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
                         options = {
                             mimeType: 'video/webm;codecs=vp9',
-                            videoBitsPerSecond: 5000000
+                            videoBitsPerSecond: bitrate
                         };
                     } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
                         options = {
                             mimeType: 'video/webm;codecs=vp8',
-                            videoBitsPerSecond: 5000000
+                            videoBitsPerSecond: bitrate
                         };
                     } else if (MediaRecorder.isTypeSupported('video/webm')) {
                         options = {
                             mimeType: 'video/webm',
-                            videoBitsPerSecond: 5000000
+                            videoBitsPerSecond: bitrate
                         };
                     } else {
                         // デフォルト（ブラウザが自動選択）
                         options = {
-                            videoBitsPerSecond: 5000000
+                            videoBitsPerSecond: bitrate
                         };
                     }
                     
@@ -600,6 +619,7 @@
                         const mimeType = mediaRecorder.mimeType || 'video/webm';
                         const blob = new Blob(recordedChunks, { type: mimeType });
                         console.log('Recording stopped, blob size:', blob.size, 'type:', mimeType);
+                        console.log('FPS:', targetFPS, 'Bitrate:', bitrate, 'DPR:', dpr);
                         
                         // ファイル拡張子を決定
                         let extension = 'webm';
@@ -640,9 +660,10 @@
                     recordingStartTime = Date.now();
                     videoButton.classList.add('recording');
                     videoButton.textContent = '⏹️';
-                    compositeFrame();
+                    requestAnimationFrame(compositeFrame);
                     
                     console.log('Recording started with mimeType:', options.mimeType);
+                    console.log('Target FPS:', targetFPS, 'Bitrate:', bitrate / 1000000 + 'Mbps');
                     
                 } catch (error) {
                     console.error('Error starting recording:', error);
