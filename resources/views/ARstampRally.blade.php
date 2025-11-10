@@ -183,7 +183,7 @@
         <a-marker preset="hiro" id="hiro-marker">
             <a-entity
                 id="fox-model"
-                gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
+                gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
                 scale="2 2 2"
                 rotation="0 0 0"
