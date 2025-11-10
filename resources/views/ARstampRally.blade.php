@@ -196,6 +196,35 @@
             background-color: rgba(240, 240, 240, 0.9);
         }
         
+        /* カメラ切り替えボタン */
+        #switch-camera-button {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        
+        #switch-camera-button:active {
+            transform: scale(0.9) rotate(180deg);
+            background-color: rgba(200, 200, 200, 0.9);
+        }
+        
+        #switch-camera-button:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+        
         /* 撮影フラッシュエフェクト */
         #flash {
             position: fixed;
@@ -270,6 +299,9 @@
     <!-- フラッシュエフェクト -->
     <div id="flash"></div>
     
+    <!-- カメラ切り替えボタン -->
+    <button id="switch-camera-button" title="カメラを切り替え">🔄</button>
+    
     <!-- カメラボタン -->
     <button id="camera-button" title="写真を撮る">📷</button>
     
@@ -321,10 +353,13 @@
         
         // 画面タップでアニメーションを再生
         let sceneReady = false;
+        let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
+        
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             const model = document.querySelector('#fox-model');
             const cameraButton = document.getElementById('camera-button');
+            const switchCameraButton = document.getElementById('switch-camera-button');
             const flash = document.getElementById('flash');
             const photoPreview = document.getElementById('photo-preview');
             const previewImage = document.getElementById('preview-image');
@@ -335,6 +370,55 @@
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
                 console.log('Scene loaded');
+            });
+            
+            // カメラ切り替え機能
+            switchCameraButton.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                console.log('Switching camera...');
+                
+                try {
+                    // 現在のビデオストリームを停止
+                    const video = document.querySelector('video');
+                    if (video && video.srcObject) {
+                        const tracks = video.srcObject.getTracks();
+                        tracks.forEach(track => track.stop());
+                    }
+                    
+                    // カメラの向きを切り替え
+                    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                    console.log('New facing mode:', currentFacingMode);
+                    
+                    // 新しいカメラストリームを取得
+                    const constraints = {
+                        video: {
+                            facingMode: currentFacingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 960 }
+                        }
+                    };
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    
+                    // ビデオ要素に新しいストリームを設定
+                    if (video) {
+                        video.srcObject = stream;
+                        await video.play();
+                        console.log('Camera switched successfully to:', currentFacingMode);
+                    }
+                    
+                    // AR.jsを再初期化（必要に応じて）
+                    if (scene.systems['arjs']) {
+                        const arjsSystem = scene.systems['arjs'];
+                        if (arjsSystem.onVideoCanPlay) {
+                            arjsSystem.onVideoCanPlay();
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Error switching camera:', error);
+                    alert('カメラの切り替えに失敗しました。\n' + error.message);
+                }
             });
             
             // 写真撮影機能
@@ -469,8 +553,9 @@
             
             // 画面全体のタップを検出（アニメーション切り替え用）
             document.body.addEventListener('touchstart', function(e) {
-                // カメラボタンやプレビューをタップした場合は除外
+                // カメラボタン、切り替えボタン、プレビューをタップした場合は除外
                 if (e.target.closest('#camera-button') || 
+                    e.target.closest('#switch-camera-button') ||
                     e.target.closest('#photo-preview')) {
                     return;
                 }
@@ -484,8 +569,9 @@
             
             // マウスクリックも対応
             document.body.addEventListener('click', function(e) {
-                // カメラボタンやプレビューをクリックした場合は除外
+                // カメラボタン、切り替えボタン、プレビューをクリックした場合は除外
                 if (e.target.closest('#camera-button') || 
+                    e.target.closest('#switch-camera-button') ||
                     e.target.closest('#photo-preview')) {
                     return;
                 }
