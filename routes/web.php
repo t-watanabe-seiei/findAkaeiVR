@@ -18,6 +18,10 @@ Route::match(['get', 'head'], '/', function () {
     return view('shooting3DModel');
 })->name('home.index');
 
+Route::match(['get', 'head'], '/stamp', function () {
+    return view('ARstampRally');
+})->name('stamp.index');
+
 Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer');
 })->name('terrer.index');
