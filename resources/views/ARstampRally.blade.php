@@ -24,6 +24,7 @@
                     const model = el.getObject3D('mesh');
                     
                     if (!model || !model.animations || model.animations.length === 0) {
+                        console.log('No animations in model');
                         return;
                     }
                     
@@ -37,6 +38,7 @@
                     
                     let clipToPlay = THREE.AnimationClip.findByName(model.animations, clipName);
                     if (!clipToPlay) {
+                        console.log(`Animation "${clipName}" not found, using first animation`);
                         clipToPlay = model.animations[0];
                     }
                     
@@ -44,27 +46,38 @@
                     action.setLoop(THREE.LoopRepeat, Infinity);
                     action.stop();
                     this.action = action;
-                    console.log('Animation ready');
+                    console.log('Animation ready:', clipToPlay.name);
                 });
                 
-                const handleClick = (e) => {
-                    e.stopPropagation();
-                    if (!action) return;
+                const handleInteraction = (e) => {
+                    console.log('Interaction detected:', e.type);
+                    if (!action) {
+                        console.log('Action not ready yet');
+                        return;
+                    }
                     
                     if (!isPlaying) {
                         action.reset();
                         action.play();
                         isPlaying = true;
-                        console.log('Animation started');
+                        console.log('✓ Animation started');
                     } else {
                         action.stop();
                         isPlaying = false;
-                        console.log('Animation stopped');
+                        console.log('✗ Animation stopped');
                     }
                 };
                 
-                el.addEventListener('click', handleClick);
-                el.addEventListener('touchstart', handleClick);
+                // 複数のイベントリスナーを追加
+                el.addEventListener('click', handleInteraction);
+                el.addEventListener('mousedown', handleInteraction);
+                el.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleInteraction(e);
+                });
+                el.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                });
             },
             tick: function(time, deltaTime) {
                 if (this.mixer) {
@@ -72,6 +85,11 @@
                 }
             }
         });
+        
+        // グローバルタッチイベントのデバッグ
+        document.addEventListener('touchstart', function(e) {
+            console.log('Touch detected on document');
+        }, {passive: false});
     </script>
     <style>
         body {
@@ -109,14 +127,14 @@
         
         <a-entity camera></a-entity>
         
-        <a-marker preset="hiro">
+        <a-marker preset="hiro" id="hiro-marker">
             <a-entity
+                id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
                 scale="2 2 2"
                 rotation="0 0 0"
-                click-animation="clip: anime01"
-                class="clickable">
+                click-animation="clip: anime01">
             </a-entity>
         </a-marker>
         
@@ -133,6 +151,36 @@
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
         }, 3000);
+        
+        // 画面タップでアニメーションを再生
+        let sceneReady = false;
+        document.addEventListener('DOMContentLoaded', function() {
+            const scene = document.querySelector('a-scene');
+            const model = document.querySelector('#fox-model');
+            
+            scene.addEventListener('loaded', function() {
+                sceneReady = true;
+                console.log('Scene loaded');
+            });
+            
+            // 画面全体のタップを検出
+            document.body.addEventListener('touchstart', function(e) {
+                console.log('Screen tapped');
+                if (sceneReady && model) {
+                    const clickEvent = new Event('click');
+                    model.dispatchEvent(clickEvent);
+                }
+            }, {passive: false});
+            
+            // マウスクリックも対応
+            document.body.addEventListener('click', function(e) {
+                console.log('Screen clicked');
+                if (sceneReady && model) {
+                    const clickEvent = new Event('click');
+                    model.dispatchEvent(clickEvent);
+                }
+            });
+        });
     </script>
 </body>
 </html>
