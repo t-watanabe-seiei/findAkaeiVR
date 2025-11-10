@@ -185,14 +185,14 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
             
             <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.2"></a-light>
-            <a-light type="directional" intensity="0.6" position="1 1 1"></a-light>
+            <a-light type="ambient" intensity="1.3"></a-light>
+            <a-light type="directional" intensity="0.7" position="1 1 1"></a-light>
         </a-marker>
         
     </a-scene>
