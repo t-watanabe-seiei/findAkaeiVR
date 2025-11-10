@@ -347,16 +347,31 @@
                     flash.classList.remove('active');
                 }, 200);
                 
-                // A-Frameのキャンバスから画像をキャプチャ
+                // 背景とARコンテンツを含めて撮影
                 setTimeout(() => {
-                    const canvas = scene.components.screenshot.getCanvas('perspective');
-                    if (canvas) {
+                    const video = document.querySelector('video');
+                    const arCanvas = scene.canvas;
+                    
+                    if (video && arCanvas) {
+                        // 新しいキャンバスを作成
+                        const canvas = document.createElement('canvas');
+                        canvas.width = arCanvas.width;
+                        canvas.height = arCanvas.height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        // 1. まず背景（カメラ映像）を描画
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        // 2. その上にARコンテンツを重ねる
+                        ctx.drawImage(arCanvas, 0, 0, canvas.width, canvas.height);
+                        
+                        // 画像データを取得
                         capturedImageData = canvas.toDataURL('image/png');
                         previewImage.src = capturedImageData;
                         photoPreview.style.display = 'flex';
-                        console.log('Photo captured!');
+                        console.log('Photo captured with background!');
                     } else {
-                        console.error('Failed to capture photo');
+                        console.error('Failed to capture photo: video or canvas not found');
                     }
                 }, 300);
             });
