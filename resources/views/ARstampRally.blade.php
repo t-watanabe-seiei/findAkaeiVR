@@ -349,38 +349,60 @@
                 
                 // 背景とARコンテンツを含めて撮影
                 setTimeout(() => {
-                    const video = document.querySelector('video');
-                    const arCanvas = scene.canvas;
-                    
-                    if (video && arCanvas) {
-                        // 新しいキャンバスを作成
+                    try {
+                        const video = document.querySelector('video');
+                        const arCanvas = scene.canvas;
+                        
+                        if (!video || !arCanvas) {
+                            console.error('Video or canvas not found');
+                            return;
+                        }
+                        
+                        console.log('Video size:', video.videoWidth, 'x', video.videoHeight);
+                        console.log('Canvas size:', arCanvas.width, 'x', arCanvas.height);
+                        
+                        // 新しいキャンバスを作成（ビデオの実際のサイズを使用）
                         const canvas = document.createElement('canvas');
-                        canvas.width = arCanvas.width;
-                        canvas.height = arCanvas.height;
-                        const ctx = canvas.getContext('2d');
+                        const width = window.innerWidth;
+                        const height = window.innerHeight;
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d', { alpha: false });
                         
-                        // 1. まず背景（カメラ映像）を描画
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // 1. 背景を黒で塗りつぶし
+                        ctx.fillStyle = 'black';
+                        ctx.fillRect(0, 0, width, height);
                         
-                        // 2. その上にARコンテンツを重ねる
-                        ctx.drawImage(arCanvas, 0, 0, canvas.width, canvas.height);
+                        // 2. カメラ映像を描画
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            ctx.drawImage(video, 0, 0, width, height);
+                            console.log('Video drawn');
+                        }
+                        
+                        // 3. ARコンテンツを重ねる（透明度を保持）
+                        ctx.globalCompositeOperation = 'source-over';
+                        if (arCanvas.width > 0 && arCanvas.height > 0) {
+                            ctx.drawImage(arCanvas, 0, 0, width, height);
+                            console.log('AR canvas drawn');
+                        }
                         
                         // 画像データを取得
-                        capturedImageData = canvas.toDataURL('image/png');
+                        capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
                         previewImage.src = capturedImageData;
                         photoPreview.style.display = 'flex';
                         console.log('Photo captured with background!');
-                    } else {
-                        console.error('Failed to capture photo: video or canvas not found');
+                        
+                    } catch (error) {
+                        console.error('Error capturing photo:', error);
                     }
-                }, 300);
+                }, 500);
             });
             
             // ダウンロードボタン
             downloadButton.addEventListener('click', function() {
                 if (capturedImageData) {
                     const link = document.createElement('a');
-                    link.download = 'AR_photo_' + new Date().getTime() + '.png';
+                    link.download = 'AR_photo_' + new Date().getTime() + '.jpg';
                     link.href = capturedImageData;
                     link.click();
                     console.log('Photo downloaded');
