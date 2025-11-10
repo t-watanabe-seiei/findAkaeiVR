@@ -405,7 +405,7 @@
         // ドラッグ回転用の変数
         let isDragging = false;
         let previousTouchX = 0;
-        let currentRotationY = 0;
+        let currentRotationZ = 0;
         
         // ダブルタップ検出用の変数
         let lastTapTime = 0;
@@ -996,13 +996,13 @@
                     
                     // 回転速度を調整（感度）
                     const rotationSpeed = 0.5;
-                    currentRotationY += deltaX * rotationSpeed;
+                    currentRotationZ += deltaX * rotationSpeed;
                     
                     if (model) {
                         model.setAttribute('rotation', {
                             x: 0,
-                            y: currentRotationY,
-                            z: 0
+                            y: 0,
+                            z: currentRotationZ
                         });
                     }
                     
@@ -1045,13 +1045,13 @@
                 if (isMouseDragging) {
                     const deltaX = e.clientX - previousMouseX;
                     const rotationSpeed = 0.5;
-                    currentRotationY += deltaX * rotationSpeed;
+                    currentRotationZ += deltaX * rotationSpeed;
                     
                     if (model) {
                         model.setAttribute('rotation', {
                             x: 0,
-                            y: currentRotationY,
-                            z: 0
+                            y: 0,
+                            z: currentRotationZ
                         });
                     }
                     
