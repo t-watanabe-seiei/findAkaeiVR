@@ -199,8 +199,8 @@
         /* カメラ切り替えボタン */
         #switch-camera-button {
             position: fixed;
-            bottom: 30px;
-            left: 30px;
+            bottom: 110px;
+            right: 30px;
             width: 60px;
             height: 60px;
             background-color: rgba(255, 255, 255, 0.9);
