@@ -166,11 +166,120 @@
             font-size: 1.25em;
             color: white;
         }
+        
+        /* カメラボタンのスタイル */
+        #camera-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        
+        #camera-button:active {
+            transform: scale(0.9);
+            background-color: rgba(200, 200, 200, 0.9);
+        }
+        
+        #camera-button:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+        
+        /* 撮影フラッシュエフェクト */
+        #flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+            transition: opacity 0.2s;
+        }
+        
+        #flash.active {
+            opacity: 0.8;
+        }
+        
+        /* 撮影した画像のプレビュー */
+        #photo-preview {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            display: none;
+            z-index: 10000;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #photo-preview img {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 5px;
+        }
+        
+        #photo-preview .buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #photo-preview button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+        
+        #download-button {
+            background-color: #4CAF50;
+        }
+        
+        #close-button {
+            background-color: #f44336;
+        }
     </style>
 </head>
 <body>
     <div class="arjs-loader">
         <div>カメラを起動中...</div>
+    </div>
+    
+    <!-- フラッシュエフェクト -->
+    <div id="flash"></div>
+    
+    <!-- カメラボタン -->
+    <button id="camera-button" title="写真を撮る">📷</button>
+    
+    <!-- 撮影した写真のプレビュー -->
+    <div id="photo-preview">
+        <img id="preview-image" src="" alt="撮影した写真">
+        <div class="buttons">
+            <button id="download-button">ダウンロード</button>
+            <button id="close-button">閉じる</button>
+        </div>
     </div>
     
     <a-scene
@@ -214,14 +323,68 @@
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             const model = document.querySelector('#fox-model');
+            const cameraButton = document.getElementById('camera-button');
+            const flash = document.getElementById('flash');
+            const photoPreview = document.getElementById('photo-preview');
+            const previewImage = document.getElementById('preview-image');
+            const downloadButton = document.getElementById('download-button');
+            const closeButton = document.getElementById('close-button');
+            let capturedImageData = null;
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
                 console.log('Scene loaded');
             });
             
-            // 画面全体のタップを検出
+            // 写真撮影機能
+            cameraButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                console.log('Taking photo...');
+                
+                // フラッシュエフェクト
+                flash.classList.add('active');
+                setTimeout(() => {
+                    flash.classList.remove('active');
+                }, 200);
+                
+                // A-Frameのキャンバスから画像をキャプチャ
+                setTimeout(() => {
+                    const canvas = scene.components.screenshot.getCanvas('perspective');
+                    if (canvas) {
+                        capturedImageData = canvas.toDataURL('image/png');
+                        previewImage.src = capturedImageData;
+                        photoPreview.style.display = 'flex';
+                        console.log('Photo captured!');
+                    } else {
+                        console.error('Failed to capture photo');
+                    }
+                }, 300);
+            });
+            
+            // ダウンロードボタン
+            downloadButton.addEventListener('click', function() {
+                if (capturedImageData) {
+                    const link = document.createElement('a');
+                    link.download = 'AR_photo_' + new Date().getTime() + '.png';
+                    link.href = capturedImageData;
+                    link.click();
+                    console.log('Photo downloaded');
+                }
+            });
+            
+            // 閉じるボタン
+            closeButton.addEventListener('click', function() {
+                photoPreview.style.display = 'none';
+            });
+            
+            // 画面全体のタップを検出（アニメーション切り替え用）
             document.body.addEventListener('touchstart', function(e) {
+                // カメラボタンやプレビューをタップした場合は除外
+                if (e.target.closest('#camera-button') || 
+                    e.target.closest('#photo-preview')) {
+                    return;
+                }
+                
                 console.log('Screen tapped');
                 if (sceneReady && model) {
                     const clickEvent = new Event('click');
@@ -231,6 +394,12 @@
             
             // マウスクリックも対応
             document.body.addEventListener('click', function(e) {
+                // カメラボタンやプレビューをクリックした場合は除外
+                if (e.target.closest('#camera-button') || 
+                    e.target.closest('#photo-preview')) {
+                    return;
+                }
+                
                 console.log('Screen clicked');
                 if (sceneReady && model) {
                     const clickEvent = new Event('click');
