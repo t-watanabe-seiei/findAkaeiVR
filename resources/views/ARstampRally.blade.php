@@ -635,11 +635,19 @@
                         console.log('Recording stopped, blob size:', blob.size, 'type:', mimeType);
                         console.log('FPS:', targetFPS, 'Bitrate:', bitrate, 'DPR:', dpr);
                         
+                        if (blob.size === 0) {
+                            console.error('❌ Recorded blob is empty!');
+                            alert('動画の録画に失敗しました。データがありません。');
+                            return;
+                        }
+                        
                         // ファイル拡張子を決定
                         let extension = 'webm';
                         if (mimeType.includes('mp4')) {
                             extension = 'mp4';
                         }
+                        
+                        console.log('Creating video preview...');
                         
                         // プレビューに動画を表示
                         const videoElement = document.createElement('video');
@@ -650,12 +658,27 @@
                         videoElement.style.maxHeight = '70vh';
                         videoElement.style.borderRadius = '5px';
                         
+                        // 動画読み込みエラーハンドリング
+                        videoElement.onerror = function(e) {
+                            console.error('❌ Video element error:', e);
+                            alert('動画プレビューの表示に失敗しました');
+                        };
+                        
+                        videoElement.onloadedmetadata = function() {
+                            console.log('✓ Video metadata loaded, duration:', videoElement.duration);
+                        };
+                        
                         // プレビュー画像を動画要素に置き換え
                         const previewContainer = document.getElementById('photo-preview');
                         const existingPreview = document.querySelector('#photo-preview img, #photo-preview video');
-                        if (existingPreview) {
-                            existingPreview.replaceWith(videoElement);
+                        
+                        if (!existingPreview) {
+                            console.error('❌ Preview element not found!');
+                            return;
                         }
+                        
+                        existingPreview.replaceWith(videoElement);
+                        console.log('✓ Video element replaced in preview');
                         
                         // ダウンロードボタンの動作を変更（拡張子も保存）
                         capturedImageData = {
@@ -663,7 +686,9 @@
                             extension: extension,
                             mimeType: mimeType
                         };
+                        
                         photoPreview.style.display = 'flex';
+                        console.log('✓ Preview displayed');
                         
                         recordedChunks = [];
                     };
@@ -807,12 +832,26 @@
                             capturedImageData = outputCanvas.toDataURL('image/jpeg', 0.92);
                             
                             if (capturedImageData && capturedImageData.length > 1000) {
-                                previewImage.src = capturedImageData;
-                                photoPreview.style.display = 'flex';
                                 console.log('✓ Photo captured! Size:', Math.round(capturedImageData.length / 1024), 'KB');
                                 console.log('Output size:', outputCanvas.width, 'x', outputCanvas.height);
+                                
+                                previewImage.src = capturedImageData;
+                                
+                                // 画像読み込みエラーハンドリング
+                                previewImage.onerror = function() {
+                                    console.error('❌ Failed to load preview image');
+                                    alert('写真プレビューの表示に失敗しました');
+                                };
+                                
+                                previewImage.onload = function() {
+                                    console.log('✓ Preview image loaded successfully');
+                                    photoPreview.style.display = 'flex';
+                                };
+                                
                             } else {
-                                console.error('Image data too small, capture failed');
+                                console.error('❌ Image data too small, capture failed');
+                                console.error('Data length:', capturedImageData ? capturedImageData.length : 'null');
+                                alert('写真の撮影に失敗しました');
                             }
                             
                         } catch (error) {
@@ -900,11 +939,18 @@
             
             // 閉じるボタン
             closeButton.addEventListener('click', function() {
+                console.log('Closing preview');
                 photoPreview.style.display = 'none';
                 
                 // 動画要素を画像要素に戻す
                 const videoElement = document.querySelector('#photo-preview video');
                 if (videoElement) {
+                    console.log('Replacing video with image element');
+                    // Blob URLを解放
+                    if (videoElement.src && videoElement.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(videoElement.src);
+                    }
+                    
                     const imgElement = document.createElement('img');
                     imgElement.id = 'preview-image';
                     imgElement.src = '';
@@ -916,6 +962,7 @@
                 }
                 
                 capturedImageData = null;
+                console.log('Preview closed and reset');
             });
             
             // ピンチ操作（拡大縮小）
