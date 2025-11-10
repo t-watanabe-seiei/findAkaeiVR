@@ -501,9 +501,31 @@
                             // 2. ARコンテンツ（3Dモデル）を重ねる
                             ctx.save();
                             ctx.globalCompositeOperation = 'source-over';
-                            ctx.drawImage(arCanvas, 0, 0, screenWidth, screenHeight);
+                            
+                            // ARキャンバスのアスペクト比を計算
+                            const arAspect = arCanvas.width / arCanvas.height;
+                            const targetAspect = screenWidth / screenHeight;
+                            
+                            let arDrawWidth, arDrawHeight, arOffsetX, arOffsetY;
+                            
+                            if (arAspect > targetAspect) {
+                                // ARキャンバスが横長：高さを画面に合わせる
+                                arDrawHeight = screenHeight;
+                                arDrawWidth = arDrawHeight * arAspect;
+                                arOffsetX = (screenWidth - arDrawWidth) / 2;
+                                arOffsetY = 0;
+                            } else {
+                                // ARキャンバスが縦長：幅を画面に合わせる
+                                arDrawWidth = screenWidth;
+                                arDrawHeight = arDrawWidth / arAspect;
+                                arOffsetX = 0;
+                                arOffsetY = (screenHeight - arDrawHeight) / 2;
+                            }
+                            
+                            ctx.drawImage(arCanvas, arOffsetX, arOffsetY, arDrawWidth, arDrawHeight);
                             ctx.restore();
-                            console.log('AR content drawn');
+                            console.log('AR content drawn with correct aspect ratio');
+                            console.log('AR draw size:', arDrawWidth, 'x', arDrawHeight, 'at', arOffsetX, arOffsetY);
                             
                             // 画像データを取得
                             capturedImageData = outputCanvas.toDataURL('image/jpeg', 0.92);
