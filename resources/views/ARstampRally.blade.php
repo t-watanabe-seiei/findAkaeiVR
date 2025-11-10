@@ -556,18 +556,35 @@
                     // ストリームを取得
                     const stream = compositeCanvas.captureStream(30); // 30fps
                     
-                    // MediaRecorderの設定
-                    const options = {
-                        mimeType: 'video/webm;codecs=vp9',
-                        videoBitsPerSecond: 5000000 // 5Mbps
-                    };
+                    // MediaRecorderの設定（iPhoneでも再生可能な形式を優先）
+                    let options = {};
                     
-                    // mimeTypeのサポート確認
-                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                        options.mimeType = 'video/webm';
-                        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                            options.mimeType = 'video/mp4';
-                        }
+                    // iOSではMP4をサポート、AndroidではWebMをサポート
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        options = {
+                            mimeType: 'video/mp4',
+                            videoBitsPerSecond: 5000000 // 5Mbps
+                        };
+                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+                        options = {
+                            mimeType: 'video/webm;codecs=vp9',
+                            videoBitsPerSecond: 5000000
+                        };
+                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                        options = {
+                            mimeType: 'video/webm;codecs=vp8',
+                            videoBitsPerSecond: 5000000
+                        };
+                    } else if (MediaRecorder.isTypeSupported('video/webm')) {
+                        options = {
+                            mimeType: 'video/webm',
+                            videoBitsPerSecond: 5000000
+                        };
+                    } else {
+                        // デフォルト（ブラウザが自動選択）
+                        options = {
+                            videoBitsPerSecond: 5000000
+                        };
                     }
                     
                     recordedChunks = [];
@@ -580,13 +597,21 @@
                     };
                     
                     mediaRecorder.onstop = function() {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        console.log('Recording stopped, blob size:', blob.size);
+                        const mimeType = mediaRecorder.mimeType || 'video/webm';
+                        const blob = new Blob(recordedChunks, { type: mimeType });
+                        console.log('Recording stopped, blob size:', blob.size, 'type:', mimeType);
+                        
+                        // ファイル拡張子を決定
+                        let extension = 'webm';
+                        if (mimeType.includes('mp4')) {
+                            extension = 'mp4';
+                        }
                         
                         // プレビューに動画を表示
                         const videoElement = document.createElement('video');
                         videoElement.src = URL.createObjectURL(blob);
                         videoElement.controls = true;
+                        videoElement.playsinline = true; // iOSで重要
                         videoElement.style.maxWidth = '100%';
                         videoElement.style.maxHeight = '70vh';
                         videoElement.style.borderRadius = '5px';
@@ -598,8 +623,12 @@
                             existingPreview.replaceWith(videoElement);
                         }
                         
-                        // ダウンロードボタンの動作を変更
-                        capturedImageData = blob;
+                        // ダウンロードボタンの動作を変更（拡張子も保存）
+                        capturedImageData = {
+                            blob: blob,
+                            extension: extension,
+                            mimeType: mimeType
+                        };
                         photoPreview.style.display = 'flex';
                         
                         recordedChunks = [];
@@ -770,18 +799,27 @@
                     let filename;
                     let mimeType;
                     
-                    // Blobオブジェクトの場合（動画）
-                    if (capturedImageData instanceof Blob) {
+                    // 動画オブジェクトの場合
+                    if (capturedImageData.blob) {
+                        blob = capturedImageData.blob;
+                        filename = 'AR_video_' + new Date().getTime() + '.' + capturedImageData.extension;
+                        mimeType = capturedImageData.mimeType;
+                    } 
+                    // Blobオブジェクトの場合（古い形式、互換性のため残す）
+                    else if (capturedImageData instanceof Blob) {
                         blob = capturedImageData;
                         filename = 'AR_video_' + new Date().getTime() + '.webm';
                         mimeType = 'video/webm';
-                    } else {
-                        // Data URLの場合（写真）
+                    } 
+                    // Data URLの場合（写真）
+                    else {
                         const response = await fetch(capturedImageData);
                         blob = await response.blob();
                         filename = 'AR_photo_' + new Date().getTime() + '.jpg';
                         mimeType = 'image/jpeg';
                     }
+                    
+                    console.log('Saving file:', filename, 'type:', mimeType, 'size:', blob.size);
                     
                     // iOSやAndroidでWeb Share APIが使える場合
                     if (navigator.share && navigator.canShare) {
