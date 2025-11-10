@@ -16,8 +16,10 @@
                 const el = this.el;
                 const clipName = this.data.clip;
                 let mixer = null;
-                let action = null;
-                let isPlaying = false;
+                let action01 = null;
+                let action02 = null;
+                let currentAnimation = 1; // 1=anime01, 2=anime02
+                let markerVisible = false;
                 
                 el.addEventListener('model-loaded', () => {
                     console.log('Model loaded');
@@ -36,35 +38,86 @@
                     mixer = new THREE.AnimationMixer(model);
                     this.mixer = mixer;
                     
-                    let clipToPlay = THREE.AnimationClip.findByName(model.animations, clipName);
-                    if (!clipToPlay) {
-                        console.log(`Animation "${clipName}" not found, using first animation`);
-                        clipToPlay = model.animations[0];
+                    // anime01を探す
+                    let clip01 = THREE.AnimationClip.findByName(model.animations, 'anime01');
+                    if (!clip01) {
+                        clip01 = model.animations[0];
+                        console.log('anime01 not found, using first animation');
                     }
                     
-                    action = mixer.clipAction(clipToPlay);
-                    action.setLoop(THREE.LoopRepeat, Infinity);
-                    action.stop();
-                    this.action = action;
-                    console.log('Animation ready:', clipToPlay.name);
+                    // anime02を探す
+                    let clip02 = THREE.AnimationClip.findByName(model.animations, 'anime02');
+                    if (!clip02) {
+                        // anime02が見つからない場合は2番目のアニメーションを使用
+                        clip02 = model.animations.length > 1 ? model.animations[1] : model.animations[0];
+                        console.log('anime02 not found, using animation:', clip02.name);
+                    }
+                    
+                    // 両方のアクションを作成
+                    action01 = mixer.clipAction(clip01);
+                    action01.setLoop(THREE.LoopRepeat, Infinity);
+                    action01.stop();
+                    
+                    action02 = mixer.clipAction(clip02);
+                    action02.setLoop(THREE.LoopRepeat, Infinity);
+                    action02.stop();
+                    
+                    this.action01 = action01;
+                    this.action02 = action02;
+                    
+                    console.log('Animations ready:');
+                    console.log('  anime01:', clip01.name);
+                    console.log('  anime02:', clip02.name);
+                });
+                
+                // マーカー検出時にanime01を自動再生
+                const marker = el.parentElement;
+                marker.addEventListener('markerFound', () => {
+                    console.log('✓ Marker found - Starting anime01');
+                    markerVisible = true;
+                    if (action01) {
+                        action01.reset();
+                        action01.play();
+                        currentAnimation = 1;
+                        console.log('anime01 started automatically');
+                    }
+                });
+                
+                marker.addEventListener('markerLost', () => {
+                    console.log('✗ Marker lost - Stopping animations');
+                    markerVisible = false;
+                    if (action01) action01.stop();
+                    if (action02) action02.stop();
+                    currentAnimation = 1; // リセット
                 });
                 
                 const handleInteraction = (e) => {
                     console.log('Interaction detected:', e.type);
-                    if (!action) {
-                        console.log('Action not ready yet');
+                    
+                    if (!markerVisible) {
+                        console.log('Marker not visible, ignoring interaction');
                         return;
                     }
                     
-                    if (!isPlaying) {
-                        action.reset();
-                        action.play();
-                        isPlaying = true;
-                        console.log('✓ Animation started');
+                    if (!action01 || !action02) {
+                        console.log('Actions not ready yet');
+                        return;
+                    }
+                    
+                    if (currentAnimation === 1) {
+                        // anime01 → anime02に切り替え
+                        action01.stop();
+                        action02.reset();
+                        action02.play();
+                        currentAnimation = 2;
+                        console.log('✓ Switched to anime02');
                     } else {
-                        action.stop();
-                        isPlaying = false;
-                        console.log('✗ Animation stopped');
+                        // anime02 → anime01に切り替え
+                        action02.stop();
+                        action01.reset();
+                        action01.play();
+                        currentAnimation = 1;
+                        console.log('✓ Switched to anime01');
                     }
                 };
                 
@@ -136,6 +189,10 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.2"></a-light>
+            <a-light type="directional" intensity="0.6" position="1 1 1"></a-light>
         </a-marker>
         
     </a-scene>
