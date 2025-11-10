@@ -369,7 +369,7 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="1 1 1"
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
@@ -396,6 +396,20 @@
         // 画面タップでアニメーションを再生
         let sceneReady = false;
         let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
+        
+        // ピンチ操作用の変数
+        let initialPinchDistance = 0;
+        let initialScale = 1;
+        let currentScale = 1;
+        
+        // ドラッグ回転用の変数
+        let isDragging = false;
+        let previousTouchX = 0;
+        let currentRotationY = 0;
+        
+        // ダブルタップ検出用の変数
+        let lastTapTime = 0;
+        const doubleTapDelay = 300; // 300ms以内の2回タップでダブルタップ
         
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
@@ -904,9 +918,9 @@
                 capturedImageData = null;
             });
             
-            // 画面全体のタップを検出（アニメーション切り替え用）
-            document.body.addEventListener('touchstart', function(e) {
-                // カメラボタン、動画ボタン、切り替えボタン、プレビューをタップした場合は除外
+            // ピンチ操作（拡大縮小）
+            let touchStartHandler = function(e) {
+                // ボタンをタップした場合は除外
                 if (e.target.closest('#camera-button') || 
                     e.target.closest('#video-button') ||
                     e.target.closest('#switch-camera-button') ||
@@ -914,16 +928,108 @@
                     return;
                 }
                 
-                console.log('Screen tapped');
-                if (sceneReady && model) {
-                    const clickEvent = new Event('click');
-                    model.dispatchEvent(clickEvent);
+                if (e.touches.length === 2) {
+                    // ピンチ操作開始
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    initialPinchDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    initialScale = currentScale;
+                    isDragging = false;
+                } else if (e.touches.length === 1) {
+                    // シングルタッチ（ドラッグ回転用）
+                    const now = Date.now();
+                    const timeSinceLastTap = now - lastTapTime;
+                    
+                    if (timeSinceLastTap < doubleTapDelay && timeSinceLastTap > 0) {
+                        // ダブルタップ検出
+                        e.preventDefault();
+                        console.log('Double tap detected');
+                        if (sceneReady && model) {
+                            const clickEvent = new Event('click');
+                            model.dispatchEvent(clickEvent);
+                        }
+                        lastTapTime = 0; // リセット
+                    } else {
+                        // シングルタップ（ドラッグ準備）
+                        lastTapTime = now;
+                        isDragging = true;
+                        previousTouchX = e.touches[0].clientX;
+                    }
                 }
-            }, {passive: false});
+            };
             
-            // マウスクリックも対応
-            document.body.addEventListener('click', function(e) {
-                // カメラボタン、動画ボタン、切り替えボタン、プレビューをクリックした場合は除外
+            let touchMoveHandler = function(e) {
+                if (e.touches.length === 2) {
+                    // ピンチ操作中
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    
+                    if (initialPinchDistance > 0) {
+                        const scaleChange = currentDistance / initialPinchDistance;
+                        currentScale = initialScale * scaleChange;
+                        
+                        // スケールを0.5〜5の範囲に制限
+                        currentScale = Math.max(0.5, Math.min(5, currentScale));
+                        
+                        if (model) {
+                            model.setAttribute('scale', {
+                                x: currentScale,
+                                y: currentScale,
+                                z: currentScale
+                            });
+                        }
+                    }
+                } else if (e.touches.length === 1 && isDragging) {
+                    // ドラッグ回転
+                    e.preventDefault();
+                    const currentTouchX = e.touches[0].clientX;
+                    const deltaX = currentTouchX - previousTouchX;
+                    
+                    // 回転速度を調整（感度）
+                    const rotationSpeed = 0.5;
+                    currentRotationY += deltaX * rotationSpeed;
+                    
+                    if (model) {
+                        model.setAttribute('rotation', {
+                            x: 0,
+                            y: currentRotationY,
+                            z: 0
+                        });
+                    }
+                    
+                    previousTouchX = currentTouchX;
+                }
+            };
+            
+            let touchEndHandler = function(e) {
+                if (e.touches.length < 2) {
+                    initialPinchDistance = 0;
+                }
+                if (e.touches.length === 0) {
+                    isDragging = false;
+                }
+            };
+            
+            // タッチイベントをリスナーに登録
+            document.body.addEventListener('touchstart', touchStartHandler, { passive: false });
+            document.body.addEventListener('touchmove', touchMoveHandler, { passive: false });
+            document.body.addEventListener('touchend', touchEndHandler, { passive: false });
+            
+            // PC用：マウスドラッグで回転
+            let isMouseDragging = false;
+            let previousMouseX = 0;
+            
+            document.body.addEventListener('mousedown', function(e) {
+                // ボタンをクリックした場合は除外
                 if (e.target.closest('#camera-button') || 
                     e.target.closest('#video-button') ||
                     e.target.closest('#switch-camera-button') ||
@@ -931,12 +1037,62 @@
                     return;
                 }
                 
-                console.log('Screen clicked');
-                if (sceneReady && model) {
-                    const clickEvent = new Event('click');
-                    model.dispatchEvent(clickEvent);
+                isMouseDragging = true;
+                previousMouseX = e.clientX;
+            });
+            
+            document.body.addEventListener('mousemove', function(e) {
+                if (isMouseDragging) {
+                    const deltaX = e.clientX - previousMouseX;
+                    const rotationSpeed = 0.5;
+                    currentRotationY += deltaX * rotationSpeed;
+                    
+                    if (model) {
+                        model.setAttribute('rotation', {
+                            x: 0,
+                            y: currentRotationY,
+                            z: 0
+                        });
+                    }
+                    
+                    previousMouseX = e.clientX;
                 }
             });
+            
+            document.body.addEventListener('mouseup', function(e) {
+                isMouseDragging = false;
+            });
+            
+            // PC用：マウスホイールで拡大縮小
+            document.body.addEventListener('wheel', function(e) {
+                // ボタン上では無効
+                if (e.target.closest('#camera-button') || 
+                    e.target.closest('#video-button') ||
+                    e.target.closest('#switch-camera-button') ||
+                    e.target.closest('#photo-preview')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                
+                // ホイールの方向に応じてスケール変更
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                currentScale *= delta;
+                
+                // スケールを0.5〜5の範囲に制限
+                currentScale = Math.max(0.5, Math.min(5, currentScale));
+                
+                if (model) {
+                    model.setAttribute('scale', {
+                        x: currentScale,
+                        y: currentScale,
+                        z: currentScale
+                    });
+                }
+            }, { passive: false });
+            
+            // 画面全体のタップを検出（削除：ダブルタップに置き換え）
+            // シングルタップでのアニメーション切り替えは無効化
         });
     </script>
 </body>
