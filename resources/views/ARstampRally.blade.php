@@ -375,8 +375,8 @@
             </a-entity>
             
             <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.56"></a-light>
-            <a-light type="directional" intensity="0.84" position="1 1 1"></a-light>
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
     </a-scene>
