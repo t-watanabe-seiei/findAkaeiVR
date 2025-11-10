@@ -284,9 +284,9 @@
     
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false;"
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true;">
+        renderer="preserveDrawingBuffer: true; alpha: true;">
         
         <a-entity camera></a-entity>
         
@@ -348,30 +348,57 @@
                     flash.classList.remove('active');
                 }, 200);
                 
-                // 次のフレームレンダリング後に撮影
+                // レンダリングサイクルに合わせて撮影
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         try {
-                            // A-FrameのキャンバスとWebGLコンテキストを取得
-                            const canvas = scene.canvas;
-                            const gl = canvas.getContext('webgl') || canvas.getContext('webgl2') || canvas.getContext('experimental-webgl');
+                            // ビデオ要素とcanvasを取得
+                            const video = document.querySelector('video');
+                            const arCanvas = scene.canvas;
                             
-                            if (!canvas || !gl) {
-                                console.error('Canvas or WebGL context not found');
+                            if (!video) {
+                                console.error('Video element not found');
                                 return;
                             }
                             
-                            console.log('Canvas size:', canvas.width, 'x', canvas.height);
+                            if (!arCanvas) {
+                                console.error('AR Canvas not found');
+                                return;
+                            }
                             
-                            // canvasから直接画像を取得（背景とARモデルが両方含まれる）
-                            capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
+                            console.log('Video:', video.videoWidth, 'x', video.videoHeight);
+                            console.log('Canvas:', arCanvas.width, 'x', arCanvas.height);
                             
-                            if (capturedImageData && capturedImageData.length > 100) {
+                            // 撮影用の新しいキャンバスを作成
+                            const outputCanvas = document.createElement('canvas');
+                            outputCanvas.width = arCanvas.width;
+                            outputCanvas.height = arCanvas.height;
+                            const ctx = outputCanvas.getContext('2d');
+                            
+                            // 1. 背景（カメラ映像）を描画
+                            ctx.save();
+                            // ビデオを反転して描画（フロントカメラの場合の対応）
+                            ctx.drawImage(video, 0, 0, outputCanvas.width, outputCanvas.height);
+                            ctx.restore();
+                            console.log('Background drawn');
+                            
+                            // 2. ARコンテンツ（3Dモデル）を重ねる
+                            ctx.save();
+                            // 透明部分を保持して重ねる
+                            ctx.globalCompositeOperation = 'source-over';
+                            ctx.drawImage(arCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
+                            ctx.restore();
+                            console.log('AR content drawn');
+                            
+                            // 画像データを取得
+                            capturedImageData = outputCanvas.toDataURL('image/jpeg', 0.92);
+                            
+                            if (capturedImageData && capturedImageData.length > 1000) {
                                 previewImage.src = capturedImageData;
                                 photoPreview.style.display = 'flex';
-                                console.log('Photo captured successfully! Data length:', capturedImageData.length);
+                                console.log('✓ Photo captured! Size:', Math.round(capturedImageData.length / 1024), 'KB');
                             } else {
-                                console.error('Failed to capture image data');
+                                console.error('Image data too small, capture failed');
                             }
                             
                         } catch (error) {
