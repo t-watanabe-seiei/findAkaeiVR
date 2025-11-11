@@ -463,6 +463,20 @@
         #stamp-book-content .stamp-item .stamp-icon {
             font-size: 28px;
             margin-bottom: 3px;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        #stamp-book-content .stamp-item .stamp-icon img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
         
         #stamp-book-content .stamp-item .stamp-name {
@@ -672,6 +686,45 @@
         #close-button {
             background-color: #f44336;
         }
+        
+        /* スタンプ押すボタン */
+        #stamp-action-button {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            width: 200px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+        
+        #stamp-action-button.show {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+        
+        #stamp-action-button:active {
+            transform: translateX(-50%) scale(0.95);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        #stamp-action-button.stamped {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
     </style>
 </head>
 <body>
@@ -691,6 +744,11 @@
     
     <!-- フラッシュエフェクト -->
     <div id="flash"></div>
+    
+    <!-- スタンプを押すボタン（マーカー検出時に表示） -->
+    <button id="stamp-action-button" type="button">
+        📸 スタンプを押す
+    </button>
     
     <!-- スタンプ帳ボタン -->
     <button id="stamp-book-button" type="button" title="スタンプ帳を見る">
@@ -1016,13 +1074,14 @@
         }
         
         // スタンプを登録
-        function collectStamp(stampId) {
+        function collectStamp(stampId, screenshot = null) {
             const collectedStamps = getCollectedStamps();
             
             if (!collectedStamps[stampId]) {
                 collectedStamps[stampId] = {
                     collectedAt: new Date().toISOString(),
-                    name: STAMPS[stampId].name
+                    name: STAMPS[stampId].name,
+                    screenshot: screenshot // スクリーンショットのBase64データ
                 };
                 saveCollectedStamps(collectedStamps);
                 updateStampBadge();
@@ -1047,8 +1106,10 @@
                 
                 console.log('✓ Stamp collected:', stampId, 'Total:', totalCollected);
                 return true;
+            } else {
+                console.log('Already collected:', stampId);
+                return false;
             }
-            return false;
         }
         
         // 音声を再生
@@ -1208,6 +1269,102 @@
             }
         }
         
+        // スタンプボタンを表示
+        function showStampButton(stampId) {
+            const collectedStamps = getCollectedStamps();
+            const stampActionButton = document.getElementById('stamp-action-button');
+            
+            if (collectedStamps[stampId]) {
+                // すでに登録済み
+                stampActionButton.textContent = '✅ 登録済み';
+                stampActionButton.classList.add('stamped');
+            } else {
+                // 未登録
+                stampActionButton.textContent = '📸 スタンプを押す';
+                stampActionButton.classList.remove('stamped');
+            }
+            
+            stampActionButton.classList.add('show');
+        }
+        
+        // スタンプボタンを非表示
+        function hideStampButton() {
+            const stampActionButton = document.getElementById('stamp-action-button');
+            stampActionButton.classList.remove('show');
+        }
+        
+        // モデルのスクリーンショットを撮影（背景を除く）
+        function captureModelScreenshot(callback) {
+            try {
+                const scene = document.querySelector('a-scene');
+                if (!scene || !scene.canvas) {
+                    console.error('Scene canvas not found');
+                    callback(null);
+                    return;
+                }
+                
+                // シーンのcanvasから画像を取得
+                const sceneCanvas = scene.canvas;
+                
+                console.log('Canvas info:', {
+                    width: sceneCanvas.width,
+                    height: sceneCanvas.height,
+                    exists: !!sceneCanvas
+                });
+                
+                // レンダリングが完了するのを待つ
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        try {
+                            // 一時的なcanvasを作成
+                            const tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = 400;
+                            tempCanvas.height = 400;
+                            const ctx = tempCanvas.getContext('2d');
+                            
+                            // 白背景を設定
+                            ctx.fillStyle = 'white';
+                            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                            
+                            // シーン全体をそのまま描画
+                            ctx.drawImage(sceneCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                            console.log('✓ Canvas drawn successfully');
+                            
+                            // Base64に変換（品質を指定）
+                            const screenshot = tempCanvas.toDataURL('image/jpeg', 0.9);
+                            console.log('Screenshot created:', {
+                                length: screenshot.length,
+                                prefix: screenshot.substring(0, 50)
+                            });
+                            
+                            // 画像が実際に真っ白かどうかチェック
+                            const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                            const data = imageData.data;
+                            let isBlank = true;
+                            for (let i = 0; i < data.length; i += 4) {
+                                // 完全な白(255,255,255)以外のピクセルがあるかチェック
+                                if (data[i] !== 255 || data[i+1] !== 255 || data[i+2] !== 255) {
+                                    isBlank = false;
+                                    break;
+                                }
+                            }
+                            console.log('Image is blank (all white):', isBlank);
+                            
+                            callback(screenshot);
+                            
+                        } catch (drawError) {
+                            console.error('Draw error:', drawError);
+                            callback(null);
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Screenshot capture error:', error);
+                callback(null);
+            }
+        }
+        
         // スタンプ帳を表示
         function showStampBook() {
             const collectedStamps = getCollectedStamps();
@@ -1227,13 +1384,28 @@
                 stampItem.className = `stamp-item ${isCollected ? 'collected' : 'not-collected'}`;
                 
                 let dateText = '';
+                let iconContent = stamp.icon; // デフォルトは絵文字
+                
                 if (isCollected) {
                     const date = new Date(collectedStamps[stampId].collectedAt);
                     dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+                    
+                    // スクリーンショットがあれば画像を表示
+                    if (collectedStamps[stampId].screenshot) {
+                        const screenshotData = collectedStamps[stampId].screenshot;
+                        console.log(`Stamp ${stampId} screenshot:`, {
+                            hasData: !!screenshotData,
+                            length: screenshotData ? screenshotData.length : 0,
+                            prefix: screenshotData ? screenshotData.substring(0, 50) : 'none'
+                        });
+                        iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
+                    } else {
+                        console.log(`Stamp ${stampId} has no screenshot`);
+                    }
                 }
                 
                 stampItem.innerHTML = `
-                    <div class="stamp-icon">${stamp.icon}</div>
+                    <div class="stamp-icon">${iconContent}</div>
                     <div class="stamp-name">${stamp.name}</div>
                     ${dateText}
                 `;
@@ -1362,16 +1534,42 @@
             const patternTonakaiMarker = document.querySelector('#pattern-tonakai-marker');
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             
+            let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
+            const stampActionButton = document.getElementById('stamp-action-button');
+            
+            // スタンプボタンのクリックイベント
+            stampActionButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (currentMarkerStampId && activeModel) {
+                    // スクリーンショットを撮影してスタンプ登録
+                    captureModelScreenshot(function(screenshot) {
+                        const wasNew = collectStamp(currentMarkerStampId, screenshot);
+                        if (wasNew) {
+                            // ボタンの表示を「登録済み」に変更
+                            stampActionButton.textContent = '✅ 登録済み';
+                            stampActionButton.classList.add('stamped');
+                        }
+                    });
+                }
+            });
+            
             if (patternSheepMarker) {
                 patternSheepMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
-                    collectStamp('sheep'); // スタンプ登録
+                    currentMarkerStampId = 'sheep';
+                    showStampButton('sheep');
                 });
                 patternSheepMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-sheep marker lost');
                     if (activeModel === sheepModel) {
                         activeModel = null;
+                    }
+                    if (currentMarkerStampId === 'sheep') {
+                        currentMarkerStampId = null;
+                        hideStampButton();
                     }
                 });
             }
@@ -1380,12 +1578,17 @@
                 patternFoxMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-fox marker found');
                     activeModel = foxModel;
-                    collectStamp('fox'); // スタンプ登録
+                    currentMarkerStampId = 'fox';
+                    showStampButton('fox');
                 });
                 patternFoxMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-fox marker lost');
                     if (activeModel === foxModel) {
                         activeModel = null;
+                    }
+                    if (currentMarkerStampId === 'fox') {
+                        currentMarkerStampId = null;
+                        hideStampButton();
                     }
                 });
             }
@@ -1394,12 +1597,17 @@
                 patternPenginMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
-                    collectStamp('pengin'); // スタンプ登録
+                    currentMarkerStampId = 'pengin';
+                    showStampButton('pengin');
                 });
                 patternPenginMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pengin marker lost');
                     if (activeModel === penginModel) {
                         activeModel = null;
+                    }
+                    if (currentMarkerStampId === 'pengin') {
+                        currentMarkerStampId = null;
+                        hideStampButton();
                     }
                 });
             }
@@ -1408,12 +1616,17 @@
                 patternTonakaiMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-tonakai marker found');
                     activeModel = tonakaiModel;
-                    collectStamp('tonakai'); // スタンプ登録
+                    currentMarkerStampId = 'tonakai';
+                    showStampButton('tonakai');
                 });
                 patternTonakaiMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-tonakai marker lost');
                     if (activeModel === tonakaiModel) {
                         activeModel = null;
+                    }
+                    if (currentMarkerStampId === 'tonakai') {
+                        currentMarkerStampId = null;
+                        hideStampButton();
                     }
                 });
             }
@@ -1422,12 +1635,17 @@
                 patternPigMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pig marker found');
                     activeModel = pigModel;
-                    collectStamp('pig'); // スタンプ登録
+                    currentMarkerStampId = 'pig';
+                    showStampButton('pig');
                 });
                 patternPigMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pig marker lost');
                     if (activeModel === pigModel) {
                         activeModel = null;
+                    }
+                    if (currentMarkerStampId === 'pig') {
+                        currentMarkerStampId = null;
+                        hideStampButton();
                     }
                 });
             }
