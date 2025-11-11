@@ -381,6 +381,21 @@
         
         <a-marker type="pattern" url="{{ asset('cg/pattern-50.patt') }}" id="pattern-50-marker">
             <a-entity
+                id="sheep-model"
+                gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
+                position="0 0 0"
+                scale="1 1 1"
+                rotation="0 0 0"
+                click-animation="clip: anime01">
+            </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        </a-marker>
+        
+        <a-marker type="pattern" url="{{ asset('cg/pattern-51.patt') }}" id="pattern-51-marker">
+            <a-entity
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
                 position="0 0 0"
@@ -429,6 +444,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             const foxModel = document.querySelector('#fox-model');
+            const sheepModel = document.querySelector('#sheep-model');
             const penginModel = document.querySelector('#pengin-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
@@ -448,6 +464,7 @@
             // マーカー検出時にアクティブモデルを設定
             const hiroMarker = document.querySelector('#hiro-marker');
             const pattern50Marker = document.querySelector('#pattern-50-marker');
+            const pattern51Marker = document.querySelector('#pattern-51-marker');
             
             if (hiroMarker) {
                 hiroMarker.addEventListener('markerFound', function() {
@@ -464,11 +481,24 @@
             
             if (pattern50Marker) {
                 pattern50Marker.addEventListener('markerFound', function() {
-                    console.log('Pattern-50 marker found');
-                    activeModel = penginModel;
+                    console.log('Pattern-50 marker found (sheep)');
+                    activeModel = sheepModel;
                 });
                 pattern50Marker.addEventListener('markerLost', function() {
                     console.log('Pattern-50 marker lost');
+                    if (activeModel === sheepModel) {
+                        activeModel = null;
+                    }
+                });
+            }
+            
+            if (pattern51Marker) {
+                pattern51Marker.addEventListener('markerFound', function() {
+                    console.log('Pattern-51 marker found (pengin)');
+                    activeModel = penginModel;
+                });
+                pattern51Marker.addEventListener('markerLost', function() {
+                    console.log('Pattern-51 marker lost');
                     if (activeModel === penginModel) {
                         activeModel = null;
                     }
