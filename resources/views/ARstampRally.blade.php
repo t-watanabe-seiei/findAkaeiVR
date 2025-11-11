@@ -466,6 +466,65 @@
             background-color: #f57c00;
         }
         
+        /* 確認ダイアログ */
+        #confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            z-index: 10003;
+            display: none;
+            min-width: 280px;
+            text-align: center;
+        }
+        
+        #confirm-dialog .confirm-message {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        #confirm-dialog .confirm-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        #confirm-dialog .confirm-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        #confirm-dialog .confirm-yes {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        #confirm-dialog .confirm-no {
+            background-color: #999;
+            color: white;
+        }
+        
+        #confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10002;
+            display: none;
+        }
+        
         /* パーティクルエフェクト */
         .particle {
             position: fixed;
@@ -557,6 +616,16 @@
 <body>
     <div class="arjs-loader">
         <div>カメラを起動中...</div>
+    </div>
+    
+    <!-- 確認ダイアログ -->
+    <div id="confirm-overlay"></div>
+    <div id="confirm-dialog">
+        <div class="confirm-message">本当にスタンプをすべてリセットしますか？</div>
+        <div class="confirm-buttons">
+            <button class="confirm-yes" type="button">リセット</button>
+            <button class="confirm-no" type="button">キャンセル</button>
+        </div>
     </div>
     
     <!-- フラッシュエフェクト -->
@@ -1155,26 +1224,64 @@
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // カスタム確認ダイアログを使用
-                const userConfirmed = confirm('本当にスタンプをすべてリセットしますか？');
+                // カスタム確認ダイアログを表示
+                showConfirmDialog();
+            }, false);
+            
+            // カスタム確認ダイアログ
+            function showConfirmDialog() {
+                const overlay = document.getElementById('confirm-overlay');
+                const dialog = document.getElementById('confirm-dialog');
                 
-                if (userConfirmed) {
-                    console.log('Clear stamps confirmed');
-                    
-                    // LocalStorageをクリア
-                    localStorage.removeItem('ar-stamp-rally');
-                    
-                    // バッジを更新
-                    updateStampBadge();
-                    
-                    // モーダルを閉じる
-                    const modal = document.getElementById('stamp-book-modal');
-                    modal.style.display = 'none';
-                    
-                    console.log('✓ Stamps cleared and modal closed');
-                } else {
-                    console.log('Clear stamps cancelled');
-                }
+                overlay.style.display = 'block';
+                dialog.style.display = 'block';
+            }
+            
+            function hideConfirmDialog() {
+                const overlay = document.getElementById('confirm-overlay');
+                const dialog = document.getElementById('confirm-dialog');
+                
+                overlay.style.display = 'none';
+                dialog.style.display = 'none';
+            }
+            
+            // 確認ダイアログの「リセット」ボタン
+            document.querySelector('#confirm-dialog .confirm-yes').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('Clear stamps confirmed');
+                
+                // ダイアログを閉じる
+                hideConfirmDialog();
+                
+                // スタンプ帳モーダルを閉じる
+                const modal = document.getElementById('stamp-book-modal');
+                modal.style.display = 'none';
+                
+                // LocalStorageをクリア
+                localStorage.removeItem('ar-stamp-rally');
+                
+                // バッジを更新
+                updateStampBadge();
+                
+                console.log('✓ Stamps cleared successfully');
+            }, false);
+            
+            // 確認ダイアログの「キャンセル」ボタン
+            document.querySelector('#confirm-dialog .confirm-no').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('Clear stamps cancelled');
+                hideConfirmDialog();
+            }, false);
+            
+            // オーバーレイクリックでダイアログを閉じる
+            document.getElementById('confirm-overlay').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideConfirmDialog();
             }, false);
             
             // モーダル背景クリックで閉じる
