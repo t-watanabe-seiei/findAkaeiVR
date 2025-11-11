@@ -344,34 +344,35 @@
         #stamp-book-content {
             background-color: white;
             border-radius: 15px;
-            padding: 20px;
+            padding: 20px 15px;
             max-width: 500px;
-            margin: 20px auto 100px auto;
+            margin: 20px auto;
             box-sizing: border-box;
         }
         
         #stamp-book-content h2 {
             text-align: center;
             color: #333;
-            margin: 0 0 10px 0;
-            font-size: 24px;
+            margin: 0 0 8px 0;
+            font-size: 22px;
         }
         
         #stamp-book-content .progress {
             text-align: center;
             color: #666;
-            margin-bottom: 20px;
-            font-size: 16px;
+            margin-bottom: 15px;
+            font-size: 15px;
         }
         
         #stamp-book-content .complete-message {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             font-weight: bold;
+            font-size: 14px;
             animation: celebrate 1s ease-in-out;
         }
         
@@ -382,19 +383,18 @@
         
         #stamp-book-content .stamps-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             margin-bottom: 20px;
         }
         
         #stamp-book-content .stamp-item {
             background-color: #f5f5f5;
-            border: 3px solid #ddd;
-            border-radius: 10px;
-            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 5px;
             text-align: center;
             transition: all 0.3s;
-            min-height: 100px;
         }
         
         #stamp-book-content .stamp-item.collected {
@@ -404,20 +404,20 @@
         }
         
         #stamp-book-content .stamp-item .stamp-icon {
-            font-size: 40px;
-            margin-bottom: 8px;
+            font-size: 32px;
+            margin-bottom: 5px;
         }
         
         #stamp-book-content .stamp-item .stamp-name {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             color: #333;
         }
         
         #stamp-book-content .stamp-item .stamp-date {
-            font-size: 11px;
+            font-size: 9px;
             color: #666;
-            margin-top: 5px;
+            margin-top: 3px;
         }
         
         #stamp-book-content .stamp-item.not-collected {
@@ -431,16 +431,16 @@
         #close-stamp-book {
             position: relative;
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background-color: #f44336;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin-top: 15px;
+            margin-bottom: 8px;
             box-sizing: border-box;
         }
         
@@ -450,12 +450,12 @@
         
         #clear-stamps {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background-color: #ff9800;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             margin-top: 0;
             margin-bottom: 0;
