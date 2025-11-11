@@ -14,7 +14,7 @@ Route::get('/train', function () {
     return view('train');
 });
 
-Route::match(['get', 'head'], '/', function () {
+Route::match(['get', 'head'], '/cute', function () {
     return view('shooting3DModel');
 })->name('home.index');
 

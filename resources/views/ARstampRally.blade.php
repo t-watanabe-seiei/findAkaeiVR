@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>AR Stamp Rally</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+    <script src="{{ asset('js/ar-engine.min.js') }}"></script>
+    <script src="{{ asset('js/ar-tracking.min.js') }}"></script>
     <script>
         // クリック/タップでアニメーション再生
         AFRAME.registerComponent('click-animation', {
@@ -848,6 +848,65 @@
                 }
             }, 1000);
         })();
+        
+        // A-Frameの痕跡を削除
+        window.addEventListener('load', function() {
+            // コンソールログを無効化（A-Frameのデバッグ情報を隠す）
+            const originalLog = console.log;
+            const originalWarn = console.warn;
+            const originalInfo = console.info;
+            
+            console.log = function() {
+                const args = Array.from(arguments);
+                const text = args.join(' ');
+                // A-Frame関連のログをフィルタリング
+                if (text.includes('A-Frame') || text.includes('AFRAME') || text.includes('three.js')) {
+                    return;
+                }
+                originalLog.apply(console, arguments);
+            };
+            
+            console.warn = function() {
+                const args = Array.from(arguments);
+                const text = args.join(' ');
+                if (text.includes('A-Frame') || text.includes('AFRAME')) {
+                    return;
+                }
+                originalWarn.apply(console, arguments);
+            };
+            
+            console.info = function() {
+                const args = Array.from(arguments);
+                const text = args.join(' ');
+                if (text.includes('A-Frame') || text.includes('AFRAME')) {
+                    return;
+                }
+                originalInfo.apply(console, arguments);
+            };
+            
+            // A-Frame固有の属性を削除
+            setTimeout(function() {
+                document.querySelectorAll('[data-aframe-inspector]').forEach(el => {
+                    el.removeAttribute('data-aframe-inspector');
+                });
+                
+                document.querySelectorAll('[data-aframe-default-camera]').forEach(el => {
+                    el.removeAttribute('data-aframe-default-camera');
+                });
+                
+                // シーン要素から不要な属性を削除
+                const scene = document.querySelector('a-scene');
+                if (scene) {
+                    scene.removeAttribute('inspector');
+                    scene.removeAttribute('keyboard-shortcuts');
+                }
+            }, 2000);
+            
+            // AFRAMEオブジェクトのバージョン情報を削除
+            if (window.AFRAME) {
+                delete window.AFRAME.version;
+            }
+        });
         
         window.addEventListener('arjs-video-loaded', function() {
             console.log('AR.js ready');
