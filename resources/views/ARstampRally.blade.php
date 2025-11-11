@@ -281,6 +281,190 @@
             opacity: 0.8;
         }
         
+        /* スタンプ帳ボタン */
+        #stamp-book-button {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        
+        #stamp-book-button:active {
+            transform: scale(0.9);
+            background-color: rgba(200, 200, 200, 0.9);
+        }
+        
+        #stamp-book-button:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+        
+        #stamp-book-button .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid white;
+        }
+        
+        /* スタンプ帳モーダル */
+        #stamp-book-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+        }
+        
+        #stamp-book-content {
+            background-color: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        #stamp-book-content h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        #stamp-book-content .progress {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        
+        #stamp-book-content .complete-message {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: celebrate 1s ease-in-out;
+        }
+        
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        #stamp-book-content .stamps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #stamp-book-content .stamp-item {
+            background-color: #f5f5f5;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        #stamp-book-content .stamp-item.collected {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            border-color: #4CAF50;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        #stamp-book-content .stamp-item .stamp-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        
+        #stamp-book-content .stamp-item .stamp-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        #stamp-book-content .stamp-item .stamp-date {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        #stamp-book-content .stamp-item.not-collected {
+            opacity: 0.4;
+        }
+        
+        #stamp-book-content .stamp-item.not-collected .stamp-icon {
+            filter: grayscale(100%);
+        }
+        
+        #close-stamp-book {
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+            padding: 12px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        #close-stamp-book:hover {
+            background-color: #d32f2f;
+        }
+        
+        #clear-stamps {
+            width: 100%;
+            padding: 10px;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        #clear-stamps:hover {
+            background-color: #f57c00;
+        }
+        
         /* 撮影した画像のプレビュー */
         #photo-preview {
             position: fixed;
@@ -337,6 +521,28 @@
     
     <!-- フラッシュエフェクト -->
     <div id="flash"></div>
+    
+    <!-- スタンプ帳ボタン -->
+    <button id="stamp-book-button" title="スタンプ帳を見る">
+        📖
+        <span class="badge">0</span>
+    </button>
+    
+    <!-- スタンプ帳モーダル -->
+    <div id="stamp-book-modal">
+        <div id="stamp-book-content">
+            <h2>🎯 スタンプ帳 🎯</h2>
+            <div class="progress">
+                <span id="collected-count">0</span> / 5 種類コンプリート
+            </div>
+            <div id="complete-message-container"></div>
+            <div class="stamps-grid" id="stamps-grid">
+                <!-- スタンプアイテムはJavaScriptで動的生成 -->
+            </div>
+            <button id="close-stamp-book">閉じる</button>
+            <button id="clear-stamps">スタンプをリセット</button>
+        </div>
+    </div>
     
     <!-- カメラ切り替えボタン -->
     <button id="switch-camera-button" title="カメラを切り替え">🔄</button>
@@ -437,6 +643,167 @@
             if (loader) loader.style.display = 'none';
         }, 3000);
         
+        // スタンプラリー機能
+        const STAMPS = {
+            'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_matsubara_sheep.glb' },
+            'fox': { name: 'きつね', icon: '🦊', model: '3d_isobe_fox5.glb' },
+            'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_morita_pengin.glb' },
+            'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_matsumura_tonakai.glb' },
+            'pig': { name: 'ぶた', icon: '🐷', model: '3d_matsubara_pig.glb' }
+        };
+        
+        // LocalStorageからスタンプデータを取得
+        function getCollectedStamps() {
+            const stored = localStorage.getItem('ar-stamp-rally');
+            return stored ? JSON.parse(stored) : {};
+        }
+        
+        // LocalStorageにスタンプデータを保存
+        function saveCollectedStamps(stamps) {
+            localStorage.setItem('ar-stamp-rally', JSON.stringify(stamps));
+        }
+        
+        // スタンプを登録
+        function collectStamp(stampId) {
+            const collectedStamps = getCollectedStamps();
+            
+            if (!collectedStamps[stampId]) {
+                collectedStamps[stampId] = {
+                    collectedAt: new Date().toISOString(),
+                    name: STAMPS[stampId].name
+                };
+                saveCollectedStamps(collectedStamps);
+                updateStampBadge();
+                
+                // 新規取得の通知
+                showStampNotification(stampId);
+                
+                console.log('✓ Stamp collected:', stampId);
+                return true;
+            }
+            return false;
+        }
+        
+        // スタンプ取得通知を表示
+        function showStampNotification(stampId) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 10px;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 9999;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                animation: slideDown 0.5s ease-out;
+            `;
+            notification.innerHTML = `🎉 ${STAMPS[stampId].icon} ${STAMPS[stampId].name} をゲット！`;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.5s ease-in';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 2000);
+        }
+        
+        // バッジの数字を更新
+        function updateStampBadge() {
+            const collectedStamps = getCollectedStamps();
+            const count = Object.keys(collectedStamps).length;
+            const badge = document.querySelector('#stamp-book-button .badge');
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            }
+        }
+        
+        // スタンプ帳を表示
+        function showStampBook() {
+            const collectedStamps = getCollectedStamps();
+            const stampsGrid = document.getElementById('stamps-grid');
+            const collectedCount = document.getElementById('collected-count');
+            const completeMessageContainer = document.getElementById('complete-message-container');
+            
+            // グリッドをクリア
+            stampsGrid.innerHTML = '';
+            
+            // 各スタンプを表示
+            Object.keys(STAMPS).forEach(stampId => {
+                const stamp = STAMPS[stampId];
+                const isCollected = collectedStamps[stampId] !== undefined;
+                
+                const stampItem = document.createElement('div');
+                stampItem.className = `stamp-item ${isCollected ? 'collected' : 'not-collected'}`;
+                
+                let dateText = '';
+                if (isCollected) {
+                    const date = new Date(collectedStamps[stampId].collectedAt);
+                    dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+                }
+                
+                stampItem.innerHTML = `
+                    <div class="stamp-icon">${stamp.icon}</div>
+                    <div class="stamp-name">${stamp.name}</div>
+                    ${dateText}
+                `;
+                
+                stampsGrid.appendChild(stampItem);
+            });
+            
+            // 進捗を更新
+            const count = Object.keys(collectedStamps).length;
+            collectedCount.textContent = count;
+            
+            // コンプリートメッセージ
+            if (count === Object.keys(STAMPS).length) {
+                completeMessageContainer.innerHTML = `
+                    <div class="complete-message">
+                        🎊 おめでとうございます！ 🎊<br>
+                        全${Object.keys(STAMPS).length}種類コンプリート！
+                    </div>
+                `;
+            } else {
+                completeMessageContainer.innerHTML = '';
+            }
+            
+            // モーダルを表示
+            document.getElementById('stamp-book-modal').style.display = 'flex';
+        }
+        
+        // アニメーション追加
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+            @keyframes slideUp {
+                from {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-20px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
         // 画面タップでアニメーションを再生
         let sceneReady = false;
         let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
@@ -488,6 +855,7 @@
                 patternSheepMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
+                    collectStamp('sheep'); // スタンプ登録
                 });
                 patternSheepMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-sheep marker lost');
@@ -501,6 +869,7 @@
                 patternFoxMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-fox marker found');
                     activeModel = foxModel;
+                    collectStamp('fox'); // スタンプ登録
                 });
                 patternFoxMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-fox marker lost');
@@ -514,6 +883,7 @@
                 patternPenginMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
+                    collectStamp('pengin'); // スタンプ登録
                 });
                 patternPenginMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pengin marker lost');
@@ -527,6 +897,7 @@
                 patternTonakaiMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-tonakai marker found');
                     activeModel = tonakaiModel;
+                    collectStamp('tonakai'); // スタンプ登録
                 });
                 patternTonakaiMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-tonakai marker lost');
@@ -540,6 +911,7 @@
                 patternPigMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pig marker found');
                     activeModel = pigModel;
+                    collectStamp('pig'); // スタンプ登録
                 });
                 patternPigMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pig marker lost');
@@ -553,6 +925,41 @@
                 sceneReady = true;
                 console.log('Scene loaded');
             });
+            
+            // スタンプ帳ボタン
+            const stampBookButton = document.getElementById('stamp-book-button');
+            stampBookButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                showStampBook();
+            });
+            
+            // スタンプ帳を閉じる
+            const closeStampBookButton = document.getElementById('close-stamp-book');
+            closeStampBookButton.addEventListener('click', function() {
+                document.getElementById('stamp-book-modal').style.display = 'none';
+            });
+            
+            // スタンプリセットボタン
+            const clearStampsButton = document.getElementById('clear-stamps');
+            clearStampsButton.addEventListener('click', function() {
+                if (confirm('本当にスタンプをすべてリセットしますか？')) {
+                    localStorage.removeItem('ar-stamp-rally');
+                    updateStampBadge();
+                    showStampBook(); // 画面を更新
+                    console.log('✓ Stamps cleared');
+                }
+            });
+            
+            // モーダル背景クリックで閉じる
+            const stampBookModal = document.getElementById('stamp-book-modal');
+            stampBookModal.addEventListener('click', function(e) {
+                if (e.target === stampBookModal) {
+                    stampBookModal.style.display = 'none';
+                }
+            });
+            
+            // 初期化：バッジを更新
+            updateStampBadge();
             
             // カメラ切り替え機能
             switchCameraButton.addEventListener('click', async function(e) {
