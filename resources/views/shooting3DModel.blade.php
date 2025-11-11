@@ -11,6 +11,110 @@
     <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
+    <script>
+        // ソースコード保護: 右クリック・キーボードショートカット無効化
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            // F12（開発者ツール）
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+I（検証ツール）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+J（コンソール）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+C（要素選択）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+U（ソース表示）
+            if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+S（保存）
+            if (e.ctrlKey && (e.key === 'S' || e.keyCode === 83)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+I（Mac版検証ツール）
+            if (e.metaKey && e.altKey && (e.key === 'I' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+J（Mac版コンソール）
+            if (e.metaKey && e.altKey && (e.key === 'J' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+C（Mac版要素選択）
+            if (e.metaKey && e.altKey && (e.key === 'C' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+U（Mac版ソース表示）
+            if (e.metaKey && (e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // テキスト選択の無効化
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // ドラッグ操作の無効化
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // コピー操作の無効化
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 開発者ツール検知（簡易版）
+        (function() {
+            const devtools = /./;
+            devtools.toString = function() {
+                this.opened = true;
+            }
+            console.log('%c', devtools);
+            
+            setInterval(function() {
+                if (devtools.opened) {
+                    console.clear();
+                    devtools.opened = false;
+                }
+            }, 1000);
+        })();
+    </script>
+
     <script>  
         // ゲーム状態管理
         window.gameStarted = false;
