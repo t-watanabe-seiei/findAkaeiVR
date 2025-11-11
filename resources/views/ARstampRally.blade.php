@@ -332,33 +332,28 @@
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
             display: none;
             z-index: 10001;
-            overflow-y: scroll;
-            -webkit-overflow-scrolling: touch;
-            padding: 20px;
-            box-sizing: border-box;
+            overflow-y: scroll !important;
+            -webkit-overflow-scrolling: touch !important;
         }
         
         #stamp-book-content {
             background-color: white;
             border-radius: 15px;
-            padding: 30px 20px;
+            padding: 20px;
             max-width: 500px;
-            margin: 0 auto;
+            margin: 20px auto 100px auto;
             box-sizing: border-box;
-            position: relative;
-            min-height: 100vh;
         }
         
         #stamp-book-content h2 {
             text-align: center;
             color: #333;
-            margin-bottom: 10px;
-            margin-top: 0;
+            margin: 0 0 10px 0;
             font-size: 24px;
         }
         
@@ -387,10 +382,9 @@
         
         #stamp-book-content .stamps-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
         
         #stamp-book-content .stamp-item {
@@ -437,18 +431,17 @@
         #close-stamp-book {
             position: relative;
             width: 100%;
-            padding: 14px;
+            padding: 15px;
             background-color: #f44336;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 15px;
-            margin-bottom: 0;
+            margin-top: 20px;
+            margin-bottom: 10px;
             box-sizing: border-box;
-            touch-action: manipulation; /* タップ反応を改善 */
         }
         
         #close-stamp-book:hover {
@@ -462,12 +455,11 @@
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
             cursor: pointer;
-            margin-top: 10px;
-            margin-bottom: 40px; /* 下部に大きな余白を追加 */
+            margin-top: 0;
+            margin-bottom: 0;
             box-sizing: border-box;
-            touch-action: manipulation; /* タップ反応を改善 */
         }
         
         #clear-stamps:hover {
@@ -963,10 +955,11 @@
             const modal = document.getElementById('stamp-book-modal');
             modal.style.display = 'block';
             
-            // スクロール位置をリセット
-            setTimeout(() => {
+            // 明示的にスクロール位置をリセット
+            requestAnimationFrame(() => {
                 modal.scrollTop = 0;
-            }, 0);
+                console.log('Modal scrollTop set to 0');
+            });
         }
         
         // アニメーション追加
