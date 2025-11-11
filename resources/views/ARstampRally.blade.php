@@ -364,22 +364,7 @@
         
         <a-entity camera></a-entity>
         
-        <a-marker preset="hiro" id="hiro-marker">
-            <a-entity
-                id="fox-model"
-                gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
-                position="0 0 0"
-                scale="1 1 1"
-                rotation="0 0 0"
-                click-animation="clip: anime01">
-            </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
-        </a-marker>
-        
-        <a-marker type="pattern" url="{{ asset('cg/pattern-50.patt') }}" id="pattern-50-marker">
+        <a-marker type="pattern" url="{{ asset('cg/pattern-sheep.patt') }}" id="pattern-sheep-marker">
             <a-entity
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
@@ -394,10 +379,40 @@
             <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
-        <a-marker type="pattern" url="{{ asset('cg/pattern-51.patt') }}" id="pattern-51-marker">
+        <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
+            <a-entity
+                id="fox-model"
+                gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
+                position="0 0 0"
+                scale="1 1 1"
+                rotation="0 0 0"
+                click-animation="clip: anime01">
+            </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        </a-marker>
+        
+        <a-marker type="pattern" url="{{ asset('cg/pattern-pengin.patt') }}" id="pattern-pengin-marker">
             <a-entity
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
+                position="0 0 0"
+                scale="1 1 1"
+                rotation="0 0 0"
+                click-animation="clip: anime01">
+            </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        </a-marker>
+        
+        <a-marker type="pattern" url="{{ asset('cg/pattern-tonakai.patt') }}" id="pattern-tonakai-marker">
+            <a-entity
+                id="tonakai-model"
+                gltf-model="{{ asset('cg/3d_matsumura_tonakai.glb') }}"
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
@@ -443,9 +458,10 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
-            const foxModel = document.querySelector('#fox-model');
             const sheepModel = document.querySelector('#sheep-model');
+            const foxModel = document.querySelector('#fox-model');
             const penginModel = document.querySelector('#pengin-model');
+            const tonakaiModel = document.querySelector('#tonakai-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
@@ -462,44 +478,58 @@
             let recordingStartTime = 0;
             
             // マーカー検出時にアクティブモデルを設定
-            const hiroMarker = document.querySelector('#hiro-marker');
-            const pattern50Marker = document.querySelector('#pattern-50-marker');
-            const pattern51Marker = document.querySelector('#pattern-51-marker');
+            const patternSheepMarker = document.querySelector('#pattern-sheep-marker');
+            const patternFoxMarker = document.querySelector('#pattern-fox-marker');
+            const patternPenginMarker = document.querySelector('#pattern-pengin-marker');
+            const patternTonakaiMarker = document.querySelector('#pattern-tonakai-marker');
             
-            if (hiroMarker) {
-                hiroMarker.addEventListener('markerFound', function() {
-                    console.log('Hiro marker found');
-                    activeModel = foxModel;
-                });
-                hiroMarker.addEventListener('markerLost', function() {
-                    console.log('Hiro marker lost');
-                    if (activeModel === foxModel) {
-                        activeModel = null;
-                    }
-                });
-            }
-            
-            if (pattern50Marker) {
-                pattern50Marker.addEventListener('markerFound', function() {
-                    console.log('Pattern-50 marker found (sheep)');
+            if (patternSheepMarker) {
+                patternSheepMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
                 });
-                pattern50Marker.addEventListener('markerLost', function() {
-                    console.log('Pattern-50 marker lost');
+                patternSheepMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-sheep marker lost');
                     if (activeModel === sheepModel) {
                         activeModel = null;
                     }
                 });
             }
             
-            if (pattern51Marker) {
-                pattern51Marker.addEventListener('markerFound', function() {
-                    console.log('Pattern-51 marker found (pengin)');
+            if (patternFoxMarker) {
+                patternFoxMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-fox marker found');
+                    activeModel = foxModel;
+                });
+                patternFoxMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-fox marker lost');
+                    if (activeModel === foxModel) {
+                        activeModel = null;
+                    }
+                });
+            }
+            
+            if (patternPenginMarker) {
+                patternPenginMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
                 });
-                pattern51Marker.addEventListener('markerLost', function() {
-                    console.log('Pattern-51 marker lost');
+                patternPenginMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-pengin marker lost');
                     if (activeModel === penginModel) {
+                        activeModel = null;
+                    }
+                });
+            }
+            
+            if (patternTonakaiMarker) {
+                patternTonakaiMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-tonakai marker found');
+                    activeModel = tonakaiModel;
+                });
+                patternTonakaiMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-tonakai marker lost');
+                    if (activeModel === tonakaiModel) {
                         activeModel = null;
                     }
                 });
