@@ -1134,29 +1134,38 @@
             // スタンプ帳ボタン
             const stampBookButton = document.getElementById('stamp-book-button');
             stampBookButton.addEventListener('click', function(e) {
+                e.preventDefault();
                 e.stopPropagation();
                 showStampBook();
             });
             
             // スタンプ帳を閉じる
             const closeStampBookButton = document.getElementById('close-stamp-book');
-            closeStampBookButton.addEventListener('click', function() {
+            closeStampBookButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
             });
             
             // スタンプリセットボタン
             const clearStampsButton = document.getElementById('clear-stamps');
-            clearStampsButton.addEventListener('click', function() {
+            clearStampsButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (confirm('本当にスタンプをすべてリセットしますか？')) {
-                    localStorage.removeItem('ar-stamp-rally');
-                    updateStampBadge();
-                    
-                    // モーダルを閉じる
+                    // まずモーダルを閉じる
                     const modal = document.getElementById('stamp-book-modal');
                     modal.style.display = 'none';
                     
-                    console.log('✓ Stamps cleared');
+                    // 少し遅延してからリセット処理
+                    setTimeout(() => {
+                        localStorage.removeItem('ar-stamp-rally');
+                        updateStampBadge();
+                        console.log('✓ Stamps cleared');
+                    }, 100);
                 }
             });
             
