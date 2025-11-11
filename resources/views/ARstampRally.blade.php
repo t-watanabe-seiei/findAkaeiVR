@@ -332,14 +332,14 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            min-height: 100%;
-            min-height: 100vh; /* iOSのアドレスバー対応 */
+            right: 0;
+            bottom: 0;
             background-color: rgba(0, 0, 0, 0.8);
             display: none;
             z-index: 10001;
-            padding: 20px 0;
-            box-sizing: border-box;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
         }
         
         #stamp-book-content {
@@ -348,7 +348,7 @@
             padding: 30px 20px 30px 20px;
             max-width: 500px;
             width: calc(100% - 40px);
-            margin: 0 auto;
+            margin: 60px auto 60px auto;
             box-sizing: border-box;
             position: relative;
         }
@@ -961,14 +961,10 @@
             const modal = document.getElementById('stamp-book-modal');
             modal.style.display = 'block';
             
-            // ページ全体を最上部にスクロール
-            window.scrollTo(0, 0);
-            
-            // bodyのスクロールを無効化（iOS対応）
-            document.body.style.overflow = 'hidden';
-            document.body.style.position = 'fixed';
-            document.body.style.width = '100%';
-            document.body.style.top = '0';
+            // スクロール位置をリセット
+            setTimeout(() => {
+                modal.scrollTop = 0;
+            }, 0);
         }
         
         // アニメーション追加
@@ -1152,12 +1148,6 @@
             closeStampBookButton.addEventListener('click', function() {
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
-                
-                // bodyのスクロールを復元
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.width = '';
-                document.body.style.top = '';
             });
             
             // スタンプリセットボタン
@@ -1171,12 +1161,6 @@
                     const modal = document.getElementById('stamp-book-modal');
                     modal.style.display = 'none';
                     
-                    // bodyのスクロールを復元
-                    document.body.style.overflow = '';
-                    document.body.style.position = '';
-                    document.body.style.width = '';
-                    document.body.style.top = '';
-                    
                     console.log('✓ Stamps cleared');
                 }
             });
@@ -1186,12 +1170,6 @@
             stampBookModal.addEventListener('click', function(e) {
                 if (e.target === stampBookModal) {
                     stampBookModal.style.display = 'none';
-                    
-                    // bodyのスクロールを復元
-                    document.body.style.overflow = '';
-                    document.body.style.position = '';
-                    document.body.style.width = '';
-                    document.body.style.top = '';
                 }
             });
             
