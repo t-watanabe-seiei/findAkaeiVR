@@ -4,6 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>AR Stamp Rally</title>
+    <script>
+        // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+U, Cmd+U (ソースコード表示)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            // F12 (開発者ツール)
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            // Ctrl+Shift+I, Cmd+Option+I (検証ツール)
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) ||
+                (e.metaKey && e.altKey && (e.key === 'I' || e.keyCode === 73))) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            // Ctrl+Shift+J, Cmd+Option+J (コンソール)
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) ||
+                (e.metaKey && e.altKey && (e.key === 'J' || e.keyCode === 74))) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            // Ctrl+Shift+C, Cmd+Option+C (要素選択)
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) ||
+                (e.metaKey && e.altKey && (e.key === 'C' || e.keyCode === 67))) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            // Ctrl+S, Cmd+S (保存)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        }, true); // キャプチャフェーズで処理
+        
+        // 右クリック無効化
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+    </script>
     <script src="{{ asset('js/ar-engine.min.js') }}"></script>
     <script src="{{ asset('js/ar-tracking.min.js') }}"></script>
     <script>
@@ -747,77 +804,90 @@
     </a-scene>
 
     <script>
-        // ソースコード保護: 右クリック・キーボードショートカット無効化
+        // ソースコード保護: 右クリック・キーボードショートカット無効化（バブリングフェーズでも処理）
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             return false;
-        });
+        }, false);
         
         document.addEventListener('keydown', function(e) {
+            // Ctrl+U, Cmd+U（ソース表示）
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            
             // F12（開発者ツール）
             if (e.key === 'F12' || e.keyCode === 123) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
             
-            // Ctrl+Shift+I（検証ツール）
-            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) {
+            // Ctrl+Shift+I, Cmd+Option+I（検証ツール）
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) ||
+                (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73))) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
             
-            // Ctrl+Shift+J（コンソール）
-            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) {
+            // Ctrl+Shift+J, Cmd+Option+J（コンソール）
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) ||
+                (e.metaKey && e.altKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74))) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
             
-            // Ctrl+Shift+C（要素選択）
-            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) {
+            // Ctrl+Shift+C, Cmd+Option+C（要素選択）
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) ||
+                (e.metaKey && e.altKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67))) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
             
-            // Ctrl+U（ソース表示）
-            if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
+            // Ctrl+S, Cmd+S（保存）
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
-            
-            // Ctrl+S（保存）
-            if (e.ctrlKey && (e.key === 'S' || e.keyCode === 83)) {
+        }, false);
+        
+        // キャプチャフェーズでも追加処理
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
-            
-            // Cmd+Option+I（Mac版検証ツール）
-            if (e.metaKey && e.altKey && (e.key === 'I' || e.keyCode === 73)) {
+        }, true);
+        
+        document.addEventListener('keyup', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 return false;
             }
-            
-            // Cmd+Option+J（Mac版コンソール）
-            if (e.metaKey && e.altKey && (e.key === 'J' || e.keyCode === 74)) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Cmd+Option+C（Mac版要素選択）
-            if (e.metaKey && e.altKey && (e.key === 'C' || e.keyCode === 67)) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Cmd+U（Mac版ソース表示）
-            if (e.metaKey && (e.key === 'U' || e.keyCode === 85)) {
-                e.preventDefault();
-                return false;
-            }
-        });
+        }, true);
         
         // テキスト選択の無効化
         document.addEventListener('selectstart', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             return false;
         });
         
