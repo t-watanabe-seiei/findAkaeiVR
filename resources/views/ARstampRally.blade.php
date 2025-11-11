@@ -1316,39 +1316,37 @@
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         try {
-                            // 一時的なcanvasを作成
+                            // 一時的なcanvasを作成（元の画像用）
                             const tempCanvas = document.createElement('canvas');
-                            tempCanvas.width = 400;
-                            tempCanvas.height = 400;
+                            tempCanvas.width = sceneCanvas.width;
+                            tempCanvas.height = sceneCanvas.height;
                             const ctx = tempCanvas.getContext('2d');
                             
-                            // 白背景を設定
-                            ctx.fillStyle = 'white';
-                            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                            
-                            // シーン全体をそのまま描画
-                            ctx.drawImage(sceneCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                            // シーン全体を描画
+                            ctx.drawImage(sceneCanvas, 0, 0);
                             console.log('✓ Canvas drawn successfully');
                             
-                            // Base64に変換（品質を指定）
-                            const screenshot = tempCanvas.toDataURL('image/jpeg', 0.9);
+                            // 画像データを取得してモデル部分を検出
+                            const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                            const bounds = detectModelBounds(imageData);
+                            
+                            console.log('Model bounds:', bounds);
+                            
+                            if (!bounds) {
+                                console.warn('No model detected in image');
+                                callback(null);
+                                return;
+                            }
+                            
+                            // モデル部分をクロップして拡大
+                            const croppedCanvas = cropAndResize(tempCanvas, bounds, 400, 400);
+                            
+                            // Base64に変換
+                            const screenshot = croppedCanvas.toDataURL('image/png');
                             console.log('Screenshot created:', {
                                 length: screenshot.length,
-                                prefix: screenshot.substring(0, 50)
+                                bounds: bounds
                             });
-                            
-                            // 画像が実際に真っ白かどうかチェック
-                            const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-                            const data = imageData.data;
-                            let isBlank = true;
-                            for (let i = 0; i < data.length; i += 4) {
-                                // 完全な白(255,255,255)以外のピクセルがあるかチェック
-                                if (data[i] !== 255 || data[i+1] !== 255 || data[i+2] !== 255) {
-                                    isBlank = false;
-                                    break;
-                                }
-                            }
-                            console.log('Image is blank (all white):', isBlank);
                             
                             callback(screenshot);
                             
@@ -1363,6 +1361,100 @@
                 console.error('Screenshot capture error:', error);
                 callback(null);
             }
+        }
+        
+        // モデルの境界を検出（背景以外の部分を見つける）
+        function detectModelBounds(imageData) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            let minX = width, minY = height, maxX = 0, maxY = 0;
+            let foundPixel = false;
+            
+            // 背景色（ほぼ白または透明）を除外してモデルのピクセルを探す
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const a = data[i + 3];
+                    
+                    // 背景でないピクセルを判定
+                    // 白(255,255,255)や透明(a=0)でない、または色がついているピクセル
+                    const isNotBackground = a > 10 && (
+                        r < 240 || g < 240 || b < 240 || // 真っ白でない
+                        Math.abs(r - g) > 10 || Math.abs(g - b) > 10 // 色がついている
+                    );
+                    
+                    if (isNotBackground) {
+                        foundPixel = true;
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+            
+            if (!foundPixel) {
+                return null;
+            }
+            
+            // パディングを追加（モデルの周りに余白を持たせる）
+            const padding = 20;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(width - 1, maxX + padding);
+            maxY = Math.min(height - 1, maxY + padding);
+            
+            return {
+                x: minX,
+                y: minY,
+                width: maxX - minX + 1,
+                height: maxY - minY + 1
+            };
+        }
+        
+        // 画像をクロップして指定サイズにリサイズ
+        function cropAndResize(sourceCanvas, bounds, targetWidth, targetHeight) {
+            const resultCanvas = document.createElement('canvas');
+            resultCanvas.width = targetWidth;
+            resultCanvas.height = targetHeight;
+            const ctx = resultCanvas.getContext('2d');
+            
+            // 透明背景
+            ctx.clearRect(0, 0, targetWidth, targetHeight);
+            
+            // アスペクト比を維持して最大限に拡大
+            const sourceAspect = bounds.width / bounds.height;
+            const targetAspect = targetWidth / targetHeight;
+            
+            let drawWidth, drawHeight, offsetX, offsetY;
+            
+            if (sourceAspect > targetAspect) {
+                // 横長の画像
+                drawWidth = targetWidth;
+                drawHeight = targetWidth / sourceAspect;
+                offsetX = 0;
+                offsetY = (targetHeight - drawHeight) / 2;
+            } else {
+                // 縦長の画像
+                drawHeight = targetHeight;
+                drawWidth = targetHeight * sourceAspect;
+                offsetX = (targetWidth - drawWidth) / 2;
+                offsetY = 0;
+            }
+            
+            // クロップした部分を描画
+            ctx.drawImage(
+                sourceCanvas,
+                bounds.x, bounds.y, bounds.width, bounds.height,
+                offsetX, offsetY, drawWidth, drawHeight
+            );
+            
+            return resultCanvas;
         }
         
         // スタンプ帳を表示
