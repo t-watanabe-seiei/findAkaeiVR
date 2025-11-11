@@ -379,7 +379,7 @@
             <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
-        <a-marker type="pattern" url="{{ asset('pattern-50.patt') }}" id="pattern-50-marker">
+        <a-marker type="pattern" url="{{ asset('cg/pattern-50.patt') }}" id="pattern-50-marker">
             <a-entity
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
