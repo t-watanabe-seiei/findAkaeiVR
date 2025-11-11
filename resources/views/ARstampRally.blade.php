@@ -339,18 +339,24 @@
             z-index: 10001;
             justify-content: center;
             align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* iOSでスムーズスクロール */
         }
         
         #stamp-book-content {
             background-color: white;
             border-radius: 15px;
-            padding: 30px;
+            padding: 30px 20px 20px 20px;
             max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
+            width: 100%;
+            max-height: 90vh;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* iOSでスムーズスクロール */
             position: relative;
+            box-sizing: border-box;
+            margin: auto;
         }
         
         #stamp-book-content h2 {
@@ -388,6 +394,7 @@
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
+            padding-bottom: 10px;
         }
         
         #stamp-book-content .stamp-item {
@@ -431,8 +438,7 @@
         }
         
         #close-stamp-book {
-            position: sticky;
-            bottom: 0;
+            position: relative;
             width: 100%;
             padding: 12px;
             background-color: #f44336;
@@ -442,7 +448,8 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 10px;
+            box-sizing: border-box;
         }
         
         #close-stamp-book:hover {
