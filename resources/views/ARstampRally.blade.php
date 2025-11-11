@@ -364,6 +364,10 @@
         
         <a-entity camera></a-entity>
         
+        <!-- ライトを追加して明るくする（シーン全体で1つ） -->
+        <a-light type="ambient" intensity="1.87"></a-light>
+        <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-sheep.patt') }}" id="pattern-sheep-marker">
             <a-entity
                 id="sheep-model"
@@ -373,10 +377,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
@@ -388,10 +388,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
         <a-marker type="pattern" url="{{ asset('cg/pattern-pengin.patt') }}" id="pattern-pengin-marker">
@@ -403,10 +399,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
         <a-marker type="pattern" url="{{ asset('cg/pattern-tonakai.patt') }}" id="pattern-tonakai-marker">
@@ -418,10 +410,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
         <a-marker type="pattern" url="{{ asset('cg/pattern-pig.patt') }}" id="pattern-pig-marker">
@@ -433,10 +421,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01">
             </a-entity>
-            
-            <!-- ライトを追加して明るくする -->
-            <a-light type="ambient" intensity="1.87"></a-light>
-            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
     </a-scene>
