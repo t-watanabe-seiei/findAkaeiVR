@@ -337,26 +337,28 @@
             background-color: rgba(0, 0, 0, 0.8);
             display: none;
             z-index: 10001;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow-y: scroll;
             -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            box-sizing: border-box;
         }
         
         #stamp-book-content {
             background-color: white;
             border-radius: 15px;
-            padding: 30px 20px 30px 20px;
+            padding: 30px 20px;
             max-width: 500px;
-            width: calc(100% - 40px);
-            margin: 60px auto 60px auto;
+            margin: 0 auto;
             box-sizing: border-box;
             position: relative;
+            min-height: 100vh;
         }
         
         #stamp-book-content h2 {
             text-align: center;
             color: #333;
             margin-bottom: 10px;
+            margin-top: 0;
             font-size: 24px;
         }
         
@@ -463,7 +465,7 @@
             font-size: 14px;
             cursor: pointer;
             margin-top: 10px;
-            margin-bottom: 20px; /* 下部に余白を追加 */
+            margin-bottom: 40px; /* 下部に大きな余白を追加 */
             box-sizing: border-box;
             touch-action: manipulation; /* タップ反応を改善 */
         }
