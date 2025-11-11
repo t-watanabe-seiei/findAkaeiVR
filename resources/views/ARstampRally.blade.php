@@ -424,6 +424,21 @@
             <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
+        <a-marker type="pattern" url="{{ asset('cg/pattern-pig.patt') }}" id="pattern-pig-marker">
+            <a-entity
+                id="pig-model"
+                gltf-model="{{ asset('cg/3d_matsubara_pig.glb') }}"
+                position="0 0 0"
+                scale="1 1 1"
+                rotation="0 0 0"
+                click-animation="clip: anime01">
+            </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        </a-marker>
+        
     </a-scene>
 
     <script>
@@ -462,6 +477,7 @@
             const foxModel = document.querySelector('#fox-model');
             const penginModel = document.querySelector('#pengin-model');
             const tonakaiModel = document.querySelector('#tonakai-model');
+            const pigModel = document.querySelector('#pig-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
@@ -482,6 +498,7 @@
             const patternFoxMarker = document.querySelector('#pattern-fox-marker');
             const patternPenginMarker = document.querySelector('#pattern-pengin-marker');
             const patternTonakaiMarker = document.querySelector('#pattern-tonakai-marker');
+            const patternPigMarker = document.querySelector('#pattern-pig-marker');
             
             if (patternSheepMarker) {
                 patternSheepMarker.addEventListener('markerFound', function() {
@@ -530,6 +547,19 @@
                 patternTonakaiMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-tonakai marker lost');
                     if (activeModel === tonakaiModel) {
+                        activeModel = null;
+                    }
+                });
+            }
+            
+            if (patternPigMarker) {
+                patternPigMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-pig marker found');
+                    activeModel = pigModel;
+                });
+                patternPigMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-pig marker lost');
+                    if (activeModel === pigModel) {
                         activeModel = null;
                     }
                 });
