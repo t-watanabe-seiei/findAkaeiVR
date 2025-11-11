@@ -563,7 +563,7 @@
     <div id="flash"></div>
     
     <!-- スタンプ帳ボタン -->
-    <button id="stamp-book-button" title="スタンプ帳を見る">
+    <button id="stamp-book-button" type="button" title="スタンプ帳を見る">
         📖
         <span class="badge">0</span>
     </button>
@@ -580,18 +580,18 @@
                 <!-- スタンプアイテムはJavaScriptで動的生成 -->
             </div>
             <button id="close-stamp-book">閉じる</button>
-            <button id="clear-stamps">スタンプをリセット</button>
+            <button id="clear-stamps" type="button">スタンプをリセット</button>
         </div>
     </div>
     
     <!-- カメラ切り替えボタン -->
-    <button id="switch-camera-button" title="カメラを切り替え">🔄</button>
+    <button id="switch-camera-button" type="button" title="カメラを切り替え">🔄</button>
     
     <!-- 動画撮影ボタン -->
-    <button id="video-button" title="動画を撮る">🎥</button>
+    <button id="video-button" type="button" title="動画を撮る">🎥</button>
     
     <!-- カメラボタン -->
-    <button id="camera-button" title="写真を撮る">📷</button>
+    <button id="camera-button" type="button" title="写真を撮る">📷</button>
     
     <!-- 撮影した写真のプレビュー -->
     <div id="photo-preview">
@@ -1155,26 +1155,43 @@
                 e.preventDefault();
                 e.stopPropagation();
                 
-                if (confirm('本当にスタンプをすべてリセットしますか？')) {
-                    // まずモーダルを閉じる
+                // カスタム確認ダイアログを使用
+                const userConfirmed = confirm('本当にスタンプをすべてリセットしますか？');
+                
+                if (userConfirmed) {
+                    console.log('Clear stamps confirmed');
+                    
+                    // LocalStorageをクリア
+                    localStorage.removeItem('ar-stamp-rally');
+                    
+                    // バッジを更新
+                    updateStampBadge();
+                    
+                    // モーダルを閉じる
                     const modal = document.getElementById('stamp-book-modal');
                     modal.style.display = 'none';
                     
-                    // 少し遅延してからリセット処理
-                    setTimeout(() => {
-                        localStorage.removeItem('ar-stamp-rally');
-                        updateStampBadge();
-                        console.log('✓ Stamps cleared');
-                    }, 100);
+                    console.log('✓ Stamps cleared and modal closed');
+                } else {
+                    console.log('Clear stamps cancelled');
                 }
-            });
+            }, false);
             
             // モーダル背景クリックで閉じる
             const stampBookModal = document.getElementById('stamp-book-modal');
             stampBookModal.addEventListener('click', function(e) {
+                // モーダルの背景部分のみクリック時に閉じる（コンテンツ部分は除外）
                 if (e.target === stampBookModal) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     stampBookModal.style.display = 'none';
                 }
+            });
+            
+            // モーダルコンテンツのクリックイベントが背景に伝播しないようにする
+            const stampBookContent = document.getElementById('stamp-book-content');
+            stampBookContent.addEventListener('click', function(e) {
+                e.stopPropagation();
             });
             
             // 初期化：バッジを更新
