@@ -337,12 +337,8 @@
             background-color: rgba(0, 0, 0, 0.8);
             display: none;
             z-index: 10001;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* iOSでスムーズスクロール */
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch;
         }
         
         #stamp-book-content {
@@ -350,13 +346,10 @@
             border-radius: 15px;
             padding: 30px 20px 20px 20px;
             max-width: 500px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* iOSでスムーズスクロール */
-            position: relative;
+            width: calc(100% - 40px);
+            margin: 40px auto;
+            min-height: calc(100vh - 80px);
             box-sizing: border-box;
-            margin: auto;
         }
         
         #stamp-book-content h2 {
@@ -958,7 +951,9 @@
             }
             
             // モーダルを表示
-            document.getElementById('stamp-book-modal').style.display = 'flex';
+            const modal = document.getElementById('stamp-book-modal');
+            modal.style.display = 'block';
+            modal.scrollTop = 0; // スクロール位置を最上部に
         }
         
         // アニメーション追加
@@ -1140,7 +1135,9 @@
             // スタンプ帳を閉じる
             const closeStampBookButton = document.getElementById('close-stamp-book');
             closeStampBookButton.addEventListener('click', function() {
-                document.getElementById('stamp-book-modal').style.display = 'none';
+                const modal = document.getElementById('stamp-book-modal');
+                modal.style.display = 'none';
+                modal.scrollTop = 0; // スクロール位置をリセット
             });
             
             // スタンプリセットボタン
@@ -1159,6 +1156,8 @@
             stampBookModal.addEventListener('click', function(e) {
                 if (e.target === stampBookModal) {
                     stampBookModal.style.display = 'none';
+                    // モーダルを閉じた時にスクロール位置をリセット
+                    stampBookModal.scrollTop = 0;
                 }
             });
             
