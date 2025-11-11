@@ -465,6 +465,45 @@
             background-color: #f57c00;
         }
         
+        /* パーティクルエフェクト */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            font-size: 30px;
+            animation: particle-float 2s ease-out forwards;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-200px) rotate(360deg);
+            }
+        }
+        
+        .particle.large {
+            font-size: 50px;
+            animation: particle-float-large 3s ease-out forwards;
+        }
+        
+        @keyframes particle-float-large {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg) scale(0.5);
+            }
+            50% {
+                transform: translateY(-100px) rotate(180deg) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-300px) rotate(360deg) scale(0.5);
+            }
+        }
+        
         /* 撮影した画像のプレビュー */
         #photo-preview {
             position: fixed;
@@ -652,6 +691,12 @@
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_matsubara_pig.glb' }
         };
         
+        // 音声ファイルをプリロード
+        const soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
+        const soundStamp02 = new Audio("{{ asset('cg/sound_stamp02.mp3') }}");
+        soundStamp01.preload = 'auto';
+        soundStamp02.preload = 'auto';
+        
         // LocalStorageからスタンプデータを取得
         function getCollectedStamps() {
             const stored = localStorage.getItem('ar-stamp-rally');
@@ -675,43 +720,174 @@
                 saveCollectedStamps(collectedStamps);
                 updateStampBadge();
                 
-                // 新規取得の通知
-                showStampNotification(stampId);
+                // 新規取得の処理
+                const totalCollected = Object.keys(collectedStamps).length;
+                const isComplete = totalCollected === Object.keys(STAMPS).length;
                 
-                console.log('✓ Stamp collected:', stampId);
+                // 音声再生
+                if (isComplete) {
+                    // 全種類コンプリート！
+                    playSound(soundStamp02);
+                    showCompleteParticles();
+                } else {
+                    // 通常の取得
+                    playSound(soundStamp01);
+                    showNormalParticles();
+                }
+                
+                // 通知表示
+                showStampNotification(stampId, isComplete);
+                
+                console.log('✓ Stamp collected:', stampId, 'Total:', totalCollected);
                 return true;
             }
             return false;
         }
         
-        // スタンプ取得通知を表示
-        function showStampNotification(stampId) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 100px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 15px 30px;
-                border-radius: 10px;
-                font-size: 18px;
-                font-weight: bold;
-                z-index: 9999;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                animation: slideDown 0.5s ease-out;
-            `;
-            notification.innerHTML = `🎉 ${STAMPS[stampId].icon} ${STAMPS[stampId].name} をゲット！`;
+        // 音声を再生
+        function playSound(audioElement) {
+            try {
+                audioElement.currentTime = 0; // 最初から再生
+                audioElement.play().catch(err => {
+                    console.log('Audio play prevented:', err);
+                });
+            } catch (error) {
+                console.error('Error playing sound:', error);
+            }
+        }
+        
+        // 通常パーティクル（スタンプ取得時）
+        function showNormalParticles() {
+            const particleIcons = ['✨', '⭐', '💫', '🌟', '💥'];
+            const particleCount = 15;
             
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideUp 0.5s ease-in';
+            for (let i = 0; i < particleCount; i++) {
                 setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 500);
-            }, 2000);
+                    createParticle(
+                        particleIcons[Math.floor(Math.random() * particleIcons.length)],
+                        false
+                    );
+                }, i * 50);
+            }
+        }
+        
+        // 豪華パーティクル（コンプリート時）
+        function showCompleteParticles() {
+            const particleIcons = ['🎉', '🎊', '🎈', '✨', '⭐', '💫', '🌟', '💥', '🎆', '🎇'];
+            const particleCount = 40;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    createParticle(
+                        particleIcons[Math.floor(Math.random() * particleIcons.length)],
+                        true // 大きいサイズ
+                    );
+                }, i * 30);
+            }
+            
+            // 追加の連続パーティクル
+            setTimeout(() => {
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => {
+                        createParticle(
+                            particleIcons[Math.floor(Math.random() * particleIcons.length)],
+                            true
+                        );
+                    }, i * 40);
+                }
+            }, 500);
+        }
+        
+        // パーティクルを生成
+        function createParticle(icon, isLarge = false) {
+            const particle = document.createElement('div');
+            particle.className = isLarge ? 'particle large' : 'particle';
+            particle.textContent = icon;
+            
+            // ランダムな位置に配置
+            const startX = Math.random() * window.innerWidth;
+            const startY = Math.random() * window.innerHeight * 0.7 + window.innerHeight * 0.15;
+            
+            particle.style.left = startX + 'px';
+            particle.style.top = startY + 'px';
+            
+            document.body.appendChild(particle);
+            
+            // アニメーション終了後に削除
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    document.body.removeChild(particle);
+                }
+            }, isLarge ? 3000 : 2000);
+        }
+        
+        // スタンプ取得通知を表示
+        function showStampNotification(stampId, isComplete = false) {
+            const notification = document.createElement('div');
+            
+            if (isComplete) {
+                // コンプリート通知
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    color: white;
+                    padding: 30px 40px;
+                    border-radius: 20px;
+                    font-size: 24px;
+                    font-weight: bold;
+                    z-index: 10002;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                    text-align: center;
+                    animation: celebratePop 0.6s ease-out;
+                `;
+                notification.innerHTML = `
+                    🎊 全種類コンプリート！ 🎊<br>
+                    <div style="font-size: 18px; margin-top: 10px;">おめでとうございます！</div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'fadeOut 0.5s ease-in';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 500);
+                }, 3000);
+            } else {
+                // 通常の取得通知
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 100px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 15px 30px;
+                    border-radius: 10px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    z-index: 9999;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    animation: slideDown 0.5s ease-out;
+                `;
+                notification.innerHTML = `🎉 ${STAMPS[stampId].icon} ${STAMPS[stampId].name} をゲット！`;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'slideUp 0.5s ease-in';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 500);
+                }, 2000);
+            }
         }
         
         // バッジの数字を更新
@@ -799,6 +975,27 @@
                 to {
                     opacity: 0;
                     transform: translateX(-50%) translateY(-20px);
+                }
+            }
+            @keyframes celebratePop {
+                0% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.5);
+                }
+                50% {
+                    transform: translate(-50%, -50%) scale(1.1);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                }
+                to {
+                    opacity: 0;
                 }
             }
         `;
