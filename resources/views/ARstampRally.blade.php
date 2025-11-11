@@ -379,6 +379,21 @@
             <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
         </a-marker>
         
+        <a-marker type="pattern" url="{{ asset('pattern-50.patt') }}" id="pattern-50-marker">
+            <a-entity
+                id="pengin-model"
+                gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
+                position="0 0 0"
+                scale="1 1 1"
+                rotation="0 0 0"
+                click-animation="clip: anime01">
+            </a-entity>
+            
+            <!-- ライトを追加して明るくする -->
+            <a-light type="ambient" intensity="1.87"></a-light>
+            <a-light type="directional" intensity="1.01" position="1 1 1"></a-light>
+        </a-marker>
+        
     </a-scene>
 
     <script>
@@ -413,7 +428,9 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
-            const model = document.querySelector('#fox-model');
+            const foxModel = document.querySelector('#fox-model');
+            const penginModel = document.querySelector('#pengin-model');
+            let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
             const switchCameraButton = document.getElementById('switch-camera-button');
@@ -427,6 +444,36 @@
             let recordedChunks = [];
             let isRecording = false;
             let recordingStartTime = 0;
+            
+            // マーカー検出時にアクティブモデルを設定
+            const hiroMarker = document.querySelector('#hiro-marker');
+            const pattern50Marker = document.querySelector('#pattern-50-marker');
+            
+            if (hiroMarker) {
+                hiroMarker.addEventListener('markerFound', function() {
+                    console.log('Hiro marker found');
+                    activeModel = foxModel;
+                });
+                hiroMarker.addEventListener('markerLost', function() {
+                    console.log('Hiro marker lost');
+                    if (activeModel === foxModel) {
+                        activeModel = null;
+                    }
+                });
+            }
+            
+            if (pattern50Marker) {
+                pattern50Marker.addEventListener('markerFound', function() {
+                    console.log('Pattern-50 marker found');
+                    activeModel = penginModel;
+                });
+                pattern50Marker.addEventListener('markerLost', function() {
+                    console.log('Pattern-50 marker lost');
+                    if (activeModel === penginModel) {
+                        activeModel = null;
+                    }
+                });
+            }
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -995,9 +1042,9 @@
                         // ダブルタップ検出
                         e.preventDefault();
                         console.log('Double tap detected');
-                        if (sceneReady && model) {
+                        if (sceneReady && activeModel) {
                             const clickEvent = new Event('click');
-                            model.dispatchEvent(clickEvent);
+                            activeModel.dispatchEvent(clickEvent);
                         }
                         lastTapTime = 0; // リセット
                     } else {
@@ -1027,8 +1074,8 @@
                         // スケールを0.5〜5の範囲に制限
                         currentScale = Math.max(0.5, Math.min(5, currentScale));
                         
-                        if (model) {
-                            model.setAttribute('scale', {
+                        if (activeModel) {
+                            activeModel.setAttribute('scale', {
                                 x: currentScale,
                                 y: currentScale,
                                 z: currentScale
@@ -1045,8 +1092,8 @@
                     const rotationSpeed = 0.5;
                     currentRotationX += deltaY * rotationSpeed;
                     
-                    if (model) {
-                        model.setAttribute('rotation', {
+                    if (activeModel) {
+                        activeModel.setAttribute('rotation', {
                             x: currentRotationX,
                             y: 0,
                             z: 0
@@ -1094,8 +1141,8 @@
                     const rotationSpeed = 0.5;
                     currentRotationX += deltaY * rotationSpeed;
                     
-                    if (model) {
-                        model.setAttribute('rotation', {
+                    if (activeModel) {
+                        activeModel.setAttribute('rotation', {
                             x: currentRotationX,
                             y: 0,
                             z: 0
@@ -1129,8 +1176,8 @@
                 // スケールを0.5〜5の範囲に制限
                 currentScale = Math.max(0.5, Math.min(5, currentScale));
                 
-                if (model) {
-                    model.setAttribute('scale', {
+                if (activeModel) {
+                    activeModel.setAttribute('scale', {
                         x: currentScale,
                         y: currentScale,
                         z: currentScale
