@@ -334,10 +334,12 @@
             left: 0;
             width: 100%;
             height: 100%;
+            height: 100vh; /* iOSのアドレスバー対応 */
             background-color: rgba(0, 0, 0, 0.8);
             display: none;
             z-index: 10001;
             overflow-y: scroll;
+            overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
         }
         
@@ -347,9 +349,9 @@
             padding: 30px 20px 20px 20px;
             max-width: 500px;
             width: calc(100% - 40px);
-            margin: 40px auto;
-            min-height: calc(100vh - 80px);
+            margin: 20px auto 20px auto;
             box-sizing: border-box;
+            position: relative;
         }
         
         #stamp-book-content h2 {
@@ -386,7 +388,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             padding-bottom: 10px;
         }
         
@@ -397,6 +399,7 @@
             padding: 15px;
             text-align: center;
             transition: all 0.3s;
+            min-height: 100px;
         }
         
         #stamp-book-content .stamp-item.collected {
@@ -433,7 +436,7 @@
         #close-stamp-book {
             position: relative;
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background-color: #f44336;
             color: white;
             border: none;
@@ -441,8 +444,10 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 15px;
+            margin-bottom: 0;
             box-sizing: border-box;
+            touch-action: manipulation; /* タップ反応を改善 */
         }
         
         #close-stamp-book:hover {
@@ -451,7 +456,7 @@
         
         #clear-stamps {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background-color: #ff9800;
             color: white;
             border: none;
@@ -459,6 +464,9 @@
             font-size: 14px;
             cursor: pointer;
             margin-top: 10px;
+            margin-bottom: 20px; /* 下部に余白を追加 */
+            box-sizing: border-box;
+            touch-action: manipulation; /* タップ反応を改善 */
         }
         
         #clear-stamps:hover {
@@ -954,6 +962,11 @@
             const modal = document.getElementById('stamp-book-modal');
             modal.style.display = 'block';
             modal.scrollTop = 0; // スクロール位置を最上部に
+            
+            // bodyのスクロールを無効化（iOS対応）
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
         }
         
         // アニメーション追加
@@ -1138,6 +1151,11 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 modal.scrollTop = 0; // スクロール位置をリセット
+                
+                // bodyのスクロールを復元
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.width = '';
             });
             
             // スタンプリセットボタン
@@ -1146,7 +1164,16 @@
                 if (confirm('本当にスタンプをすべてリセットしますか？')) {
                     localStorage.removeItem('ar-stamp-rally');
                     updateStampBadge();
-                    showStampBook(); // 画面を更新
+                    
+                    // モーダルを閉じる
+                    const modal = document.getElementById('stamp-book-modal');
+                    modal.style.display = 'none';
+                    
+                    // bodyのスクロールを復元
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.width = '';
+                    
                     console.log('✓ Stamps cleared');
                 }
             });
@@ -1158,6 +1185,11 @@
                     stampBookModal.style.display = 'none';
                     // モーダルを閉じた時にスクロール位置をリセット
                     stampBookModal.scrollTop = 0;
+                    
+                    // bodyのスクロールを復元
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.width = '';
                 }
             });
             
