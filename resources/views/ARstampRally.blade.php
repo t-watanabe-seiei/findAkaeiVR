@@ -1922,12 +1922,19 @@
                                     }
                                 }, 1000); // 1秒後にフェードアウト開始
                                 
-                                // スクリーンショット撮影してスタンプ登録
+                                // スクリーンショット撮影してスタンプ登録（ヒット直後、ボールを非表示にして撮影）
+                                // ボールを一時的に非表示
+                                pokeball.setAttribute('visible', 'false');
+                                
+                                // 次のフレームでスクリーンショット撮影
                                 setTimeout(() => {
                                     captureModelScreenshot(function(screenshot) {
                                         collectStamp(stampId, screenshot);
+                                        
+                                        // スクリーンショット後、ボールを再表示
+                                        pokeball.setAttribute('visible', 'true');
                                     });
-                                }, 200);
+                                }, 16); // 1フレーム後（約16ms）
                                 
                                 break;
                             }
@@ -2150,12 +2157,19 @@
                                     }, 1000);
                                 }
                                 
-                                // スクリーンショット撮影してスタンプ登録
+                                // スクリーンショット撮影してスタンプ登録（ヒット直後、ボールを非表示にして撮影）
+                                // ボールを一時的に非表示
+                                pokeball.setAttribute('visible', 'false');
+                                
+                                // 次のフレームでスクリーンショット撮影
                                 setTimeout(() => {
                                     captureModelScreenshot(function(screenshot) {
                                         collectStamp(stampId, screenshot);
+                                        
+                                        // スクリーンショット後、ボールを再表示
+                                        pokeball.setAttribute('visible', 'true');
                                     });
-                                }, 200);
+                                }, 16); // 1フレーム後（約16ms）
                                 
                                 break;
                             }
