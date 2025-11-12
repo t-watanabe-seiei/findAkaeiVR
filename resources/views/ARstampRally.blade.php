@@ -1468,68 +1468,71 @@
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 
-                if (currentCapturedAnimal) {
-                    const stampId = currentCapturedAnimal;
-                    const modelId = stampId + '-model';
-                    
-                    if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
-                        console.log('Releasing animal:', stampId);
-                        
-                        // まず、メッセージを完全に非表示にする
-                        const message = document.getElementById('captured-message');
-                        if (message) {
-                            message.style.display = 'none';
-                            message.style.opacity = '0';
-                            message.style.pointerEvents = 'none';
-                            message.style.visibility = 'hidden';
-                        }
-                        
-                        // currentCapturedAnimalをクリア
-                        currentCapturedAnimal = null;
-                        
-                        // 動物を逃がす（LocalStorageから削除）
-                        releaseAnimal(stampId);
-                        
-                        // 該当モデルを完全に非表示
-                        const model = document.getElementById(modelId);
-                        if (model) {
-                            model.setAttribute('visible', 'false');
-                            // 状態をリセット
-                            if (model.resetCaptureState) {
-                                model.resetCaptureState();
-                            }
-                        }
-                        
-                        // 少し待ってからメッセージを削除して再作成
-                        setTimeout(() => {
-                            // メッセージ要素を完全に削除
-                            const message = document.getElementById('captured-message');
-                            if (message && message.parentNode) {
-                                const parent = message.parentNode;
-                                parent.removeChild(message);
-                                
-                                // 新しいメッセージ要素を作成
-                                const newMessage = document.createElement('div');
-                                newMessage.id = 'captured-message';
-                                newMessage.className = 'captured-message';
-                                newMessage.innerHTML = `
-                                    <h2>🎉 すでに捕まえています 🎉</h2>
-                                    <div class="animal-name" id="captured-animal-name"></div>
-                                    <button class="release-button" id="release-button">
-                                        この動物を逃がす 🔓
-                                    </button>
-                                `;
-                                parent.appendChild(newMessage);
-                                
-                                // イベントリスナーを再登録
-                                setupReleaseButton();
-                            }
-                            
-                            // アラート表示
-                            alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
-                        }, 100);
-                    }
+                if (!currentCapturedAnimal) return false;
+                
+                const stampId = currentCapturedAnimal;
+                const modelId = stampId + '-model';
+                
+                if (!confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
+                    return false;
                 }
+                
+                console.log('=== START RELEASE:', stampId, '===');
+                
+                // 1. メッセージを即座に非表示
+                const message = document.getElementById('captured-message');
+                if (message) {
+                    message.classList.remove('show');
+                    message.style.cssText = 'display: none !important; opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;';
+                }
+                
+                // 2. currentCapturedAnimalをクリア
+                currentCapturedAnimal = null;
+                
+                // 3. 動物を逃がす（LocalStorageから削除）
+                releaseAnimal(stampId);
+                console.log('LocalStorage cleared for:', stampId);
+                
+                // 4. 該当モデルを非表示＋状態リセット
+                const model = document.getElementById(modelId);
+                if (model) {
+                    model.setAttribute('visible', 'false');
+                    if (model.resetCaptureState) {
+                        model.resetCaptureState();
+                    }
+                    console.log('Model reset:', modelId);
+                }
+                
+                // 5. メッセージを削除して再作成（非同期）
+                requestAnimationFrame(() => {
+                    const message = document.getElementById('captured-message');
+                    if (message && message.parentNode) {
+                        const parent = message.parentNode;
+                        parent.removeChild(message);
+                        
+                        // 新しいメッセージ要素を作成
+                        const newMessage = document.createElement('div');
+                        newMessage.id = 'captured-message';
+                        newMessage.className = 'captured-message';
+                        newMessage.innerHTML = `
+                            <h2>🎉 すでに捕まえています 🎉</h2>
+                            <div class="animal-name" id="captured-animal-name"></div>
+                            <button class="release-button" id="release-button">
+                                この動物を逃がす 🔓
+                            </button>
+                        `;
+                        parent.appendChild(newMessage);
+                        
+                        // イベントリスナーを再登録
+                        setupReleaseButton();
+                        console.log('Message recreated and listener reattached');
+                    }
+                    
+                    console.log('=== RELEASE COMPLETE:', stampId, '===');
+                });
+                
+                // alert()は削除（iPhoneで問題を起こす可能性）
+                // 代わりにコンソールログで確認
                 
                 return false;
             };
