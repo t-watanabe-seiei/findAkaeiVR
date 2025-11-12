@@ -1697,6 +1697,29 @@
                 
                 // レイの方向に投げる
                 pokeball.addEventListener('loaded', function() {
+                    // モデルのマテリアルを修正してちらつきを防ぐ
+                    const model = pokeball.getObject3D('mesh');
+                    if (model) {
+                        model.traverse(function(node) {
+                            if (node.isMesh) {
+                                // 両面レンダリングを有効化
+                                if (node.material) {
+                                    if (Array.isArray(node.material)) {
+                                        node.material.forEach(mat => {
+                                            mat.side = THREE.DoubleSide;
+                                            mat.depthWrite = true;
+                                            mat.depthTest = true;
+                                        });
+                                    } else {
+                                        node.material.side = THREE.DoubleSide;
+                                        node.material.depthWrite = true;
+                                        node.material.depthTest = true;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
                     const direction = raycaster.ray.direction.clone();
                     const speed = 15; // 投げる速さを大幅に増加（8 → 15）
                     pokeball.components['pokeball-throwable'].throw(direction, speed);
