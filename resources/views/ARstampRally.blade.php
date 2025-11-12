@@ -855,9 +855,9 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true; alpha: true;">
+        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true;">
         
-        <a-entity camera></a-entity>
+        <a-entity camera="near: 0.01; far: 10000;"></a-entity>
         
         <!-- iPhone対応：シーン全体で1つのライトのみ使用（パフォーマンス向上） -->
         <a-light type="ambient" intensity="1.5"></a-light>
@@ -1717,6 +1717,11 @@
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
                                         
+                                        // Z-fightingを防ぐためのポリゴンオフセット
+                                        mat.polygonOffset = true;
+                                        mat.polygonOffsetFactor = 1;
+                                        mat.polygonOffsetUnits = 1;
+                                        
                                         // フラットシェーディングを無効化（スムーズに見せる）
                                         mat.flatShading = false;
                                         
@@ -1729,6 +1734,13 @@
                                             mat.roughness = 0.4;
                                         }
                                         
+                                        // アルファ値を完全不透明に
+                                        mat.transparent = false;
+                                        mat.opacity = 1.0;
+                                        
+                                        // デプスバイアスを設定
+                                        mat.depthFunc = THREE.LessEqualDepth;
+                                        
                                         // マテリアルの更新を強制
                                         mat.needsUpdate = true;
                                     });
@@ -1736,6 +1748,9 @@
                                 
                                 // メッシュのレンダリング順序を設定
                                 node.renderOrder = 1000;
+                                
+                                // フラスタムカリングを無効化（遠くでも消えない）
+                                node.frustumCulled = false;
                             }
                         });
                     }
