@@ -64,6 +64,107 @@
     <script src="{{ asset('js/ar-engine.min.js') }}"></script>
     <script src="{{ asset('js/ar-tracking.min.js') }}"></script>
     <script>
+        // ポケボール投擲コンポーネント
+        AFRAME.registerComponent('pokeball-throwable', {
+            init: function() {
+                this.velocity = new THREE.Vector3();
+                this.gravity = -9.8;
+                this.isThrown = false;
+                this.lifetime = 0;
+                this.maxLifetime = 5; // 5秒後に消滅
+            },
+            
+            throw: function(direction, speed) {
+                this.velocity.copy(direction).multiplyScalar(speed);
+                this.isThrown = true;
+                this.lifetime = 0;
+                console.log('Pokeball thrown with velocity:', this.velocity);
+            },
+            
+            tick: function(time, deltaTime) {
+                if (!this.isThrown) return;
+                
+                const delta = deltaTime / 1000;
+                this.lifetime += delta;
+                
+                // 重力を適用
+                this.velocity.y += this.gravity * delta;
+                
+                // 位置を更新
+                const pos = this.el.object3D.position;
+                pos.x += this.velocity.x * delta;
+                pos.y += this.velocity.y * delta;
+                pos.z += this.velocity.z * delta;
+                
+                // 回転させる（投げた感じを出す）
+                this.el.object3D.rotation.x += delta * 5;
+                this.el.object3D.rotation.z += delta * 3;
+                
+                // 寿命チェック
+                if (this.lifetime > this.maxLifetime || pos.y < -5) {
+                    this.el.parentNode.removeChild(this.el);
+                }
+            }
+        });
+        
+        // 当たり判定ボックスコンポーネント
+        AFRAME.registerComponent('hitbox', {
+            schema: {
+                stampId: {type: 'string', default: ''},
+                width: {type: 'number', default: 1},
+                height: {type: 'number', default: 1},
+                depth: {type: 'number', default: 1}
+            },
+            
+            init: function() {
+                const data = this.data;
+                
+                // Three.jsのバウンディングボックスを作成
+                this.box = new THREE.Box3();
+                this.updateBox();
+                
+                // デバッグ用のボックス表示（開発時のみ）
+                if (false) { // trueにするとボックスが見える
+                    const geometry = new THREE.BoxGeometry(data.width, data.height, data.depth);
+                    const material = new THREE.MeshBasicMaterial({ 
+                        color: 0x00ff00, 
+                        wireframe: true,
+                        opacity: 0.3,
+                        transparent: true
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    this.el.object3D.add(mesh);
+                }
+            },
+            
+            updateBox: function() {
+                const data = this.data;
+                const pos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const halfWidth = data.width / 2;
+                const halfHeight = data.height / 2;
+                const halfDepth = data.depth / 2;
+                
+                this.box.min.set(
+                    pos.x - halfWidth,
+                    pos.y - halfHeight,
+                    pos.z - halfDepth
+                );
+                this.box.max.set(
+                    pos.x + halfWidth,
+                    pos.y + halfHeight,
+                    pos.z + halfDepth
+                );
+            },
+            
+            tick: function() {
+                this.updateBox();
+            },
+            
+            checkCollision: function(point) {
+                return this.box.containsPoint(point);
+            }
+        });
+        
         // クリック/タップでアニメーション再生
         AFRAME.registerComponent('click-animation', {
             schema: {
@@ -686,45 +787,6 @@
         #close-button {
             background-color: #f44336;
         }
-        
-        /* スタンプ押すボタン */
-        #stamp-action-button {
-            position: fixed;
-            bottom: 120px;
-            left: 50%;
-            transform: translateX(-50%) scale(0);
-            width: 200px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-            transition: all 0.3s ease;
-            opacity: 0;
-        }
-        
-        #stamp-action-button.show {
-            transform: translateX(-50%) scale(1);
-            opacity: 1;
-        }
-        
-        #stamp-action-button:active {
-            transform: translateX(-50%) scale(0.95);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        #stamp-action-button.stamped {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
-        }
     </style>
 </head>
 <body>
@@ -744,11 +806,6 @@
     
     <!-- フラッシュエフェクト -->
     <div id="flash"></div>
-    
-    <!-- スタンプを押すボタン（マーカー検出時に表示） -->
-    <button id="stamp-action-button" type="button">
-        📸 スタンプを押す
-    </button>
     
     <!-- スタンプ帳ボタン -->
     <button id="stamp-book-button" type="button" title="スタンプ帳を見る">
@@ -811,7 +868,8 @@
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
-                click-animation="clip: anime01">
+                click-animation="clip: anime01"
+                hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
         </a-marker>
         
@@ -822,7 +880,8 @@
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
-                click-animation="clip: anime01">
+                click-animation="clip: anime01"
+                hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
         </a-marker>
         
@@ -833,7 +892,8 @@
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
-                click-animation="clip: anime01">
+                click-animation="clip: anime01"
+                hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
         </a-marker>
         
@@ -844,7 +904,8 @@
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
-                click-animation="clip: anime01">
+                click-animation="clip: anime01"
+                hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
         </a-marker>
         
@@ -855,7 +916,8 @@
                 position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
-                click-animation="clip: anime01">
+                click-animation="clip: anime01"
+                hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
         </a-marker>
         
@@ -1269,30 +1331,6 @@
             }
         }
         
-        // スタンプボタンを表示
-        function showStampButton(stampId) {
-            const collectedStamps = getCollectedStamps();
-            const stampActionButton = document.getElementById('stamp-action-button');
-            
-            if (collectedStamps[stampId]) {
-                // すでに登録済み
-                stampActionButton.textContent = '✅ 登録済み';
-                stampActionButton.classList.add('stamped');
-            } else {
-                // 未登録
-                stampActionButton.textContent = '📸 スタンプを押す';
-                stampActionButton.classList.remove('stamped');
-            }
-            
-            stampActionButton.classList.add('show');
-        }
-        
-        // スタンプボタンを非表示
-        function hideStampButton() {
-            const stampActionButton = document.getElementById('stamp-action-button');
-            stampActionButton.classList.remove('show');
-        }
-        
         // モデルのスクリーンショットを撮影（背景を除く）
         function captureModelScreenshot(callback) {
             try {
@@ -1627,24 +1665,103 @@
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
-            const stampActionButton = document.getElementById('stamp-action-button');
+            let allHitboxes = []; // すべてのヒットボックス
             
-            // スタンプボタンのクリックイベント
-            stampActionButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+            // ポケボールを投げる関数
+            function throwPokeball(event) {
+                // タップ位置からカメラ方向へのレイを計算
+                const camera = scene.camera;
+                if (!camera) return;
                 
-                if (currentMarkerStampId && activeModel) {
-                    // スクリーンショットを撮影してスタンプ登録
-                    captureModelScreenshot(function(screenshot) {
-                        const wasNew = collectStamp(currentMarkerStampId, screenshot);
-                        if (wasNew) {
-                            // ボタンの表示を「登録済み」に変更
-                            stampActionButton.textContent = '✅ 登録済み';
-                            stampActionButton.classList.add('stamped');
+                const touch = event.changedTouches ? event.changedTouches[0] : event;
+                const x = (touch.clientX / window.innerWidth) * 2 - 1;
+                const y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                
+                // レイキャスター（タップ位置から3D空間への線）
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+                
+                // ポケボールを生成
+                const pokeball = document.createElement('a-entity');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
+                pokeball.setAttribute('scale', '0.3 0.3 0.3');
+                pokeball.setAttribute('pokeball-throwable', '');
+                
+                // カメラの位置から開始
+                const cameraPos = camera.getWorldPosition(new THREE.Vector3());
+                pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
+                
+                scene.appendChild(pokeball);
+                
+                // レイの方向に投げる
+                pokeball.addEventListener('loaded', function() {
+                    const direction = raycaster.ray.direction.clone();
+                    const speed = 8; // 投げる速さ
+                    pokeball.components['pokeball-throwable'].throw(direction, speed);
+                    
+                    // 当たり判定チェック（フレームごと）
+                    const checkInterval = setInterval(() => {
+                        const ballPos = pokeball.object3D.getWorldPosition(new THREE.Vector3());
+                        
+                        // すべてのヒットボックスと衝突判定
+                        for (let i = 0; i < allHitboxes.length; i++) {
+                            const hitbox = allHitboxes[i];
+                            if (hitbox.checkCollision(ballPos)) {
+                                const stampId = hitbox.data.stampId;
+                                console.log('✓ Hit!', stampId);
+                                
+                                // ボールを消す
+                                clearInterval(checkInterval);
+                                if (pokeball.parentNode) {
+                                    pokeball.parentNode.removeChild(pokeball);
+                                }
+                                
+                                // スクリーンショット撮影してスタンプ登録
+                                setTimeout(() => {
+                                    captureModelScreenshot(function(screenshot) {
+                                        collectStamp(stampId, screenshot);
+                                    });
+                                }, 100);
+                                
+                                break;
+                            }
                         }
-                    });
+                    }, 16); // 約60FPS
+                    
+                    // 5秒後にチェック終了
+                    setTimeout(() => clearInterval(checkInterval), 5000);
+                });
+            }
+            
+            // 画面タップでポケボールを投げる
+            scene.addEventListener('click', function(event) {
+                // UIボタンのクリックは無視
+                if (event.target.id === 'stamp-book-button' || 
+                    event.target.id === 'camera-button' ||
+                    event.target.id === 'video-button' ||
+                    event.target.id === 'switch-camera-button') {
+                    return;
                 }
+                
+                throwPokeball(event);
+            });
+            
+            scene.addEventListener('touchend', function(event) {
+                // UIボタンのタップは無視
+                const touch = event.changedTouches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && (element.id === 'stamp-book-button' || 
+                    element.id === 'camera-button' ||
+                    element.id === 'video-button' ||
+                    element.id === 'switch-camera-button' ||
+                    element.closest('#stamp-book-button') ||
+                    element.closest('#camera-button') ||
+                    element.closest('#video-button') ||
+                    element.closest('#switch-camera-button'))) {
+                    return;
+                }
+                
+                throwPokeball(event);
             });
             
             if (patternSheepMarker) {
@@ -1652,7 +1769,12 @@
                     console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
                     currentMarkerStampId = 'sheep';
-                    showStampButton('sheep');
+                    // ヒットボックスを登録
+                    if (sheepModel.components.hitbox) {
+                        if (!allHitboxes.includes(sheepModel.components.hitbox)) {
+                            allHitboxes.push(sheepModel.components.hitbox);
+                        }
+                    }
                 });
                 patternSheepMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-sheep marker lost');
@@ -1661,7 +1783,13 @@
                     }
                     if (currentMarkerStampId === 'sheep') {
                         currentMarkerStampId = null;
-                        hideStampButton();
+                    }
+                    // ヒットボックスを削除
+                    if (sheepModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(sheepModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
                     }
                 });
             }
@@ -1671,7 +1799,11 @@
                     console.log('Pattern-fox marker found');
                     activeModel = foxModel;
                     currentMarkerStampId = 'fox';
-                    showStampButton('fox');
+                    if (foxModel.components.hitbox) {
+                        if (!allHitboxes.includes(foxModel.components.hitbox)) {
+                            allHitboxes.push(foxModel.components.hitbox);
+                        }
+                    }
                 });
                 patternFoxMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-fox marker lost');
@@ -1680,7 +1812,12 @@
                     }
                     if (currentMarkerStampId === 'fox') {
                         currentMarkerStampId = null;
-                        hideStampButton();
+                    }
+                    if (foxModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(foxModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
                     }
                 });
             }
@@ -1690,7 +1827,11 @@
                     console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
                     currentMarkerStampId = 'pengin';
-                    showStampButton('pengin');
+                    if (penginModel.components.hitbox) {
+                        if (!allHitboxes.includes(penginModel.components.hitbox)) {
+                            allHitboxes.push(penginModel.components.hitbox);
+                        }
+                    }
                 });
                 patternPenginMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pengin marker lost');
@@ -1699,7 +1840,12 @@
                     }
                     if (currentMarkerStampId === 'pengin') {
                         currentMarkerStampId = null;
-                        hideStampButton();
+                    }
+                    if (penginModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(penginModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
                     }
                 });
             }
@@ -1709,7 +1855,11 @@
                     console.log('Pattern-tonakai marker found');
                     activeModel = tonakaiModel;
                     currentMarkerStampId = 'tonakai';
-                    showStampButton('tonakai');
+                    if (tonakaiModel.components.hitbox) {
+                        if (!allHitboxes.includes(tonakaiModel.components.hitbox)) {
+                            allHitboxes.push(tonakaiModel.components.hitbox);
+                        }
+                    }
                 });
                 patternTonakaiMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-tonakai marker lost');
@@ -1718,7 +1868,12 @@
                     }
                     if (currentMarkerStampId === 'tonakai') {
                         currentMarkerStampId = null;
-                        hideStampButton();
+                    }
+                    if (tonakaiModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(tonakaiModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
                     }
                 });
             }
@@ -1728,7 +1883,11 @@
                     console.log('Pattern-pig marker found');
                     activeModel = pigModel;
                     currentMarkerStampId = 'pig';
-                    showStampButton('pig');
+                    if (pigModel.components.hitbox) {
+                        if (!allHitboxes.includes(pigModel.components.hitbox)) {
+                            allHitboxes.push(pigModel.components.hitbox);
+                        }
+                    }
                 });
                 patternPigMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-pig marker lost');
@@ -1737,7 +1896,12 @@
                     }
                     if (currentMarkerStampId === 'pig') {
                         currentMarkerStampId = null;
-                        hideStampButton();
+                    }
+                    if (pigModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(pigModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
                     }
                 });
             }
