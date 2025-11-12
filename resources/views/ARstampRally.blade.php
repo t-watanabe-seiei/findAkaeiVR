@@ -591,12 +591,19 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
             opacity: 0;
             transition: opacity 0.3s;
+            -webkit-transform: translate(-50%, -50%);
+            -webkit-transition: opacity 0.3s;
+            max-width: 80vw;
         }
         
         .captured-message.show {
             display: block;
             pointer-events: auto;
             opacity: 1;
+            touch-action: auto;
+            -webkit-touch-callout: default;
+            -webkit-user-select: auto;
+            user-select: auto;
         }
         
         .captured-message h2 {
@@ -623,6 +630,11 @@
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
             transition: all 0.2s;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
         
         .captured-message .release-button:hover {
@@ -1450,9 +1462,11 @@
             const newReleaseBtn = releaseBtn.cloneNode(true);
             releaseBtn.parentNode.replaceChild(newReleaseBtn, releaseBtn);
             
-            newReleaseBtn.addEventListener('click', function(e) {
+            // タッチとクリック両方に対応
+            const handleRelease = function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 
                 if (currentCapturedAnimal) {
                     const stampId = currentCapturedAnimal;
@@ -1460,6 +1474,18 @@
                     
                     if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
                         console.log('Releasing animal:', stampId);
+                        
+                        // まず、メッセージを完全に非表示にする
+                        const message = document.getElementById('captured-message');
+                        if (message) {
+                            message.style.display = 'none';
+                            message.style.opacity = '0';
+                            message.style.pointerEvents = 'none';
+                            message.style.visibility = 'hidden';
+                        }
+                        
+                        // currentCapturedAnimalをクリア
+                        currentCapturedAnimal = null;
                         
                         // 動物を逃がす（LocalStorageから削除）
                         releaseAnimal(stampId);
@@ -1474,35 +1500,42 @@
                             }
                         }
                         
-                        // メッセージ要素を完全に削除
-                        const message = document.getElementById('captured-message');
-                        if (message && message.parentNode) {
-                            const parent = message.parentNode;
-                            parent.removeChild(message);
+                        // 少し待ってからメッセージを削除して再作成
+                        setTimeout(() => {
+                            // メッセージ要素を完全に削除
+                            const message = document.getElementById('captured-message');
+                            if (message && message.parentNode) {
+                                const parent = message.parentNode;
+                                parent.removeChild(message);
+                                
+                                // 新しいメッセージ要素を作成
+                                const newMessage = document.createElement('div');
+                                newMessage.id = 'captured-message';
+                                newMessage.className = 'captured-message';
+                                newMessage.innerHTML = `
+                                    <h2>🎉 すでに捕まえています 🎉</h2>
+                                    <div class="animal-name" id="captured-animal-name"></div>
+                                    <button class="release-button" id="release-button">
+                                        この動物を逃がす 🔓
+                                    </button>
+                                `;
+                                parent.appendChild(newMessage);
+                                
+                                // イベントリスナーを再登録
+                                setupReleaseButton();
+                            }
                             
-                            // 新しいメッセージ要素を作成
-                            const newMessage = document.createElement('div');
-                            newMessage.id = 'captured-message';
-                            newMessage.className = 'captured-message';
-                            newMessage.innerHTML = `
-                                <h2>🎉 すでに捕まえています 🎉</h2>
-                                <div class="animal-name" id="captured-animal-name"></div>
-                                <button class="release-button" id="release-button">
-                                    この動物を逃がす 🔓
-                                </button>
-                            `;
-                            parent.appendChild(newMessage);
-                            
-                            // イベントリスナーを再登録
-                            setupReleaseButton();
-                        }
-                        
-                        currentCapturedAnimal = null;
-                        
-                        alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                            // アラート表示
+                            alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                        }, 100);
                     }
                 }
-            });
+                
+                return false;
+            };
+            
+            newReleaseBtn.addEventListener('click', handleRelease, false);
+            newReleaseBtn.addEventListener('touchend', handleRelease, false);
         }
         
         // 初回セットアップ
@@ -2252,20 +2285,25 @@
             // 捕まえるボタンは廃止し、常に投げられる状態に
             const catchModeActive = true;
             
-            // タップ開始検出
-            scene.addEventListener('touchstart', function(event) {
-                const touch = event.touches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                // UIボタンのタップは無視
-                if (element && (element.id === 'stamp-book-button' || 
+            // UIボタンかどうかをチェックする関数
+            function isUIButton(element) {
+                return element && (element.id === 'stamp-book-button' || 
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
-                    element.closest('#switch-camera-button'))) {
+                    element.closest('#switch-camera-button'));
+            }
+            
+            // タップ/クリック開始検出（タッチデバイス）
+            scene.addEventListener('touchstart', function(event) {
+                const touch = event.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // UIボタンのタップは無視
+                if (isUIButton(element)) {
                     return;
                 }
                 
@@ -2276,7 +2314,23 @@
                 console.log('タップ開始');
             });
             
-            // タップ終了時にボールを投げる
+            // マウスダウン検出（PC）
+            scene.addEventListener('mousedown', function(event) {
+                const element = document.elementFromPoint(event.clientX, event.clientY);
+                
+                // UIボタンのクリックは無視
+                if (isUIButton(element)) {
+                    return;
+                }
+                
+                // クリック開始時間を記録
+                tapStartTime = Date.now();
+                isTapping = true;
+                
+                console.log('マウスダウン開始');
+            });
+            
+            // タップ終了時にボールを投げる（タッチデバイス）
             scene.addEventListener('touchend', function(event) {
                 if (!isTapping) return;
                 
@@ -2284,14 +2338,7 @@
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 
                 // UIボタンのタップは無視
-                if (element && (element.id === 'stamp-book-button' || 
-                    element.id === 'camera-button' ||
-                    element.id === 'video-button' ||
-                    element.id === 'switch-camera-button' ||
-                    element.closest('#stamp-book-button') ||
-                    element.closest('#camera-button') ||
-                    element.closest('#video-button') ||
-                    element.closest('#switch-camera-button'))) {
+                if (isUIButton(element)) {
                     isTapping = false;
                     return;
                 }
@@ -2304,6 +2351,41 @@
                 
                 // タップ時間に応じた速度を計算
                 // 最小: 100ms → 速度10, 最大: 1000ms → 速度30
+                const minTapTime = 100;
+                const maxTapTime = 1000;
+                const minSpeed = 10;
+                const maxSpeed = 30;
+                
+                const clampedDuration = Math.max(minTapTime, Math.min(maxTapTime, tapDuration));
+                const speed = minSpeed + ((clampedDuration - minTapTime) / (maxTapTime - minTapTime)) * (maxSpeed - minSpeed);
+                
+                console.log('投げる速度:', speed);
+                
+                // 画面中央方向に投げる
+                throwPokeballToCenter(speed);
+                
+                isTapping = false;
+            });
+            
+            // マウスアップ時にボールを投げる（PC）
+            scene.addEventListener('mouseup', function(event) {
+                if (!isTapping) return;
+                
+                const element = document.elementFromPoint(event.clientX, event.clientY);
+                
+                // UIボタンのクリックは無視
+                if (isUIButton(element)) {
+                    isTapping = false;
+                    return;
+                }
+                
+                // クリック時間を計算（ミリ秒）
+                const tapEndTime = Date.now();
+                const tapDuration = tapEndTime - tapStartTime;
+                
+                console.log('マウスクリック時間:', tapDuration, 'ms');
+                
+                // クリック時間に応じた速度を計算
                 const minTapTime = 100;
                 const maxTapTime = 1000;
                 const minSpeed = 10;
