@@ -2024,8 +2024,7 @@
                     }, i * 30);
                 }
                 
-                // 2. ヒット音を再生（既存のスタンプ音を使用）
-                playSound(soundStamp01);
+                // 2. ヒット音は collectStamp 関数内で再生されるため、ここでは再生しない
                 
                 // 3. 画面フラッシュ
                 const flash = document.getElementById('flash');
