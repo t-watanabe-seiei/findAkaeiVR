@@ -935,7 +935,7 @@
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="2 2 2"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
@@ -947,7 +947,7 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="2 2 2"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
@@ -959,7 +959,7 @@
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="2 2 2"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
@@ -971,7 +971,7 @@
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_matsumura_tonakai.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="2 2 2"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
@@ -983,7 +983,7 @@
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_matsubara_pig.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="2 2 2"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
