@@ -360,7 +360,7 @@
         #switch-camera-button {
             position: fixed;
             bottom: 30px;
-            left: 30px;
+            right: 30px;
             width: 60px;
             height: 60px;
             background-color: rgba(255, 255, 255, 0.9);
@@ -490,13 +490,12 @@
         /* 捕まえるボタン */
         #catch-button {
             position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 96px;
-            height: 96px;
+            top: 100px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
             background: linear-gradient(145deg, #ff6b6b, #ee5555);
-            border: 4px solid white;
+            border: 3px solid white;
             border-radius: 50%;
             cursor: pointer;
             z-index: 1000;
@@ -504,41 +503,41 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: white;
-            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
+            box-shadow: 0 4px 12px rgba(255, 0, 0, 0.5);
             transition: all 0.2s;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
         }
         
         #catch-button:active {
-            transform: translateX(-50%) scale(0.9);
-            box-shadow: 0 3px 10px rgba(255, 0, 0, 0.5);
+            transform: scale(0.9);
+            box-shadow: 0 2px 6px rgba(255, 0, 0, 0.5);
         }
         
         #catch-button.active {
             background: linear-gradient(145deg, #4CAF50, #45a049);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.7);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.7);
             animation: pulse 1s infinite;
         }
         
         @keyframes pulse {
             0%, 100% {
-                box-shadow: 0 6px 20px rgba(76, 175, 80, 0.7);
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.7);
             }
             50% {
-                box-shadow: 0 6px 30px rgba(76, 175, 80, 1);
+                box-shadow: 0 4px 18px rgba(76, 175, 80, 1);
             }
         }
         
         #catch-button .icon {
-            font-size: 32px;
-            margin-bottom: 4px;
+            font-size: 26px;
+            margin-bottom: 2px;
         }
         
         #catch-button .text {
-            font-size: 11px;
+            font-size: 9px;
         }
         
         /* スタンプ帳モーダル */
@@ -2069,9 +2068,38 @@
                     if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
                         // タッチ移動によるモデル回転を防止
                         event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
                     }
                 }
-            }, { passive: false });
+            }, { passive: false, capture: true });
+            
+            // A-Frameシーンでのタッチイベントも完全にブロック
+            scene.addEventListener('touchstart', function(event) {
+                if (catchModeActive) {
+                    const touch = event.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    // UIボタン以外の場合、イベント伝播を停止
+                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
+                        event.stopPropagation();
+                    }
+                }
+            }, true);
+            
+            scene.addEventListener('touchmove', function(event) {
+                if (catchModeActive) {
+                    const touch = event.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    // UIボタン以外の場合、イベント伝播を停止
+                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                    }
+                }
+            }, { passive: false, capture: true });
             
             // フリック検出システム
             scene.addEventListener('touchstart', function(event) {
