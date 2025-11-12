@@ -601,11 +601,12 @@
         /* 回転ボタン */
         .rotation-buttons {
             position: fixed;
-            bottom: 120px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
             display: flex;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
@@ -1052,8 +1053,8 @@
     
     <!-- 回転ボタン -->
     <div class="rotation-buttons" id="rotation-buttons">
-        <button class="rotation-button" id="rotate-left" type="button" title="左に90度回転">⬅️</button>
-        <button class="rotation-button" id="rotate-right" type="button" title="右に90度回転">➡️</button>
+        <button class="rotation-button" id="rotate-up" type="button" title="上に回転">⬆️</button>
+        <button class="rotation-button" id="rotate-down" type="button" title="下に回転">⬇️</button>
     </div>
     
     <!-- スタンプ帳モーダル -->
@@ -1933,14 +1934,10 @@
         let sceneReady = false;
         let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
         
-        // ピンチ操作用の変数
-        let initialPinchDistance = 0;
-        let initialScale = 1;
+        // 拡大縮小用の変数
         let currentScale = 1;
         
-        // ドラッグ回転用の変数
-        let isDragging = false;
-        let previousTouchY = 0;
+        // 回転用の変数
         let currentRotationX = 0;
         let currentRotationY = 0; // Y軸回転（回転ボタン用）
         
@@ -2250,14 +2247,14 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
-                    element.id === 'rotate-left' ||
-                    element.id === 'rotate-right' ||
+                    element.id === 'rotate-up' ||
+                    element.id === 'rotate-down' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
                     element.closest('#switch-camera-button') ||
-                    element.closest('#rotate-left') ||
-                    element.closest('#rotate-right') ||
+                    element.closest('#rotate-up') ||
+                    element.closest('#rotate-down') ||
                     element.closest('.rotation-buttons'));
             }
             
@@ -2834,38 +2831,38 @@
             }, false);
             
             // 回転ボタンのイベントリスナー
-            const rotateLeftButton = document.getElementById('rotate-left');
-            const rotateRightButton = document.getElementById('rotate-right');
+            const rotateUpButton = document.getElementById('rotate-up');
+            const rotateDownButton = document.getElementById('rotate-down');
             
-            rotateLeftButton.addEventListener('click', function(e) {
+            rotateUpButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
                 if (activeModel) {
-                    // 左に90度回転（Y軸を-90度）
-                    currentRotationY -= 90;
+                    // 上に30度回転（X軸を-30度）
+                    currentRotationX -= 30;
                     activeModel.setAttribute('rotation', {
                         x: currentRotationX,
                         y: currentRotationY,
                         z: 0
                     });
-                    console.log('Rotated left. Current Y rotation:', currentRotationY);
+                    console.log('Rotated up. Current X rotation:', currentRotationX);
                 }
             });
             
-            rotateRightButton.addEventListener('click', function(e) {
+            rotateDownButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
                 if (activeModel) {
-                    // 右に90度回転（Y軸を+90度）
-                    currentRotationY += 90;
+                    // 下に30度回転（X軸を+30度）
+                    currentRotationX += 30;
                     activeModel.setAttribute('rotation', {
                         x: currentRotationX,
                         y: currentRotationY,
                         z: 0
                     });
-                    console.log('Rotated right. Current Y rotation:', currentRotationY);
+                    console.log('Rotated down. Current X rotation:', currentRotationX);
                 }
             });
             
@@ -3428,7 +3425,7 @@
                 console.log('Preview closed and reset');
             });
             
-            // ピンチ操作（拡大縮小）
+            // タッチイベントハンドラー（ダブルタップのみ）
             let touchStartHandler = function(e) {
                 // ボタンをタップした場合は除外
                 if (e.target.closest('#camera-button') || 
@@ -3438,22 +3435,8 @@
                     return;
                 }
                 
-                // ピンチ操作は無効化
-                /*
-                if (e.touches.length === 2) {
-                    // ピンチ操作開始
-                    e.preventDefault();
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    initialPinchDistance = Math.hypot(
-                        touch2.clientX - touch1.clientX,
-                        touch2.clientY - touch1.clientY
-                    );
-                    initialScale = currentScale;
-                    isDragging = false;
-                } else */
                 if (e.touches.length === 1) {
-                    // シングルタッチ（ドラッグ回転用）
+                    // ダブルタップ検出のみ
                     const now = Date.now();
                     const timeSinceLastTap = now - lastTapTime;
                     
@@ -3467,72 +3450,18 @@
                         }
                         lastTapTime = 0; // リセット
                     } else {
-                        // シングルタップ（ドラッグ準備）
+                        // シングルタップ
                         lastTapTime = now;
-                        isDragging = true;
-                        previousTouchY = e.touches[0].clientY;
                     }
                 }
             };
             
             let touchMoveHandler = function(e) {
-                // ピンチ操作は無効化
-                /*
-                if (e.touches.length === 2) {
-                    // ピンチ操作中
-                    e.preventDefault();
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const currentDistance = Math.hypot(
-                        touch2.clientX - touch1.clientX,
-                        touch2.clientY - touch1.clientY
-                    );
-                    
-                    if (initialPinchDistance > 0) {
-                        const scaleChange = currentDistance / initialPinchDistance;
-                        currentScale = initialScale * scaleChange;
-                        
-                        // スケールを0.5〜5の範囲に制限
-                        currentScale = Math.max(0.5, Math.min(5, currentScale));
-                        
-                        if (activeModel) {
-                            activeModel.setAttribute('scale', {
-                                x: currentScale,
-                                y: currentScale,
-                                z: currentScale
-                            });
-                        }
-                    }
-                } else */
-                if (e.touches.length === 1 && isDragging) {
-                    // ドラッグ回転（縦方向でX軸回転）
-                    e.preventDefault();
-                    const currentTouchY = e.touches[0].clientY;
-                    const deltaY = currentTouchY - previousTouchY;
-                    
-                    // 回転速度を調整（感度）
-                    const rotationSpeed = 0.5;
-                    currentRotationX += deltaY * rotationSpeed;
-                    
-                    if (activeModel) {
-                        activeModel.setAttribute('rotation', {
-                            x: currentRotationX,
-                            y: currentRotationY, // Y軸回転も維持
-                            z: 0
-                        });
-                    }
-                    
-                    previousTouchY = currentTouchY;
-                }
+                // スワイプでの回転機能は削除（何もしない）
             };
             
             let touchEndHandler = function(e) {
-                if (e.touches.length < 2) {
-                    initialPinchDistance = 0;
-                }
-                if (e.touches.length === 0) {
-                    isDragging = false;
-                }
+                // 何もしない（スワイプ機能削除）
             };
             
             // タッチイベントをリスナーに登録
@@ -3540,44 +3469,7 @@
             document.body.addEventListener('touchmove', touchMoveHandler, { passive: false });
             document.body.addEventListener('touchend', touchEndHandler, { passive: false });
             
-            // PC用：マウスドラッグで回転
-            let isMouseDragging = false;
-            let previousMouseY = 0;
-            
-            document.body.addEventListener('mousedown', function(e) {
-                // ボタンをクリックした場合は除外
-                if (e.target.closest('#camera-button') || 
-                    e.target.closest('#video-button') ||
-                    e.target.closest('#switch-camera-button') ||
-                    e.target.closest('#photo-preview')) {
-                    return;
-                }
-                
-                isMouseDragging = true;
-                previousMouseY = e.clientY;
-            });
-            
-            document.body.addEventListener('mousemove', function(e) {
-                if (isMouseDragging) {
-                    const deltaY = e.clientY - previousMouseY;
-                    const rotationSpeed = 0.5;
-                    currentRotationX += deltaY * rotationSpeed;
-                    
-                    if (activeModel) {
-                        activeModel.setAttribute('rotation', {
-                            x: currentRotationX,
-                            y: currentRotationY, // Y軸回転も維持
-                            z: 0
-                        });
-                    }
-                    
-                    previousMouseY = e.clientY;
-                }
-            });
-            
-            document.body.addEventListener('mouseup', function(e) {
-                isMouseDragging = false;
-            });
+            // PC用：マウス操作は削除（回転ボタンのみ使用）
             
             // PC用：マウスホイールで拡大縮小
             document.body.addEventListener('wheel', function(e) {
