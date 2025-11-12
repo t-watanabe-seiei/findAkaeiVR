@@ -254,7 +254,7 @@
                 // 外部からリセットできる関数
                 el.resetCaptureState = () => {
                     modelCaptured = false;
-                    el.setAttribute('visible', 'true');
+                    // visible状態は変更しない（markerFoundで制御）
                     if (action01) {
                         action01.reset();
                         action01.play();
@@ -1035,7 +1035,7 @@
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="2.5 2.5 2.5"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
@@ -1047,7 +1047,7 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="2.5 2.5 2.5"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
@@ -1059,7 +1059,7 @@
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="2.5 2.5 2.5"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
@@ -1071,7 +1071,7 @@
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_matsumura_tonakai.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="2.5 2.5 2.5"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
@@ -1083,7 +1083,7 @@
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_matsubara_pig.glb') }}"
                 position="0 0 0"
-                scale="3 3 3"
+                scale="2.5 2.5 2.5"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
@@ -1427,7 +1427,10 @@
         }
         
         // 「逃がす」ボタンのイベントリスナー
-        document.getElementById('release-button').addEventListener('click', function() {
+        document.getElementById('release-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             if (currentCapturedAnimal) {
                 const stampId = currentCapturedAnimal;
                 const modelId = stampId + '-model';
@@ -1435,48 +1438,36 @@
                 if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
                     console.log('Releasing animal:', stampId);
                     
-                    // まずメッセージを即座に完全非表示
+                    // メッセージを完全に非表示にする
                     const message = document.getElementById('captured-message');
                     message.classList.remove('show');
-                    message.style.display = 'none';
-                    message.style.pointerEvents = 'none';
-                    message.style.visibility = 'hidden';
-                    message.style.opacity = '0';
-                    message.style.zIndex = '-1';
+                    message.style.cssText = 'display: none !important; pointer-events: none !important; visibility: hidden !important; opacity: 0 !important; z-index: -9999 !important;';
                     currentCapturedAnimal = null;
                     
                     // 動物を逃がす（LocalStorageから削除）
                     releaseAnimal(stampId);
                     
-                    // 該当モデルのアニメーションコンポーネントをリセット
+                    // 該当モデルを非表示にしてからリセット
                     const model = document.getElementById(modelId);
-                    if (model && model.resetCaptureState) {
-                        model.resetCaptureState();
-                        console.log('Model capture state reset:', modelId);
-                    }
-                    
-                    // マーカーの状態を確認
                     if (model) {
-                        const marker = model.parentElement;
-                        // マーカーが見えていない場合は非表示のまま
-                        if (marker && marker.object3D && marker.object3D.visible) {
-                            console.log('Marker is visible - showing model');
-                            // マーカーが見えている場合のみ表示
-                            setTimeout(() => {
-                                model.setAttribute('visible', 'true');
-                            }, 100);
-                        } else {
-                            console.log('Marker is not visible - keeping model hidden');
-                            model.setAttribute('visible', 'false');
+                        // まず非表示
+                        model.setAttribute('visible', 'false');
+                        console.log('Model hidden:', modelId);
+                        
+                        // 状態をリセット（次回マーカー検出時に表示されるように）
+                        if (model.resetCaptureState) {
+                            model.resetCaptureState();
+                            console.log('Model capture state reset:', modelId);
                         }
                     }
                     
-                    // z-indexを元に戻す
+                    // 少し待ってからアラート表示（DOM更新を確実に）
                     setTimeout(() => {
-                        message.style.zIndex = '';
-                    }, 500);
-                    
-                    alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                        alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                        
+                        // アラート後、スタイルをリセット
+                        message.style.cssText = '';
+                    }, 100);
                 }
             }
         });
