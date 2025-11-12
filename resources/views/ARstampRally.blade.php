@@ -375,7 +375,8 @@
                 */
             },
             tick: function(time, deltaTime) {
-                if (this.mixer) {
+                // mixerが存在し、アニメーションが再生中の場合のみ更新
+                if (this.mixer && (this.action01?.isRunning() || this.action02?.isRunning())) {
                     this.mixer.update(deltaTime / 1000);
                 }
             }
@@ -1442,107 +1443,53 @@
         
         function hideCapturedMessage() {
             const message = document.getElementById('captured-message');
-            // showクラスを削除（opacity: 0, pointer-events: none になる）
+            if (!message) return;
+            
+            console.log('Hiding captured message');
+            
+            // showクラスを削除
             message.classList.remove('show');
-            // 確実に非表示にする
-            setTimeout(() => {
-                message.style.display = 'none';
-                message.style.pointerEvents = 'none';
-                message.style.visibility = 'hidden';
-            }, 350); // CSSトランジション後に完全非表示
+            
+            // 即座に非表示
+            message.style.display = 'none';
+            message.style.opacity = '0';
+            message.style.pointerEvents = 'none';
+            message.style.visibility = 'hidden';
+            
+            // currentCapturedAnimalをクリア
             currentCapturedAnimal = null;
         }
         
-        // 「逃がす」ボタンのイベントリスナーをセットアップする関数
-        function setupReleaseButton() {
-            const releaseBtn = document.getElementById('release-button');
-            if (!releaseBtn) return;
+        // 「逃がす」ボタンのイベントリスナー（シンプル版）
+        document.getElementById('release-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // 既存のリスナーを削除するため、新しいボタンに置き換え
-            const newReleaseBtn = releaseBtn.cloneNode(true);
-            releaseBtn.parentNode.replaceChild(newReleaseBtn, releaseBtn);
+            if (!currentCapturedAnimal) return;
             
-            // タッチとクリック両方に対応
-            const handleRelease = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                
-                if (!currentCapturedAnimal) return false;
-                
-                const stampId = currentCapturedAnimal;
-                const modelId = stampId + '-model';
-                
-                if (!confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
-                    return false;
-                }
-                
-                console.log('=== START RELEASE:', stampId, '===');
-                
-                // 1. メッセージを即座に非表示
-                const message = document.getElementById('captured-message');
-                if (message) {
-                    message.classList.remove('show');
-                    message.style.cssText = 'display: none !important; opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;';
-                }
-                
-                // 2. currentCapturedAnimalをクリア
-                currentCapturedAnimal = null;
-                
-                // 3. 動物を逃がす（LocalStorageから削除）
-                releaseAnimal(stampId);
-                console.log('LocalStorage cleared for:', stampId);
-                
-                // 4. 該当モデルを非表示＋状態リセット
-                const model = document.getElementById(modelId);
-                if (model) {
-                    model.setAttribute('visible', 'false');
-                    if (model.resetCaptureState) {
-                        model.resetCaptureState();
-                    }
-                    console.log('Model reset:', modelId);
-                }
-                
-                // 5. メッセージを削除して再作成（非同期）
-                requestAnimationFrame(() => {
-                    const message = document.getElementById('captured-message');
-                    if (message && message.parentNode) {
-                        const parent = message.parentNode;
-                        parent.removeChild(message);
-                        
-                        // 新しいメッセージ要素を作成
-                        const newMessage = document.createElement('div');
-                        newMessage.id = 'captured-message';
-                        newMessage.className = 'captured-message';
-                        newMessage.innerHTML = `
-                            <h2>🎉 すでに捕まえています 🎉</h2>
-                            <div class="animal-name" id="captured-animal-name"></div>
-                            <button class="release-button" id="release-button">
-                                この動物を逃がす 🔓
-                            </button>
-                        `;
-                        parent.appendChild(newMessage);
-                        
-                        // イベントリスナーを再登録
-                        setupReleaseButton();
-                        console.log('Message recreated and listener reattached');
-                    }
-                    
-                    console.log('=== RELEASE COMPLETE:', stampId, '===');
-                });
-                
-                // alert()は削除（iPhoneで問題を起こす可能性）
-                // 代わりにコンソールログで確認
-                
-                return false;
-            };
+            const stampId = currentCapturedAnimal;
+            const modelId = stampId + '-model';
             
-            newReleaseBtn.addEventListener('click', handleRelease, false);
-            newReleaseBtn.addEventListener('touchend', handleRelease, false);
-        }
-        
-        // 初回セットアップ
-        setupReleaseButton();
+            if (!confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
+                return;
+            }
+            
+            console.log('=== RELEASING:', stampId, '===');
+            
+            // 動物を逃がす（LocalStorageから削除）
+            releaseAnimal(stampId);
+            
+            // メッセージを非表示
+            hideCapturedMessage();
+            
+            // 該当モデルの状態をリセット
+            const model = document.getElementById(modelId);
+            if (model && model.resetCaptureState) {
+                model.resetCaptureState();
+            }
+            
+            console.log('=== RELEASED:', stampId, '===');
+        });
         
         // 通常パーティクル（スタンプ取得時）
         function showNormalParticles() {
