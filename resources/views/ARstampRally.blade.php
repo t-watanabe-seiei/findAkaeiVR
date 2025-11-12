@@ -2471,17 +2471,6 @@
                             }
                         });
                     }
-                                        mat.needsUpdate = true;
-                                    });
-                                }
-                                
-                                // renderOrderを個別に設定
-                                node.renderOrder = 1000 + meshIndex;
-                                node.frustumCulled = false;
-                                meshIndex++;
-                            }
-                        });
-                    }
                     
                     pokeball.components['pokeball-throwable'].throw(forward, speed);
                     
