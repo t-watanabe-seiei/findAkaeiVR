@@ -1029,9 +1029,9 @@
     <!-- 確認ダイアログ -->
     <div id="confirm-overlay"></div>
     <div id="confirm-dialog">
-        <div class="confirm-message">本当にスタンプをすべてリセットしますか？</div>
+        <div class="confirm-message">本当に動物たちを逃がしますか？</div>
         <div class="confirm-buttons">
-            <button class="confirm-yes" type="button">リセット</button>
+            <button class="confirm-yes" type="button">逃がす</button>
             <button class="confirm-no" type="button">キャンセル</button>
         </div>
     </div>
@@ -1040,7 +1040,7 @@
     <div id="flash"></div>
     
     <!-- スタンプ帳ボタン -->
-    <button id="stamp-book-button" type="button" title="スタンプ帳を見る">
+    <button id="stamp-book-button" type="button" title="コレクションを見る">
         📖
         <span class="badge">0</span>
     </button>
@@ -1060,7 +1060,7 @@
     <!-- スタンプ帳モーダル -->
     <div id="stamp-book-modal">
         <div id="stamp-book-content">
-            <h2>🎯 スタンプ帳 🎯</h2>
+            <h2>🎯 コレクション 🎯</h2>
             <div class="progress">
                 <span id="collected-count">0</span> / 5 種類コンプリート
             </div>
@@ -1070,7 +1070,7 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
-                <button id="clear-stamps" type="button">リセット</button>
+                <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
         </div>
     </div>
@@ -1080,7 +1080,7 @@
         <h2>🎉 捕まえました！ 🎉</h2>
         <div class="animal-name" id="captured-animal-name"></div>
         <p style="margin-top: 15px; font-size: 14px; color: #ccc;">
-            スタンプ帳のリセットボタンで<br>全てリセットできます
+            コレクションの「動物たちを逃がす」ボタンで<br>全てリセットできます
         </p>
     </div>
     
