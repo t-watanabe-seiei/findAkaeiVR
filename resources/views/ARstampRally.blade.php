@@ -2022,10 +2022,10 @@
                 // カメラの位置から開始
                 const cameraPos = camera.getWorldPosition(new THREE.Vector3());
                 
-                // ポケボールを生成（サイズを2倍に: 0.1 → 0.2）
+                // ポケボールを生成（サイズを半分に: 0.2 → 0.1）
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
-                pokeball.setAttribute('scale', '0.2 0.2 0.2');
+                pokeball.setAttribute('scale', '0.1 0.1 0.1');
                 pokeball.setAttribute('pokeball-throwable', '');
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
                 
