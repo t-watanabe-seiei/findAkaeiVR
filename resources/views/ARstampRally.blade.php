@@ -1686,7 +1686,7 @@
                 // ポケボールを生成
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
-                pokeball.setAttribute('scale', '0.3 0.3 0.3');
+                pokeball.setAttribute('scale', '0.5 0.5 0.5'); // サイズを大きく（0.3 → 0.5）
                 pokeball.setAttribute('pokeball-throwable', '');
                 
                 // カメラの位置から開始
@@ -1702,20 +1702,40 @@
                     if (model) {
                         model.traverse(function(node) {
                             if (node.isMesh) {
-                                // 両面レンダリングを有効化
-                                if (node.material) {
-                                    if (Array.isArray(node.material)) {
-                                        node.material.forEach(mat => {
-                                            mat.side = THREE.DoubleSide;
-                                            mat.depthWrite = true;
-                                            mat.depthTest = true;
-                                        });
-                                    } else {
-                                        node.material.side = THREE.DoubleSide;
-                                        node.material.depthWrite = true;
-                                        node.material.depthTest = true;
-                                    }
+                                // ジオメトリのスムージングを有効化
+                                if (node.geometry) {
+                                    // 法線を再計算してスムーズに見せる
+                                    node.geometry.computeVertexNormals();
                                 }
+                                
+                                // マテリアルの設定
+                                if (node.material) {
+                                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+                                    materials.forEach(mat => {
+                                        // 両面レンダリング
+                                        mat.side = THREE.DoubleSide;
+                                        mat.depthWrite = true;
+                                        mat.depthTest = true;
+                                        
+                                        // フラットシェーディングを無効化（スムーズに見せる）
+                                        mat.flatShading = false;
+                                        
+                                        // アンチエイリアス効果を高める
+                                        mat.precision = 'highp';
+                                        
+                                        // 金属質感を調整（ポケボールらしく）
+                                        if (mat.metalness !== undefined) {
+                                            mat.metalness = 0.3;
+                                            mat.roughness = 0.4;
+                                        }
+                                        
+                                        // マテリアルの更新を強制
+                                        mat.needsUpdate = true;
+                                    });
+                                }
+                                
+                                // メッシュのレンダリング順序を設定
+                                node.renderOrder = 1000;
                             }
                         });
                     }
