@@ -180,6 +180,7 @@
                 let action02 = null;
                 let currentAnimation = 1; // 1=anime01, 2=anime02
                 let markerVisible = false;
+                let modelCaptured = false; // モデルが捕獲されたか
                 
                 el.addEventListener('model-loaded', () => {
                     console.log('Model loaded');
@@ -219,7 +220,8 @@
                     action01.stop();
                     
                     action02 = mixer.clipAction(clip02);
-                    action02.setLoop(THREE.LoopRepeat, Infinity);
+                    action02.setLoop(THREE.LoopOnce, 1); // 1回のみ再生
+                    action02.clampWhenFinished = true; // 終了時に最後のフレームで停止
                     action02.stop();
                     
                     this.action01 = action01;
@@ -228,13 +230,32 @@
                     console.log('Animations ready:');
                     console.log('  anime01:', clip01.name);
                     console.log('  anime02:', clip02.name);
+                    
+                    // anime02の終了イベントを監視
+                    mixer.addEventListener('finished', (e) => {
+                        if (e.action === action02) {
+                            console.log('anime02 finished - hiding model');
+                            // モデルを非表示
+                            el.setAttribute('visible', 'false');
+                            modelCaptured = true;
+                        }
+                    });
                 });
                 
-                // マーカー検出時にanime01を自動再生
+                // マーカー検出時の処理
                 const marker = el.parentElement;
                 marker.addEventListener('markerFound', () => {
-                    console.log('✓ Marker found - Starting anime01');
+                    console.log('✓ Marker found');
                     markerVisible = true;
+                    
+                    // モデルが捕獲済みの場合は表示しない
+                    if (modelCaptured) {
+                        console.log('Model already captured - staying hidden');
+                        el.setAttribute('visible', 'false');
+                        return;
+                    }
+                    
+                    // anime01を自動再生
                     if (action01) {
                         action01.reset();
                         action01.play();
@@ -244,13 +265,27 @@
                 });
                 
                 marker.addEventListener('markerLost', () => {
-                    console.log('✗ Marker lost - Stopping animations');
+                    console.log('✗ Marker lost');
                     markerVisible = false;
-                    if (action01) action01.stop();
-                    if (action02) action02.stop();
-                    currentAnimation = 1; // リセット
+                    if (!modelCaptured) {
+                        if (action01) action01.stop();
+                        if (action02) action02.stop();
+                    }
                 });
                 
+                // ボールヒット時にanime02を再生する関数（外部から呼び出し可能）
+                el.playHitAnimation = () => {
+                    console.log('Ball hit! Playing anime02');
+                    if (action01) action01.stop();
+                    if (action02) {
+                        action02.reset();
+                        action02.play();
+                        currentAnimation = 2;
+                    }
+                };
+                
+                // タップでのアニメーション切替機能は廃止（コメントアウト）
+                /*
                 const handleInteraction = (e) => {
                     console.log('Interaction detected:', e.type);
                     
@@ -291,6 +326,7 @@
                 el.addEventListener('touchend', (e) => {
                     e.preventDefault();
                 });
+                */
             },
             tick: function(time, deltaTime) {
                 if (this.mixer) {
@@ -1865,6 +1901,13 @@
                                 const stampId = hitbox.data.stampId;
                                 console.log('✓ Hit!', stampId);
                                 
+                                // ヒットしたモデルのanime02を再生
+                                const hitModel = hitbox.el;
+                                if (hitModel && hitModel.playHitAnimation) {
+                                    hitModel.playHitAnimation();
+                                    console.log('Playing hit animation on model:', stampId);
+                                }
+                                
                                 // 衝突エフェクト
                                 showHitEffect(pokeball, hitbox);
                                 
@@ -2108,6 +2151,13 @@
                                 hasHit = true;
                                 const stampId = hitbox.data.stampId;
                                 console.log('✓ Hit!', stampId);
+                                
+                                // ヒットしたモデルのanime02を再生
+                                const hitModel = hitbox.el;
+                                if (hitModel && hitModel.playHitAnimation) {
+                                    hitModel.playHitAnimation();
+                                    console.log('Playing hit animation on model:', stampId);
+                                }
                                 
                                 // 衝突エフェクト
                                 showHitEffect(pokeball, hitbox);
