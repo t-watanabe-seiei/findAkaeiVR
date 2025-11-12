@@ -1106,7 +1106,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true; precision: highp; powerPreference: high-performance; sortObjects: true;">
+        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: highp; powerPreference: high-performance;">
         
         <a-entity camera="near: 0.2; far: 800;"></a-entity>
         
