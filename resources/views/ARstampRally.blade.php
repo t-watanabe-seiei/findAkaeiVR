@@ -1041,7 +1041,7 @@
     
     <!-- スタンプ帳ボタン -->
     <button id="stamp-book-button" type="button" title="コレクションを見る">
-        <div class="icon">📖</div>
+        <div class="icon">🎁</div>
         <span class="badge">0</span>
     </button>
     
