@@ -490,11 +490,11 @@
         /* 捕まえるボタン */
         #catch-button {
             position: fixed;
-            bottom: 100px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            width: 120px;
-            height: 120px;
+            width: 96px;
+            height: 96px;
             background: linear-gradient(145deg, #ff6b6b, #ee5555);
             border: 4px solid white;
             border-radius: 50%;
@@ -504,7 +504,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
@@ -533,12 +533,12 @@
         }
         
         #catch-button .icon {
-            font-size: 40px;
-            margin-bottom: 5px;
+            font-size: 32px;
+            margin-bottom: 4px;
         }
         
         #catch-button .text {
-            font-size: 14px;
+            font-size: 11px;
         }
         
         /* スタンプ帳モーダル */
@@ -2006,13 +2006,72 @@
                         catchButton.classList.add('active');
                         catchButton.querySelector('.text').textContent = '捕獲中';
                         console.log('捕獲モード: ON');
+                        
+                        // 捕獲モード中はモデルの回転を無効化
+                        disableModelRotation();
                     } else {
                         catchButton.classList.remove('active');
                         catchButton.querySelector('.text').textContent = '捕まえる';
                         console.log('捕獲モード: OFF');
+                        
+                        // 捕獲モード解除時はモデルの回転を有効化
+                        enableModelRotation();
                     }
                 });
             }
+            
+            // モデルの回転を無効化
+            function disableModelRotation() {
+                const models = [sheepModel, foxModel, penginModel, squirrelModel, rabbitModel];
+                models.forEach(model => {
+                    if (model && model.object3D) {
+                        model.object3D.userData.rotationEnabled = false;
+                    }
+                });
+            }
+            
+            // モデルの回転を有効化
+            function enableModelRotation() {
+                const models = [sheepModel, foxModel, penginModel, squirrelModel, rabbitModel];
+                models.forEach(model => {
+                    if (model && model.object3D) {
+                        model.object3D.userData.rotationEnabled = true;
+                    }
+                });
+            }
+            
+            // タッチイベントでモデル回転をブロック
+            document.addEventListener('touchstart', function(event) {
+                if (catchModeActive) {
+                    // 捕獲モード中はモデルへのタッチイベントを停止
+                    const touch = event.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    // UIボタン以外のタッチはモデル回転を防ぐためにデフォルト動作を抑制
+                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
+                        // A-Frameのデフォルトのタッチハンドリングを無効化
+                        const models = document.querySelectorAll('[gltf-model]');
+                        models.forEach(model => {
+                            if (model.object3D) {
+                                model.object3D.userData.preventRotation = true;
+                            }
+                        });
+                    }
+                }
+            }, true);
+            
+            document.addEventListener('touchmove', function(event) {
+                if (catchModeActive) {
+                    const touch = event.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    // UIボタン以外でモデル回転を防ぐ
+                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
+                        // タッチ移動によるモデル回転を防止
+                        event.preventDefault();
+                    }
+                }
+            }, { passive: false });
             
             // フリック検出システム
             scene.addEventListener('touchstart', function(event) {
