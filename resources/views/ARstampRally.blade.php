@@ -2149,9 +2149,9 @@
                 if (distance > 30 && deltaTime < 300) {
                     // フリック情報を使ってポケボールを投げる
                     throwPokeballWithFlick(flickStartX, flickStartY, deltaX, deltaY, velocity);
-                } else if (distance < 30) {
-                    // タップとして処理（従来の方法）
-                    throwPokeball(event);
+                } else {
+                    // タップは無視（捕獲モード中はフリックのみ有効）
+                    console.log('タップを検出 - 捕獲モード中はフリックが必要です');
                 }
                 
                 isFlicking = false;
