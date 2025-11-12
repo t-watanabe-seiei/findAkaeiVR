@@ -598,6 +598,52 @@
             display: none;
         }
         
+        /* 回転ボタン */
+        .rotation-buttons {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .rotation-buttons.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .rotation-button {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, background-color 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .rotation-button:active {
+            transform: scale(0.9);
+            background-color: rgba(200, 200, 200, 0.9);
+        }
+        
+        .rotation-button:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+        
         /* 捕獲済みメッセージ */
         .captured-message {
             position: fixed;
@@ -1003,6 +1049,12 @@
         <div class="icon">⚾</div>
         <div class="text">捕まえる</div>
     </button>
+    
+    <!-- 回転ボタン -->
+    <div class="rotation-buttons" id="rotation-buttons">
+        <button class="rotation-button" id="rotate-left" type="button" title="左に90度回転">⬅️</button>
+        <button class="rotation-button" id="rotate-right" type="button" title="右に90度回転">➡️</button>
+    </div>
     
     <!-- スタンプ帳モーダル -->
     <div id="stamp-book-modal">
@@ -1890,6 +1942,7 @@
         let isDragging = false;
         let previousTouchY = 0;
         let currentRotationX = 0;
+        let currentRotationY = 0; // Y軸回転（回転ボタン用）
         
         // ダブルタップ検出用の変数
         let lastTapTime = 0;
@@ -2197,10 +2250,15 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
+                    element.id === 'rotate-left' ||
+                    element.id === 'rotate-right' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
-                    element.closest('#switch-camera-button'));
+                    element.closest('#switch-camera-button') ||
+                    element.closest('#rotate-left') ||
+                    element.closest('#rotate-right') ||
+                    element.closest('.rotation-buttons'));
             }
             
             // タップ/クリック開始検出（タッチデバイス）
@@ -2522,6 +2580,8 @@
                     console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
                     currentMarkerStampId = 'sheep';
+                    // 回転ボタンを表示
+                    document.getElementById('rotation-buttons').classList.add('visible');
                     // ヒットボックスを登録
                     if (sheepModel.components.hitbox) {
                         if (!allHitboxes.includes(sheepModel.components.hitbox)) {
@@ -2533,6 +2593,8 @@
                     console.log('Pattern-sheep marker lost');
                     if (activeModel === sheepModel) {
                         activeModel = null;
+                        // 回転ボタンを非表示
+                        document.getElementById('rotation-buttons').classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'sheep') {
                         currentMarkerStampId = null;
@@ -2552,6 +2614,8 @@
                     console.log('Pattern-fox marker found');
                     activeModel = foxModel;
                     currentMarkerStampId = 'fox';
+                    // 回転ボタンを表示
+                    document.getElementById('rotation-buttons').classList.add('visible');
                     if (foxModel.components.hitbox) {
                         if (!allHitboxes.includes(foxModel.components.hitbox)) {
                             allHitboxes.push(foxModel.components.hitbox);
@@ -2562,6 +2626,8 @@
                     console.log('Pattern-fox marker lost');
                     if (activeModel === foxModel) {
                         activeModel = null;
+                        // 回転ボタンを非表示
+                        document.getElementById('rotation-buttons').classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'fox') {
                         currentMarkerStampId = null;
@@ -2580,6 +2646,8 @@
                     console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
                     currentMarkerStampId = 'pengin';
+                    // 回転ボタンを表示
+                    document.getElementById('rotation-buttons').classList.add('visible');
                     if (penginModel.components.hitbox) {
                         if (!allHitboxes.includes(penginModel.components.hitbox)) {
                             allHitboxes.push(penginModel.components.hitbox);
@@ -2590,6 +2658,8 @@
                     console.log('Pattern-pengin marker lost');
                     if (activeModel === penginModel) {
                         activeModel = null;
+                        // 回転ボタンを非表示
+                        document.getElementById('rotation-buttons').classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'pengin') {
                         currentMarkerStampId = null;
@@ -2608,6 +2678,8 @@
                     console.log('Pattern-tonakai marker found');
                     activeModel = tonakaiModel;
                     currentMarkerStampId = 'tonakai';
+                    // 回転ボタンを表示
+                    document.getElementById('rotation-buttons').classList.add('visible');
                     if (tonakaiModel.components.hitbox) {
                         if (!allHitboxes.includes(tonakaiModel.components.hitbox)) {
                             allHitboxes.push(tonakaiModel.components.hitbox);
@@ -2618,6 +2690,8 @@
                     console.log('Pattern-tonakai marker lost');
                     if (activeModel === tonakaiModel) {
                         activeModel = null;
+                        // 回転ボタンを非表示
+                        document.getElementById('rotation-buttons').classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'tonakai') {
                         currentMarkerStampId = null;
@@ -2636,6 +2710,8 @@
                     console.log('Pattern-pig marker found');
                     activeModel = pigModel;
                     currentMarkerStampId = 'pig';
+                    // 回転ボタンを表示
+                    document.getElementById('rotation-buttons').classList.add('visible');
                     if (pigModel.components.hitbox) {
                         if (!allHitboxes.includes(pigModel.components.hitbox)) {
                             allHitboxes.push(pigModel.components.hitbox);
@@ -2646,6 +2722,8 @@
                     console.log('Pattern-pig marker lost');
                     if (activeModel === pigModel) {
                         activeModel = null;
+                        // 回転ボタンを非表示
+                        document.getElementById('rotation-buttons').classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'pig') {
                         currentMarkerStampId = null;
@@ -2754,6 +2832,42 @@
                 console.log('Clear stamps cancelled');
                 hideConfirmDialog();
             }, false);
+            
+            // 回転ボタンのイベントリスナー
+            const rotateLeftButton = document.getElementById('rotate-left');
+            const rotateRightButton = document.getElementById('rotate-right');
+            
+            rotateLeftButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (activeModel) {
+                    // 左に90度回転（Y軸を-90度）
+                    currentRotationY -= 90;
+                    activeModel.setAttribute('rotation', {
+                        x: currentRotationX,
+                        y: currentRotationY,
+                        z: 0
+                    });
+                    console.log('Rotated left. Current Y rotation:', currentRotationY);
+                }
+            });
+            
+            rotateRightButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (activeModel) {
+                    // 右に90度回転（Y軸を+90度）
+                    currentRotationY += 90;
+                    activeModel.setAttribute('rotation', {
+                        x: currentRotationX,
+                        y: currentRotationY,
+                        z: 0
+                    });
+                    console.log('Rotated right. Current Y rotation:', currentRotationY);
+                }
+            });
             
             // オーバーレイクリックでダイアログを閉じる
             document.getElementById('confirm-overlay').addEventListener('click', function(e) {
@@ -3403,7 +3517,7 @@
                     if (activeModel) {
                         activeModel.setAttribute('rotation', {
                             x: currentRotationX,
-                            y: 0,
+                            y: currentRotationY, // Y軸回転も維持
                             z: 0
                         });
                     }
@@ -3452,7 +3566,7 @@
                     if (activeModel) {
                         activeModel.setAttribute('rotation', {
                             x: currentRotationX,
-                            y: 0,
+                            y: currentRotationY, // Y軸回転も維持
                             z: 0
                         });
                     }
