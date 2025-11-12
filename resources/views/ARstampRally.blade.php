@@ -395,9 +395,12 @@
                 */
             },
             tick: function(time, deltaTime) {
-                // mixerが存在し、アニメーションが再生中の場合のみ更新
-                if (this.mixer && (this.action01?.isRunning() || this.action02?.isRunning())) {
-                    this.mixer.update(deltaTime / 1000);
+                // mixerが存在する場合のみ更新
+                if (this.mixer) {
+                    // deltaTimeを秒に変換（ミリ秒 → 秒）
+                    // deltaTimeが異常に大きい場合は制限（フレームドロップ対策）
+                    const dt = Math.min(deltaTime / 1000, 0.1);
+                    this.mixer.update(dt);
                 }
             }
         });
@@ -1050,7 +1053,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true;">
+        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: false; precision: mediump; powerPreference: high-performance;">
         
         <a-entity camera="near: 0.01; far: 10000;"></a-entity>
         
@@ -2183,6 +2186,7 @@
             // タップ時間によるボール投げシステム
             let tapStartTime = 0;
             let isTapping = false;
+            let isThrowing = false; // ボール投げ中フラグ（重複防止）
             
             // 捕まえるボタンは廃止し、常に投げられる状態に
             const catchModeActive = true;
@@ -2235,6 +2239,11 @@
             // タップ終了時にボールを投げる（タッチデバイス）
             scene.addEventListener('touchend', function(event) {
                 if (!isTapping) return;
+                if (isThrowing) {
+                    console.log('Already throwing - ignoring');
+                    isTapping = false;
+                    return;
+                }
                 
                 const touch = event.changedTouches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -2263,8 +2272,16 @@
                 
                 console.log('投げる速度:', speed);
                 
+                // ボール投げ中フラグを立てる
+                isThrowing = true;
+                
                 // 画面中央方向に投げる
                 throwPokeballToCenter(speed);
+                
+                // 500ms後にフラグをリセット
+                setTimeout(() => {
+                    isThrowing = false;
+                }, 500);
                 
                 isTapping = false;
             });
@@ -2272,6 +2289,11 @@
             // マウスアップ時にボールを投げる（PC）
             scene.addEventListener('mouseup', function(event) {
                 if (!isTapping) return;
+                if (isThrowing) {
+                    console.log('Already throwing - ignoring');
+                    isTapping = false;
+                    return;
+                }
                 
                 const element = document.elementFromPoint(event.clientX, event.clientY);
                 
@@ -2298,8 +2320,16 @@
                 
                 console.log('投げる速度:', speed);
                 
+                // ボール投げ中フラグを立てる
+                isThrowing = true;
+                
                 // 画面中央方向に投げる
                 throwPokeballToCenter(speed);
+                
+                // 500ms後にフラグをリセット
+                setTimeout(() => {
+                    isThrowing = false;
+                }, 500);
                 
                 isTapping = false;
             });
