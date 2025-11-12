@@ -236,19 +236,12 @@
                     console.log('  anime01:', clip01.name);
                     console.log('  anime02:', clip02.name);
                     
-                    // anime02の終了イベントを監視
+                    // anime02の終了イベントを監視（モデル非表示のみ）
                     mixer.addEventListener('finished', (e) => {
                         if (e.action === action02) {
-                            console.log('anime02 finished for', stampId, '- hiding model and marking captured');
-                            // モデルを非表示
+                            console.log('anime02 finished for', stampId, '- hiding model');
+                            // モデルを非表示（捕獲状態は既に保存済み）
                             el.setAttribute('visible', 'false');
-                            modelCaptured = true;
-                            
-                            // 捕獲状態を保存
-                            if (typeof markAnimalCaptured === 'function' && stampId) {
-                                markAnimalCaptured(stampId);
-                                console.log('Marked as captured:', stampId);
-                            }
                         }
                     });
                 });
@@ -272,14 +265,28 @@
                 marker.addEventListener('markerFound', () => {
                     console.log('==================================================');
                     console.log('✓ Marker found for:', stampId);
-                    console.log('  Checking LocalStorage...');
+                    console.log('  Checking capture state...');
+                    console.log('  modelCaptured flag:', modelCaptured);
+                    
+                    // ローカルフラグをチェック（ボールヒット直後）
+                    if (modelCaptured) {
+                        console.log('  → Model captured (local flag) - hiding model and showing message');
+                        el.setAttribute('visible', 'false');
+                        
+                        // 捕獲済みメッセージを表示
+                        if (typeof showCapturedMessage === 'function') {
+                            showCapturedMessage(stampId);
+                        }
+                        console.log('==================================================');
+                        return; // ここで処理終了
+                    }
                     
                     // 外部関数を使って捕獲済みかチェック（LocalStorageを確認）
                     const isCaptured = typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId);
                     console.log('  isAnimalCaptured(' + stampId + '):', isCaptured);
                     
                     if (isCaptured) {
-                        console.log('  → Already captured - showing message, hiding model');
+                        console.log('  → Already captured (LocalStorage) - showing message, hiding model');
                         el.setAttribute('visible', 'false');
                         modelCaptured = true; // ローカル状態も更新
                         
@@ -291,7 +298,7 @@
                         return; // ここで処理終了
                     }
                     
-                    // LocalStorageにない場合のみ、モデルを表示
+                    // 捕獲されていない場合のみ、モデルを表示
                     console.log('  → Not captured - showing model with anime01');
                     el.setAttribute('visible', 'true');
                     markerVisible = true;
@@ -321,13 +328,26 @@
                 
                 // ボールヒット時にanime02を再生する関数（外部から呼び出し可能）
                 el.playHitAnimation = () => {
-                    console.log('Ball hit! Playing anime02');
+                    console.log('=== BALL HIT! for', stampId, '===');
+                    
+                    // 即座に捕獲状態にする
+                    modelCaptured = true;
+                    
+                    // 捕獲状態をLocalStorageに保存
+                    if (typeof markAnimalCaptured === 'function' && stampId) {
+                        markAnimalCaptured(stampId);
+                        console.log('Marked as captured immediately:', stampId);
+                    }
+                    
+                    // anime02を再生（視覚効果のみ）
                     if (action01) action01.stop();
                     if (action02) {
                         action02.reset();
                         action02.play();
                         currentAnimation = 2;
                     }
+                    
+                    console.log('Model captured! Will be hidden on next marker detection');
                 };
                 
                 // タップでのアニメーション切替機能は廃止（コメントアウト）
