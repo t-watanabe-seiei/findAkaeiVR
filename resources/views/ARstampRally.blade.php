@@ -182,8 +182,13 @@
                 let markerVisible = false;
                 let modelCaptured = false; // モデルが捕獲されたか
                 
+                // stampIdを最初に取得
+                const hitboxAttr = el.getAttribute('hitbox');
+                const stampId = hitboxAttr ? hitboxAttr.split(':')[1].split(';')[0].trim() : '';
+                console.log('Initializing model for stampId:', stampId);
+                
                 el.addEventListener('model-loaded', () => {
-                    console.log('Model loaded');
+                    console.log('Model loaded for:', stampId);
                     const model = el.getObject3D('mesh');
                     
                     if (!model || !model.animations || model.animations.length === 0) {
@@ -234,14 +239,15 @@
                     // anime02の終了イベントを監視
                     mixer.addEventListener('finished', (e) => {
                         if (e.action === action02) {
-                            console.log('anime02 finished - hiding model and marking captured');
+                            console.log('anime02 finished for', stampId, '- hiding model and marking captured');
                             // モデルを非表示
                             el.setAttribute('visible', 'false');
                             modelCaptured = true;
                             
                             // 捕獲状態を保存
-                            if (typeof markAnimalCaptured === 'function') {
+                            if (typeof markAnimalCaptured === 'function' && stampId) {
                                 markAnimalCaptured(stampId);
+                                console.log('Marked as captured:', stampId);
                             }
                         }
                     });
@@ -249,10 +255,10 @@
                 
                 // マーカー検出時の処理
                 const marker = el.parentElement;
-                const stampId = el.getAttribute('hitbox').split(':')[1].split(';')[0].trim();
                 
                 // 外部からリセットできる関数
                 el.resetCaptureState = () => {
+                    console.log('=== RESET CAPTURE STATE for:', stampId, '===');
                     modelCaptured = false;
                     // visible状態は変更しない（markerFoundで制御）
                     if (action01) {
@@ -260,35 +266,44 @@
                         action01.play();
                         currentAnimation = 1;
                     }
-                    console.log('Capture state reset for:', stampId);
+                    console.log('Capture state reset completed for:', stampId);
                 };
                 
                 marker.addEventListener('markerFound', () => {
+                    console.log('==================================================');
                     console.log('✓ Marker found for:', stampId);
-                    markerVisible = true;
+                    console.log('  Checking LocalStorage...');
                     
                     // 外部関数を使って捕獲済みかチェック（LocalStorageを確認）
-                    if (typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId)) {
-                        console.log('Model already captured (LocalStorage) - showing message');
+                    const isCaptured = typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId);
+                    console.log('  isAnimalCaptured(' + stampId + '):', isCaptured);
+                    
+                    if (isCaptured) {
+                        console.log('  → Already captured - showing message, hiding model');
                         el.setAttribute('visible', 'false');
                         modelCaptured = true; // ローカル状態も更新
                         
                         // 捕獲済みメッセージを表示
-                        showCapturedMessage(stampId);
+                        if (typeof showCapturedMessage === 'function') {
+                            showCapturedMessage(stampId);
+                        }
+                        console.log('==================================================');
                         return; // ここで処理終了
                     }
                     
                     // LocalStorageにない場合のみ、モデルを表示
-                    console.log('Model not captured - showing model with anime01');
+                    console.log('  → Not captured - showing model with anime01');
                     el.setAttribute('visible', 'true');
+                    markerVisible = true;
                     
                     // anime01を自動再生
                     if (action01) {
                         action01.reset();
                         action01.play();
                         currentAnimation = 1;
-                        console.log('anime01 started automatically');
+                        console.log('  anime01 started');
                     }
+                    console.log('==================================================');
                 });
                 
                 marker.addEventListener('markerLost', () => {
