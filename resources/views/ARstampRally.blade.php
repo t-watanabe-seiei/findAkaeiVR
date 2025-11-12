@@ -98,9 +98,9 @@
                 pos.y += this.velocity.y * delta;
                 pos.z += this.velocity.z * delta;
                 
-                // 回転させる（投げた感じを出す）- より速く回転
-                this.el.object3D.rotation.x += delta * 8;
-                this.el.object3D.rotation.z += delta * 5;
+                // 回転させる（投げた感じを出す）- Android向けに速度調整
+                this.el.object3D.rotation.x += delta * 4; // 8 → 4に減速（ちらつき軽減）
+                this.el.object3D.rotation.z += delta * 2.5; // 5 → 2.5に減速
                 
                 // 寿命チェック
                 if (this.lifetime > this.maxLifetime || pos.y < -5) {
@@ -1106,9 +1106,9 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true; precision: highp; powerPreference: high-performance;">
+        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true; precision: highp; powerPreference: high-performance; sortObjects: true;">
         
-        <a-entity camera="near: 0.1; far: 1000;"></a-entity>
+        <a-entity camera="near: 0.2; far: 800;"></a-entity>
         
         <!-- iPhone対応：シーン全体で1つのライトのみ使用（パフォーマンス向上） -->
         <a-light type="ambient" intensity="1.5"></a-light>
@@ -2416,7 +2416,7 @@
                 
                 // ボールが読み込まれたら投げる
                 pokeball.addEventListener('loaded', function() {
-                    // モデルのマテリアルを修正してちらつきを防ぐ
+                    // モデルのマテリアルを修正してちらつきを防ぐ（Android対策強化）
                     const model = pokeball.getObject3D('mesh');
                     if (model) {
                         let meshIndex = 0;
@@ -2427,19 +2427,19 @@
                                     node.geometry.computeVertexNormals();
                                 }
                                 
-                                // マテリアルの設定（ちらつき対策強化）
+                                // マテリアルの設定（Android向けちらつき対策強化）
                                 if (node.material) {
                                     const materials = Array.isArray(node.material) ? node.material : [node.material];
                                     materials.forEach((mat, index) => {
                                         // 基本設定
-                                        mat.side = THREE.FrontSide; // DoubleSide → FrontSide に変更
+                                        mat.side = THREE.FrontSide;
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
                                         
-                                        // polygonOffsetを強化（ちらつき対策）
+                                        // Android向け：polygonOffsetを大幅に強化
                                         mat.polygonOffset = true;
-                                        mat.polygonOffsetFactor = meshIndex * 0.1 + index * 0.1;
-                                        mat.polygonOffsetUnits = meshIndex * 0.1 + index * 0.1;
+                                        mat.polygonOffsetFactor = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
+                                        mat.polygonOffsetUnits = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
                                         
                                         mat.flatShading = false;
                                         mat.precision = 'highp';
@@ -2455,9 +2455,22 @@
                                         mat.opacity = 1.0;
                                         mat.alphaTest = 0.5;
                                         
-                                        // 深度関数
+                                        // 深度関数（Android向け）
                                         mat.depthFunc = THREE.LessEqualDepth;
                                         
+                                        // Android向け：dithering有効化（ちらつきを拡散）
+                                        mat.dithering = true;
+                                        
+                                        mat.needsUpdate = true;
+                                    });
+                                    
+                                    // renderOrderを大きく設定（Android向け）
+                                    node.renderOrder = 1000 + meshIndex * 10;
+                                }
+                                meshIndex++;
+                            }
+                        });
+                    }
                                         mat.needsUpdate = true;
                                     });
                                 }
