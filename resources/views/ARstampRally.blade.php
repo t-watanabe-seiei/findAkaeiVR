@@ -1426,51 +1426,72 @@
             currentCapturedAnimal = null;
         }
         
-        // 「逃がす」ボタンのイベントリスナー
-        document.getElementById('release-button').addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        // 「逃がす」ボタンのイベントリスナーをセットアップする関数
+        function setupReleaseButton() {
+            const releaseBtn = document.getElementById('release-button');
+            if (!releaseBtn) return;
             
-            if (currentCapturedAnimal) {
-                const stampId = currentCapturedAnimal;
-                const modelId = stampId + '-model';
+            // 既存のリスナーを削除するため、新しいボタンに置き換え
+            const newReleaseBtn = releaseBtn.cloneNode(true);
+            releaseBtn.parentNode.replaceChild(newReleaseBtn, releaseBtn);
+            
+            newReleaseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 
-                if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
-                    console.log('Releasing animal:', stampId);
+                if (currentCapturedAnimal) {
+                    const stampId = currentCapturedAnimal;
+                    const modelId = stampId + '-model';
                     
-                    // メッセージを完全に非表示にする
-                    const message = document.getElementById('captured-message');
-                    message.classList.remove('show');
-                    message.style.cssText = 'display: none !important; pointer-events: none !important; visibility: hidden !important; opacity: 0 !important; z-index: -9999 !important;';
-                    currentCapturedAnimal = null;
-                    
-                    // 動物を逃がす（LocalStorageから削除）
-                    releaseAnimal(stampId);
-                    
-                    // 該当モデルを非表示にしてからリセット
-                    const model = document.getElementById(modelId);
-                    if (model) {
-                        // まず非表示
-                        model.setAttribute('visible', 'false');
-                        console.log('Model hidden:', modelId);
+                    if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
+                        console.log('Releasing animal:', stampId);
                         
-                        // 状態をリセット（次回マーカー検出時に表示されるように）
-                        if (model.resetCaptureState) {
-                            model.resetCaptureState();
-                            console.log('Model capture state reset:', modelId);
+                        // 動物を逃がす（LocalStorageから削除）
+                        releaseAnimal(stampId);
+                        
+                        // 該当モデルを完全に非表示
+                        const model = document.getElementById(modelId);
+                        if (model) {
+                            model.setAttribute('visible', 'false');
+                            // 状態をリセット
+                            if (model.resetCaptureState) {
+                                model.resetCaptureState();
+                            }
                         }
-                    }
-                    
-                    // 少し待ってからアラート表示（DOM更新を確実に）
-                    setTimeout(() => {
-                        alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
                         
-                        // アラート後、スタイルをリセット
-                        message.style.cssText = '';
-                    }, 100);
+                        // メッセージ要素を完全に削除
+                        const message = document.getElementById('captured-message');
+                        if (message && message.parentNode) {
+                            const parent = message.parentNode;
+                            parent.removeChild(message);
+                            
+                            // 新しいメッセージ要素を作成
+                            const newMessage = document.createElement('div');
+                            newMessage.id = 'captured-message';
+                            newMessage.className = 'captured-message';
+                            newMessage.innerHTML = `
+                                <h2>🎉 すでに捕まえています 🎉</h2>
+                                <div class="animal-name" id="captured-animal-name"></div>
+                                <button class="release-button" id="release-button">
+                                    この動物を逃がす 🔓
+                                </button>
+                            `;
+                            parent.appendChild(newMessage);
+                            
+                            // イベントリスナーを再登録
+                            setupReleaseButton();
+                        }
+                        
+                        currentCapturedAnimal = null;
+                        
+                        alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                    }
                 }
-            }
-        });
+            });
+        }
+        
+        // 初回セットアップ
+        setupReleaseButton();
         
         // 通常パーティクル（スタンプ取得時）
         function showNormalParticles() {
