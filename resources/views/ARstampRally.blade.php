@@ -264,25 +264,23 @@
                 };
                 
                 marker.addEventListener('markerFound', () => {
-                    console.log('✓ Marker found');
+                    console.log('✓ Marker found for:', stampId);
                     markerVisible = true;
                     
-                    // 外部関数を使って捕獲済みかチェック
+                    // 外部関数を使って捕獲済みかチェック（LocalStorageを確認）
                     if (typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId)) {
-                        console.log('Model already captured - showing message');
+                        console.log('Model already captured (LocalStorage) - showing message');
                         el.setAttribute('visible', 'false');
+                        modelCaptured = true; // ローカル状態も更新
                         
                         // 捕獲済みメッセージを表示
                         showCapturedMessage(stampId);
-                        return;
+                        return; // ここで処理終了
                     }
                     
-                    // モデルが捕獲済みの場合は表示しない
-                    if (modelCaptured) {
-                        console.log('Model already captured - staying hidden');
-                        el.setAttribute('visible', 'false');
-                        return;
-                    }
+                    // LocalStorageにない場合のみ、モデルを表示
+                    console.log('Model not captured - showing model with anime01');
+                    el.setAttribute('visible', 'true');
                     
                     // anime01を自動再生
                     if (action01) {
@@ -1432,36 +1430,51 @@
         document.getElementById('release-button').addEventListener('click', function() {
             if (currentCapturedAnimal) {
                 const stampId = currentCapturedAnimal;
+                const modelId = stampId + '-model';
                 
                 if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
-                    // まずメッセージを即座に非表示
+                    console.log('Releasing animal:', stampId);
+                    
+                    // まずメッセージを即座に完全非表示
                     const message = document.getElementById('captured-message');
                     message.classList.remove('show');
                     message.style.display = 'none';
                     message.style.pointerEvents = 'none';
                     message.style.visibility = 'hidden';
                     message.style.opacity = '0';
+                    message.style.zIndex = '-1';
                     currentCapturedAnimal = null;
                     
-                    // 動物を逃がす
+                    // 動物を逃がす（LocalStorageから削除）
                     releaseAnimal(stampId);
                     
                     // 該当モデルのアニメーションコンポーネントをリセット
-                    const modelId = stampId + '-model';
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
                         model.resetCaptureState();
-                        console.log('Model reset:', modelId);
+                        console.log('Model capture state reset:', modelId);
                     }
                     
-                    // マーカーが現在見えている場合、モデルを表示
+                    // マーカーの状態を確認
                     if (model) {
                         const marker = model.parentElement;
+                        // マーカーが見えていない場合は非表示のまま
                         if (marker && marker.object3D && marker.object3D.visible) {
-                            model.setAttribute('visible', 'true');
-                            console.log('Model visible because marker is currently visible');
+                            console.log('Marker is visible - showing model');
+                            // マーカーが見えている場合のみ表示
+                            setTimeout(() => {
+                                model.setAttribute('visible', 'true');
+                            }, 100);
+                        } else {
+                            console.log('Marker is not visible - keeping model hidden');
+                            model.setAttribute('visible', 'false');
                         }
                     }
+                    
+                    // z-indexを元に戻す
+                    setTimeout(() => {
+                        message.style.zIndex = '';
+                    }, 500);
                     
                     alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
                 }
