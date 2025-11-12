@@ -1032,7 +1032,7 @@
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
@@ -1044,7 +1044,7 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
@@ -1056,7 +1056,7 @@
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
@@ -1068,7 +1068,7 @@
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_matsumura_tonakai.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
@@ -1080,7 +1080,7 @@
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_matsubara_pig.glb') }}"
                 position="0 0 0"
-                scale="2 2 2"
+                scale="3 3 3"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
@@ -1408,6 +1408,12 @@
         function hideCapturedMessage() {
             const message = document.getElementById('captured-message');
             message.classList.remove('show');
+            // 強制的に非表示にする
+            message.style.display = 'none';
+            // 少し待ってから display を元に戻す（CSSトランジション用）
+            setTimeout(() => {
+                message.style.display = '';
+            }, 100);
             currentCapturedAnimal = null;
         }
         
@@ -1420,15 +1426,24 @@
                     // 動物を逃がす
                     releaseAnimal(stampId);
                     
-                    // メッセージを非表示
-                    hideCapturedMessage();
-                    
                     // 該当モデルのアニメーションコンポーネントをリセット
                     const modelId = stampId + '-model';
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
                         model.resetCaptureState();
                         console.log('Model reset:', modelId);
+                    }
+                    
+                    // メッセージを確実に非表示にする
+                    hideCapturedMessage();
+                    
+                    // マーカーが現在見えている場合、モデルを表示
+                    if (model) {
+                        const marker = model.parentElement;
+                        if (marker && marker.object3D && marker.object3D.visible) {
+                            model.setAttribute('visible', 'true');
+                            console.log('Model visible because marker is currently visible');
+                        }
                     }
                     
                     alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
