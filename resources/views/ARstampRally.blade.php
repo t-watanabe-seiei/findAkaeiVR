@@ -1766,7 +1766,7 @@
                 // ポケボールを生成
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
-                pokeball.setAttribute('scale', '0.5 0.5 0.5'); // サイズを大きく（0.3 → 0.5）
+                pokeball.setAttribute('scale', '0.1 0.1 0.1'); // サイズを小さく（0.5 → 0.1、元の5分の1）
                 pokeball.setAttribute('pokeball-throwable', '');
                 
                 // カメラの位置から開始
