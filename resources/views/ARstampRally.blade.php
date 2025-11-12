@@ -1922,19 +1922,22 @@
                                     }
                                 }, 1000); // 1秒後にフェードアウト開始
                                 
-                                // スクリーンショット撮影してスタンプ登録（ヒット直後、ボールを非表示にして撮影）
-                                // ボールを一時的に非表示
-                                pokeball.setAttribute('visible', 'false');
-                                
-                                // 次のフレームでスクリーンショット撮影
+                                // スクリーンショット撮影してスタンプ登録
+                                // ヒット後0.2秒間ボールを表示し、その後非表示にしてモデルのみ撮影
                                 setTimeout(() => {
-                                    captureModelScreenshot(function(screenshot) {
-                                        collectStamp(stampId, screenshot);
-                                        
-                                        // スクリーンショット後、ボールを再表示
-                                        pokeball.setAttribute('visible', 'true');
-                                    });
-                                }, 16); // 1フレーム後（約16ms）
+                                    // ボールを非表示
+                                    pokeball.setAttribute('visible', 'false');
+                                    
+                                    // 次のフレームでスクリーンショット撮影（背景透過）
+                                    setTimeout(() => {
+                                        captureModelScreenshot(function(screenshot) {
+                                            collectStamp(stampId, screenshot);
+                                            
+                                            // スクリーンショット後、ボールを再表示してフェードアウト継続
+                                            pokeball.setAttribute('visible', 'true');
+                                        });
+                                    }, 16); // 1フレーム後
+                                }, 200); // ヒット後0.2秒
                                 
                                 break;
                             }
@@ -2157,19 +2160,22 @@
                                     }, 1000);
                                 }
                                 
-                                // スクリーンショット撮影してスタンプ登録（ヒット直後、ボールを非表示にして撮影）
-                                // ボールを一時的に非表示
-                                pokeball.setAttribute('visible', 'false');
-                                
-                                // 次のフレームでスクリーンショット撮影
+                                // スクリーンショット撮影してスタンプ登録
+                                // ヒット後0.2秒間ボールを表示し、その後非表示にしてモデルのみ撮影
                                 setTimeout(() => {
-                                    captureModelScreenshot(function(screenshot) {
-                                        collectStamp(stampId, screenshot);
-                                        
-                                        // スクリーンショット後、ボールを再表示
-                                        pokeball.setAttribute('visible', 'true');
-                                    });
-                                }, 16); // 1フレーム後（約16ms）
+                                    // ボールを非表示
+                                    pokeball.setAttribute('visible', 'false');
+                                    
+                                    // 次のフレームでスクリーンショット撮影（背景透過）
+                                    setTimeout(() => {
+                                        captureModelScreenshot(function(screenshot) {
+                                            collectStamp(stampId, screenshot);
+                                            
+                                            // スクリーンショット後、ボールを再表示してフェードアウト継続
+                                            pokeball.setAttribute('visible', 'true');
+                                        });
+                                    }, 16); // 1フレーム後
+                                }, 200); // ヒット後0.2秒
                                 
                                 break;
                             }
