@@ -487,6 +487,60 @@
             border: 2px solid white;
         }
         
+        /* 捕まえるボタン */
+        #catch-button {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(145deg, #ff6b6b, #ee5555);
+            border: 4px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
+            transition: all 0.2s;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #catch-button:active {
+            transform: translateX(-50%) scale(0.9);
+            box-shadow: 0 3px 10px rgba(255, 0, 0, 0.5);
+        }
+        
+        #catch-button.active {
+            background: linear-gradient(145deg, #4CAF50, #45a049);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.7);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 6px 20px rgba(76, 175, 80, 0.7);
+            }
+            50% {
+                box-shadow: 0 6px 30px rgba(76, 175, 80, 1);
+            }
+        }
+        
+        #catch-button .icon {
+            font-size: 40px;
+            margin-bottom: 5px;
+        }
+        
+        #catch-button .text {
+            font-size: 14px;
+        }
+        
         /* スタンプ帳モーダル */
         #stamp-book-modal {
             position: fixed;
@@ -833,6 +887,12 @@
     <button id="stamp-book-button" type="button" title="スタンプ帳を見る">
         📖
         <span class="badge">0</span>
+    </button>
+    
+    <!-- 捕まえるボタン -->
+    <button id="catch-button" type="button" title="タップで捕獲モード">
+        <div class="icon">⚾</div>
+        <div class="text">捕まえる</div>
     </button>
     
     <!-- スタンプ帳モーダル -->
@@ -1933,9 +1993,32 @@
             let flickStartY = 0;
             let flickStartTime = 0;
             let isFlicking = false;
+            let catchModeActive = false; // 捕獲モードのフラグ
+            
+            // 捕まえるボタンのイベントリスナー
+            const catchButton = document.getElementById('catch-button');
+            if (catchButton) {
+                catchButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    catchModeActive = !catchModeActive;
+                    
+                    if (catchModeActive) {
+                        catchButton.classList.add('active');
+                        catchButton.querySelector('.text').textContent = '捕獲中';
+                        console.log('捕獲モード: ON');
+                    } else {
+                        catchButton.classList.remove('active');
+                        catchButton.querySelector('.text').textContent = '捕まえる';
+                        console.log('捕獲モード: OFF');
+                    }
+                });
+            }
             
             // フリック検出システム
             scene.addEventListener('touchstart', function(event) {
+                // 捕獲モードがOFFの場合は何もしない
+                if (!catchModeActive) return;
+                
                 const touch = event.touches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 
@@ -1944,9 +2027,11 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
+                    element.id === 'catch-button' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
+                    element.closest('#catch-button') ||
                     element.closest('#switch-camera-button'))) {
                     return;
                 }
@@ -1959,7 +2044,8 @@
             });
             
             scene.addEventListener('touchend', function(event) {
-                if (!isFlicking) return;
+                // 捕獲モードがOFFの場合は何もしない
+                if (!catchModeActive || !isFlicking) return;
                 
                 const touch = event.changedTouches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -1969,9 +2055,11 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
+                    element.id === 'catch-button' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
+                    element.closest('#catch-button') ||
                     element.closest('#switch-camera-button'))) {
                     isFlicking = false;
                     return;
