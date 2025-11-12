@@ -64,7 +64,7 @@
     <script src="{{ asset('js/ar-engine.min.js') }}"></script>
     <script src="{{ asset('js/ar-tracking.min.js') }}"></script>
     <script>
-        // ポケボール投擲コンポーネント
+        // ポケボール投擲コンポーネント（低スペック端末向け最適化）
         AFRAME.registerComponent('pokeball-throwable', {
             init: function() {
                 this.velocity = new THREE.Vector3();
@@ -72,6 +72,7 @@
                 this.isThrown = false;
                 this.lifetime = 0;
                 this.maxLifetime = 8; // 8秒後に消滅（より長く）
+                this.updateCounter = 0; // フレームスキップ用
             },
             
             throw: function(direction, speed) {
@@ -86,6 +87,10 @@
             tick: function(time, deltaTime) {
                 if (!this.isThrown) return;
                 
+                // フレームレート制限（2フレームに1回更新）- 低スペック端末向け
+                this.updateCounter++;
+                if (this.updateCounter % 2 !== 0) return;
+                
                 const delta = deltaTime / 1000;
                 this.lifetime += delta;
                 
@@ -98,9 +103,9 @@
                 pos.y += this.velocity.y * delta;
                 pos.z += this.velocity.z * delta;
                 
-                // 回転させる（投げた感じを出す）- Android向けに速度調整
-                this.el.object3D.rotation.x += delta * 4; // 8 → 4に減速（ちらつき軽減）
-                this.el.object3D.rotation.z += delta * 2.5; // 5 → 2.5に減速
+                // 回転させる（投げた感じを出す）- 低スペック端末向けに更に減速
+                this.el.object3D.rotation.x += delta * 3; // 4 → 3に減速
+                this.el.object3D.rotation.z += delta * 2; // 2.5 → 2に減速
                 
                 // 寿命チェック
                 if (this.lifetime > this.maxLifetime || pos.y < -5) {
@@ -109,7 +114,7 @@
             }
         });
         
-        // 当たり判定ボックスコンポーネント
+        // 当たり判定ボックスコンポーネント（低スペック端末向け最適化）
         AFRAME.registerComponent('hitbox', {
             schema: {
                 stampId: {type: 'string', default: ''},
@@ -123,6 +128,7 @@
                 
                 // Three.jsのバウンディングボックスを作成
                 this.box = new THREE.Box3();
+                this.updateCounter = 0; // フレームスキップ用
                 this.updateBox();
                 
                 // デバッグ用のボックス表示（開発時のみ）
@@ -159,7 +165,11 @@
             },
             
             tick: function() {
-                this.updateBox();
+                // 低スペック端末向け：3フレームに1回だけ更新
+                this.updateCounter++;
+                if (this.updateCounter % 3 === 0) {
+                    this.updateBox();
+                }
             },
             
             checkCollision: function(point) {
@@ -397,6 +407,15 @@
             tick: function(time, deltaTime) {
                 // mixerが存在する場合のみ更新
                 if (this.mixer) {
+                    // 低スペック端末向け：フレームスキップカウンター初期化
+                    if (!this.frameSkipCounter) {
+                        this.frameSkipCounter = 0;
+                    }
+                    
+                    // 2フレームに1回だけアニメーション更新（パフォーマンス向上）
+                    this.frameSkipCounter++;
+                    if (this.frameSkipCounter % 2 !== 0) return;
+                    
                     // deltaTimeを秒に変換（ミリ秒 → 秒）
                     // deltaTimeが異常に大きい場合は制限（フレームドロップ対策）
                     const dt = Math.min(deltaTime / 1000, 0.1);
@@ -1106,7 +1125,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: highp; powerPreference: high-performance;">
+        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; precision: mediump; powerPreference: default;">
         
         <a-entity camera="near: 0.2; far: 800;"></a-entity>
         
@@ -2226,7 +2245,7 @@
                                 break;
                             }
                         }
-                    }, 16); // 約60FPS
+                    }, 30); // 低スペック端末向け軽量化（約33FPS）
                     
                     // 8秒後にチェック終了
                     setTimeout(() => clearInterval(checkInterval), 8000);
@@ -2416,18 +2435,18 @@
                 
                 // ボールが読み込まれたら投げる
                 pokeball.addEventListener('loaded', function() {
-                    // モデルのマテリアルを修正してちらつきを防ぐ（Android対策強化）
+                    // モデルのマテリアルを修正（低スペック端末向け最適化）
                     const model = pokeball.getObject3D('mesh');
                     if (model) {
                         let meshIndex = 0;
                         model.traverse(function(node) {
                             if (node.isMesh) {
-                                // ジオメトリのスムージングを有効化
-                                if (node.geometry) {
-                                    node.geometry.computeVertexNormals();
-                                }
+                                // 低スペック端末向け：ジオメトリ簡素化（法線計算をスキップ）
+                                // if (node.geometry) {
+                                //     node.geometry.computeVertexNormals();
+                                // }
                                 
-                                // マテリアルの設定（Android向けちらつき対策強化）
+                                // マテリアルの設定（低スペック端末向け軽量化）
                                 if (node.material) {
                                     const materials = Array.isArray(node.material) ? node.material : [node.material];
                                     materials.forEach((mat, index) => {
@@ -2436,18 +2455,19 @@
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
                                         
-                                        // Android向け：polygonOffsetを大幅に強化
+                                        // polygonOffset（軽量化：計算を簡素化）
                                         mat.polygonOffset = true;
-                                        mat.polygonOffsetFactor = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
-                                        mat.polygonOffsetUnits = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
+                                        mat.polygonOffsetFactor = 1.0;
+                                        mat.polygonOffsetUnits = 1.0;
                                         
-                                        mat.flatShading = false;
-                                        mat.precision = 'highp';
+                                        // 低スペック端末向け：flatShadingでパフォーマンス向上
+                                        mat.flatShading = true;
+                                        mat.precision = 'mediump'; // highp → mediump（軽量化）
                                         
-                                        // PBRマテリアルの設定
+                                        // PBRマテリアル簡素化
                                         if (mat.metalness !== undefined) {
-                                            mat.metalness = 0.2;
-                                            mat.roughness = 0.5;
+                                            mat.metalness = 0;
+                                            mat.roughness = 0.8;
                                         }
                                         
                                         // 透明度設定
@@ -2455,17 +2475,17 @@
                                         mat.opacity = 1.0;
                                         mat.alphaTest = 0.5;
                                         
-                                        // 深度関数（Android向け）
+                                        // 深度関数
                                         mat.depthFunc = THREE.LessEqualDepth;
                                         
-                                        // Android向け：dithering有効化（ちらつきを拡散）
+                                        // dithering（ちらつき対策）
                                         mat.dithering = true;
                                         
                                         mat.needsUpdate = true;
                                     });
                                     
-                                    // renderOrderを大きく設定（Android向け）
-                                    node.renderOrder = 1000 + meshIndex * 10;
+                                    // renderOrder（簡素化）
+                                    node.renderOrder = 1000 + meshIndex;
                                 }
                                 meshIndex++;
                             }
@@ -2474,7 +2494,7 @@
                     
                     pokeball.components['pokeball-throwable'].throw(forward, speed);
                     
-                    // 当たり判定チェック（フレームごと）
+                    // 当たり判定チェック（低スペック端末向け：間隔を延長）
                     let hasHit = false;
                     const checkInterval = setInterval(() => {
                         if (hasHit) return;
@@ -2567,7 +2587,7 @@
                                 break;
                             }
                         }
-                    }, 16);
+                    }, 30); // 16ms → 30ms（低スペック端末向け軽量化）
                     
                     // 8秒後にチェック終了
                     setTimeout(() => clearInterval(checkInterval), 8000);
