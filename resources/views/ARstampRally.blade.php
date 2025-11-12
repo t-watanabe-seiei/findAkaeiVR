@@ -574,11 +574,16 @@
             text-align: center;
             z-index: 2000;
             display: none;
+            pointer-events: none;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
         
         .captured-message.show {
             display: block;
+            pointer-events: auto;
+            opacity: 1;
         }
         
         .captured-message h2 {
@@ -1401,19 +1406,25 @@
             if (STAMPS[stampId]) {
                 animalName.textContent = `${STAMPS[stampId].icon} ${STAMPS[stampId].name}`;
                 currentCapturedAnimal = stampId;
+                // インラインスタイルをリセット
+                message.style.display = '';
+                message.style.pointerEvents = '';
+                message.style.visibility = '';
+                // showクラスを追加
                 message.classList.add('show');
             }
         }
         
         function hideCapturedMessage() {
             const message = document.getElementById('captured-message');
+            // showクラスを削除（opacity: 0, pointer-events: none になる）
             message.classList.remove('show');
-            // 強制的に非表示にする
-            message.style.display = 'none';
-            // 少し待ってから display を元に戻す（CSSトランジション用）
+            // 確実に非表示にする
             setTimeout(() => {
-                message.style.display = '';
-            }, 100);
+                message.style.display = 'none';
+                message.style.pointerEvents = 'none';
+                message.style.visibility = 'hidden';
+            }, 350); // CSSトランジション後に完全非表示
             currentCapturedAnimal = null;
         }
         
@@ -1423,6 +1434,15 @@
                 const stampId = currentCapturedAnimal;
                 
                 if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
+                    // まずメッセージを即座に非表示
+                    const message = document.getElementById('captured-message');
+                    message.classList.remove('show');
+                    message.style.display = 'none';
+                    message.style.pointerEvents = 'none';
+                    message.style.visibility = 'hidden';
+                    message.style.opacity = '0';
+                    currentCapturedAnimal = null;
+                    
                     // 動物を逃がす
                     releaseAnimal(stampId);
                     
@@ -1433,9 +1453,6 @@
                         model.resetCaptureState();
                         console.log('Model reset:', modelId);
                     }
-                    
-                    // メッセージを確実に非表示にする
-                    hideCapturedMessage();
                     
                     // マーカーが現在見えている場合、モデルを表示
                     if (model) {
