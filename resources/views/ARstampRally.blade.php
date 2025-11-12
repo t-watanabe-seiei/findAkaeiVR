@@ -1928,23 +1928,18 @@
                 });
             }
             
-            // 画面タップでポケボールを投げる
-            scene.addEventListener('click', function(event) {
-                // UIボタンのクリックは無視
-                if (event.target.id === 'stamp-book-button' || 
-                    event.target.id === 'camera-button' ||
-                    event.target.id === 'video-button' ||
-                    event.target.id === 'switch-camera-button') {
-                    return;
-                }
-                
-                throwPokeball(event);
-            });
+            // フリック（スワイプ）検出用の変数
+            let flickStartX = 0;
+            let flickStartY = 0;
+            let flickStartTime = 0;
+            let isFlicking = false;
             
-            scene.addEventListener('touchend', function(event) {
-                // UIボタンのタップは無視
-                const touch = event.changedTouches[0];
+            // フリック検出システム
+            scene.addEventListener('touchstart', function(event) {
+                const touch = event.touches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // UIボタンのタップは無視
                 if (element && (element.id === 'stamp-book-button' || 
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
@@ -1956,8 +1951,267 @@
                     return;
                 }
                 
-                throwPokeball(event);
+                // フリック開始位置と時間を記録
+                flickStartX = touch.clientX;
+                flickStartY = touch.clientY;
+                flickStartTime = Date.now();
+                isFlicking = true;
             });
+            
+            scene.addEventListener('touchend', function(event) {
+                if (!isFlicking) return;
+                
+                const touch = event.changedTouches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // UIボタンのタップは無視
+                if (element && (element.id === 'stamp-book-button' || 
+                    element.id === 'camera-button' ||
+                    element.id === 'video-button' ||
+                    element.id === 'switch-camera-button' ||
+                    element.closest('#stamp-book-button') ||
+                    element.closest('#camera-button') ||
+                    element.closest('#video-button') ||
+                    element.closest('#switch-camera-button'))) {
+                    isFlicking = false;
+                    return;
+                }
+                
+                // フリック終了位置と時間を計算
+                const flickEndX = touch.clientX;
+                const flickEndY = touch.clientY;
+                const flickEndTime = Date.now();
+                
+                // フリックの距離と時間を計算
+                const deltaX = flickEndX - flickStartX;
+                const deltaY = flickEndY - flickStartY;
+                const deltaTime = flickEndTime - flickStartTime;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                // フリックの速度を計算（ピクセル/ミリ秒）
+                const velocity = distance / deltaTime;
+                
+                console.log('Flick detected:', {
+                    distance: distance,
+                    deltaTime: deltaTime,
+                    velocity: velocity,
+                    direction: { x: deltaX, y: deltaY }
+                });
+                
+                // 最小フリック距離（30ピクセル）と最大時間（300ms）をチェック
+                if (distance > 30 && deltaTime < 300) {
+                    // フリック情報を使ってポケボールを投げる
+                    throwPokeballWithFlick(flickStartX, flickStartY, deltaX, deltaY, velocity);
+                } else if (distance < 30) {
+                    // タップとして処理（従来の方法）
+                    throwPokeball(event);
+                }
+                
+                isFlicking = false;
+            });
+            
+            // フリック情報を使ってポケボールを投げる
+            function throwPokeballWithFlick(startX, startY, deltaX, deltaY, velocity) {
+                const camera = scene.camera;
+                if (!camera) return;
+                
+                // カメラの位置から開始
+                const cameraPos = camera.getWorldPosition(new THREE.Vector3());
+                
+                // ポケボールを生成
+                const pokeball = document.createElement('a-entity');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
+                pokeball.setAttribute('scale', '0.1 0.1 0.1');
+                pokeball.setAttribute('pokeball-throwable', '');
+                pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
+                
+                scene.appendChild(pokeball);
+                
+                // カメラの向きと方向ベクトルを取得
+                const cameraQuaternion = camera.quaternion.clone();
+                
+                // 画面の幅と高さを取得
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                // フリックの方向を正規化（-1 〜 1の範囲）
+                const normalizedDeltaX = (deltaX / screenWidth) * 2;
+                const normalizedDeltaY = -(deltaY / screenHeight) * 2; // Y軸は反転
+                
+                // カメラの前方向ベクトルを取得
+                const forward = new THREE.Vector3(0, 0, -1);
+                forward.applyQuaternion(cameraQuaternion);
+                
+                // カメラの右方向ベクトルを取得
+                const right = new THREE.Vector3(1, 0, 0);
+                right.applyQuaternion(cameraQuaternion);
+                
+                // カメラの上方向ベクトルを取得
+                const up = new THREE.Vector3(0, 1, 0);
+                up.applyQuaternion(cameraQuaternion);
+                
+                // フリックの方向を3D空間に変換
+                const throwDirection = new THREE.Vector3();
+                throwDirection.add(forward.multiplyScalar(1.0)); // 基本は前方
+                throwDirection.add(right.multiplyScalar(normalizedDeltaX * 0.5)); // 左右
+                throwDirection.add(up.multiplyScalar(normalizedDeltaY * 0.3)); // 上下
+                throwDirection.normalize();
+                
+                // フリックの速度を投げる速度にマッピング
+                // velocity は通常 0.1 〜 3 くらいの範囲
+                const minSpeed = 10;
+                const maxSpeed = 25;
+                const speed = Math.min(maxSpeed, minSpeed + velocity * 10);
+                
+                console.log('Throw with flick - Speed:', speed, 'Direction:', throwDirection);
+                
+                // レイの方向に投げる
+                pokeball.addEventListener('loaded', function() {
+                    // モデルのマテリアルを修正してちらつきを防ぐ
+                    const model = pokeball.getObject3D('mesh');
+                    if (model) {
+                        model.traverse(function(node) {
+                            if (node.isMesh) {
+                                // ジオメトリのスムージングを有効化
+                                if (node.geometry) {
+                                    // 法線を再計算してスムーズに見せる
+                                    node.geometry.computeVertexNormals();
+                                }
+                                
+                                // マテリアルの設定
+                                if (node.material) {
+                                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+                                    materials.forEach(mat => {
+                                        // 両面レンダリング
+                                        mat.side = THREE.DoubleSide;
+                                        mat.depthWrite = true;
+                                        mat.depthTest = true;
+                                        
+                                        // Z-fightingを防ぐためのポリゴンオフセット
+                                        mat.polygonOffset = true;
+                                        mat.polygonOffsetFactor = 1;
+                                        mat.polygonOffsetUnits = 1;
+                                        
+                                        // フラットシェーディングを無効化（スムーズに見せる）
+                                        mat.flatShading = false;
+                                        
+                                        // アンチエイリアス効果を高める
+                                        mat.precision = 'highp';
+                                        
+                                        // 金属質感を調整（ポケボールらしく）
+                                        if (mat.metalness !== undefined) {
+                                            mat.metalness = 0.3;
+                                            mat.roughness = 0.4;
+                                        }
+                                        
+                                        // アルファ値を完全不透明に
+                                        mat.transparent = false;
+                                        mat.opacity = 1.0;
+                                        
+                                        // デプスバイアスを設定
+                                        mat.depthFunc = THREE.LessEqualDepth;
+                                        
+                                        // マテリアルの更新を強制
+                                        mat.needsUpdate = true;
+                                    });
+                                }
+                                
+                                // メッシュのレンダリング順序を設定
+                                node.renderOrder = 1000;
+                                
+                                // フラスタムカリングを無効化（遠くでも消えない）
+                                node.frustumCulled = false;
+                            }
+                        });
+                    }
+                    
+                    pokeball.components['pokeball-throwable'].throw(throwDirection, speed);
+                    
+                    // 当たり判定チェック（フレームごと）
+                    let hasHit = false; // 重複ヒット防止
+                    const checkInterval = setInterval(() => {
+                        if (hasHit) return;
+                        
+                        const ballPos = pokeball.object3D.getWorldPosition(new THREE.Vector3());
+                        
+                        // すべてのヒットボックスと衝突判定
+                        for (let i = 0; i < allHitboxes.length; i++) {
+                            const hitbox = allHitboxes[i];
+                            if (hitbox.checkCollision(ballPos)) {
+                                hasHit = true;
+                                const stampId = hitbox.data.stampId;
+                                console.log('✓ Hit!', stampId);
+                                
+                                // 衝突エフェクト
+                                showHitEffect(pokeball, hitbox);
+                                
+                                // 跳ね返りアニメーション
+                                const throwableComponent = pokeball.components['pokeball-throwable'];
+                                if (throwableComponent) {
+                                    // 速度を反転させて跳ね返り
+                                    throwableComponent.velocity.multiplyScalar(-0.6); // 60%の速度で跳ね返る
+                                    throwableComponent.velocity.y += 3; // 上向きに跳ねる
+                                    
+                                    // 回転速度を上げる
+                                    const model = pokeball.getObject3D('mesh');
+                                    if (model) {
+                                        model.traverse(function(node) {
+                                            if (node.isMesh) {
+                                                // ヒット時に一瞬拡大
+                                                const originalScale = pokeball.object3D.scale.clone();
+                                                pokeball.object3D.scale.multiplyScalar(1.3);
+                                                setTimeout(() => {
+                                                    pokeball.object3D.scale.copy(originalScale);
+                                                }, 100);
+                                            }
+                                        });
+                                    }
+                                    
+                                    // フェードアウト処理
+                                    setTimeout(() => {
+                                        let opacity = 1.0;
+                                        const fadeInterval = setInterval(() => {
+                                            opacity -= 0.05;
+                                            const model = pokeball.getObject3D('mesh');
+                                            if (model) {
+                                                model.traverse(function(node) {
+                                                    if (node.material) {
+                                                        const materials = Array.isArray(node.material) ? node.material : [node.material];
+                                                        materials.forEach(mat => {
+                                                            mat.transparent = true;
+                                                            mat.opacity = Math.max(0, opacity);
+                                                            mat.needsUpdate = true;
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                            
+                                            if (opacity <= 0) {
+                                                clearInterval(fadeInterval);
+                                                if (pokeball.parentNode) {
+                                                    pokeball.parentNode.removeChild(pokeball);
+                                                }
+                                            }
+                                        }, 50);
+                                    }, 1000); // 1秒後にフェードアウト開始
+                                }
+                                
+                                // スクリーンショット撮影してスタンプ登録
+                                setTimeout(() => {
+                                    captureModelScreenshot(function(screenshot) {
+                                        collectStamp(stampId, screenshot);
+                                    });
+                                }, 200);
+                                
+                                break;
+                            }
+                        }
+                    }, 16); // 約60FPS
+                    
+                    // 8秒後にチェック終了
+                    setTimeout(() => clearInterval(checkInterval), 8000);
+                });
+            }
             
             if (patternSheepMarker) {
                 patternSheepMarker.addEventListener('markerFound', function() {
