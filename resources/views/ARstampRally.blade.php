@@ -1041,7 +1041,7 @@
     
     <!-- スタンプ帳ボタン -->
     <button id="stamp-book-button" type="button" title="コレクションを見る">
-        📚
+        �
         <span class="badge">0</span>
     </button>
     
@@ -1088,7 +1088,7 @@
     <button id="switch-camera-button" type="button" title="カメラを切り替え">🔄</button>
     
     <!-- 動画撮影ボタン -->
-    <button id="video-button" type="button" title="動画を撮る">⏺️</button>
+    <button id="video-button" type="button" title="動画を撮る">🎥</button>
     
     <!-- カメラボタン -->
     <button id="camera-button" type="button" title="写真を撮る">📷</button>
