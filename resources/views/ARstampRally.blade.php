@@ -359,8 +359,8 @@
         /* カメラ切り替えボタン */
         #switch-camera-button {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
+            top: 30px;
+            left: 30px;
             width: 60px;
             height: 60px;
             background-color: rgba(255, 255, 255, 0.9);
@@ -487,57 +487,9 @@
             border: 2px solid white;
         }
         
-        /* 捕まえるボタン */
+        /* 捕まえるボタン（廃止） */
         #catch-button {
-            position: fixed;
-            top: 100px;
-            right: 30px;
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(145deg, #ff6b6b, #ee5555);
-            border: 3px solid white;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            font-weight: bold;
-            color: white;
-            box-shadow: 0 4px 12px rgba(255, 0, 0, 0.5);
-            transition: all 0.2s;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-        }
-        
-        #catch-button:active {
-            transform: scale(0.9);
-            box-shadow: 0 2px 6px rgba(255, 0, 0, 0.5);
-        }
-        
-        #catch-button.active {
-            background: linear-gradient(145deg, #4CAF50, #45a049);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.7);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.7);
-            }
-            50% {
-                box-shadow: 0 4px 18px rgba(76, 175, 80, 1);
-            }
-        }
-        
-        #catch-button .icon {
-            font-size: 26px;
-            margin-bottom: 2px;
-        }
-        
-        #catch-button .text {
-            font-size: 9px;
+            display: none;
         }
         
         /* スタンプ帳モーダル */
@@ -1987,125 +1939,15 @@
                 });
             }
             
-            // フリック（スワイプ）検出用の変数
-            let flickStartX = 0;
-            let flickStartY = 0;
-            let flickStartTime = 0;
-            let isFlicking = false;
-            let catchModeActive = false; // 捕獲モードのフラグ
+            // タップ時間によるボール投げシステム
+            let tapStartTime = 0;
+            let isTapping = false;
             
-            // 捕まえるボタンのイベントリスナー
-            const catchButton = document.getElementById('catch-button');
-            if (catchButton) {
-                catchButton.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    catchModeActive = !catchModeActive;
-                    
-                    if (catchModeActive) {
-                        catchButton.classList.add('active');
-                        catchButton.querySelector('.text').textContent = '捕獲中';
-                        console.log('捕獲モード: ON');
-                        
-                        // 捕獲モード中はモデルの回転を無効化
-                        disableModelRotation();
-                    } else {
-                        catchButton.classList.remove('active');
-                        catchButton.querySelector('.text').textContent = '捕まえる';
-                        console.log('捕獲モード: OFF');
-                        
-                        // 捕獲モード解除時はモデルの回転を有効化
-                        enableModelRotation();
-                    }
-                });
-            }
+            // 捕まえるボタンは廃止し、常に投げられる状態に
+            const catchModeActive = true;
             
-            // モデルの回転を無効化
-            function disableModelRotation() {
-                const models = [sheepModel, foxModel, penginModel, squirrelModel, rabbitModel];
-                models.forEach(model => {
-                    if (model && model.object3D) {
-                        model.object3D.userData.rotationEnabled = false;
-                    }
-                });
-            }
-            
-            // モデルの回転を有効化
-            function enableModelRotation() {
-                const models = [sheepModel, foxModel, penginModel, squirrelModel, rabbitModel];
-                models.forEach(model => {
-                    if (model && model.object3D) {
-                        model.object3D.userData.rotationEnabled = true;
-                    }
-                });
-            }
-            
-            // タッチイベントでモデル回転をブロック
-            document.addEventListener('touchstart', function(event) {
-                if (catchModeActive) {
-                    // 捕獲モード中はモデルへのタッチイベントを停止
-                    const touch = event.touches[0];
-                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    // UIボタン以外のタッチはモデル回転を防ぐためにデフォルト動作を抑制
-                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
-                        // A-Frameのデフォルトのタッチハンドリングを無効化
-                        const models = document.querySelectorAll('[gltf-model]');
-                        models.forEach(model => {
-                            if (model.object3D) {
-                                model.object3D.userData.preventRotation = true;
-                            }
-                        });
-                    }
-                }
-            }, true);
-            
-            document.addEventListener('touchmove', function(event) {
-                if (catchModeActive) {
-                    const touch = event.touches[0];
-                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    // UIボタン以外でモデル回転を防ぐ
-                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
-                        // タッチ移動によるモデル回転を防止
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
-                    }
-                }
-            }, { passive: false, capture: true });
-            
-            // A-Frameシーンでのタッチイベントも完全にブロック
+            // タップ開始検出
             scene.addEventListener('touchstart', function(event) {
-                if (catchModeActive) {
-                    const touch = event.touches[0];
-                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    // UIボタン以外の場合、イベント伝播を停止
-                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
-                        event.stopPropagation();
-                    }
-                }
-            }, true);
-            
-            scene.addEventListener('touchmove', function(event) {
-                if (catchModeActive) {
-                    const touch = event.touches[0];
-                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    // UIボタン以外の場合、イベント伝播を停止
-                    if (!element || (!element.id.includes('button') && !element.closest('[id$="-button"]'))) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
-                    }
-                }
-            }, { passive: false, capture: true });
-            
-            // フリック検出システム
-            scene.addEventListener('touchstart', function(event) {
-                // 捕獲モードがOFFの場合は何もしない
-                if (!catchModeActive) return;
-                
                 const touch = event.touches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 
@@ -2114,25 +1956,23 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
-                    element.id === 'catch-button' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
-                    element.closest('#catch-button') ||
                     element.closest('#switch-camera-button'))) {
                     return;
                 }
                 
-                // フリック開始位置と時間を記録
-                flickStartX = touch.clientX;
-                flickStartY = touch.clientY;
-                flickStartTime = Date.now();
-                isFlicking = true;
+                // タップ開始時間を記録
+                tapStartTime = Date.now();
+                isTapping = true;
+                
+                console.log('タップ開始');
             });
             
+            // タップ終了時にボールを投げる
             scene.addEventListener('touchend', function(event) {
-                // 捕獲モードがOFFの場合は何もしない
-                if (!catchModeActive || !isFlicking) return;
+                if (!isTapping) return;
                 
                 const touch = event.changedTouches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -2142,105 +1982,64 @@
                     element.id === 'camera-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
-                    element.id === 'catch-button' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
-                    element.closest('#catch-button') ||
                     element.closest('#switch-camera-button'))) {
-                    isFlicking = false;
+                    isTapping = false;
                     return;
                 }
                 
-                // フリック終了位置と時間を計算
-                const flickEndX = touch.clientX;
-                const flickEndY = touch.clientY;
-                const flickEndTime = Date.now();
+                // タップ時間を計算（ミリ秒）
+                const tapEndTime = Date.now();
+                const tapDuration = tapEndTime - tapStartTime;
                 
-                // フリックの距離と時間を計算
-                const deltaX = flickEndX - flickStartX;
-                const deltaY = flickEndY - flickStartY;
-                const deltaTime = flickEndTime - flickStartTime;
-                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                console.log('タップ時間:', tapDuration, 'ms');
                 
-                // フリックの速度を計算（ピクセル/ミリ秒）
-                const velocity = distance / deltaTime;
+                // タップ時間に応じた速度を計算
+                // 最小: 100ms → 速度10, 最大: 1000ms → 速度30
+                const minTapTime = 100;
+                const maxTapTime = 1000;
+                const minSpeed = 10;
+                const maxSpeed = 30;
                 
-                console.log('Flick detected:', {
-                    distance: distance,
-                    deltaTime: deltaTime,
-                    velocity: velocity,
-                    direction: { x: deltaX, y: deltaY }
-                });
+                const clampedDuration = Math.max(minTapTime, Math.min(maxTapTime, tapDuration));
+                const speed = minSpeed + ((clampedDuration - minTapTime) / (maxTapTime - minTapTime)) * (maxSpeed - minSpeed);
                 
-                // 最小フリック距離（30ピクセル）と最大時間（300ms）をチェック
-                if (distance > 30 && deltaTime < 300) {
-                    // フリック情報を使ってポケボールを投げる
-                    throwPokeballWithFlick(flickStartX, flickStartY, deltaX, deltaY, velocity);
-                } else {
-                    // タップは無視（捕獲モード中はフリックのみ有効）
-                    console.log('タップを検出 - 捕獲モード中はフリックが必要です');
-                }
+                console.log('投げる速度:', speed);
                 
-                isFlicking = false;
+                // 画面中央方向に投げる
+                throwPokeballToCenter(speed);
+                
+                isTapping = false;
             });
             
-            // フリック情報を使ってポケボールを投げる
-            function throwPokeballWithFlick(startX, startY, deltaX, deltaY, velocity) {
+            // 画面中央方向にポケボールを投げる（タップ時間で速度調整）
+            function throwPokeballToCenter(speed) {
                 const camera = scene.camera;
                 if (!camera) return;
                 
                 // カメラの位置から開始
                 const cameraPos = camera.getWorldPosition(new THREE.Vector3());
                 
-                // ポケボールを生成
+                // ポケボールを生成（サイズを2倍に: 0.1 → 0.2）
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_04.glb") }}');
-                pokeball.setAttribute('scale', '0.1 0.1 0.1');
+                pokeball.setAttribute('scale', '0.2 0.2 0.2');
                 pokeball.setAttribute('pokeball-throwable', '');
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
                 
                 scene.appendChild(pokeball);
                 
-                // カメラの向きと方向ベクトルを取得
+                // 画面中央方向（カメラの前方向）を取得
                 const cameraQuaternion = camera.quaternion.clone();
-                
-                // 画面の幅と高さを取得
-                const screenWidth = window.innerWidth;
-                const screenHeight = window.innerHeight;
-                
-                // フリックの方向を正規化（-1 〜 1の範囲）
-                const normalizedDeltaX = (deltaX / screenWidth) * 2;
-                const normalizedDeltaY = -(deltaY / screenHeight) * 2; // Y軸は反転
-                
-                // カメラの前方向ベクトルを取得
                 const forward = new THREE.Vector3(0, 0, -1);
                 forward.applyQuaternion(cameraQuaternion);
+                forward.normalize();
                 
-                // カメラの右方向ベクトルを取得
-                const right = new THREE.Vector3(1, 0, 0);
-                right.applyQuaternion(cameraQuaternion);
+                console.log('Throw to center - Speed:', speed, 'Direction:', forward);
                 
-                // カメラの上方向ベクトルを取得
-                const up = new THREE.Vector3(0, 1, 0);
-                up.applyQuaternion(cameraQuaternion);
-                
-                // フリックの方向を3D空間に変換
-                const throwDirection = new THREE.Vector3();
-                throwDirection.add(forward.multiplyScalar(1.0)); // 基本は前方
-                throwDirection.add(right.multiplyScalar(normalizedDeltaX * 0.5)); // 左右
-                throwDirection.add(up.multiplyScalar(normalizedDeltaY * 0.3)); // 上下
-                throwDirection.normalize();
-                
-                // フリックの速度を投げる速度にマッピング
-                // velocity は通常 0.1 〜 3 くらいの範囲
-                const minSpeed = 10;
-                const maxSpeed = 25;
-                const speed = Math.min(maxSpeed, minSpeed + velocity * 10);
-                
-                console.log('Throw with flick - Speed:', speed, 'Direction:', throwDirection);
-                
-                // レイの方向に投げる
+                // ボールが読み込まれたら投げる
                 pokeball.addEventListener('loaded', function() {
                     // モデルのマテリアルを修正してちらつきを防ぐ
                     const model = pokeball.getObject3D('mesh');
@@ -2249,7 +2048,6 @@
                             if (node.isMesh) {
                                 // ジオメトリのスムージングを有効化
                                 if (node.geometry) {
-                                    // 法線を再計算してスムーズに見せる
                                     node.geometry.computeVertexNormals();
                                 }
                                 
@@ -2257,53 +2055,37 @@
                                 if (node.material) {
                                     const materials = Array.isArray(node.material) ? node.material : [node.material];
                                     materials.forEach(mat => {
-                                        // 両面レンダリング
                                         mat.side = THREE.DoubleSide;
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
-                                        
-                                        // Z-fightingを防ぐためのポリゴンオフセット
                                         mat.polygonOffset = true;
                                         mat.polygonOffsetFactor = 1;
                                         mat.polygonOffsetUnits = 1;
-                                        
-                                        // フラットシェーディングを無効化（スムーズに見せる）
                                         mat.flatShading = false;
-                                        
-                                        // アンチエイリアス効果を高める
                                         mat.precision = 'highp';
                                         
-                                        // 金属質感を調整（ポケボールらしく）
                                         if (mat.metalness !== undefined) {
                                             mat.metalness = 0.3;
                                             mat.roughness = 0.4;
                                         }
                                         
-                                        // アルファ値を完全不透明に
                                         mat.transparent = false;
                                         mat.opacity = 1.0;
-                                        
-                                        // デプスバイアスを設定
                                         mat.depthFunc = THREE.LessEqualDepth;
-                                        
-                                        // マテリアルの更新を強制
                                         mat.needsUpdate = true;
                                     });
                                 }
                                 
-                                // メッシュのレンダリング順序を設定
                                 node.renderOrder = 1000;
-                                
-                                // フラスタムカリングを無効化（遠くでも消えない）
                                 node.frustumCulled = false;
                             }
                         });
                     }
                     
-                    pokeball.components['pokeball-throwable'].throw(throwDirection, speed);
+                    pokeball.components['pokeball-throwable'].throw(forward, speed);
                     
                     // 当たり判定チェック（フレームごと）
-                    let hasHit = false; // 重複ヒット防止
+                    let hasHit = false;
                     const checkInterval = setInterval(() => {
                         if (hasHit) return;
                         
@@ -2323,16 +2105,13 @@
                                 // 跳ね返りアニメーション
                                 const throwableComponent = pokeball.components['pokeball-throwable'];
                                 if (throwableComponent) {
-                                    // 速度を反転させて跳ね返り
-                                    throwableComponent.velocity.multiplyScalar(-0.6); // 60%の速度で跳ね返る
-                                    throwableComponent.velocity.y += 3; // 上向きに跳ねる
+                                    throwableComponent.velocity.multiplyScalar(-0.6);
+                                    throwableComponent.velocity.y += 3;
                                     
-                                    // 回転速度を上げる
                                     const model = pokeball.getObject3D('mesh');
                                     if (model) {
                                         model.traverse(function(node) {
                                             if (node.isMesh) {
-                                                // ヒット時に一瞬拡大
                                                 const originalScale = pokeball.object3D.scale.clone();
                                                 pokeball.object3D.scale.multiplyScalar(1.3);
                                                 setTimeout(() => {
@@ -2368,7 +2147,7 @@
                                                 }
                                             }
                                         }, 50);
-                                    }, 1000); // 1秒後にフェードアウト開始
+                                    }, 1000);
                                 }
                                 
                                 // スクリーンショット撮影してスタンプ登録
@@ -2381,7 +2160,7 @@
                                 break;
                             }
                         }
-                    }, 16); // 約60FPS
+                    }, 16);
                     
                     // 8秒後にチェック終了
                     setTimeout(() => clearInterval(checkInterval), 8000);
