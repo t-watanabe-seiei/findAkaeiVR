@@ -68,14 +68,16 @@
         AFRAME.registerComponent('pokeball-throwable', {
             init: function() {
                 this.velocity = new THREE.Vector3();
-                this.gravity = -9.8;
+                this.gravity = -4.5; // 重力を弱めて遠くまで飛ぶように
                 this.isThrown = false;
                 this.lifetime = 0;
-                this.maxLifetime = 5; // 5秒後に消滅
+                this.maxLifetime = 8; // 8秒後に消滅（より長く）
             },
             
             throw: function(direction, speed) {
                 this.velocity.copy(direction).multiplyScalar(speed);
+                // 上向きの初速を追加（放物線を描く）
+                this.velocity.y += 2.5; // 上方向への追加速度
                 this.isThrown = true;
                 this.lifetime = 0;
                 console.log('Pokeball thrown with velocity:', this.velocity);
@@ -96,9 +98,9 @@
                 pos.y += this.velocity.y * delta;
                 pos.z += this.velocity.z * delta;
                 
-                // 回転させる（投げた感じを出す）
-                this.el.object3D.rotation.x += delta * 5;
-                this.el.object3D.rotation.z += delta * 3;
+                // 回転させる（投げた感じを出す）- より速く回転
+                this.el.object3D.rotation.x += delta * 8;
+                this.el.object3D.rotation.z += delta * 5;
                 
                 // 寿命チェック
                 if (this.lifetime > this.maxLifetime || pos.y < -5) {
@@ -1696,7 +1698,7 @@
                 // レイの方向に投げる
                 pokeball.addEventListener('loaded', function() {
                     const direction = raycaster.ray.direction.clone();
-                    const speed = 8; // 投げる速さ
+                    const speed = 15; // 投げる速さを大幅に増加（8 → 15）
                     pokeball.components['pokeball-throwable'].throw(direction, speed);
                     
                     // 当たり判定チェック（フレームごと）
