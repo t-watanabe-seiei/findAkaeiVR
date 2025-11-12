@@ -620,31 +620,11 @@
             color: #4CAF50;
         }
         
-        .captured-message .release-button {
-            margin-top: 20px;
-            padding: 12px 30px;
-            font-size: 18px;
-            background: linear-gradient(145deg, #f44336, #d32f2f);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-            transition: all 0.2s;
-            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.3);
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        
-        .captured-message .release-button:hover {
-            background: linear-gradient(145deg, #e53935, #c62828);
-            transform: scale(1.05);
-        }
-        
-        .captured-message .release-button:active {
-            transform: scale(0.95);
+        .captured-message p {
+            margin: 15px 0 0 0;
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.6;
         }
         
         /* スタンプ帳モーダル */
@@ -1021,11 +1001,11 @@
     
     <!-- 捕獲済みメッセージ -->
     <div id="captured-message" class="captured-message">
-        <h2>🎉 すでに捕まえています 🎉</h2>
+        <h2>🎉 捕まえました！ 🎉</h2>
         <div class="animal-name" id="captured-animal-name"></div>
-        <button class="release-button" id="release-button">
-            この動物を逃がす 🔓
-        </button>
+        <p style="margin-top: 15px; font-size: 14px; color: #ccc;">
+            スタンプ帳のリセットボタンで<br>全てリセットできます
+        </p>
     </div>
     
     <!-- カメラ切り替えボタン -->
@@ -1354,23 +1334,6 @@
             return captured[stampId] === true;
         }
         
-        function releaseAnimal(stampId) {
-            // 捕獲状態を解除
-            const captured = getCapturedAnimals();
-            delete captured[stampId];
-            saveCapturedAnimals(captured);
-            
-            // スタンプも削除
-            const stamps = getCollectedStamps();
-            delete stamps[stampId];
-            saveCollectedStamps(stamps);
-            
-            // バッジ更新
-            updateStampBadge();
-            
-            console.log('Animal released:', stampId);
-        }
-        
         // スタンプを登録
         function collectStamp(stampId, screenshot = null) {
             const collectedStamps = getCollectedStamps();
@@ -1459,37 +1422,6 @@
             // currentCapturedAnimalをクリア
             currentCapturedAnimal = null;
         }
-        
-        // 「逃がす」ボタンのイベントリスナー（シンプル版）
-        document.getElementById('release-button').addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            if (!currentCapturedAnimal) return;
-            
-            const stampId = currentCapturedAnimal;
-            const modelId = stampId + '-model';
-            
-            if (!confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
-                return;
-            }
-            
-            console.log('=== RELEASING:', stampId, '===');
-            
-            // 動物を逃がす（LocalStorageから削除）
-            releaseAnimal(stampId);
-            
-            // メッセージを非表示
-            hideCapturedMessage();
-            
-            // 該当モデルの状態をリセット
-            const model = document.getElementById(modelId);
-            if (model && model.resetCaptureState) {
-                model.resetCaptureState();
-            }
-            
-            console.log('=== RELEASED:', stampId, '===');
-        });
         
         // 通常パーティクル（スタンプ取得時）
         function showNormalParticles() {
@@ -2728,13 +2660,27 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
-                // LocalStorageをクリア
+                // LocalStorageをクリア（スタンプ + 捕獲状態）
                 localStorage.removeItem('ar-stamp-rally');
+                localStorage.removeItem('ar-captured-animals');
+                
+                // 全てのモデルの状態をリセット
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model'];
+                modelIds.forEach(modelId => {
+                    const model = document.getElementById(modelId);
+                    if (model && model.resetCaptureState) {
+                        model.resetCaptureState();
+                        console.log('Model state reset:', modelId);
+                    }
+                });
+                
+                // 捕獲済みメッセージを非表示
+                hideCapturedMessage();
                 
                 // バッジを更新
                 updateStampBadge();
                 
-                console.log('✓ Stamps cleared successfully');
+                console.log('✓ All stamps and capture states cleared successfully');
             }, false);
             
             // 確認ダイアログの「キャンセル」ボタン
