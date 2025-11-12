@@ -1053,9 +1053,9 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: false; precision: mediump; powerPreference: high-performance;">
+        renderer="preserveDrawingBuffer: true; alpha: true; antialias: true; logarithmicDepthBuffer: true; precision: highp; powerPreference: high-performance;">
         
-        <a-entity camera="near: 0.01; far: 10000;"></a-entity>
+        <a-entity camera="near: 0.1; far: 1000;"></a-entity>
         
         <!-- iPhone対応：シーン全体で1つのライトのみ使用（パフォーマンス向上） -->
         <a-light type="ambient" intensity="1.5"></a-light>
@@ -2364,6 +2364,7 @@
                     // モデルのマテリアルを修正してちらつきを防ぐ
                     const model = pokeball.getObject3D('mesh');
                     if (model) {
+                        let meshIndex = 0;
                         model.traverse(function(node) {
                             if (node.isMesh) {
                                 // ジオメトリのスムージングを有効化
@@ -2371,33 +2372,45 @@
                                     node.geometry.computeVertexNormals();
                                 }
                                 
-                                // マテリアルの設定
+                                // マテリアルの設定（ちらつき対策強化）
                                 if (node.material) {
                                     const materials = Array.isArray(node.material) ? node.material : [node.material];
-                                    materials.forEach(mat => {
-                                        mat.side = THREE.DoubleSide;
+                                    materials.forEach((mat, index) => {
+                                        // 基本設定
+                                        mat.side = THREE.FrontSide; // DoubleSide → FrontSide に変更
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
+                                        
+                                        // polygonOffsetを強化（ちらつき対策）
                                         mat.polygonOffset = true;
-                                        mat.polygonOffsetFactor = 1;
-                                        mat.polygonOffsetUnits = 1;
+                                        mat.polygonOffsetFactor = meshIndex * 0.1 + index * 0.1;
+                                        mat.polygonOffsetUnits = meshIndex * 0.1 + index * 0.1;
+                                        
                                         mat.flatShading = false;
                                         mat.precision = 'highp';
                                         
+                                        // PBRマテリアルの設定
                                         if (mat.metalness !== undefined) {
-                                            mat.metalness = 0.3;
-                                            mat.roughness = 0.4;
+                                            mat.metalness = 0.2;
+                                            mat.roughness = 0.5;
                                         }
                                         
+                                        // 透明度設定
                                         mat.transparent = false;
                                         mat.opacity = 1.0;
+                                        mat.alphaTest = 0.5;
+                                        
+                                        // 深度関数
                                         mat.depthFunc = THREE.LessEqualDepth;
+                                        
                                         mat.needsUpdate = true;
                                     });
                                 }
                                 
-                                node.renderOrder = 1000;
+                                // renderOrderを個別に設定
+                                node.renderOrder = 1000 + meshIndex;
                                 node.frustumCulled = false;
+                                meshIndex++;
                             }
                         });
                     }
