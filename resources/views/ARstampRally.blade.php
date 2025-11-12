@@ -3030,6 +3030,8 @@
                     return;
                 }
                 
+                // ピンチ操作は無効化
+                /*
                 if (e.touches.length === 2) {
                     // ピンチ操作開始
                     e.preventDefault();
@@ -3041,7 +3043,8 @@
                     );
                     initialScale = currentScale;
                     isDragging = false;
-                } else if (e.touches.length === 1) {
+                } else */
+                if (e.touches.length === 1) {
                     // シングルタッチ（ドラッグ回転用）
                     const now = Date.now();
                     const timeSinceLastTap = now - lastTapTime;
@@ -3065,6 +3068,8 @@
             };
             
             let touchMoveHandler = function(e) {
+                // ピンチ操作は無効化
+                /*
                 if (e.touches.length === 2) {
                     // ピンチ操作中
                     e.preventDefault();
@@ -3090,7 +3095,8 @@
                             });
                         }
                     }
-                } else if (e.touches.length === 1 && isDragging) {
+                } else */
+                if (e.touches.length === 1 && isDragging) {
                     // ドラッグ回転（縦方向でX軸回転）
                     e.preventDefault();
                     const currentTouchY = e.touches[0].clientY;
