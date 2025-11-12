@@ -234,19 +234,48 @@
                     // anime02の終了イベントを監視
                     mixer.addEventListener('finished', (e) => {
                         if (e.action === action02) {
-                            console.log('anime02 finished - hiding model');
+                            console.log('anime02 finished - hiding model and marking captured');
                             // モデルを非表示
                             el.setAttribute('visible', 'false');
                             modelCaptured = true;
+                            
+                            // 捕獲状態を保存
+                            if (typeof markAnimalCaptured === 'function') {
+                                markAnimalCaptured(stampId);
+                            }
                         }
                     });
                 });
                 
                 // マーカー検出時の処理
                 const marker = el.parentElement;
+                const stampId = el.getAttribute('hitbox').split(':')[1].split(';')[0].trim();
+                
+                // 外部からリセットできる関数
+                el.resetCaptureState = () => {
+                    modelCaptured = false;
+                    el.setAttribute('visible', 'true');
+                    if (action01) {
+                        action01.reset();
+                        action01.play();
+                        currentAnimation = 1;
+                    }
+                    console.log('Capture state reset for:', stampId);
+                };
+                
                 marker.addEventListener('markerFound', () => {
                     console.log('✓ Marker found');
                     markerVisible = true;
+                    
+                    // 外部関数を使って捕獲済みかチェック
+                    if (typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId)) {
+                        console.log('Model already captured - showing message');
+                        el.setAttribute('visible', 'false');
+                        
+                        // 捕獲済みメッセージを表示
+                        showCapturedMessage(stampId);
+                        return;
+                    }
                     
                     // モデルが捕獲済みの場合は表示しない
                     if (modelCaptured) {
@@ -267,6 +296,10 @@
                 marker.addEventListener('markerLost', () => {
                     console.log('✗ Marker lost');
                     markerVisible = false;
+                    
+                    // 捕獲済みメッセージを非表示
+                    hideCapturedMessage();
+                    
                     if (!modelCaptured) {
                         if (action01) action01.stop();
                         if (action02) action02.stop();
@@ -526,6 +559,61 @@
         /* 捕まえるボタン（廃止） */
         #catch-button {
             display: none;
+        }
+        
+        /* 捕獲済みメッセージ */
+        .captured-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        .captured-message.show {
+            display: block;
+        }
+        
+        .captured-message h2 {
+            font-size: 24px;
+            margin: 0 0 20px 0;
+            color: #ffeb3b;
+        }
+        
+        .captured-message .animal-name {
+            font-size: 28px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .captured-message .release-button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: linear-gradient(145deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+            transition: all 0.2s;
+        }
+        
+        .captured-message .release-button:hover {
+            background: linear-gradient(145deg, #e53935, #c62828);
+            transform: scale(1.05);
+        }
+        
+        .captured-message .release-button:active {
+            transform: scale(0.95);
         }
         
         /* スタンプ帳モーダル */
@@ -900,6 +988,15 @@
         </div>
     </div>
     
+    <!-- 捕獲済みメッセージ -->
+    <div id="captured-message" class="captured-message">
+        <h2>🎉 すでに捕まえています 🎉</h2>
+        <div class="animal-name" id="captured-animal-name"></div>
+        <button class="release-button" id="release-button">
+            この動物を逃がす 🔓
+        </button>
+    </div>
+    
     <!-- カメラ切り替えボタン -->
     <button id="switch-camera-button" type="button" title="カメラを切り替え">🔄</button>
     
@@ -1204,6 +1301,45 @@
             localStorage.setItem('ar-stamp-rally', JSON.stringify(stamps));
         }
         
+        // 捕獲済み動物の管理（モデル非表示用）
+        function getCapturedAnimals() {
+            const stored = localStorage.getItem('ar-captured-animals');
+            return stored ? JSON.parse(stored) : {};
+        }
+        
+        function saveCapturedAnimals(captured) {
+            localStorage.setItem('ar-captured-animals', JSON.stringify(captured));
+        }
+        
+        function markAnimalCaptured(stampId) {
+            const captured = getCapturedAnimals();
+            captured[stampId] = true;
+            saveCapturedAnimals(captured);
+            console.log('Animal marked as captured:', stampId);
+        }
+        
+        function isAnimalCaptured(stampId) {
+            const captured = getCapturedAnimals();
+            return captured[stampId] === true;
+        }
+        
+        function releaseAnimal(stampId) {
+            // 捕獲状態を解除
+            const captured = getCapturedAnimals();
+            delete captured[stampId];
+            saveCapturedAnimals(captured);
+            
+            // スタンプも削除
+            const stamps = getCollectedStamps();
+            delete stamps[stampId];
+            saveCollectedStamps(stamps);
+            
+            // バッジ更新
+            updateStampBadge();
+            
+            console.log('Animal released:', stampId);
+        }
+        
         // スタンプを登録
         function collectStamp(stampId, screenshot = null) {
             const collectedStamps = getCollectedStamps();
@@ -1254,6 +1390,51 @@
                 console.error('Error playing sound:', error);
             }
         }
+        
+        // 捕獲済みメッセージを表示
+        let currentCapturedAnimal = null;
+        
+        function showCapturedMessage(stampId) {
+            const message = document.getElementById('captured-message');
+            const animalName = document.getElementById('captured-animal-name');
+            
+            if (STAMPS[stampId]) {
+                animalName.textContent = `${STAMPS[stampId].icon} ${STAMPS[stampId].name}`;
+                currentCapturedAnimal = stampId;
+                message.classList.add('show');
+            }
+        }
+        
+        function hideCapturedMessage() {
+            const message = document.getElementById('captured-message');
+            message.classList.remove('show');
+            currentCapturedAnimal = null;
+        }
+        
+        // 「逃がす」ボタンのイベントリスナー
+        document.getElementById('release-button').addEventListener('click', function() {
+            if (currentCapturedAnimal) {
+                const stampId = currentCapturedAnimal;
+                
+                if (confirm(`${STAMPS[stampId].name}を逃がしますか？\nスタンプも削除されます。`)) {
+                    // 動物を逃がす
+                    releaseAnimal(stampId);
+                    
+                    // メッセージを非表示
+                    hideCapturedMessage();
+                    
+                    // 該当モデルのアニメーションコンポーネントをリセット
+                    const modelId = stampId + '-model';
+                    const model = document.getElementById(modelId);
+                    if (model && model.resetCaptureState) {
+                        model.resetCaptureState();
+                        console.log('Model reset:', modelId);
+                    }
+                    
+                    alert(`${STAMPS[stampId].name}を逃がしました！\nマーカーを再び読み取ると表示されます。`);
+                }
+            }
+        });
         
         // 通常パーティクル（スタンプ取得時）
         function showNormalParticles() {
