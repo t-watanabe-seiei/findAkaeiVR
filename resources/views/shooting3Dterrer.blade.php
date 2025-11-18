@@ -5,11 +5,11 @@
     <meta charset="UTF-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>seieiVR Terrer</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="{{ asset('js/aframe.min.js') }}"></script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="{{ asset('js/aframe-extras.min.js') }}"></script>
+    <script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>
+    <script src="{{ asset('js/axios.min.js') }}"></script>
 
     <script>  
         // ゲーム状態管理
