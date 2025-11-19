@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AR Stamp Rally</title>
     <script>
         // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
@@ -854,6 +855,28 @@
             margin-top: 15px;
         }
         
+        #exchange-prize-button {
+            flex: 1;
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, opacity 0.3s;
+        }
+        
+        #exchange-prize-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+            background-color: #999 !important;
+        }
+        
+        #exchange-prize-button:not(:disabled):hover {
+            background-color: #F57C00;
+        }
+        
         /* 確認ダイアログ */
         #confirm-dialog {
             position: fixed;
@@ -1070,6 +1093,7 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
+                <button id="exchange-prize-button" type="button" style="background-color: #FF9800;">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
         </div>
@@ -1377,6 +1401,85 @@
         soundStamp01.preload = 'auto';
         soundStamp02.preload = 'auto';
         
+        // ========== 景品交換機能のヘルパー関数 ==========
+        
+        // デバイスフィンガープリント生成
+        function generateFingerprint() {
+            const data = [
+                navigator.userAgent,
+                navigator.language,
+                screen.width + 'x' + screen.height,
+                screen.colorDepth,
+                new Date().getTimezoneOffset(),
+                navigator.hardwareConcurrency || 'unknown',
+                navigator.deviceMemory || 'unknown'
+            ].join('|');
+            
+            let hash = 0;
+            for (let i = 0; i < data.length; i++) {
+                const char = data.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return 'fp_' + Math.abs(hash).toString(36);
+        }
+        
+        // デバイス情報収集
+        function collectDeviceInfo() {
+            return {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                colorDepth: screen.colorDepth,
+                pixelRatio: window.devicePixelRatio,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+                isAndroid: /Android/.test(navigator.userAgent)
+            };
+        }
+        
+        // マーカー読み取りを記録
+        async function recordMarkerScan(markerId, markerName) {
+            const fingerprint = generateFingerprint();
+            const deviceInfo = collectDeviceInfo();
+            
+            // CSRFトークンを取得
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/record-marker-scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken.content
+                    },
+                    body: JSON.stringify({
+                        markerId: markerId,
+                        markerName: markerName,
+                        fingerprint: fingerprint,
+                        deviceInfo: deviceInfo,
+                        scannedAt: new Date().toISOString()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✓ Marker scan recorded:', markerId, 'Total scans:', data.totalScans);
+                }
+            } catch (error) {
+                console.error('Error recording marker scan:', error);
+            }
+        }
+        
+        // ========== LocalStorage管理 ==========
+        
         // LocalStorageからスタンプデータを取得
         function getCollectedStamps() {
             const stored = localStorage.getItem('ar-stamp-rally');
@@ -1422,6 +1525,9 @@
                 };
                 saveCollectedStamps(collectedStamps);
                 updateStampBadge();
+                
+                // 動物をゲットした時だけマーカースキャンを記録
+                recordMarkerScan(stampId, STAMPS[stampId].name);
                 
                 // 新規取得の処理
                 const totalCollected = Object.keys(collectedStamps).length;
@@ -1881,6 +1987,11 @@
                 modal.scrollTop = 0;
                 console.log('Modal scrollTop set to 0');
             });
+            
+            // 景品交換ボタンの状態を更新（関数が定義されている場合のみ）
+            if (typeof updatePrizeButton === 'function') {
+                updatePrizeButton();
+            }
         }
         
         // アニメーション追加
@@ -2757,6 +2868,170 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
             });
+            
+            // ========== 景品交換機能 ==========
+            
+            // 景品交換状態をチェック
+            async function checkPrizeExchangeStatus() {
+                // CSRFトークンを取得
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    return { hasExchanged: false };
+                }
+                
+                try {
+                    const response = await fetch('/api/check-prize-exchange', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken.content
+                        },
+                        body: JSON.stringify({
+                            fingerprint: generateFingerprint()
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error checking prize exchange:', error);
+                    return { hasExchanged: false };
+                }
+            }
+            
+            // 景品交換を実行
+            async function exchangePrize() {
+                const collectedStamps = getCollectedStamps();
+                
+                // 全種類集めたかチェック
+                if (Object.keys(collectedStamps).length !== Object.keys(STAMPS).length) {
+                    alert('まだ全ての動物を捕まえていません！');
+                    return;
+                }
+                
+                const deviceInfo = collectDeviceInfo();
+                const fingerprint = generateFingerprint();
+                
+                // CSRFトークンを取得
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('エラー：ページをリロードしてください');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/exchange-prize', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken.content
+                        },
+                        body: JSON.stringify({
+                            fingerprint: fingerprint,
+                            deviceInfo: deviceInfo,
+                            stamps: collectedStamps
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // LocalStorageに交換済みフラグを保存
+                        localStorage.setItem('ar-prize-exchanged', 'true');
+                        localStorage.setItem('ar-prize-code', data.prizeCode);
+                        
+                        // ボタンを無効化
+                        updatePrizeButton();
+                        
+                        // 景品コードを表示
+                        showPrizeCode(data.prizeCode);
+                    } else {
+                        alert(data.message || '景品交換に失敗しました');
+                    }
+                } catch (error) {
+                    console.error('Error exchanging prize:', error);
+                    alert('通信エラーが発生しました');
+                }
+            }
+            
+            // 景品コードを表示
+            function showPrizeCode(code) {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10005;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 90%;">
+                        <h2 style="color: #4CAF50; margin: 0 0 20px 0;">🎉 景品交換完了！ 🎉</h2>
+                        <p style="font-size: 16px; margin-bottom: 20px;">以下のコードを受付でお見せください</p>
+                        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <div style="font-size: 32px; font-weight: bold; color: #333; letter-spacing: 3px;">${code}</div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="padding: 12px 30px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">閉じる</button>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+            }
+            
+            // 景品交換ボタンの状態を更新
+            async function updatePrizeButton() {
+                const button = document.getElementById('exchange-prize-button');
+                if (!button) return;
+                
+                const collectedStamps = getCollectedStamps();
+                const allCollected = Object.keys(collectedStamps).length === Object.keys(STAMPS).length;
+                
+                // LocalStorageとサーバーの両方をチェック
+                const localExchanged = localStorage.getItem('ar-prize-exchanged') === 'true';
+                const serverStatus = await checkPrizeExchangeStatus();
+                const hasExchanged = localExchanged || serverStatus.hasExchanged;
+                
+                if (hasExchanged) {
+                    button.disabled = true;
+                    button.style.backgroundColor = '#999';
+                    
+                    // 景品コードを表示
+                    const prizeCode = localStorage.getItem('ar-prize-code') || serverStatus.prizeCode;
+                    if (prizeCode) {
+                        button.textContent = `景品コード: ${prizeCode}`;
+                    } else {
+                        button.textContent = '交換済み';
+                    }
+                } else if (!allCollected) {
+                    button.disabled = true;
+                    button.style.backgroundColor = '#ccc';
+                    button.textContent = '全て捕まえると交換可能';
+                } else {
+                    button.disabled = false;
+                    button.style.backgroundColor = '#FF9800';
+                    button.textContent = '景品と交換する';
+                }
+            }
+            
+            // 景品交換ボタンのイベントリスナー
+            const exchangePrizeButton = document.getElementById('exchange-prize-button');
+            if (exchangePrizeButton) {
+                exchangePrizeButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exchangePrize();
+                });
+            }
+            
+            // ========== 景品交換機能ここまで ==========
             
             // スタンプリセットボタン
             const clearStampsButton = document.getElementById('clear-stamps');
