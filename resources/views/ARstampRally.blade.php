@@ -1403,9 +1403,143 @@
         
         // ========== 景品交換機能のヘルパー関数 ==========
         
-        // デバイスフィンガープリント生成
-        function generateFingerprint() {
+        // IndexedDB操作のヘルパー関数
+        const UserIdDB = {
+            dbName: 'ARStampRallyDB',
+            storeName: 'userIdStore',
+            version: 1,
+            
+            // DBを開く
+            openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+                    
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            db.createObjectStore(this.storeName);
+                        }
+                    };
+                });
+            },
+            
+            // ユーザーIDを保存
+            async saveUserId(userId) {
+                try {
+                    const db = await this.openDB();
+                    const transaction = db.transaction([this.storeName], 'readwrite');
+                    const store = transaction.objectStore(this.storeName);
+                    store.put(userId, 'userId');
+                    return new Promise((resolve, reject) => {
+                        transaction.oncomplete = () => resolve();
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB save error:', error);
+                }
+            },
+            
+            // ユーザーIDを取得
+            async getUserId() {
+                try {
+                    const db = await this.openDB();
+                    const transaction = db.transaction([this.storeName], 'readonly');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.get('userId');
+                    
+                    return new Promise((resolve, reject) => {
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB get error:', error);
+                    return null;
+                }
+            }
+        };
+        
+        // Cookie操作のヘルパー関数
+        const CookieHelper = {
+            // Cookieを設定（1年間有効）
+            setCookie(name, value, days = 365) {
+                const expires = new Date();
+                expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+                document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+            },
+            
+            // Cookieを取得
+            getCookie(name) {
+                const nameEQ = name + '=';
+                const ca = document.cookie.split(';');
+                for (let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+                }
+                return null;
+            }
+        };
+        
+        // ユニークなユーザーIDを生成
+        function generateUUID() {
+            return 'uid_' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        // ユニークなユーザーIDを取得または生成（localStorage + IndexedDB + Cookie）
+        async function getUserId() {
+            const storageKey = 'ar-user-id';
+            const cookieName = 'ar_user_id';
+            
+            // 1. localStorageから取得を試みる
+            let userId = localStorage.getItem(storageKey);
+            
+            // 2. なければCookieから取得を試みる
+            if (!userId) {
+                userId = CookieHelper.getCookie(cookieName);
+                if (userId) {
+                    console.log('✓ User ID restored from Cookie:', userId);
+                    localStorage.setItem(storageKey, userId);
+                }
+            }
+            
+            // 3. なければIndexedDBから取得を試みる
+            if (!userId) {
+                userId = await UserIdDB.getUserId();
+                if (userId) {
+                    console.log('✓ User ID restored from IndexedDB:', userId);
+                    localStorage.setItem(storageKey, userId);
+                    CookieHelper.setCookie(cookieName, userId);
+                }
+            }
+            
+            // 4. どこにもなければ新規生成
+            if (!userId) {
+                userId = generateUUID();
+                console.log('✓ New user ID generated:', userId);
+            }
+            
+            // 5. 3箇所すべてに保存
+            localStorage.setItem(storageKey, userId);
+            CookieHelper.setCookie(cookieName, userId);
+            await UserIdDB.saveUserId(userId);
+            
+            return userId;
+        }
+        
+        // デバイスフィンガープリント生成（補助的な識別情報として使用）
+        async function generateFingerprint() {
+            // ユーザーIDをベースに、デバイス情報を組み合わせる
+            const userId = await getUserId();
+            
             const data = [
+                userId, // ユニークなユーザーID（最重要）
                 navigator.userAgent,
                 navigator.language,
                 screen.width + 'x' + screen.height,
@@ -1442,7 +1576,7 @@
         
         // マーカー読み取りを記録
         async function recordMarkerScan(markerId, markerName) {
-            const fingerprint = generateFingerprint();
+            const fingerprint = await generateFingerprint();
             const deviceInfo = collectDeviceInfo();
             
             // CSRFトークンを取得
@@ -2888,7 +3022,7 @@
                             'X-CSRF-TOKEN': csrfToken.content
                         },
                         body: JSON.stringify({
-                            fingerprint: generateFingerprint()
+                            fingerprint: await generateFingerprint()
                         })
                     });
                     
@@ -2911,7 +3045,7 @@
                 }
                 
                 const deviceInfo = collectDeviceInfo();
-                const fingerprint = generateFingerprint();
+                const fingerprint = await generateFingerprint();
                 
                 // CSRFトークンを取得
                 const csrfToken = document.querySelector('meta[name="csrf-token"]');

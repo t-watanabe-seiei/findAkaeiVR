@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminController;
 
 Route::get('/welcome', function () {
     return view('welcome0');
@@ -41,3 +42,19 @@ Route::get('/movie', function () {
 // Auth::routes(); // Commented out - laravel/ui not installed
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+// 管理画面ルート
+Route::prefix('admin')->group(function () {
+    // ログイン関連（認証不要）
+    Route::get('/login', [AdminController::class, 'showLogin'])->name('admin.login');
+    Route::post('/login', [AdminController::class, 'login'])->name('admin.login.post');
+    
+    // 認証が必要なルート
+    Route::middleware('admin.auth')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+        Route::get('/logout', [AdminController::class, 'logout'])->name('admin.logout');
+        Route::post('/prizes/{id}/redeem', [AdminController::class, 'redeemPrize'])->name('admin.prizes.redeem');
+        Route::get('/exchanges', [AdminController::class, 'allExchanges'])->name('admin.exchanges');
+        Route::get('/scans', [AdminController::class, 'allScans'])->name('admin.scans');
+    });
+});

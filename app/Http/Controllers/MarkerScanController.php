@@ -36,7 +36,7 @@ class MarkerScanController extends Controller
             'marker_id' => $markerId,
             'marker_name' => $validated['markerName'],
             'scan_count' => $totalScans,
-            'scanned_at' => $validated['scannedAt'],
+            'scanned_at' => now(), // 現在のJST時刻を使用
             'user_agent' => $request->userAgent(),
             'ip_address' => $request->ip(),
             'device_info' => $validated['deviceInfo']
