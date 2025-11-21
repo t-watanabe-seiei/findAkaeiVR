@@ -18,6 +18,7 @@ class PrizeExchangeController extends Controller
         
         return response()->json([
             'hasExchanged' => $exchange !== null,
+            'isRedeemed' => $exchange ? $exchange->is_redeemed : false,
             'prizeCode' => $exchange ? $exchange->prize_code : null
         ]);
     }

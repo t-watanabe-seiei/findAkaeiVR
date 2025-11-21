@@ -3047,6 +3047,21 @@
                 const deviceInfo = collectDeviceInfo();
                 const fingerprint = await generateFingerprint();
                 
+                // サーバーステータスをチェック
+                const serverStatus = await checkPrizeExchangeStatus();
+                
+                // すでに使用済み（管理者が承認済み）の場合
+                if (serverStatus.isRedeemed) {
+                    alert('すでに景品と交換済みです');
+                    return;
+                }
+                
+                // 交換済みだがまだ未使用の場合、コードを再表示
+                if (serverStatus.hasExchanged && serverStatus.prizeCode) {
+                    showPrizeCode(serverStatus.prizeCode);
+                    return;
+                }
+                
                 // CSRFトークンを取得
                 const csrfToken = document.querySelector('meta[name="csrf-token"]');
                 if (!csrfToken) {
@@ -3055,6 +3070,7 @@
                     return;
                 }
                 
+                // 新規景品交換
                 try {
                     const response = await fetch('{{ url("/api/exchange-prize") }}', {
                         method: 'POST',
@@ -3076,7 +3092,7 @@
                         localStorage.setItem('ar-prize-exchanged', 'true');
                         localStorage.setItem('ar-prize-code', data.prizeCode);
                         
-                        // ボタンを無効化
+                        // ボタンを更新
                         updatePrizeButton();
                         
                         // 景品コードを表示
@@ -3128,31 +3144,37 @@
                 const collectedStamps = getCollectedStamps();
                 const allCollected = Object.keys(collectedStamps).length === Object.keys(STAMPS).length;
                 
-                // LocalStorageとサーバーの両方をチェック
-                const localExchanged = localStorage.getItem('ar-prize-exchanged') === 'true';
+                // サーバーステータスをチェック
                 const serverStatus = await checkPrizeExchangeStatus();
-                const hasExchanged = localExchanged || serverStatus.hasExchanged;
                 
-                if (hasExchanged) {
+                // 使用済み（管理者が承認済み）の場合
+                if (serverStatus.isRedeemed) {
                     button.disabled = true;
                     button.style.backgroundColor = '#999';
-                    
-                    // 景品コードを表示
-                    const prizeCode = localStorage.getItem('ar-prize-code') || serverStatus.prizeCode;
-                    if (prizeCode) {
-                        button.textContent = `景品コード: ${prizeCode}`;
-                    } else {
-                        button.textContent = '交換済み';
-                    }
-                } else if (!allCollected) {
+                    button.textContent = '使用済み';
+                    return;
+                }
+                
+                // 交換済みだが未使用の場合（コードを再表示可能）
+                if (serverStatus.hasExchanged && serverStatus.prizeCode) {
+                    button.disabled = false;
+                    button.style.backgroundColor = '#4CAF50';
+                    button.textContent = '景品コードを表示';
+                    return;
+                }
+                
+                // まだ全て捕まえていない場合
+                if (!allCollected) {
                     button.disabled = true;
                     button.style.backgroundColor = '#ccc';
                     button.textContent = '全て捕まえると交換可能';
                 } else {
+                    // 新規交換可能
                     button.disabled = false;
                     button.style.backgroundColor = '#FF9800';
                     button.textContent = '景品と交換する';
                 }
+            }
             }
             
             // 景品交換ボタンのイベントリスナー
