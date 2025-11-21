@@ -1587,7 +1587,7 @@
             }
             
             try {
-                const response = await fetch('/api/record-marker-scan', {
+                const response = await fetch('{{ url("/api/record-marker-scan") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3015,7 +3015,7 @@
                 }
                 
                 try {
-                    const response = await fetch('/api/check-prize-exchange', {
+                    const response = await fetch('{{ url("/api/check-prize-exchange") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -3056,7 +3056,7 @@
                 }
                 
                 try {
-                    const response = await fetch('/api/exchange-prize', {
+                    const response = await fetch('{{ url("/api/exchange-prize") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
