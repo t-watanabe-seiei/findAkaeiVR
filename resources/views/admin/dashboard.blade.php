@@ -470,7 +470,7 @@
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-            fetch(`/admin/prizes/${id}/redeem`, {
+            fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
