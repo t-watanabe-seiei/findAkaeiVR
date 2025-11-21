@@ -140,13 +140,24 @@
             flex-wrap: wrap;
         }
         .pagination a,
-        .pagination span {
-            padding: 8px 12px;
+        .pagination span,
+        .pagination li a,
+        .pagination li span {
+            padding: 6px 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             text-decoration: none;
             color: #667eea;
             transition: all 0.3s;
+            font-size: 14px; /* 安定した大きさに固定 */
+            line-height: 1; /* 矢印を縦方向に中央寄せ */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px; /* 矢印が巨大になるのを防ぐ */
+            max-width: 56px; /* 保険：極端に大きくなるのを防止 */
+            max-height: 56px; /* 保険：極端に大きくなるのを防止 */
+            box-sizing: border-box;
         }
         .pagination a:hover {
             background: #667eea;
@@ -160,6 +171,127 @@
         .pagination .disabled span {
             color: #ccc;
             cursor: not-allowed;
+        }
+
+        /* ページャー矢印の例外処理（もし < / > が大きく表示される場合） */
+        .pagination .page-link {
+            font-size: 14px;
+            padding: 6px 10px;
+        }
+
+        /* ページャー内の page-item 用にさらに具体的なルール（Bootstrap/Tailwind 互換） */
+        .pagination .page-item .page-link {
+            font-size: 14px !important;
+            padding: 6px 10px !important;
+            min-width: 36px !important;
+            max-width: 56px !important;
+            max-height: 56px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* 追加対策: ページネーションの矢印が別スタイルで巨大化しているときの上書き */
+        .pagination .page-link svg,
+        .pagination .page-link i,
+        .pagination .page-link .icon,
+        .pagination .page-link::before,
+        .pagination .page-link::after {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+            font-size: 18px !important;
+            line-height: 18px !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
+
+        /* Font Awesome や他のアイコンフォントが矢印に使われている場合の保護 */
+        .pagination .page-link .fa,
+        .pagination .page-link .fas,
+        .pagination .page-link .far,
+        .pagination .page-link .fal {
+            font-size: 18px !important;
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        /* li の内容が伸びてしまっている場合に備え、li 要素自体を安定化 */
+        .pagination li {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 2px !important;
+        }
+
+        /* 追加保険: ページネーション内の全ての子要素を小さく留める */
+        .pagination .page-link * {
+            max-width: 1.6em !important;
+            max-height: 1.6em !important;
+            overflow: hidden !important;
+            display: inline-block !important;
+            transform: none !important;
+        }
+
+        /* 矢印が改行されて縦に伸びるケース対策 */
+        .pagination {
+            white-space: nowrap !important;
+        }
+
+        /* Tailwind の paginator に対応（Laravel の links() が出力） */
+        nav[role="navigation"] svg {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+        }
+
+        /* Tailwind の w-5 / h-5 を上書き（巨大化している場合に効く） */
+        nav[role="navigation"] .w-5, nav[role="navigation"] .h-5 {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        /* さらにページャー内部のすべてのSVGを縮小する保険 */
+        nav[role="navigation"] .relative.inline-flex svg,
+        nav[role="navigation"] .relative.inline-flex .icon {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        /* .pagination-wrapper を付けたコンテナ内の nav にだけ効くスタイル（優先度高） */
+        .pagination-wrapper nav[role="navigation"] svg,
+        .pagination-wrapper nav[role="navigation"] .w-5,
+        .pagination-wrapper nav[role="navigation"] .h-5 {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+        }
+
+        /* ページネーション内の要素のフォントサイズを抑制（モバイルで拡大するのを防ぐ） */
+        .pagination-wrapper nav[role="navigation"] a,
+        .pagination-wrapper nav[role="navigation"] span {
+            font-size: 14px !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 6px 8px !important;
+        }
+
+        /* アイコン・SVGが挿入されている場合の補正 */
+        .pagination svg, .pagination .icon {
+            width: 18px !important;
+            height: 18px !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
+
+        /* 方向矢印の文字が大きく表示される場合のフォールバック */
+        .pagination a.page-link, .pagination span.page-link {
+            font-size: 14px !important;
+            padding: 8px 10px !important;
         }
         .chart-section {
             display: grid;
@@ -292,7 +424,9 @@
                     @endforelse
                 </tbody>
             </table>
-            {{ $recentExchanges->links() }}
+            <div class="pagination-wrapper">
+                {{ $recentExchanges->links() }}
+            </div>
         </div>
 
         <div class="card">
@@ -323,7 +457,9 @@
                     @endforelse
                 </tbody>
             </table>
-            {{ $redeemedPrizes->links() }}
+            <div class="pagination-wrapper">
+                {{ $redeemedPrizes->links() }}
+            </div>
         </div>
     </div>
 
@@ -403,7 +539,9 @@
                         @endforelse
                     </tbody>
                 </table>
-                {{ $dailyScans->links() }}
+                <div class="pagination-wrapper">
+                    {{ $dailyScans->links() }}
+                </div>
             </div>
             <div class="chart-container">
                 <h3>📊 日別スキャン推移</h3>
@@ -459,7 +597,9 @@
                 @endforelse
             </tbody>
         </table>
-        {{ $recentScans->links() }}
+        <div class="pagination-wrapper">
+            {{ $recentScans->links() }}
+        </div>
     </div>
 
     <script>
