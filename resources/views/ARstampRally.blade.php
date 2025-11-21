@@ -3175,7 +3175,6 @@
                     button.textContent = '景品と交換する';
                 }
             }
-            }
             
             // 景品交換ボタンのイベントリスナー
             const exchangePrizeButton = document.getElementById('exchange-prize-button');
