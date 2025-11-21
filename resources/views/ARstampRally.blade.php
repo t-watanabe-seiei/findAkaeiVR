@@ -3052,7 +3052,8 @@
                 
                 // すでに使用済み（管理者が承認済み）の場合
                 if (serverStatus.isRedeemed) {
-                    alert('すでに景品と交換済みです');
+                    // 使用済みの景品コードと日時を表示
+                    showRedeemedPrizeInfo(serverStatus.prizeCode, serverStatus.exchangedAt);
                     return;
                 }
                 
@@ -3130,6 +3131,49 @@
                             <div style="font-size: 32px; font-weight: bold; color: #333; letter-spacing: 3px;">${code}</div>
                         </div>
                         <button onclick="this.parentElement.parentElement.remove()" style="padding: 12px 30px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">閉じる</button>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+            }
+            
+            // 使用済み景品情報を表示
+            function showRedeemedPrizeInfo(code, exchangedAt) {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10005;
+                `;
+                
+                // 日時をフォーマット
+                let dateTimeStr = '';
+                if (exchangedAt) {
+                    const date = new Date(exchangedAt);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    dateTimeStr = `${year}年${month}月${day}日 ${hours}:${minutes}`;
+                }
+                
+                modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 90%;">
+                        <h2 style="color: #999; margin: 0 0 20px 0;">✅ すでに景品と交換済みです</h2>
+                        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 10px;">景品コード</div>
+                            <div style="font-size: 28px; font-weight: bold; color: #333; letter-spacing: 3px; margin-bottom: 15px;">${code}</div>
+                            ${dateTimeStr ? `<div style="font-size: 14px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">交換日時: ${dateTimeStr}</div>` : ''}
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="padding: 12px 30px; background: #999; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">閉じる</button>
                     </div>
                 `;
                 
