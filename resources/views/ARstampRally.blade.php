@@ -593,6 +593,29 @@
             align-items: center;
             border: 2px solid white;
         }
+
+        /* 操作説明ボタン */
+        #guide-button {
+            position: fixed;
+            top: 30px;
+            right: 100px; /* stamp-book-button の少し左 */
+            width: 56px;
+            height: 56px;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 2px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        #guide-button:active { transform: scale(0.95); }
+        #guide-button:hover { background-color: rgba(245,245,245,0.95); }
         
         /* 捕まえるボタン（廃止） */
         #catch-button {
@@ -711,6 +734,74 @@
             overflow-y: scroll !important;
             -webkit-overflow-scrolling: touch !important;
         }
+
+        /* 操作説明モーダル */
+        #guide-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            display: none;
+            z-index: 10002;
+            -webkit-overflow-scrolling: touch;
+            overflow-y: auto !important;
+        }
+
+        #guide-content {
+            background: #fff;
+            border-radius: 12px;
+            /* より広く、かつモバイルでは横幅に合わせる */
+            width: 92vw;
+            max-width: 1000px;
+            margin: 24px auto;
+            padding: 16px 18px;
+            box-sizing: border-box;
+        }
+
+        #guide-content h2 {
+            margin: 6px 0 10px 0;
+            text-align: center;
+            font-size: 18px;
+            color: #222;
+        }
+
+        /* tighten spacing by ~30% */
+        .guide-steps { display: flex; flex-direction: column; gap: 8px; }
+        .guide-steps .step { display:flex; gap: 8px; align-items:flex-start; }
+        /* 大きなメイン画像 (1枚だけ表示) */
+        .guide-steps .step.main { justify-content: center; }
+        /* サムネイル画像は小さめ（第3ステップなど） */
+        .guide-steps .step img { width: 120px; height: 84px; object-fit:cover; border-radius:8px; border:1px solid #eee; }
+
+        /* 大きなメイン画像 (1枚だけ表示) — より具体的なセレクタで優先適用 */
+        .guide-steps .step.main img.howto-main {
+            width: 80%;
+            max-width: 480px;
+            height: auto;
+            max-height: 360px;
+            object-fit: cover;
+            border-radius: 12px;
+            border:1px solid #eee;
+            display:block;
+            margin: 0 auto 10px auto;
+        }
+        /* キャプションスタイル */
+        .howto-caption { text-align:center; font-size:13px; color:#666; margin-bottom:12px; }
+        /* サムネイル画像は小さめ（第3ステップなど） */
+        .guide-steps .step img { width: 120px; height: 84px; object-fit:cover; border-radius:8px; border:1px solid #eee; }
+        .guide-steps .step .step-text { font-size: 14px; color:#333; line-height: 1.12; }
+        .guide-steps .step .step-text strong { display:block; margin-bottom:6px; font-size:15px; }
+
+        .guide-close-row { text-align: right; margin-top: 12px; }
+        #close-guide { padding: 8px 12px; border-radius: 8px; background:#333; color:#fff; border:none; cursor:pointer; }
+        #close-guide:active { transform: scale(0.98); }
+        /* guide notes (privacy / cookies / photo) */
+        .guide-notes { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; color: #333; font-size: 13px; }
+        .guide-note { display:flex; gap: 10px; align-items:flex-start; margin-bottom: 8px; }
+        .note-icon { width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:18px; flex: 0 0 34px; }
+        .note-text { line-height: 1.12; }
         
         #stamp-book-content {
             background-color: white;
@@ -1068,6 +1159,11 @@
         <span class="badge">0</span>
     </button>
     
+    <!-- 操作説明ボタン (ガイド) -->
+    <button id="guide-button" type="button" title="操作説明" aria-label="操作説明">
+        <div class="icon">❓</div>
+    </button>
+    
     <!-- 捕まえるボタン -->
     <button id="catch-button" type="button" title="タップで捕獲モード">
         <div class="icon">⚾</div>
@@ -1099,6 +1195,65 @@
             <!-- CGクレジット（Meshyモデルの表記） -->
             <div id="cg-credits" style="margin-top:8px; font-size:5px; color:#666; text-align:center;">
                 Model created with Meshy — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">CC BY 4.0</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作説明モーダル -->
+    <div id="guide-modal" aria-hidden="true">
+        <div id="guide-content">
+            <h2>How to play</h2>
+            <div class="guide-steps">
+                <!-- 大きな操作イメージを1枚だけ表示 -->
+                <div class="step main">
+                    <img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" />
+                    <!-- <div class="howto-caption">Point your camera at a marker, then tap the screen to throw a ball. (This picture shows how to use it.)</div> -->
+                </div>
+
+                <div class="step">
+                    <div class="step-text">
+                        <strong>Find a marker</strong>
+                        <p>Look around for markers in the venue and point your camera at one.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-text">
+                        <strong>Tap to throw</strong>
+                        <p>When a 3D animal appears, tap the screen to throw a ball and try to catch it.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-text">
+                        <strong>Prize exchange</strong>
+                        <p>Collect 10 or more markers in the venue to exchange for a prize.</p>
+                        <p>Where: Special area next to the escalator on the 2nd floor.</p>
+                        <p>When: Dec 13, 2025 — 14:00 to 16:00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- extra short notes (simple English) -->
+            <div class="guide-notes" aria-hidden="false">
+                <div class="guide-note">
+                    <div class="note-icon">📸🎥</div>
+                    <div class="note-text"><strong>Photo & video</strong> — You can take photos and videos with the 3D animals. The camera saves them on your device.</div>
+                </div>
+
+                <div class="guide-note">
+                    <div class="note-icon">🔒</div>
+                    <div class="note-text"><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.</div>
+                </div>
+
+                <div class="guide-note">
+                    <div class="note-icon">🍪</div>
+                    <div class="note-text"><strong>Cookies</strong> — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.</div>
+                </div>
+            </div>
+
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">閉じる</button>
             </div>
         </div>
     </div>
@@ -3006,6 +3161,41 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
             });
+
+            // 操作説明ボタン（ヘルプ）
+            const guideButton = document.getElementById('guide-button');
+            if (guideButton) {
+                guideButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = document.getElementById('guide-modal');
+                    modal.style.display = 'block';
+                    modal.setAttribute('aria-hidden', 'false');
+                    // prevent scene taps while modal open
+                });
+            }
+
+            const closeGuideButton = document.getElementById('close-guide');
+            if (closeGuideButton) {
+                closeGuideButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = document.getElementById('guide-modal');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                });
+            }
+
+            // クリック（背景領域）でモーダルを閉じる
+            const guideModal = document.getElementById('guide-modal');
+            if (guideModal) {
+                guideModal.addEventListener('click', function(e) {
+                    if (e.target === guideModal) {
+                        guideModal.style.display = 'none';
+                        guideModal.setAttribute('aria-hidden', 'true');
+                    }
+                });
+            }
             
             // ========== 景品交換機能 ==========
             
