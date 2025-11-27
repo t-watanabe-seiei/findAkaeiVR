@@ -1243,12 +1243,11 @@
 
                     </div>
                 </div>
+
+                            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
             </div>
 
-
-
-            <div class="guide-close-row">
-                <button id="close-guide" type="button">close</button>
             </div>
         </div>
     </div>
