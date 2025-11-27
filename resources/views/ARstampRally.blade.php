@@ -800,7 +800,7 @@
         /* guide notes (privacy / cookies / photo) */
         .guide-notes { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; color: #333; font-size: 13px; }
         .guide-note { display:flex; gap: 10px; align-items:flex-start; margin-bottom: 8px; }
-        .note-icon { width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:18px; flex: 0 0 34px; }
+        /* removed note-icon: notes now use full-width text */
         .note-text { line-height: 1.12; }
         
         #stamp-book-content {
@@ -1192,10 +1192,6 @@
                 <button id="exchange-prize-button" type="button" style="background-color: #FF9800;">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
-            <!-- CGクレジット（Meshyモデルの表記） -->
-            <div id="cg-credits" style="margin-top:8px; font-size:5px; color:#666; text-align:center;">
-                Model created with Meshy — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">CC BY 4.0</a>
-            </div>
         </div>
     </div>
 
@@ -1232,28 +1228,27 @@
                         <p>When: Dec 13, 2025 — 14:00 to 16:00</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- extra short notes (simple English) -->
-            <div class="guide-notes" aria-hidden="false">
-                <div class="guide-note">
-                    <div class="note-icon">📸🎥</div>
-                    <div class="note-text"><strong>Photo & video</strong> — You can take photos and videos with the 3D animals. The camera saves them on your device.</div>
-                </div>
+                <div class="step">
+                    <div class="step-text">
+                        <strong>Others</strong>
 
-                <div class="guide-note">
-                    <div class="note-icon">🔒</div>
-                    <div class="note-text"><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.</div>
-                </div>
+                        Photo & video — You can take photos and videos with the 3D animals. The camera saves them on your device.
+                        Privacy — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.
+                        Cookies — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.
+                        Made by students — The 3D animals were made by students in the Welfare class at Seiei High School as school projects. Seiei High School joined the DX High School program in 2024 and makes many VR/AR projects.
+                        Model created with Meshy — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">CC BY 4.0</a>.
+                        Learning & prototyping — Students get feedback and keep improving their projects. They use prototyping and PDCA (plan → do → check → act) to learn clear thinking and problem solving.</div>
 
-                <div class="guide-note">
-                    <div class="note-icon">🍪</div>
-                    <div class="note-text"><strong>Cookies</strong> — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.</div>
+
+                    </div>
                 </div>
             </div>
+
+
 
             <div class="guide-close-row">
-                <button id="close-guide" type="button">閉じる</button>
+                <button id="close-guide" type="button">close</button>
             </div>
         </div>
     </div>
