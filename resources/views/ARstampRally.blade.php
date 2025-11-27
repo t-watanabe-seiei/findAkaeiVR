@@ -1237,7 +1237,7 @@
                         Privacy — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.
                         Cookies — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.
                         Made by students — The 3D animals were made by students in the Welfare class at Seiei High School as school projects. Seiei High School joined the DX High School program in 2024 and makes many VR/AR projects.
-                        Model created with Meshy — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">CC BY 4.0</a>.
+                        Model created with Meshy — CC BY 4.0.
                         Learning & prototyping — Students get feedback and keep improving their projects. They use prototyping and PDCA (plan → do → check → act) to learn clear thinking and problem solving.</div>
 
 
