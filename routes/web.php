@@ -56,5 +56,7 @@ Route::prefix('admin')->group(function () {
         Route::post('/prizes/{id}/redeem', [AdminController::class, 'redeemPrize'])->name('admin.prizes.redeem');
         Route::get('/exchanges', [AdminController::class, 'allExchanges'])->name('admin.exchanges');
         Route::get('/scans', [AdminController::class, 'allScans'])->name('admin.scans');
+        // CSV エクスポート（dataset: exchanges|redeemed|scans|daily|markerStats, start/end optional)
+        Route::get('/export', [AdminController::class, 'exportCsv'])->name('admin.export');
     });
 });

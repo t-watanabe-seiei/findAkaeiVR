@@ -1096,6 +1096,10 @@
                 <button id="exchange-prize-button" type="button" style="background-color: #FF9800;">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
+            <!-- CGクレジット（Meshyモデルの表記） -->
+            <div id="cg-credits" style="margin-top:8px; font-size:5px; color:#666; text-align:center;">
+                Model created with Meshy — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">CC BY 4.0</a>
+            </div>
         </div>
     </div>
     

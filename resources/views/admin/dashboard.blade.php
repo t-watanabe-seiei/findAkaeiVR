@@ -393,6 +393,39 @@
         </div>
     </div>
 
+    <!-- CSV エクスポートパネル -->
+    <div class="card">
+        <h2>📥 CSV エクスポート（日時フィルタ付き）</h2>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <form method="GET" action="{{ route('admin.export') }}" target="_blank" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <label style="font-size:13px; color:#333;">データセット
+                    <select name="dataset" style="margin-left:6px; padding:6px 8px;">
+                        <option value="recentExchanges">未使用の景品交換</option>
+                        <option value="redeemedPrizes">使用済み景品交換</option>
+                        <option value="allExchanges">全ての景品交換（全履歴）</option>
+                        <option value="recentScans">最近のスキャン履歴</option>
+                        <option value="dailyScans">日別スキャン数（集計）</option>
+                        <option value="markerStats">マーカー別スキャン統計</option>
+                    </select>
+                </label>
+
+                <label style="font-size:13px; color:#333;">開始日時
+                    <input type="datetime-local" name="start" style="margin-left:6px; padding:6px 8px;" />
+                </label>
+
+                <label style="font-size:13px; color:#333;">終了日時
+                    <input type="datetime-local" name="end" style="margin-left:6px; padding:6px 8px;" />
+                </label>
+
+                <button type="submit" style="padding:8px 12px; background:#3f51b5; color:white; border:none; border-radius:6px; cursor:pointer;">CSV をダウンロード</button>
+            </form>
+
+            <div style="font-size:13px; color:#666; margin-left:6px;">
+                ※ 開始・終了日時は任意です。未指定の場合は全期間が対象になります。
+            </div>
+        </div>
+    </div>
+
     <div class="prizes-grid">
         <div class="card">
             <h2>🎁 未使用の景品交換</h2>
