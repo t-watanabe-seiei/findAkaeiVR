@@ -1233,14 +1233,11 @@
                     <div class="step-text">
                         <strong>Others</strong>
 
-                        Photo & video — You can take photos and videos with the 3D animals. The camera saves them on your device.
-                        Privacy — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.
-                        Cookies — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.
-                        Made by students — The 3D animals were made by students in the Welfare class at Seiei High School as school projects. Seiei High School joined the DX High School program in 2024 and makes many VR/AR projects.
-                        Model created with Meshy — CC BY 4.0.
-                        Learning & prototyping — Students get feedback and keep improving their projects. They use prototyping and PDCA (plan → do → check → act) to learn clear thinking and problem solving.</div>
-
-
+                        <p><strong>Photo & video</strong> — You can take photos and videos with the 3D animals. The camera saves them on your device.</p>
+                        <p><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.</p>
+                        <p><strong>Cookies</strong> — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.</p>
+                        <p><strong>Made by students</strong> — The 3D animals were made by students in the Welfare class at Seiei High School as school projects. Seiei High School joined the DX High School program in 2024 and makes many VR/AR projects.</p>
+                        <p><strong>Learning & prototyping</strong> — Students get feedback and keep improving their projects. They use prototyping and PDCA (plan → do → check → act) to learn clear thinking and problem solving.</p></div>
                     </div>
                 </div>
 
@@ -1330,9 +1327,9 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-tonakai.patt') }}" id="pattern-tonakai-marker">
             <a-entity
                 id="tonakai-model"
-                gltf-model="{{ asset('cg/3d_matsumura_tonakai.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0"
-                scale="2.5 2.5 2.5"
+                scale="1.01 1.01 1.01"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
@@ -1544,7 +1541,7 @@
             'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_matsubara_sheep.glb' },
             'fox': { name: 'きつね', icon: '🦊', model: '3d_isobe_fox5.glb' },
             'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_morita_pengin.glb' },
-            'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_matsumura_tonakai.glb' },
+            'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_matsubara_pig.glb' }
         };
         
