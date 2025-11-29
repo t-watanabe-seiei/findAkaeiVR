@@ -1315,10 +1315,10 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-pengin.patt') }}" id="pattern-pengin-marker">
             <a-entity
                 id="pengin-model"
-                gltf-model="{{ asset('cg/3d_morita_pengin.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0"
-                scale="2.5 2.5 2.5"
-                rotation="0 0 0"
+                scale="0.7 0.7 0.7"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
@@ -1329,7 +1329,7 @@
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0"
-                scale="1.01 1.01 1.01"
+                scale="0.7 0.7 0.7"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
@@ -1540,7 +1540,7 @@
         const STAMPS = {
             'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_matsubara_sheep.glb' },
             'fox': { name: 'きつね', icon: '🦊', model: '3d_isobe_fox5.glb' },
-            'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_morita_pengin.glb' },
+            'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_pro_pengin_morita.glb' },
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_matsubara_pig.glb' }
         };
