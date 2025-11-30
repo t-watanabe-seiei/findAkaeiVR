@@ -1291,10 +1291,10 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-sheep.patt') }}" id="pattern-sheep-marker">
             <a-entity
                 id="sheep-model"
-                gltf-model="{{ asset('cg/3d_matsubara_sheep.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0"
-                scale="2.5 2.5 2.5"
-                rotation="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
@@ -1303,10 +1303,10 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
-                gltf-model="{{ asset('cg/3d_isobe_fox5.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0"
-                scale="2.5 2.5 2.5"
-                rotation="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
@@ -1339,10 +1339,10 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-pig.patt') }}" id="pattern-pig-marker">
             <a-entity
                 id="pig-model"
-                gltf-model="{{ asset('cg/3d_matsubara_pig.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0"
-                scale="2.5 2.5 2.5"
-                rotation="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
             </a-entity>
@@ -1538,11 +1538,11 @@
         
         // スタンプラリー機能
         const STAMPS = {
-            'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_matsubara_sheep.glb' },
-            'fox': { name: 'きつね', icon: '🦊', model: '3d_isobe_fox5.glb' },
+            'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_pro_sheep_matsubara.glb' },
+            'fox': { name: 'きつね', icon: '🦊', model: '3d_pro_fox_isobe.glb' },
             'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_pro_pengin_morita.glb' },
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
-            'pig': { name: 'ぶた', icon: '🐷', model: '3d_matsubara_pig.glb' }
+            'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' }
         };
         
         // 音声ファイルをプリロード
