@@ -1316,7 +1316,7 @@
             <a-entity
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_pro_pengin_morita.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.7 0.7 0.7"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
