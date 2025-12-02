@@ -537,7 +537,9 @@
             border: 3px solid #333;
             border-radius: 50%;
             cursor: pointer;
-            z-index: 10001;
+            /* Ensure the stamp-book modal appears above the throw button (throw button lowered) */
+            /* Lower z-index so modal (10001) will sit above this button when open */
+            z-index: 10000;
             display: flex;
             justify-content: center;
             align-items: center;
