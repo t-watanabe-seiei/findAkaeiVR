@@ -143,10 +143,15 @@
             updateBox: function() {
                 const data = this.data;
                 const pos = this.el.object3D.getWorldPosition(new THREE.Vector3());
-                const halfWidth = data.width / 2;
-                const halfHeight = data.height / 2;
-                const halfDepth = data.depth / 2;
-                
+
+                // ワールドスケールを反映して hitbox をスケールする
+                const worldScale = new THREE.Vector3();
+                this.el.object3D.getWorldScale(worldScale);
+
+                const halfWidth = (data.width / 2) * (worldScale.x || 1);
+                const halfHeight = (data.height / 2) * (worldScale.y || 1);
+                const halfDepth = (data.depth / 2) * (worldScale.z || 1);
+
                 this.box.min.set(
                     pos.x - halfWidth,
                     pos.y - halfHeight,
@@ -519,6 +524,36 @@
         #video-button:hover {
             background-color: rgba(240, 240, 240, 0.9);
         }
+
+        /* 投げるボタン（下中央） */
+        #throw-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 90px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10001;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+            transition: transform 0.08s, background-color 0.12s;
+            touch-action: none; /* prevent default pinch-to-zoom on some browsers when touching the button */
+        }
+
+        #throw-button:active { transform: translateX(-50%) scale(0.92); }
+        #throw-button:hover { background-color: rgba(245,245,245,0.98); }
+
+        /* 長押しで強さを示すクラス */
+        #throw-button.power-low { box-shadow: 0 8px 18px rgba(0,0,0,0.35), 0 0 0 6px rgba(60,150,255,0.12) inset; }
+        #throw-button.power-mid { box-shadow: 0 10px 22px rgba(0,0,0,0.38), 0 0 0 8px rgba(255,180,40,0.14) inset; transform: translateX(-50%) scale(1.02); }
+        #throw-button.power-high { box-shadow: 0 12px 26px rgba(0,0,0,0.42), 0 0 0 10px rgba(255,80,80,0.16) inset; transform: translateX(-50%) scale(1.06); }
         
         #video-button.recording {
             background-color: rgba(255, 100, 100, 0.9);
@@ -1170,11 +1205,13 @@
         <div class="text">捕まえる</div>
     </button>
     
-    <!-- 回転ボタン -->
+    <!-- 回転ボタン (一時的に非表示: コメントアウトしました。復帰するには下のコメントを外してください) -->
+    <!--
     <div class="rotation-buttons" id="rotation-buttons">
         <button class="rotation-button" id="rotate-up" type="button" title="上に回転">⬆️</button>
         <button class="rotation-button" id="rotate-down" type="button" title="下に回転">⬇️</button>
     </div>
+    -->
     
     <!-- スタンプ帳モーダル -->
     <div id="stamp-book-modal">
@@ -1266,6 +1303,24 @@
     
     <!-- カメラボタン -->
     <button id="camera-button" type="button" title="写真を撮る">📷</button>
+
+    <!-- 投げるボタン（画面下中央、スマホ向け） -->
+    <button id="throw-button" type="button" title="投げる" aria-label="投げるボタン">
+        <!-- ビーチボール SVG (赤/白) -->
+        <svg width="56" height="56" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+                <radialGradient id="g1" cx="30%" cy="30%" r="70%">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="100%" stop-color="#fffbf2"/>
+                </radialGradient>
+            </defs>
+            <circle cx="32" cy="32" r="30" fill="#ffffff" stroke="#d33" stroke-width="2"/>
+            <path d="M32 2 A30 30 0 0 1 56.8 18.9 L42 34 L32 2 Z" fill="#ff4d4d" opacity="0.95"/>
+            <path d="M8.8 18.9 A30 30 0 0 1 32 2 L22 34 L8.8 18.9 Z" fill="#ffdede" opacity="0.95"/>
+            <path d="M56 34 A30 30 0 0 1 32 62 L42 34 L56 34 Z" fill="#fff3f3" opacity="0.9"/>
+            <circle cx="32" cy="32" r="8" fill="#fff" stroke="#f4c0c0" stroke-width="1"/>
+        </svg>
+    </button>
     
     <!-- 撮影した写真のプレビュー -->
     <div id="photo-preview">
@@ -1296,7 +1351,7 @@
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: sheep; width: 1.5; height: 2; depth: 1.5">
+                hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -1308,7 +1363,7 @@
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: fox; width: 1.5; height: 2; depth: 1.5">
+                hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -1320,7 +1375,7 @@
                 scale="0.7 0.7 0.7"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: pengin; width: 1.5; height: 2; depth: 1.5">
+                hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -1332,7 +1387,7 @@
                 scale="0.7 0.7 0.7"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: tonakai; width: 1.5; height: 2; depth: 1.5">
+                hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -1344,7 +1399,7 @@
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: pig; width: 1.5; height: 2; depth: 1.5">
+                hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2330,7 +2385,11 @@
         let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
         
         // 拡大縮小用の変数
-        let currentScale = 1;
+        let currentScale = 1; // 1〜3 のスケール倍率（UIはモデルの baseScale に乗算）
+        let isPinching = false;
+        let pinchStartDistance = 0;
+        let pinchInitialScale = 1;
+        let throwButtonPressStart = 0; // 投げボタンの押下時間
         
         // 回転用の変数
         let currentRotationX = 0;
@@ -2371,6 +2430,46 @@
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
             let allHitboxes = []; // すべてのヒットボックス
+
+            // model スケールを扱うヘルパー
+            function setBaseScaleIfMissing(el) {
+                if (!el) return;
+                try {
+                    if (!el.dataset.baseScale) {
+                        let s = el.getAttribute('scale');
+                        let base = 1;
+                        if (s && typeof s === 'string') {
+                            const parts = s.trim().split(/\s+/);
+                            const n = parseFloat(parts[0]);
+                            if (!isNaN(n)) base = n;
+                        } else if (s && s.x) {
+                            base = parseFloat(s.x) || 1;
+                        }
+                        el.dataset.baseScale = base;
+                    }
+                } catch (e) {
+                    console.warn('setBaseScaleIfMissing failed', el, e);
+                }
+            }
+
+            function applyCurrentScaleTo(el) {
+                if (!el) return;
+                try {
+                    const base = parseFloat(el.dataset.baseScale || 1);
+                    const clamped = Math.max(1, Math.min(3, currentScale));
+                    const v = base * clamped;
+                    // set uniform scale
+                    el.setAttribute('scale', `${v} ${v} ${v}`);
+                } catch (e) {
+                    console.warn('applyCurrentScaleTo failed', el, e);
+                }
+            }
+
+            function getTouchesDistance(t0, t1) {
+                const dx = t0.clientX - t1.clientX;
+                const dy = t0.clientY - t1.clientY;
+                return Math.hypot(dx, dy);
+            }
             
             // ヒットエフェクトを表示
             function showHitEffect(pokeball, hitbox) {
@@ -2448,7 +2547,7 @@
                 // ポケボールを生成
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
-                pokeball.setAttribute('scale', '0.1 0.1 0.1'); // サイズを小さく（0.5 → 0.1、元の5分の1）
+                pokeball.setAttribute('scale', '0.15 0.15 0.15'); // サイズを小さく（1.5x bigger than before）
                 pokeball.setAttribute('pokeball-throwable', '');
                 
                 // カメラの位置から開始
@@ -2639,35 +2738,62 @@
             function isUIButton(element) {
                 return element && (element.id === 'stamp-book-button' || 
                     element.id === 'camera-button' ||
+                    element.id === 'throw-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
-                    element.id === 'rotate-up' ||
-                    element.id === 'rotate-down' ||
+                    // element.id === 'rotate-up' ||
+                    // element.id === 'rotate-down' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
                     element.closest('#switch-camera-button') ||
-                    element.closest('#rotate-up') ||
-                    element.closest('#rotate-down') ||
+                    element.closest('#throw-button') ||
+                    // element.closest('#rotate-up') ||
+                    // element.closest('#rotate-down') ||
                     element.closest('.rotation-buttons'));
             }
             
             // タップ/クリック開始検出（タッチデバイス）
             scene.addEventListener('touchstart', function(event) {
+                // ピンチ判定（2本指）
+                if (event.touches && event.touches.length >= 2) {
+                    isPinching = true;
+                    pinchStartDistance = getTouchesDistance(event.touches[0], event.touches[1]);
+                    pinchInitialScale = currentScale;
+                    // ピンチ中はタップ判定を無効化
+                    isTapping = false;
+                    // preventDefault を呼んでブラウザのズーム動作を抑制
+                    if (event.cancelable) event.preventDefault();
+                    return;
+                }
+
                 const touch = event.touches[0];
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
+
                 // UIボタンのタップは無視
                 if (isUIButton(element)) {
                     return;
                 }
-                
+
                 // タップ開始時間を記録
                 tapStartTime = Date.now();
                 isTapping = true;
-                
+
                 console.log('タップ開始');
-            });
+            }, { passive: false });
+
+            // touchmove: ピンチ中は拡大縮小を実行
+            scene.addEventListener('touchmove', function(event) {
+                if (!isPinching) return;
+                if (!(event.touches && event.touches.length >= 2)) return;
+
+                const d = getTouchesDistance(event.touches[0], event.touches[1]);
+                if (pinchStartDistance <= 0) return;
+                const factor = d / pinchStartDistance;
+                currentScale = Math.max(1, Math.min(3, pinchInitialScale * factor));
+                applyCurrentScaleTo(activeModel);
+                if (event.cancelable) event.preventDefault();
+            }, { passive: false });
             
             // マウスダウン検出（PC）
             scene.addEventListener('mousedown', function(event) {
@@ -2685,103 +2811,36 @@
                 console.log('マウスダウン開始');
             });
             
-            // タップ終了時にボールを投げる（タッチデバイス）
+            // touchend: ピンチ終了の処理、画面タップで投げる動作は廃止
             scene.addEventListener('touchend', function(event) {
-                if (!isTapping) return;
-                if (isThrowing) {
-                    console.log('Already throwing - ignoring');
-                    isTapping = false;
+                if (isPinching) {
+                    // タッチが減ったらピンチ終了
+                    if (!event.touches || event.touches.length < 2) {
+                        isPinching = false;
+                    }
                     return;
                 }
-                
-                const touch = event.changedTouches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                // UIボタンのタップは無視
-                if (isUIButton(element)) {
-                    isTapping = false;
-                    return;
-                }
-                
-                // タップ時間を計算（ミリ秒）
-                const tapEndTime = Date.now();
-                const tapDuration = tapEndTime - tapStartTime;
-                
-                console.log('タップ時間:', tapDuration, 'ms');
-                
-                // タップ時間に応じた速度を計算
-                // 最小: 100ms → 速度10, 最大: 1000ms → 速度30
-                const minTapTime = 100;
-                const maxTapTime = 1000;
-                const minSpeed = 10;
-                const maxSpeed = 30;
-                
-                const clampedDuration = Math.max(minTapTime, Math.min(maxTapTime, tapDuration));
-                const speed = minSpeed + ((clampedDuration - minTapTime) / (maxTapTime - minTapTime)) * (maxSpeed - minSpeed);
-                
-                console.log('投げる速度:', speed);
-                
-                // ボール投げ中フラグを立てる
-                isThrowing = true;
-                
-                // 画面中央方向に投げる
-                throwPokeballToCenter(speed);
-                
-                // 500ms後にフラグをリセット
-                setTimeout(() => {
-                    isThrowing = false;
-                }, 500);
-                
+
+                // それ以外はタップ状態をクリア（投げはボタンから行う）
                 isTapping = false;
-            });
+            }, { passive: true });
             
-            // マウスアップ時にボールを投げる（PC）
+            // マウスアップ時（PC）: スクリーンのクリックで投げる機能は無効化（代替は下部の投げボタン）
             scene.addEventListener('mouseup', function(event) {
-                if (!isTapping) return;
-                if (isThrowing) {
-                    console.log('Already throwing - ignoring');
-                    isTapping = false;
-                    return;
-                }
-                
-                const element = document.elementFromPoint(event.clientX, event.clientY);
-                
-                // UIボタンのクリックは無視
-                if (isUIButton(element)) {
-                    isTapping = false;
-                    return;
-                }
-                
-                // クリック時間を計算（ミリ秒）
-                const tapEndTime = Date.now();
-                const tapDuration = tapEndTime - tapStartTime;
-                
-                console.log('マウスクリック時間:', tapDuration, 'ms');
-                
-                // クリック時間に応じた速度を計算
-                const minTapTime = 100;
-                const maxTapTime = 1000;
-                const minSpeed = 10;
-                const maxSpeed = 30;
-                
-                const clampedDuration = Math.max(minTapTime, Math.min(maxTapTime, tapDuration));
-                const speed = minSpeed + ((clampedDuration - minTapTime) / (maxTapTime - minTapTime)) * (maxSpeed - minSpeed);
-                
-                console.log('投げる速度:', speed);
-                
-                // ボール投げ中フラグを立てる
-                isThrowing = true;
-                
-                // 画面中央方向に投げる
-                throwPokeballToCenter(speed);
-                
-                // 500ms後にフラグをリセット
-                setTimeout(() => {
-                    isThrowing = false;
-                }, 500);
-                
+                // clear tapping state only
                 isTapping = false;
-            });
+            }, { passive: true });
+
+            // ホイールでズーム（PC のスクロール）
+            scene.addEventListener('wheel', function(e) {
+                // e.deltaY が正で下スクロール（縮小）
+                const delta = -e.deltaY; // invert so wheel up increases
+                // 歯切れよく変化させる
+                const step = delta * 0.0018; // tuned factor
+                currentScale = Math.max(1, Math.min(3, currentScale + step));
+                applyCurrentScaleTo(activeModel);
+                if (e.cancelable) e.preventDefault();
+            }, { passive: false });
             
             // 画面中央方向にポケボールを投げる（タップ時間で速度調整）
             function throwPokeballToCenter(speed) {
@@ -2794,7 +2853,7 @@
                 // ポケボールを生成（サイズを半分に: 0.2 → 0.1）
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
-                pokeball.setAttribute('scale', '0.1 0.1 0.1');
+                pokeball.setAttribute('scale', '0.15 0.15 0.15');
                 pokeball.setAttribute('pokeball-throwable', '');
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
                 
@@ -2972,9 +3031,13 @@
                 patternSheepMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-sheep marker found');
                     activeModel = sheepModel;
+                    // baseScale を記録して現在スケールを適用
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
                     currentMarkerStampId = 'sheep';
-                    // 回転ボタンを表示
-                    document.getElementById('rotation-buttons').classList.add('visible');
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
                     // ヒットボックスを登録
                     if (sheepModel.components.hitbox) {
                         if (!allHitboxes.includes(sheepModel.components.hitbox)) {
@@ -2986,8 +3049,9 @@
                     console.log('Pattern-sheep marker lost');
                     if (activeModel === sheepModel) {
                         activeModel = null;
-                        // 回転ボタンを非表示
-                        document.getElementById('rotation-buttons').classList.remove('visible');
+                        // 回転ボタンを非表示 (要素が存在する場合のみ)
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'sheep') {
                         currentMarkerStampId = null;
@@ -3006,9 +3070,12 @@
                 patternFoxMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-fox marker found');
                     activeModel = foxModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
                     currentMarkerStampId = 'fox';
-                    // 回転ボタンを表示
-                    document.getElementById('rotation-buttons').classList.add('visible');
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (foxModel.components.hitbox) {
                         if (!allHitboxes.includes(foxModel.components.hitbox)) {
                             allHitboxes.push(foxModel.components.hitbox);
@@ -3019,8 +3086,9 @@
                     console.log('Pattern-fox marker lost');
                     if (activeModel === foxModel) {
                         activeModel = null;
-                        // 回転ボタンを非表示
-                        document.getElementById('rotation-buttons').classList.remove('visible');
+                        // 回転ボタンを非表示 (要素が存在する場合のみ)
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'fox') {
                         currentMarkerStampId = null;
@@ -3038,9 +3106,12 @@
                 patternPenginMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pengin marker found');
                     activeModel = penginModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
                     currentMarkerStampId = 'pengin';
-                    // 回転ボタンを表示
-                    document.getElementById('rotation-buttons').classList.add('visible');
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (penginModel.components.hitbox) {
                         if (!allHitboxes.includes(penginModel.components.hitbox)) {
                             allHitboxes.push(penginModel.components.hitbox);
@@ -3051,8 +3122,9 @@
                     console.log('Pattern-pengin marker lost');
                     if (activeModel === penginModel) {
                         activeModel = null;
-                        // 回転ボタンを非表示
-                        document.getElementById('rotation-buttons').classList.remove('visible');
+                        // 回転ボタンを非表示 (要素が存在する場合のみ)
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'pengin') {
                         currentMarkerStampId = null;
@@ -3070,9 +3142,12 @@
                 patternTonakaiMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-tonakai marker found');
                     activeModel = tonakaiModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
                     currentMarkerStampId = 'tonakai';
-                    // 回転ボタンを表示
-                    document.getElementById('rotation-buttons').classList.add('visible');
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (tonakaiModel.components.hitbox) {
                         if (!allHitboxes.includes(tonakaiModel.components.hitbox)) {
                             allHitboxes.push(tonakaiModel.components.hitbox);
@@ -3083,8 +3158,9 @@
                     console.log('Pattern-tonakai marker lost');
                     if (activeModel === tonakaiModel) {
                         activeModel = null;
-                        // 回転ボタンを非表示
-                        document.getElementById('rotation-buttons').classList.remove('visible');
+                        // 回転ボタンを非表示 (要素が存在する場合のみ)
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'tonakai') {
                         currentMarkerStampId = null;
@@ -3102,9 +3178,12 @@
                 patternPigMarker.addEventListener('markerFound', function() {
                     console.log('Pattern-pig marker found');
                     activeModel = pigModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
                     currentMarkerStampId = 'pig';
-                    // 回転ボタンを表示
-                    document.getElementById('rotation-buttons').classList.add('visible');
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (pigModel.components.hitbox) {
                         if (!allHitboxes.includes(pigModel.components.hitbox)) {
                             allHitboxes.push(pigModel.components.hitbox);
@@ -3115,8 +3194,9 @@
                     console.log('Pattern-pig marker lost');
                     if (activeModel === pigModel) {
                         activeModel = null;
-                        // 回転ボタンを非表示
-                        document.getElementById('rotation-buttons').classList.remove('visible');
+                        // 回転ボタンを非表示 (要素が存在する場合のみ)
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
                     if (currentMarkerStampId === 'pig') {
                         currentMarkerStampId = null;
@@ -3142,6 +3222,134 @@
                 e.stopPropagation();
                 showStampBook();
             });
+
+            // 投げるボタンのハンドラ (スマホ・PC 共通)
+            const throwButton = document.getElementById('throw-button');
+            // preview variables
+            let previewEntity = null;
+            let previewRotationSpeed = 0; // radians per second
+            let previewAnimationId = null;
+            let previewLastTime = null;
+            if (throwButton) {
+                let throwPressInterval = null;
+                throwButton.addEventListener('pointerdown', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    throwButtonPressStart = Date.now();
+
+                    // start feedback timer
+                    let lastLevel = 0;
+                    // create preview entity attached to camera
+                    try {
+                        const cameraEl = scene.querySelector('[camera]') || scene.camera && scene.camera.el;
+                        if (cameraEl && !previewEntity) {
+                            previewEntity = document.createElement('a-entity');
+                            previewEntity.setAttribute('id', 'throw-preview');
+                            previewEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                            // slightly larger for preview, set uniform 0.22
+                            // preview ball should be half the previous size (smaller preview)
+                            previewEntity.setAttribute('scale', '0.11 0.11 0.11');
+                            // position: move preview half a ball higher than previous
+                            const previewScale = 0.11; // used above for scale
+                            const baseY = -0.45;
+                            const yOffset = baseY + (previewScale / 2); // half a ball up
+                            previewEntity.setAttribute('position', `0 ${yOffset} -0.9`);
+                            previewEntity.setAttribute('visible', 'true');
+                            // prevent frustum culling
+                            previewEntity.addEventListener('loaded', function() {
+                                const obj = previewEntity.getObject3D('mesh');
+                                if (obj) {
+                                    obj.traverse(function(n) { if (n.isMesh) n.frustumCulled = false; });
+                                }
+                            });
+                            cameraEl.appendChild(previewEntity);
+                        }
+                    } catch (ex) {
+                        console.warn('Failed to create preview entity', ex);
+                    }
+
+                    throwPressInterval = setInterval(() => {
+                        const elapsed = Date.now() - throwButtonPressStart;
+                        // levels: short <=300ms, mid <=800ms, long >800ms
+                        let level = 0;
+                        if (elapsed >= 800) level = 3; else if (elapsed >= 300) level = 2; else level = 1;
+                        if (level !== lastLevel) {
+                            throwButton.classList.remove('power-low','power-mid','power-high');
+                            if (level === 1) throwButton.classList.add('power-low');
+                            if (level === 2) throwButton.classList.add('power-mid');
+                            if (level === 3) throwButton.classList.add('power-high');
+                            lastLevel = level;
+                            // update preview rotation speed for levels
+                            if (previewEntity) {
+                                if (level === 1) previewRotationSpeed = 0.8; // slow
+                                else if (level === 2) previewRotationSpeed = 2.0; // mid
+                                else previewRotationSpeed = 5.0; // fast
+
+                                // start animation loop if not running
+                                if (!previewAnimationId) {
+                                    previewLastTime = performance.now();
+                                    const loop = (t) => {
+                                        if (!previewEntity) { previewAnimationId = null; return; }
+                                        const dt = (t - (previewLastTime || t)) / 1000;
+                                        previewLastTime = t;
+                                        try {
+                                            const obj = previewEntity.getObject3D('mesh');
+                                            if (obj) {
+                                                obj.rotation.y += (previewRotationSpeed || 0) * dt;
+                                            }
+                                        } catch (e) { /* ignore */ }
+                                        previewAnimationId = requestAnimationFrame(loop);
+                                    };
+                                    previewAnimationId = requestAnimationFrame(loop);
+                                }
+                            }
+                        }
+                    }, 50);
+                });
+
+                throwButton.addEventListener('pointerup', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (throwPressInterval) {
+                        clearInterval(throwPressInterval);
+                        throwPressInterval = null;
+                    }
+
+                    // compute discrete speed levels from press duration
+                    const duration = Math.max(0, Date.now() - (throwButtonPressStart || Date.now()));
+                    let speed = 20; // default medium
+                    if (duration < 300) speed = 12; // low
+                    else if (duration < 800) speed = 20; // medium
+                    else speed = 30; // high
+
+                    // visual reset
+                    throwButton.classList.remove('power-low','power-mid','power-high');
+
+                    // remove preview entity and stop animation
+                    try {
+                        if (previewAnimationId) { cancelAnimationFrame(previewAnimationId); previewAnimationId = null; }
+                        if (previewEntity && previewEntity.parentNode) { previewEntity.parentNode.removeChild(previewEntity); }
+                        previewEntity = null;
+                        previewRotationSpeed = 0;
+                    } catch (ex) { console.warn('Failed to remove preview', ex); }
+
+                    if (isThrowing) return;
+                    isThrowing = true;
+                    throwPokeballToCenter(speed);
+                    setTimeout(() => { isThrowing = false; }, 500);
+                    throwButtonPressStart = 0;
+                });
+
+                throwButton.addEventListener('pointercancel', function(e) {
+                    if (throwPressInterval) { clearInterval(throwPressInterval); throwPressInterval = null; }
+                    throwButton.classList.remove('power-low','power-mid','power-high');
+                    throwButtonPressStart = 0;
+                    if (previewAnimationId) { cancelAnimationFrame(previewAnimationId); previewAnimationId = null; }
+                    if (previewEntity && previewEntity.parentNode) previewEntity.parentNode.removeChild(previewEntity);
+                    previewEntity = null;
+                });
+            }
             
             // スタンプ帳を閉じる
             const closeStampBookButton = document.getElementById('close-stamp-book');
@@ -3490,10 +3698,11 @@
                 hideConfirmDialog();
             }, false);
             
-            // 回転ボタンのイベントリスナー
+            // 回転ボタンのイベントリスナー (一時的に無効化 - 復帰するには下のコメントを外してください)
+            /*
             const rotateUpButton = document.getElementById('rotate-up');
             const rotateDownButton = document.getElementById('rotate-down');
-            
+
             rotateUpButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3509,7 +3718,7 @@
                     console.log('Rotated up. Current X rotation:', currentRotationX);
                 }
             });
-            
+
             rotateDownButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3525,6 +3734,7 @@
                     console.log('Rotated down. Current X rotation:', currentRotationX);
                 }
             });
+            */
             
             // オーバーレイクリックでダイアログを閉じる
             document.getElementById('confirm-overlay').addEventListener('click', function(e) {
@@ -4131,33 +4341,7 @@
             
             // PC用：マウス操作は削除（回転ボタンのみ使用）
             
-            // PC用：マウスホイールで拡大縮小
-            document.body.addEventListener('wheel', function(e) {
-                // ボタン上では無効
-                if (e.target.closest('#camera-button') || 
-                    e.target.closest('#video-button') ||
-                    e.target.closest('#switch-camera-button') ||
-                    e.target.closest('#photo-preview')) {
-                    return;
-                }
-                
-                e.preventDefault();
-                
-                // ホイールの方向に応じてスケール変更
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                currentScale *= delta;
-                
-                // スケールを0.5〜5の範囲に制限
-                currentScale = Math.max(0.5, Math.min(5, currentScale));
-                
-                if (activeModel) {
-                    activeModel.setAttribute('scale', {
-                        x: currentScale,
-                        y: currentScale,
-                        z: currentScale
-                    });
-                }
-            }, { passive: false });
+            // (removed duplicate body-level wheel handler; scene-level wheel already handles zoom)
             
             // 画面全体のタップを検出（削除：ダブルタップに置き換え）
             // シングルタップでのアニメーション切り替えは無効化
