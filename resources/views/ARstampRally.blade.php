@@ -555,6 +555,55 @@
             -webkit-user-drag: none; /* prevent dragging */
         }
 
+        /* Guide modal: header and language switch */
+        .guide-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .lang-switch { display:flex; gap:6px; }
+        .lang-btn {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(0,0,0,0.08);
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .lang-btn.active {
+            background: linear-gradient(135deg,#7fc7ff 0%, #4aa0ff 100%);
+            color: white;
+            border-color: rgba(0,0,0,0.14);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        }
+
+        /* Camera help modal (shown when camera permissions appear disabled) */
+        #camera-help-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 10010;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #camera-help-modal .camera-help-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 640px;
+            width: 100%;
+            padding: 18px 22px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.3);
+        }
+
+        #camera-help-modal .camera-help-content h3 { margin-top:0; }
+        #camera-help-modal .camera-help-actions { text-align:right; margin-top:12px; }
+        #camera-help-modal .camera-help-actions button { margin-left:8px; }
+
         #throw-button:active { transform: translateX(-50%) scale(0.92); }
         #throw-button:hover { background-color: rgba(245,245,245,0.98); }
 
@@ -1195,6 +1244,19 @@
     
     <!-- フラッシュエフェクト -->
     <div id="flash"></div>
+
+    <!-- カメラ使用に関するヘルプモーダル (表示はJSで制御) -->
+    <div id="camera-help-modal" role="dialog" aria-hidden="true">
+        <div class="camera-help-content">
+            <h3 id="camera-help-title">Camera access blocked?</h3>
+            <div id="camera-help-body">
+                <!-- content is replaced by JS depending on language -->
+            </div>
+            <div class="camera-help-actions">
+                <button id="camera-help-close">Close</button>
+            </div>
+        </div>
+    </div>
     
     <!-- スタンプ帳ボタン -->
     <button id="stamp-book-button" type="button" title="コレクションを見る">
@@ -1243,7 +1305,13 @@
     <!-- 操作説明モーダル -->
     <div id="guide-modal" aria-hidden="true">
         <div id="guide-content">
-            <h2>How to play</h2>
+            <div class="guide-header">
+                <h2 id="guide-title">How to play</h2>
+                <div class="lang-switch" id="guide-lang-switch" role="tablist" aria-label="言語切替">
+                    <button id="lang-jp" class="lang-btn" aria-pressed="false">日本語</button>
+                    <button id="lang-en" class="lang-btn active" aria-pressed="true">English</button>
+                </div>
+            </div>
             <div class="guide-steps">
                 <!-- 大きな操作イメージを1枚だけ表示 -->
                 <div class="step main">
@@ -1251,38 +1319,28 @@
                     <!-- <div class="howto-caption">Point your camera at a marker, then tap the screen to throw a ball. (This picture shows how to use it.)</div> -->
                 </div>
 
-                <div class="step">
-                    <div class="step-text">
-                        <strong>Find a marker</strong>
-                        <p>Look around for markers in the venue and point your camera at one.</p>
-                    </div>
+                <div class="step" id="guide-step-find">
+                    <!-- content set dynamically for EN/JP -->
+                </div>
+                <div class="step" id="guide-step-zoom">
+                    <!-- Zoom content set dynamically for EN/JP -->
                 </div>
 
-                <div class="step">
-                    <div class="step-text">
-                        <strong>Tap to throw</strong>
-                        <p>When a 3D animal appears, tap the screen to throw a ball and try to catch it.</p>
-                    </div>
+                <div class="step" id="guide-step-photo">
+                    <!-- Photo & video content set dynamically for EN/JP -->
                 </div>
 
-                <div class="step">
-                    <div class="step-text">
-                        <strong>Prize exchange</strong>
-                        <p>Collect 10 or more markers in the venue to exchange for a prize.</p>
-                        <p>Where: Special area next to the escalator on the 2nd floor.</p>
-                        <p>When: Dec 13, 2025 — 14:00 to 16:00</p>
-                    </div>
+                <div class="step" id="guide-step-throw">
+                    <!-- Throw button content set dynamically for EN/JP -->
                 </div>
 
-                <div class="step">
-                    <div class="step-text">
-                        <strong>Others</strong>
+                <div class="step" id="guide-step-prize">
+                    <!-- Prize exchange content set dynamically for EN/JP -->
+                </div>
 
-                        <p><strong>Photo & video</strong> — You can take photos and videos with the 3D animals. The camera saves them on your device.</p>
-                        <p><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Your pictures and videos stay on your device.</p>
-                        <p><strong>Cookies</strong> — We may use cookies to count visits and improve the app. Cookies can tell us your browser, but they do not include personal details.</p>
-                        <p><strong>Made by students</strong> — The 3D animals were made by students in the Welfare class at Seiei High School as school projects. Seiei High School joined the DX High School program in 2024 and makes many VR/AR projects.</p>
-                        <p><strong>Learning & prototyping</strong> — Students get feedback and keep improving their projects. They use prototyping and PDCA (plan → do → check → act) to learn clear thinking and problem solving.</p></div>
+                <div class="step" id="guide-step-others">
+                    <!-- privacy / cookies / made by students / learning content set dynamically for EN/JP -->
+                </div>
                     </div>
                 </div>
 
@@ -1588,7 +1646,10 @@
             }
         });
         
+        // track whether AR.js successfully started the camera/video
+        window.arjsVideoReady = false;
         window.addEventListener('arjs-video-loaded', function() {
+            window.arjsVideoReady = true;
             console.log('AR.js ready');
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
@@ -2403,9 +2464,7 @@
         let currentRotationX = 0;
         let currentRotationY = 0; // Y軸回転（回転ボタン用）
         
-        // ダブルタップ検出用の変数
-        let lastTapTime = 0;
-        const doubleTapDelay = 300; // 300ms以内の2回タップでダブルタップ
+        // (double-tap behavior removed) // previously used to detect double-tap animation toggles
         
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
@@ -2437,6 +2496,237 @@
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
+                        // --- Guide modal language handling ---
+                        const guideLangJPBtn = document.getElementById('lang-jp');
+                        const guideLangENBtn = document.getElementById('lang-en');
+                        // initial language: prefer Japanese if browser language starts with 'ja'
+                        let guideLang = (navigator.language && navigator.language.toLowerCase().startsWith('ja')) ? 'jp' : 'en';
+
+                        function setGuideLanguage(lang) {
+                            guideLang = lang === 'jp' ? 'jp' : 'en';
+                            const title = document.getElementById('guide-title');
+                            const stepThrow = document.getElementById('guide-step-throw');
+                            const stepZoom = document.getElementById('guide-step-zoom');
+                            const stepPhoto = document.getElementById('guide-step-photo');
+                            const stepOthers = document.getElementById('guide-step-others');
+
+                            const stepFind = document.getElementById('guide-step-find');
+                            const stepPrize = document.getElementById('guide-step-prize');
+                            const closeGuideBtn = document.getElementById('close-guide');
+
+                            if (guideLang === 'jp') {
+                                if (title) title.textContent = '操作方法';
+
+                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
+                                if (stepFind) stepFind.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>マーカーを探す</strong>
+                                        <p>会場内のマーカーにカメラを向けると3Dの動物が出現します。</p>
+                                    </div>`;
+
+                                if (stepZoom) stepZoom.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>拡大 / 縮小</strong>
+                                        <p>スマホ: ピンチで拡大・縮小できます。PC: マウスのホイールで拡大・縮小できます。</p>
+                                    </div>`;
+
+                                if (stepPhoto) stepPhoto.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>写真・動画</strong>
+                                        <p>3D動物と一緒に写真や動画を撮影できます。撮影したデータは端末に保存されます。</p>
+                                    </div>`;
+
+                                if (stepThrow) stepThrow.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>投げるボタン（画面中央下部）</strong>
+                                        <p>画面中央下のビーチボールボタンを長押しするとボールが回転します。離すとその強さでボールを投げます（3段階）。</p>
+                                        <ul>
+                                            <li>短く: 低速</li>
+                                            <li>中くらい: 中速</li>
+                                            <li>長押し: 高速</li>
+                                        </ul>
+                                        <p>長押し中はボールの回転が速くなり、視覚的に強さを確認できます。</p>
+                                    </div>`;
+
+                                if (stepPrize) stepPrize.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>景品交換</strong>
+                                        <p>会場で10種類以上のマーカーを集めると景品と交換できます。</p>
+                                        <p>場所：2階 エスカレーター横の特設エリア。</p>
+                                        <p>日時：2025年12月13日 — 14:00〜16:00</p>
+                                    </div>`;
+
+                                if (stepOthers) stepOthers.innerHTML = `
+                                    <div class="step-text">
+                                        <hr class="guide-sep" style="border:none;border-top:1px solid #eee;margin:12px 0;">
+                                        <p><strong>プライバシー</strong> — 写真・動画のデータは当方で収集しません。データは端末にのみ保存されます。</p>
+                                        <p><strong>クッキー</strong> — 利用状況の集計や改善のためにクッキーを使用する場合があります。クッキーからはブラウザ情報が分かることがありますが、個人情報は含みません。</p>
+                                        <p><strong>生徒制作</strong> — この作品は誠英高校（Seiei High School）の福祉クラスの生徒が授業の一環として制作したものです。誠英高校は2024年にDXハイスクールプログラムに採択され、多くのVR/ARプロジェクトを制作しています。
+                                        生徒たちはプロトタイピングやPDCAサイクルを通じて作品を改善し、論理的思考力や問題解決能力を身に着けていきます。</p>
+                                    </div>`;
+
+                                if (closeGuideBtn) closeGuideBtn.textContent = '閉じる';
+
+                                guideLangJPBtn.classList.add('active');
+                                guideLangENBtn.classList.remove('active');
+                                guideLangJPBtn.setAttribute('aria-pressed','true');
+                                guideLangENBtn.setAttribute('aria-pressed','false');
+                            } else {
+                                if (title) title.textContent = 'How to play';
+                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
+                                if (stepFind) stepFind.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>Find a marker</strong>
+                                        <p>Point your camera at markers placed in the venue to make a 3D animal appear.</p>
+                                    </div>`;
+
+                                if (stepZoom) stepZoom.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>Zoom</strong>
+                                        <p>Mobile: pinch to zoom in and out. Desktop: use the mouse wheel to zoom.</p>
+                                    </div>`;
+
+                                if (stepPhoto) stepPhoto.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>Photo & video</strong>
+                                        <p>You can take photos and videos with the 3D animals. Captured files are saved to your device only.</p>
+                                    </div>`;
+
+                                if (stepThrow) stepThrow.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>Throw button (center-bottom)</strong>
+                                        <p>Long-press the beach-ball button at the center-bottom to make the ball rotate. Release to throw with one of three power levels.</p>
+                                        <ul>
+                                            <li>Short press: low speed</li>
+                                            <li>Medium press: medium speed</li>
+                                            <li>Long press: high speed</li>
+                                        </ul>
+                                        <p>The preview rotates; rotation speed indicates power level visually.</p>
+                                    </div>`;
+
+                                if (stepPrize) stepPrize.innerHTML = `
+                                    <div class="step-text">
+                                        <strong>Prize exchange</strong>
+                                        <p>Collect 10 or more markers in the venue to exchange for a prize.</p>
+                                        <p>Where: Special area next to the escalator on the 2nd floor.</p>
+                                        <p>When: Dec 13, 2025 — 14:00 to 16:00</p>
+                                    </div>`;
+
+                                if (stepOthers) stepOthers.innerHTML = `
+                                    <div class="step-text">
+                                        <hr class="guide-sep" style="border:none;border-top:1px solid #eee;margin:12px 0;">
+                                        <p><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Captured files are saved to your device only.</p>
+                                        <p><strong>Cookies</strong> — We may use cookies to aggregate usage statistics and improve the app. Cookies can tell us your browser details but do not include personal information.</p>
+                                        <p><strong>Made by students</strong> — This project was created by students in the Welfare class at Seiei High School as part of their coursework. Seiei High School was chosen for the DX High School program in 2024 and has produced many VR/AR projects.</p>
+                                        <p><strong>Learning & prototyping</strong> — Students receive feedback and improve their works through prototyping and the PDCA cycle. This helps them develop logical thinking and problem-solving skills.</p>
+                                    </div>`;
+
+                                if (closeGuideBtn) closeGuideBtn.textContent = 'Close';
+
+                                guideLangENBtn.classList.add('active');
+                                guideLangJPBtn.classList.remove('active');
+                                guideLangENBtn.setAttribute('aria-pressed','true');
+                                guideLangJPBtn.setAttribute('aria-pressed','false');
+                            }
+                        }
+
+                        if (guideLangJPBtn) guideLangJPBtn.addEventListener('click', function(){ setGuideLanguage('jp'); });
+                        if (guideLangENBtn) guideLangENBtn.addEventListener('click', function(){ setGuideLanguage('en'); });
+
+                        // initialize content
+                        setGuideLanguage(guideLang);
+
+                        // --- Camera permission detection & help modal ---
+                        const cameraHelpModal = document.getElementById('camera-help-modal');
+                        const cameraHelpClose = document.getElementById('camera-help-close');
+
+                        function showCameraHelp(langKey, reason) {
+                            // pick content by language
+                            const title = document.getElementById('camera-help-title');
+                            const body = document.getElementById('camera-help-body');
+                            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+                            if (langKey === 'jp') {
+                                if (title) title.textContent = 'カメラアクセスがブロックされている可能性があります';
+                                if (body) {
+                                    if (isIOS) {
+                                        body.innerHTML = `
+                                            <p>iPhoneの設定でカメラをブロックしている場合、ページ内でカメラが起動できません。</p>
+                                            <p>設定を確認してください：</p>
+                                            <ol>
+                                                <li>設定 を開く → Safari</li>
+                                                <li>Safari の Camera（カメラ）項目を選択</li>
+                                                <li>「すべてのWebサイトでカメラへのアクセス」を <strong>許可</strong> にする</li>
+                                            </ol>
+                                            <p>もしくは、設定 → アプリ → Safari → カメラ の権限が「常に許可」になっていることを確認してください。</p>
+                                            `;
+                                    } else {
+                                        body.innerHTML = `
+                                            <p>カメラアクセスがブロックされているようです。ブラウザのサイトごとのカメラ許可を確認してください。</p>
+                                            <p>例: ブラウザの設定 → サイトの設定 / プライバシー → カメラ → このサイトの許可</p>`;
+                                    }
+                                }
+                            } else {
+                                if (title) title.textContent = 'Camera access may be blocked';
+                                if (body) {
+                                    if (isIOS) {
+                                        body.innerHTML = `
+                                            <p>If your iPhone blocks camera access for all websites, this page cannot start the camera.</p>
+                                            <p>Please check the setting:</p>
+                                            <ol>
+                                                <li>Open Settings → Safari</li>
+                                                <li>Find Camera and set "Allow Access to All Websites" to <strong>Allow</strong></li>
+                                            </ol>
+                                            <p>Or check: Settings → Safari → Camera and ensure this site has permission.</p>`;
+                                    } else {
+                                        body.innerHTML = `
+                                            <p>Your browser seems to block camera access. Please check site camera permissions in your browser settings.</p>`;
+                                    }
+                                }
+                            }
+
+                            if (cameraHelpModal) {
+                                cameraHelpModal.style.display = 'flex';
+                                cameraHelpModal.setAttribute('aria-hidden','false');
+                            }
+                        }
+
+                        function hideCameraHelp() {
+                            if (cameraHelpModal) {
+                                cameraHelpModal.style.display = 'none';
+                                cameraHelpModal.setAttribute('aria-hidden','true');
+                            }
+                        }
+
+                        if (cameraHelpClose) cameraHelpClose.addEventListener('click', hideCameraHelp, false);
+
+                        function checkCameraPermissions() {
+                            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                            // try permissions api first
+                            if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+                                try {
+                                    navigator.permissions.query({ name: 'camera' }).then(result => {
+                                        if (result && result.state === 'denied') {
+                                            // definite denial
+                                            setTimeout(() => showCameraHelp(guideLang, 'denied'), 150);
+                                        }
+                                    }).catch(e => {
+                                        // fallback: if permission query fails, use a timeout-based heuristic for iOS
+                                        if (isIOS && !window.arjsVideoReady) setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 1200);
+                                    });
+                                } catch (e) {
+                                    if (isIOS && !window.arjsVideoReady) setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 1600);
+                                }
+                            } else {
+                                // Permissions API not available (Safari older versions) => use heuristic for iOS only
+                                if (isIOS) {
+                                    setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 3000);
+                                }
+                            }
+                        }
+
+                        // run initial camera permission check
+                        checkCameraPermissions();
             let allHitboxes = []; // すべてのヒットボックス
 
             // model スケールを扱うヘルパー
@@ -3305,10 +3595,10 @@
                             if (level === 3) throwButton.classList.add('power-high');
                             lastLevel = level;
                             // update preview rotation speed for levels
-                            if (previewEntity) {
-                                if (level === 1) previewRotationSpeed = 0.8; // slow
-                                else if (level === 2) previewRotationSpeed = 2.0; // mid
-                                else previewRotationSpeed = 5.0; // fast
+                                if (previewEntity) {
+                                    if (level === 1) previewRotationSpeed = 0.8; // slow (unchanged)
+                                    else if (level === 2) previewRotationSpeed = 4.0; // mid (2x original)
+                                    else previewRotationSpeed = 10.0; // fast (2x original)
 
                                 // start animation loop if not running
                                 if (!previewAnimationId) {
@@ -3320,7 +3610,8 @@
                                         try {
                                             const obj = previewEntity.getObject3D('mesh');
                                             if (obj) {
-                                                obj.rotation.y += (previewRotationSpeed || 0) * dt;
+                                                // rotate vertically (around X-axis) instead of horizontally (Y-axis)
+                                                obj.rotation.x += (previewRotationSpeed || 0) * dt;
                                             }
                                         } catch (e) { /* ignore */ }
                                         previewAnimationId = requestAnimationFrame(loop);
@@ -4320,49 +4611,9 @@
                 console.log('Preview closed and reset');
             });
             
-            // タッチイベントハンドラー（ダブルタップのみ）
-            let touchStartHandler = function(e) {
-                // ボタンをタップした場合は除外
-                if (e.target.closest('#camera-button') || 
-                    e.target.closest('#video-button') ||
-                    e.target.closest('#switch-camera-button') ||
-                    e.target.closest('#photo-preview')) {
-                    return;
-                }
-                
-                if (e.touches.length === 1) {
-                    // ダブルタップ検出のみ
-                    const now = Date.now();
-                    const timeSinceLastTap = now - lastTapTime;
-                    
-                    if (timeSinceLastTap < doubleTapDelay && timeSinceLastTap > 0) {
-                        // ダブルタップ検出
-                        e.preventDefault();
-                        console.log('Double tap detected');
-                        if (sceneReady && activeModel) {
-                            const clickEvent = new Event('click');
-                            activeModel.dispatchEvent(clickEvent);
-                        }
-                        lastTapTime = 0; // リセット
-                    } else {
-                        // シングルタップ
-                        lastTapTime = now;
-                    }
-                }
-            };
-            
-            let touchMoveHandler = function(e) {
-                // スワイプでの回転機能は削除（何もしない）
-            };
-            
-            let touchEndHandler = function(e) {
-                // 何もしない（スワイプ機能削除）
-            };
-            
-            // タッチイベントをリスナーに登録
-            document.body.addEventListener('touchstart', touchStartHandler, { passive: false });
-            document.body.addEventListener('touchmove', touchMoveHandler, { passive: false });
-            document.body.addEventListener('touchend', touchEndHandler, { passive: false });
+            // Double-tap behavior removed - no global touch handlers required.
+            // Previously, a double-tap on the scene triggered click/animation toggles on the active model.
+            // That behavior was intentionally removed per design — do not add new global touch handlers here.
             
             // PC用：マウス操作は削除（回転ボタンのみ使用）
             
