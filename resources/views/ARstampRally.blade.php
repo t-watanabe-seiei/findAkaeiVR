@@ -937,7 +937,8 @@
         
         #stamp-book-content .stamps-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* 5列 x 4行 = 20 スロット */
+            grid-template-columns: repeat(5, 1fr);
             gap: 8px;
             margin-bottom: 15px;
         }
@@ -991,7 +992,22 @@
         #stamp-book-content .stamp-item.not-collected {
             opacity: 0.4;
         }
-        
+
+        /* シークレット表示用: 未入手時は影（シルエット）だけ表示 */
+        #stamp-book-content .stamp-item.secret .stamp-icon {
+            /* 絵文字を透明にして text-shadow で影だけ見せる（シルエット風）*/
+            color: transparent;
+            text-shadow: 0 6px 8px rgba(0,0,0,0.55);
+            background: linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.0));
+        }
+
+        #stamp-book-content .stamp-item.secret .stamp-name {
+            color: #999;
+            font-size: 11px;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
         #stamp-book-content .stamp-item.not-collected .stamp-icon {
             filter: grayscale(100%);
         }
@@ -1288,7 +1304,7 @@
         <div id="stamp-book-content">
             <h2>🎯 コレクション 🎯</h2>
             <div class="progress">
-                <span id="collected-count">0</span> / 5 種類コンプリート
+                <span id="collected-count">0</span> / <span id="total-slots">20</span> 種類
             </div>
             <div id="complete-message-container"></div>
             <div class="stamps-grid" id="stamps-grid">
@@ -1668,6 +1684,9 @@
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' }
         };
+
+        // スタンプ帳に表示する総スロット数（最終的には20）
+        const TOTAL_STAMP_SLOTS = 20;
         
         // 音声ファイルをプリロード
         const soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
@@ -2332,54 +2351,73 @@
             // グリッドをクリア
             stampsGrid.innerHTML = '';
             
-            // 各スタンプを表示
-            Object.keys(STAMPS).forEach(stampId => {
-                const stamp = STAMPS[stampId];
-                const isCollected = collectedStamps[stampId] !== undefined;
-                
-                const stampItem = document.createElement('div');
-                stampItem.className = `stamp-item ${isCollected ? 'collected' : 'not-collected'}`;
-                
-                let dateText = '';
-                let iconContent = stamp.icon; // デフォルトは絵文字
-                
-                if (isCollected) {
-                    const date = new Date(collectedStamps[stampId].collectedAt);
-                    dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
-                    
-                    // スクリーンショットがあれば画像を表示
-                    if (collectedStamps[stampId].screenshot) {
-                        const screenshotData = collectedStamps[stampId].screenshot;
-                        console.log(`Stamp ${stampId} screenshot:`, {
-                            hasData: !!screenshotData,
-                            length: screenshotData ? screenshotData.length : 0,
-                            prefix: screenshotData ? screenshotData.substring(0, 50) : 'none'
-                        });
-                        iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
-                    } else {
-                        console.log(`Stamp ${stampId} has no screenshot`);
+            // 各スタンプスロットを表示（総スロット数 TOTAL_STAMP_SLOTS）
+            const stampKeys = Object.keys(STAMPS);
+            const totalSlots = typeof TOTAL_STAMP_SLOTS === 'number' ? TOTAL_STAMP_SLOTS : stampKeys.length;
+
+            for (let i = 0; i < totalSlots; i++) {
+                if (i < stampKeys.length) {
+                    // 実際に用意されているスタンプ
+                    const stampId = stampKeys[i];
+                    const stamp = STAMPS[stampId];
+                    const isCollected = collectedStamps[stampId] !== undefined;
+
+                    const stampItem = document.createElement('div');
+                    stampItem.className = `stamp-item ${isCollected ? 'collected' : 'not-collected'}`;
+
+                    let dateText = '';
+                    let iconContent = stamp.icon; // デフォルトは絵文字
+
+                    if (isCollected) {
+                        const date = new Date(collectedStamps[stampId].collectedAt);
+                        dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+
+                        // スクリーンショットがあれば画像を表示
+                        if (collectedStamps[stampId].screenshot) {
+                            const screenshotData = collectedStamps[stampId].screenshot;
+                            iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
+                        }
                     }
+
+                    stampItem.innerHTML = `
+                        <div class="stamp-icon">${iconContent}</div>
+                        <div class="stamp-name">${stamp.name}</div>
+                        ${dateText}
+                    `;
+
+                    stampsGrid.appendChild(stampItem);
+                } else {
+                    // シークレットスロット（未実装の残り）
+                    const secretIndex = i - stampKeys.length + 1;
+                    const stampItem = document.createElement('div');
+                    stampItem.className = 'stamp-item not-collected secret';
+
+                    // 影のみで見せるアイコン（プレースホルダー）
+                    const iconContent = '🐾';
+                    const nameText = 'シークレット';
+
+                    stampItem.innerHTML = `
+                        <div class="stamp-icon">${iconContent}</div>
+                        <div class="stamp-name">${nameText}</div>
+                    `;
+
+                    stampsGrid.appendChild(stampItem);
                 }
-                
-                stampItem.innerHTML = `
-                    <div class="stamp-icon">${iconContent}</div>
-                    <div class="stamp-name">${stamp.name}</div>
-                    ${dateText}
-                `;
-                
-                stampsGrid.appendChild(stampItem);
-            });
+            }
             
-            // 進捗を更新
+            // 進捗を更新（現在の収集数 / 総スロット数）
             const count = Object.keys(collectedStamps).length;
             collectedCount.textContent = count;
-            
-            // コンプリートメッセージ
-            if (count === Object.keys(STAMPS).length) {
+            const totalSlotsNode = document.getElementById('total-slots');
+            const totalSlotsVal = typeof TOTAL_STAMP_SLOTS === 'number' ? TOTAL_STAMP_SLOTS : Object.keys(STAMPS).length;
+            if (totalSlotsNode) totalSlotsNode.textContent = totalSlotsVal;
+
+            // コンプリートメッセージ（全スロットを集めた場合）
+            if (count === totalSlotsVal) {
                 completeMessageContainer.innerHTML = `
                     <div class="complete-message">
                         🎊 おめでとうございます！ 🎊<br>
-                        全${Object.keys(STAMPS).length}種類コンプリート！
+                        全${totalSlotsVal}種類コンプリート！
                     </div>
                 `;
             } else {
