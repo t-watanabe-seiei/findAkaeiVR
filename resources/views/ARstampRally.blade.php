@@ -537,7 +537,7 @@
             border: 3px solid #333;
             border-radius: 50%;
             cursor: pointer;
-            z-index: 10001;
+            z-index: 11100;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -611,6 +611,15 @@
         #throw-button.power-low { box-shadow: 0 8px 18px rgba(0,0,0,0.35), 0 0 0 6px rgba(60,150,255,0.12) inset; }
         #throw-button.power-mid { box-shadow: 0 10px 22px rgba(0,0,0,0.38), 0 0 0 8px rgba(255,180,40,0.14) inset; transform: translateX(-50%) scale(1.02); }
         #throw-button.power-high { box-shadow: 0 12px 26px rgba(0,0,0,0.42), 0 0 0 10px rgba(255,80,80,0.16) inset; transform: translateX(-50%) scale(1.06); }
+
+        /* スタンプ帳が開いているときに投げボタンを背面化して操作できないようにする */
+        body.stampbook-open #throw-button {
+            z-index: 1000 !important; /* モーダルの下に置く */
+            opacity: 0.18;
+            pointer-events: none;
+            transform: translateX(-50%) scale(0.96);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
         
         #video-button.recording {
             background-color: rgba(255, 100, 100, 0.9);
@@ -2427,6 +2436,9 @@
             // モーダルを表示
             const modal = document.getElementById('stamp-book-modal');
             modal.style.display = 'block';
+            modal.setAttribute('aria-hidden', 'false');
+            // 投げボタンを背面化／無効化するためのフラグを付与
+            document.body.classList.add('stampbook-open');
             
             // 明示的にスクロール位置をリセット
             requestAnimationFrame(() => {
@@ -2538,7 +2550,8 @@
                         const guideLangJPBtn = document.getElementById('lang-jp');
                         const guideLangENBtn = document.getElementById('lang-en');
                         // initial language: prefer Japanese if browser language starts with 'ja'
-                        let guideLang = (navigator.language && navigator.language.toLowerCase().startsWith('ja')) ? 'jp' : 'en';
+                        // Default to English; user can toggle to Japanese via the UI.
+                        let guideLang = 'en';
 
                         function setGuideLanguage(lang) {
                             guideLang = lang === 'jp' ? 'jp' : 'en';
@@ -3751,6 +3764,10 @@
                 
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('stampbook-open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('stampbook-open');
             });
 
             // 操作説明ボタン（ヘルプ）
@@ -4143,6 +4160,8 @@
                     e.preventDefault();
                     e.stopPropagation();
                     stampBookModal.style.display = 'none';
+                    stampBookModal.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('stampbook-open');
                 }
             });
             
