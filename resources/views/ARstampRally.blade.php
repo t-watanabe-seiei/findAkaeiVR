@@ -2702,26 +2702,65 @@
 
                         function checkCameraPermissions() {
                             const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-                            // try permissions api first
+
+                            // Helper: only show for iOS scenarios where AR.js didn't start the camera
+                            function showIfNoAR(reason, delay = 2000) {
+                                if (!isIOS) return; // We only show the iOS-specific guidance automatically
+                                setTimeout(() => {
+                                    if (!window.arjsVideoReady) {
+                                        showCameraHelp(guideLang, reason || 'no-start');
+                                    }
+                                }, delay);
+                            }
+
+                            // Use Permissions API when available
                             if (navigator.permissions && typeof navigator.permissions.query === 'function') {
                                 try {
                                     navigator.permissions.query({ name: 'camera' }).then(result => {
                                         if (result && result.state === 'denied') {
-                                            // definite denial
+                                            // explicit denial — show quickly
                                             setTimeout(() => showCameraHelp(guideLang, 'denied'), 150);
+                                        } else if (result && result.state === 'prompt') {
+                                            // permission not yet granted: if AR.js still hasn't started the video after a short wait, show hint
+                                            showIfNoAR('no-start', 2200);
+                                        } else {
+                                            // granted — no action
                                         }
+
+                                        // also listen for changes (user may change permissions in settings while page open)
+                                        try {
+                                            if (result && typeof result.addEventListener === 'function') {
+                                                result.addEventListener('change', () => {
+                                                    // if denied later, show help; if granted later, hide help
+                                                    if (result.state === 'denied') showCameraHelp(guideLang, 'denied');
+                                                    else if (result.state === 'granted') hideCameraHelp();
+                                                });
+                                            }
+                                        } catch (e) { /* ignore */ }
+
                                     }).catch(e => {
-                                        // fallback: if permission query fails, use a timeout-based heuristic for iOS
-                                        if (isIOS && !window.arjsVideoReady) setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 1200);
+                                        // permissions query failed — fallback heuristics for iOS
+                                        showIfNoAR('no-start', 2500);
                                     });
                                 } catch (e) {
-                                    if (isIOS && !window.arjsVideoReady) setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 1600);
+                                    showIfNoAR('no-start', 2500);
                                 }
                             } else {
-                                // Permissions API not available (Safari older versions) => use heuristic for iOS only
-                                if (isIOS) {
-                                    setTimeout(() => { if (!window.arjsVideoReady) showCameraHelp(guideLang, 'no-start'); }, 3000);
-                                }
+                                // Permissions API not available — use heuristic for iOS only
+                                if (isIOS) showIfNoAR('no-start', 3000);
+                            }
+
+                            // Additional heuristic: if enumerateDevices reports no video inputs, that's a strong sign
+                            if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+                                navigator.mediaDevices.enumerateDevices().then(devices => {
+                                    const hasVideo = devices.some(d => d.kind && d.kind.toLowerCase() === 'videoinput');
+                                    if (!hasVideo && isIOS) {
+                                        // No video inputs found — likely global block or no camera
+                                        showIfNoAR('no-devices', 500);
+                                    }
+                                }).catch(e => {
+                                    // ignore errors — we only use this as a heuristic
+                                });
                             }
                         }
 
