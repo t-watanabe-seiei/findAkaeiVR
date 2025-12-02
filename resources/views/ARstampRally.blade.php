@@ -545,6 +545,14 @@
             box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
             transition: transform 0.08s, background-color 0.12s;
             touch-action: none; /* prevent default pinch-to-zoom on some browsers when touching the button */
+            /* Prevent blue selection highlight / long-press selection on mobile */
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+ */
+            user-select: none; /* Standard */
+            -webkit-touch-callout: none; /* iOS Safari long-press menu */
+            -webkit-tap-highlight-color: transparent; /* remove tap highlight on some Android browsers */
+            -webkit-user-drag: none; /* prevent dragging */
         }
 
         #throw-button:active { transform: translateX(-50%) scale(0.92); }
@@ -3231,6 +3239,23 @@
             let previewAnimationId = null;
             let previewLastTime = null;
             if (throwButton) {
+                // Prevent selection/long-press artifacts and context menu on mobile devices
+                // - touchstart preventDefault ensures the browser doesn't select an overlay area while long-pressing
+                // - contextmenu preventDefault blocks the native long-press menu on some browsers
+                try {
+                    throwButton.addEventListener('touchstart', function(e) {
+                        if (e.cancelable) e.preventDefault();
+                        e.stopPropagation();
+                    }, { passive: false });
+
+                    throwButton.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        return false;
+                    }, false);
+                } catch (ex) {
+                    // defensive: if any browser doesn't support these events, continue
+                    console.warn('Throw button selection prevention not fully supported on this device', ex);
+                }
                 let throwPressInterval = null;
                 throwButton.addEventListener('pointerdown', function(e) {
                     e.preventDefault();
