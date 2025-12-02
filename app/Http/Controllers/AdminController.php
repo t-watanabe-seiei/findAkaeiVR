@@ -48,14 +48,37 @@ class AdminController extends Controller
         $pendingExchanges = $totalExchanges - $redeemedExchanges;
 
         // 最近の景品交換（未使用のみ）- ページネーション
-        $recentExchanges = PrizeExchange::where('is_redeemed', false)
-            ->orderBy('exchanged_at', 'desc')
-            ->paginate(20, ['*'], 'exchanges_page');
+        // optional search by prize code (query param: q)
+        $q = $request->query('q');
+        $recentQuery = PrizeExchange::where('is_redeemed', false);
+        if ($q) {
+            // allow partial matches (case-insensitive)
+            $recentQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+        }
+        $recentExchanges = $recentQuery->orderBy('exchanged_at', 'desc')
+            ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
 
         // 使用済み景品交換 - ページネーション（10件ごと）
         $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
             ->orderBy('redeemed_at', 'desc')
             ->paginate(10, ['*'], 'redeemed_page');
+
+        // --- Short-code capacity & collision stats ---
+        $shortCapacity = 26 * 26 * 1000; // ABnnn
+
+        // Count how many prize_codes in DB match the short-format (A-Z A-Z 0-9 x3)
+        $allCodes = PrizeExchange::pluck('prize_code');
+        $usedShortCount = collect($allCodes)->filter(function ($c) {
+            return is_string($c) && preg_match('/^[A-Z]{2}[0-9]{3}$/', $c);
+        })->count();
+
+        $remainingShort = max(0, $shortCapacity - $usedShortCount);
+
+        // collisions: generation_attempts > 1 means it had to retry due to collisions
+        $collisionCount = PrizeExchange::where('generation_attempts', '>', 1)->count();
+        $totalExchanges = PrizeExchange::count() ?: 1; // avoid div0
+        $collisionRate = ($collisionCount / $totalExchanges) * 100;
+        $averageAttempts = PrizeExchange::avg('generation_attempts') ?: 0;
 
         // マーカー別スキャン統計 - ページネーション不要
         $markerStats = MarkerScan::select('marker_id', 'marker_name')
@@ -86,7 +109,14 @@ class AdminController extends Controller
             'redeemedPrizes',
             'markerStats',
             'dailyScans',
-            'recentScans'
+            'recentScans',
+            // added stats
+            'shortCapacity',
+            'usedShortCount',
+            'remainingShort',
+            'collisionCount',
+            'collisionRate',
+            'averageAttempts'
         ));
     }
 

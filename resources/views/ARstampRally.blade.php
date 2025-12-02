@@ -2705,7 +2705,6 @@
 
                             // Helper: only show for iOS scenarios where AR.js didn't start the camera
                             function showIfNoAR(reason, delay = 2000) {
-                                if (!isIOS) return; // We only show the iOS-specific guidance automatically
                                 setTimeout(() => {
                                     if (!window.arjsVideoReady) {
                                         showCameraHelp(guideLang, reason || 'no-start');
@@ -2746,15 +2745,15 @@
                                     showIfNoAR('no-start', 2500);
                                 }
                             } else {
-                                // Permissions API not available — use heuristic for iOS only
-                                if (isIOS) showIfNoAR('no-start', 3000);
+                                // Permissions API not available — use heuristic for all browsers
+                                showIfNoAR('no-start', 3000);
                             }
 
                             // Additional heuristic: if enumerateDevices reports no video inputs, that's a strong sign
                             if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
                                 navigator.mediaDevices.enumerateDevices().then(devices => {
                                     const hasVideo = devices.some(d => d.kind && d.kind.toLowerCase() === 'videoinput');
-                                    if (!hasVideo && isIOS) {
+                                    if (!hasVideo) {
                                         // No video inputs found — likely global block or no camera
                                         showIfNoAR('no-devices', 500);
                                     }

@@ -17,6 +17,7 @@ class PrizeExchange extends Model
         'ip_address',
         'device_info',
         'stamps_data',
+        'generation_attempts',
         'exchanged_at',
         'is_redeemed',
         'redeemed_at'
@@ -26,6 +27,7 @@ class PrizeExchange extends Model
         'device_info' => 'array',
         'stamps_data' => 'array',
         'exchanged_at' => 'datetime',
+        'generation_attempts' => 'integer',
         'redeemed_at' => 'datetime',
         'is_redeemed' => 'boolean'
     ];

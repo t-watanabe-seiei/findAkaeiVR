@@ -391,6 +391,18 @@
             <h3>未使用</h3>
             <div class="number" style="color: #ffc107;">{{ $pendingExchanges }}</div>
         </div>
+        <div class="stat-card">
+            <h3>短縮コード利用状況</h3>
+            <div style="font-size:13px; color:#666; margin-bottom:6px;">利用済み / 総数</div>
+            <div class="number">{{ $usedShortCount }} / {{ $shortCapacity }}</div>
+            <div style="font-size:12px; color:#666; margin-top:6px;">残り: <strong>{{ $remainingShort }}</strong> ({{ round(($usedShortCount/$shortCapacity)*100, 2) }}%)</div>
+        </div>
+        <div class="stat-card">
+            <h3>衝突率モニター</h3>
+            <div style="font-size:13px; color:#666; margin-bottom:6px;">衝突回数（試行>1）</div>
+            <div class="number" style="color:#E53935;">{{ $collisionCount }}</div>
+            <div style="font-size:12px; color:#666; margin-top:6px;">衝突率: <strong>{{ round($collisionRate, 3) }}%</strong> | 平均試行回数: <strong>{{ round($averageAttempts,3) }}</strong></div>
+        </div>
     </div>
 
     <!-- CSV エクスポートパネル -->
@@ -429,6 +441,15 @@
     <div class="prizes-grid">
         <div class="card">
             <h2>🎁 未使用の景品交換</h2>
+            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+                <form method="GET" action="{{ route('admin.dashboard') }}" style="display:flex; gap:8px; align-items:center;">
+                    <input type="search" name="q" placeholder="景品コードで検索 (例: A123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.dashboard') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                    @endif
+                </form>
+            </div>
             <table>
                 <thead>
                     <tr>
