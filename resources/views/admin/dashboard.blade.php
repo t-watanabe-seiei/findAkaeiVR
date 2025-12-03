@@ -640,7 +640,7 @@
 
         <div class="chart-container">
             <h3>📊 ユニークユーザ数の推移（Fingerprint）</h3>
-            <canvas id="uniqueUsersChart" style="width:100%;height:260px;"></canvas>
+            <canvas id="uniqueUsersChart" width="1000" height="260" style="display:block; width:100%; height:260px;"></canvas>
         </div>
     </div>
 
@@ -726,6 +726,12 @@
                     const ctx = document.getElementById('uniqueUsersChart');
                     if (!ctx) return;
 
+                    // Prevent multiple chart instances stacking up (destroy previous if exists)
+                    if (window._uniqueUsersChart && typeof window._uniqueUsersChart.destroy === 'function') {
+                        try { window._uniqueUsersChart.destroy(); } catch (e) { console.warn('Error destroying chart', e); }
+                        window._uniqueUsersChart = null;
+                    }
+
                     const labels = {!! json_encode($uniqueLabels ?? []) !!};
                     const counts = {!! json_encode($uniqueCounts ?? []) !!};
 
@@ -749,8 +755,11 @@
                             type: 'line',
                             data: data,
                             options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
+                            responsive: true,
+                            // Keep aspect ratio to avoid the canvas expanding vertically in some environments.
+                            // Canvas has a fixed pixel height attribute (height=260) so the chart will use that.
+                            maintainAspectRatio: true,
+                            animation: { duration: 300 },
                                 scales: {
                                     x: { grid: { display: false } },
                                     y: { beginAtZero: true, ticks: { stepSize: 1 } }
