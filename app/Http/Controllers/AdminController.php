@@ -97,6 +97,29 @@ class AdminController extends Controller
             ->orderBy('date', 'desc')
             ->paginate(15, ['*'], 'daily_page');
 
+        // --- 追加: 日別ユニークユーザ数（fingerprint 単位）の集計（デフォルト直近30日） ---
+        $uniqueDays = intval($request->query('unique_days', 30));
+        $uniqueStart = Carbon::today()->subDays($uniqueDays - 1)->startOfDay();
+
+        $rawUnique = DB::table('marker_scans')
+            ->select(DB::raw("DATE(scanned_at) AS day"))
+            ->selectRaw('COUNT(DISTINCT fingerprint) AS unique_count')
+            ->where('scanned_at', '>=', $uniqueStart)
+            ->groupBy('day')
+            ->orderBy('day', 'asc')
+            ->get()
+            ->keyBy('day');
+
+        // 穴埋め: 日付が連続するようにラベルと値の配列を作る
+        $uniqueLabels = [];
+        $uniqueCounts = [];
+        for ($i = 0; $i < $uniqueDays; $i++) {
+            $d = $uniqueStart->copy()->addDays($i);
+            $label = $d->format('Y-m-d');
+            $uniqueLabels[] = $label;
+            $uniqueCounts[] = isset($rawUnique[$label]) ? (int)$rawUnique[$label]->unique_count : 0;
+        }
+
         // 最近のスキャン履歴 - ページネーション
         $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
             ->paginate(30, ['*'], 'scans_page');
@@ -116,7 +139,11 @@ class AdminController extends Controller
             'remainingShort',
             'collisionCount',
             'collisionRate',
-            'averageAttempts'
+            'averageAttempts',
+            // daily unique users
+            'uniqueLabels',
+            'uniqueCounts',
+            'uniqueDays'
         ));
     }
 

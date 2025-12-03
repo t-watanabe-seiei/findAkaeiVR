@@ -619,6 +619,31 @@
         </div>
     </div>
 
+    <!-- 日別ユニークユーザ数（Fingerprintベース） -->
+    <div class="card">
+        <h2>📈 日別ユニークユーザ数（Fingerprint）</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap;">
+            <div style="color:#666;">表示日数を選んで更新してください：</div>
+            <form method="GET" action="{{ route('admin.dashboard') }}" style="display:flex; gap:8px; align-items:center;">
+                <input type="hidden" name="q" value="{{ request('q') }}" />
+                <label style="font-size:13px; color:#333;">表示日数
+                    <select name="unique_days" onchange="this.form.submit()" style="margin-left:6px; padding:6px 8px;">
+                        <option value="7" {{ (int)$uniqueDays === 7 ? 'selected' : '' }}>7日</option>
+                        <option value="14" {{ (int)$uniqueDays === 14 ? 'selected' : '' }}>14日</option>
+                        <option value="30" {{ (int)$uniqueDays === 30 ? 'selected' : '' }}>30日</option>
+                        <option value="90" {{ (int)$uniqueDays === 90 ? 'selected' : '' }}>90日</option>
+                    </select>
+                </label>
+                <a href="{{ route('admin.dashboard') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+            </form>
+        </div>
+
+        <div class="chart-container">
+            <h3>📊 ユニークユーザ数の推移（Fingerprint）</h3>
+            <canvas id="uniqueUsersChart" style="width:100%;height:260px;"></canvas>
+        </div>
+    </div>
+
     <div class="card">
         <h2>📝 最近のスキャン履歴</h2>
         <table>
@@ -688,6 +713,62 @@
         setTimeout(() => {
             location.reload();
         }, 30000);
+
+        // --- Chart.js for unique users ---
+        (function(){
+            try {
+                // load Chart.js if available globally, otherwise inject CDN
+                function loadScript(url, cb){
+                    const s = document.createElement('script'); s.src = url; s.onload = cb; document.head.appendChild(s);
+                }
+
+                function renderChart(){
+                    const ctx = document.getElementById('uniqueUsersChart');
+                    if (!ctx) return;
+
+                    const labels = {!! json_encode($uniqueLabels ?? []) !!};
+                    const counts = {!! json_encode($uniqueCounts ?? []) !!};
+
+                    const data = {
+                        labels: labels.map(l => (new Date(l)).toLocaleDateString()),
+                        datasets: [{
+                            label: 'ユニークユーザ数',
+                            data: counts,
+                            fill: true,
+                            backgroundColor: 'rgba(102,126,234,0.14)',
+                            borderColor: 'rgba(102,126,234,1)',
+                            tension: 0.25,
+                            pointRadius: 3
+                        }]
+                    };
+
+                    // eslint-disable-next-line no-undef
+                    if (typeof Chart !== 'undefined') {
+                        // eslint-disable-next-line no-unused-vars
+                        window._uniqueUsersChart = new Chart(ctx.getContext('2d'), {
+                            type: 'line',
+                            data: data,
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                                },
+                            }
+                        });
+                    }
+                }
+
+                if (typeof Chart === 'undefined') {
+                    loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js', renderChart);
+                } else {
+                    renderChart();
+                }
+            } catch (e) {
+                console.warn('Failed to render unique users chart', e);
+            }
+        })();
     </script>
 </body>
 </html>
