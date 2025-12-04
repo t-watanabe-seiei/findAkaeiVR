@@ -1486,6 +1486,19 @@
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
+
+        <!-- Tora (とら) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-tora.patt') }}" id="pattern-tora-marker">
+            <a-entity
+                id="tora-model"
+                gltf-model="{{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
+                position="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
         
     </a-scene>
 
@@ -1684,7 +1697,9 @@
             'fox': { name: 'きつね', icon: '🦊', model: '3d_pro_fox_isobe.glb' },
             'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_pro_pengin_morita.glb' },
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
-            'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' }
+            'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' },
+            // tora (とら) - 新しいマーカー/モデル
+            'tora': { name: 'とら', icon: '🐯', model: '3d_pro_tora_iwamoto.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2513,6 +2528,7 @@
             const penginModel = document.querySelector('#pengin-model');
             const tonakaiModel = document.querySelector('#tonakai-model');
             const pigModel = document.querySelector('#pig-model');
+            const toraModel = document.querySelector('#tora-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
@@ -2534,6 +2550,7 @@
             const patternPenginMarker = document.querySelector('#pattern-pengin-marker');
             const patternTonakaiMarker = document.querySelector('#pattern-tonakai-marker');
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
+            const patternToraMarker = document.querySelector('#pattern-tora-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -3585,6 +3602,41 @@
                     }
                 });
             }
+
+            if (patternToraMarker) {
+                patternToraMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-tora marker found');
+                    activeModel = toraModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
+                    currentMarkerStampId = 'tora';
+                    // 回転ボタンを表示 (要素が存在する場合のみ)
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
+                    if (toraModel && toraModel.components && toraModel.components.hitbox) {
+                        if (!allHitboxes.includes(toraModel.components.hitbox)) {
+                            allHitboxes.push(toraModel.components.hitbox);
+                        }
+                    }
+                });
+                patternToraMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-tora marker lost');
+                    if (activeModel === toraModel) {
+                        activeModel = null;
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    }
+                    if (currentMarkerStampId === 'tora') {
+                        currentMarkerStampId = null;
+                    }
+                    if (toraModel && toraModel.components && toraModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(toraModel.components.hitbox);
+                        if (index > -1) {
+                            allHitboxes.splice(index, 1);
+                        }
+                    }
+                });
+            }
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -4065,7 +4117,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
