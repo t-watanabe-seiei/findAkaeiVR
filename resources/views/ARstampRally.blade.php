@@ -1499,6 +1499,32 @@
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
+
+        <!-- Gollira (ごりら) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-gollira.patt') }}" id="pattern-gollira-marker">
+            <a-entity
+                id="gollira-model"
+                gltf-model="{{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
+                position="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+
+        <!-- White Duck (白アヒル) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteDuck.patt') }}" id="pattern-whiteDuck-marker">
+            <a-entity
+                id="whiteDuck-model"
+                gltf-model="{{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
+                position="0 0 0"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
         
     </a-scene>
 
@@ -1699,7 +1725,11 @@
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' },
             // tora (とら) - 新しいマーカー/モデル
-            'tora': { name: 'とら', icon: '🐯', model: '3d_pro_tora_iwamoto.glb' }
+            'tora': { name: 'とら', icon: '🐯', model: '3d_pro_tora_iwamoto.glb' },
+            // gollira (ごりら) - 新しいマーカー/モデル
+            'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
+            // white duck - 新しいマーカー/モデル
+            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2529,6 +2559,7 @@
             const tonakaiModel = document.querySelector('#tonakai-model');
             const pigModel = document.querySelector('#pig-model');
             const toraModel = document.querySelector('#tora-model');
+            const golliraModel = document.querySelector('#gollira-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
@@ -2551,6 +2582,9 @@
             const patternTonakaiMarker = document.querySelector('#pattern-tonakai-marker');
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             const patternToraMarker = document.querySelector('#pattern-tora-marker');
+            const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
+            const whiteDuckModel = document.querySelector('#whiteDuck-model');
+            const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -3637,6 +3671,69 @@
                     }
                 });
             }
+
+            if (patternGolliraMarker) {
+                patternGolliraMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-gollira marker found');
+                    activeModel = golliraModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
+                    currentMarkerStampId = 'gollira';
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
+                    if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
+                        if (!allHitboxes.includes(golliraModel.components.hitbox)) {
+                            allHitboxes.push(golliraModel.components.hitbox);
+                        }
+                    }
+                });
+
+                patternGolliraMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-gollira marker lost');
+                    if (activeModel === golliraModel) {
+                        activeModel = null;
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    }
+                    if (currentMarkerStampId === 'gollira') currentMarkerStampId = null;
+                    if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(golliraModel.components.hitbox);
+                        if (index > -1) allHitboxes.splice(index, 1);
+                    }
+                });
+            }
+
+            // --- whiteDuck marker handlers ---
+            if (patternWhiteDuckMarker) {
+                patternWhiteDuckMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-whiteDuck marker found');
+                    activeModel = whiteDuckModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
+                    currentMarkerStampId = 'whiteDuck';
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
+                    if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
+                        if (!allHitboxes.includes(whiteDuckModel.components.hitbox)) {
+                            allHitboxes.push(whiteDuckModel.components.hitbox);
+                        }
+                    }
+                });
+
+                patternWhiteDuckMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-whiteDuck marker lost');
+                    if (activeModel === whiteDuckModel) {
+                        activeModel = null;
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    }
+                    if (currentMarkerStampId === 'whiteDuck') currentMarkerStampId = null;
+                    if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(whiteDuckModel.components.hitbox);
+                        if (index > -1) allHitboxes.splice(index, 1);
+                    }
+                });
+            }
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -4117,7 +4214,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'whiteDuck-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
