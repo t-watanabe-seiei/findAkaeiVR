@@ -1431,7 +1431,7 @@
             <a-entity
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1443,7 +1443,7 @@
             <a-entity
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_pro_fox_isobe.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1479,7 +1479,7 @@
             <a-entity
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_pro_pig_matsubara.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1492,7 +1492,7 @@
             <a-entity
                 id="tora-model"
                 gltf-model="{{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1505,7 +1505,7 @@
             <a-entity
                 id="gollira-model"
                 gltf-model="{{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1518,11 +1518,24 @@
             <a-entity
                 id="whiteDuck-model"
                 gltf-model="{{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
+        <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
+            <a-entity
+                id="t-rex-model"
+                gltf-model="{{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -1729,7 +1742,9 @@
             // gollira (ごりら) - 新しいマーカー/モデル
             'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
             // white duck - 新しいマーカー/モデル
-            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' }
+            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
+            // t-rex (ティラノサウルス)
+            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2560,6 +2575,7 @@
             const pigModel = document.querySelector('#pig-model');
             const toraModel = document.querySelector('#tora-model');
             const golliraModel = document.querySelector('#gollira-model');
+            const tRexModel = document.querySelector('#t-rex-model');
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
@@ -2585,6 +2601,7 @@
             const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
+            const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -3734,6 +3751,38 @@
                     }
                 });
             }
+
+            // --- t-rex marker handlers ---
+            if (patternTRexMarker) {
+                patternTRexMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-t-rex marker found');
+                    activeModel = tRexModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
+                    currentMarkerStampId = 't-rex';
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
+                    if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
+                        if (!allHitboxes.includes(tRexModel.components.hitbox)) {
+                            allHitboxes.push(tRexModel.components.hitbox);
+                        }
+                    }
+                });
+
+                patternTRexMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-t-rex marker lost');
+                    if (activeModel === tRexModel) {
+                        activeModel = null;
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    }
+                    if (currentMarkerStampId === 't-rex') currentMarkerStampId = null;
+                    if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(tRexModel.components.hitbox);
+                        if (index > -1) allHitboxes.splice(index, 1);
+                    }
+                });
+            }
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -4214,7 +4263,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'whiteDuck-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'whiteDuck-model', 't-rex-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
