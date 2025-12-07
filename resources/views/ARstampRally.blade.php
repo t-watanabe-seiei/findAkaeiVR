@@ -1439,6 +1439,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Burger (バーガー) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-burger.patt') }}" id="pattern-burger-marker">
+            <a-entity
+                id="burger-model"
+                gltf-model="{{ asset('cg/3d_pro_burger_fujii.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1744,7 +1757,9 @@
             // white duck - 新しいマーカー/モデル
             'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
             // t-rex (ティラノサウルス)
-            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' }
+            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
+            // burger / バーガー
+            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2600,6 +2615,8 @@
             const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
             const tRexModel = document.querySelector('#t-rex-model');
             const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
+            const burgerModel = document.querySelector('#burger-model');
+            const patternBurgerMarker = document.querySelector('#pattern-burger-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             
@@ -3735,6 +3752,38 @@
                             if (index > -1) allHitboxes.splice(index, 1);
                         }
                     });
+                    
+                    // --- burger marker handlers ---
+                    if (patternBurgerMarker) {
+                        patternBurgerMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-burger marker found');
+                            activeModel = burgerModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'burger';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+                            if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
+                                if (!allHitboxes.includes(burgerModel.components.hitbox)) {
+                                    allHitboxes.push(burgerModel.components.hitbox);
+                                }
+                            }
+                        });
+
+                        patternBurgerMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-burger marker lost');
+                            if (activeModel === burgerModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'burger') currentMarkerStampId = null;
+                            if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(burgerModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            }
+                        });
+                    }
                 }
 
                 patternGolliraMarker.addEventListener('markerLost', function() {
@@ -4263,7 +4312,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
