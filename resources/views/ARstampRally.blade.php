@@ -1431,7 +1431,7 @@
             <a-entity
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1443,7 +1443,7 @@
             <a-entity
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_pro_fox_isobe.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1492,7 +1492,7 @@
             <a-entity
                 id="tora-model"
                 gltf-model="{{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1505,7 +1505,7 @@
             <a-entity
                 id="gollira-model"
                 gltf-model="{{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
@@ -1518,7 +1518,7 @@
             <a-entity
                 id="whiteDuck-model"
                 gltf-model="{{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
