@@ -1526,6 +1526,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
+            <a-entity
+                id="t-rex-model"
+                gltf-model="{{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
     </a-scene>
 
     <script>
@@ -1729,7 +1742,9 @@
             // gollira (ごりら) - 新しいマーカー/モデル
             'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
             // white duck - 新しいマーカー/モデル
-            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' }
+            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
+            // t-rex (ティラノサウルス)
+            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2583,6 +2598,8 @@
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             const patternToraMarker = document.querySelector('#pattern-tora-marker');
             const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
+            const tRexModel = document.querySelector('#t-rex-model');
+            const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             
@@ -3688,6 +3705,38 @@
                     }
                 });
 
+                // --- t-rex marker handlers ---
+                if (patternTRexMarker) {
+                    patternTRexMarker.addEventListener('markerFound', function() {
+                        console.log('Pattern-t-rex marker found');
+                        activeModel = tRexModel;
+                        setBaseScaleIfMissing(activeModel);
+                        applyCurrentScaleTo(activeModel);
+                        currentMarkerStampId = 't-rex';
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.add('visible');
+                        if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
+                            if (!allHitboxes.includes(tRexModel.components.hitbox)) {
+                                allHitboxes.push(tRexModel.components.hitbox);
+                            }
+                        }
+                    });
+
+                    patternTRexMarker.addEventListener('markerLost', function() {
+                        console.log('Pattern-t-rex marker lost');
+                        if (activeModel === tRexModel) {
+                            activeModel = null;
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                        }
+                        if (currentMarkerStampId === 't-rex') currentMarkerStampId = null;
+                        if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
+                            const index = allHitboxes.indexOf(tRexModel.components.hitbox);
+                            if (index > -1) allHitboxes.splice(index, 1);
+                        }
+                    });
+                }
+
                 patternGolliraMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-gollira marker lost');
                     if (activeModel === golliraModel) {
@@ -4214,7 +4263,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'whiteDuck-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
