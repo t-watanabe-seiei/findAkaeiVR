@@ -1596,6 +1596,19 @@
                 hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
+
+        <!-- Wolf (オオカミ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-wolf.patt') }}" id="pattern-wolf-marker">
+            <a-entity
+                id="wolf-model"
+                gltf-model="{{ asset('cg/3d_pro_wolf_morita.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
         
     </a-scene>
 
@@ -1806,7 +1819,9 @@
             // hamstar / ハムスター
             'hamstar': { name: 'ハムスター', icon: '🐹', model: '3d_pro_humstar_harada.glb' },
             // araiguma / アライグマ
-            'araiguma': { name: 'アライグマ', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' }
+            'araiguma': { name: 'アライグマ', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
+            // wolf / オオカミ
+            'wolf': { name: 'オオカミ', icon: '🐺', model: '3d_pro_wolf_morita.glb' }
         };
 
         // スタンプ帳に表示する総スロット数（最終的には20）
@@ -2666,6 +2681,8 @@
             const patternHamstarMarker = document.querySelector('#pattern-hamstar-marker');
             const araigumaModel = document.querySelector('#araiguma-model');
             const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
+            const wolfModel = document.querySelector('#wolf-model');
+            const patternWolfMarker = document.querySelector('#pattern-wolf-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             
@@ -3881,6 +3898,38 @@
                     }
                 });
             }
+
+            // --- wolf marker handlers ---
+            if (patternWolfMarker) {
+                patternWolfMarker.addEventListener('markerFound', function() {
+                    console.log('Pattern-wolf marker found');
+                    activeModel = wolfModel;
+                    setBaseScaleIfMissing(activeModel);
+                    applyCurrentScaleTo(activeModel);
+                    currentMarkerStampId = 'wolf';
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.add('visible');
+                    if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
+                        if (!allHitboxes.includes(wolfModel.components.hitbox)) {
+                            allHitboxes.push(wolfModel.components.hitbox);
+                        }
+                    }
+                });
+
+                patternWolfMarker.addEventListener('markerLost', function() {
+                    console.log('Pattern-wolf marker lost');
+                    if (activeModel === wolfModel) {
+                        activeModel = null;
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    }
+                    if (currentMarkerStampId === 'wolf') currentMarkerStampId = null;
+                    if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
+                        const index = allHitboxes.indexOf(wolfModel.components.hitbox);
+                        if (index > -1) allHitboxes.splice(index, 1);
+                    }
+                });
+            }
             
             scene.addEventListener('loaded', function() {
                 sceneReady = true;
@@ -4361,7 +4410,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'hamstar-model', 'araiguma-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'hamstar-model', 'araiguma-model', 'wolf-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
