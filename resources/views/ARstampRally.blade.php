@@ -1439,6 +1439,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Namakemono (なまけもの) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-namakemono.patt') }}" id="pattern-namakemono-marker">
+            <a-entity
+                id="namakemono-model"
+                gltf-model="{{ asset('cg/3d_pro_namakemono_oda.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <!-- Hamstar (ハムスター) - 新しいマーカー -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-hamstar.patt') }}" id="pattern-hamstar-marker">
             <a-entity
@@ -1799,6 +1812,8 @@
             'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
             // wolf / オオカミ
             'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
+            // namakemono / なまけもの
+            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2668,6 +2683,8 @@
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             const wolfModel = document.querySelector('#wolf-model');
             const patternWolfMarker = document.querySelector('#pattern-wolf-marker');
+            const namakemonoModel = document.querySelector('#namakemono-model');
+            const patternNamakemonoMarker = document.querySelector('#pattern-namakemono-marker');
             const araigumaModel = document.querySelector('#araiguma-model');
             const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
             
@@ -4131,6 +4148,75 @@
                             }
                         });
                     }
+
+                    // --- namakemono marker handlers ---
+                    if (patternNamakemonoMarker) {
+                        patternNamakemonoMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-namakemono marker found');
+                            activeModel = namakemonoModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'namakemono';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
+                                if (!allHitboxes.includes(namakemonoModel.components.hitbox)) {
+                                    allHitboxes.push(namakemonoModel.components.hitbox);
+                                }
+                            } else if (namakemonoModel) {
+                                const registerIfReady = function nm() {
+                                    try {
+                                        try { setBaseScaleIfMissing(namakemonoModel); applyCurrentScaleTo(namakemonoModel); } catch (e) { /* ignore */ }
+                                        if (namakemonoModel.components && namakemonoModel.components.hitbox) {
+                                            if (!allHitboxes.includes(namakemonoModel.components.hitbox)) {
+                                                allHitboxes.push(namakemonoModel.components.hitbox);
+                                                console.log('Registered namakemono hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested namakemono hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('namakemono registration check failed', e);
+                                    } finally {
+                                        namakemonoModel.removeEventListener('model-loaded', nm);
+                                    }
+                                };
+                                namakemonoModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternNamakemonoMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-namakemono marker lost');
+                            if (activeModel === namakemonoModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'namakemono') currentMarkerStampId = null;
+                            if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(namakemonoModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (namakemonoModel) {
+                                const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -4613,7 +4699,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
