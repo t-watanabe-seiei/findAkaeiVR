@@ -1504,6 +1504,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Bear (くま) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-bear.patt') }}" id="pattern-bear-marker">
+            <a-entity
+                id="bear-model"
+                gltf-model="{{ asset('cg/3d_pro_bear_tagashira.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1844,6 +1857,8 @@
             'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
             // cat / ねこ
             'cat': { name: 'ねこ', icon: '🐱', model: '3d_pro_cat_fukuda.glb' },
+            // bear / くま
+            'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2721,6 +2736,8 @@
             const patternDuckMarker = document.querySelector('#pattern-duck-marker');
             const catModel = document.querySelector('#cat-model');
             const patternCatMarker = document.querySelector('#pattern-cat-marker');
+            const bearModel = document.querySelector('#bear-model');
+            const patternBearMarker = document.querySelector('#pattern-bear-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -4389,6 +4406,75 @@
                             }
                         });
                     }
+
+                    // --- bear marker handlers ---
+                    if (patternBearMarker) {
+                        patternBearMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-bear marker found');
+                            activeModel = bearModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'bear';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (bearModel && bearModel.components && bearModel.components.hitbox) {
+                                if (!allHitboxes.includes(bearModel.components.hitbox)) {
+                                    allHitboxes.push(bearModel.components.hitbox);
+                                }
+                            } else if (bearModel) {
+                                const registerIfReady = function bf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(bearModel); applyCurrentScaleTo(bearModel); } catch (e) { /* ignore */ }
+                                        if (bearModel.components && bearModel.components.hitbox) {
+                                            if (!allHitboxes.includes(bearModel.components.hitbox)) {
+                                                allHitboxes.push(bearModel.components.hitbox);
+                                                console.log('Registered bear hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested bear hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('bear registration check failed', e);
+                                    } finally {
+                                        bearModel.removeEventListener('model-loaded', bf);
+                                    }
+                                };
+                                bearModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternBearMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-bear marker lost');
+                            if (activeModel === bearModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'bear') currentMarkerStampId = null;
+                            if (bearModel && bearModel.components && bearModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(bearModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (bearModel) {
+                                const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -4871,7 +4957,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
