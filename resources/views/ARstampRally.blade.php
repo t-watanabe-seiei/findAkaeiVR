@@ -1517,6 +1517,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Harinezumi (はりねずみ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-harinezumi.patt') }}" id="pattern-harinezumi-marker">
+            <a-entity
+                id="harinezumi-model"
+                gltf-model="{{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1859,6 +1872,8 @@
             'cat': { name: 'ねこ', icon: '🐱', model: '3d_pro_cat_fukuda.glb' },
             // bear / くま
             'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
+            // harinezumi / はりねずみ
+            'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2738,6 +2753,8 @@
             const patternCatMarker = document.querySelector('#pattern-cat-marker');
             const bearModel = document.querySelector('#bear-model');
             const patternBearMarker = document.querySelector('#pattern-bear-marker');
+            const harinezumiModel = document.querySelector('#harinezumi-model');
+            const patternHarinezumiMarker = document.querySelector('#pattern-harinezumi-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -4475,6 +4492,75 @@
                             }
                         });
                     }
+
+                    // --- harinezumi marker handlers ---
+                    if (patternHarinezumiMarker) {
+                        patternHarinezumiMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-harinezumi marker found');
+                            activeModel = harinezumiModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'harinezumi';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
+                                if (!allHitboxes.includes(harinezumiModel.components.hitbox)) {
+                                    allHitboxes.push(harinezumiModel.components.hitbox);
+                                }
+                            } else if (harinezumiModel) {
+                                const registerIfReady = function hf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(harinezumiModel); applyCurrentScaleTo(harinezumiModel); } catch (e) { /* ignore */ }
+                                        if (harinezumiModel.components && harinezumiModel.components.hitbox) {
+                                            if (!allHitboxes.includes(harinezumiModel.components.hitbox)) {
+                                                allHitboxes.push(harinezumiModel.components.hitbox);
+                                                console.log('Registered harinezumi hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested harinezumi hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('harinezumi registration check failed', e);
+                                    } finally {
+                                        harinezumiModel.removeEventListener('model-loaded', hf);
+                                    }
+                                };
+                                harinezumiModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternHarinezumiMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-harinezumi marker lost');
+                            if (activeModel === harinezumiModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'harinezumi') currentMarkerStampId = null;
+                            if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(harinezumiModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (harinezumiModel) {
+                                const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -4957,7 +5043,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
