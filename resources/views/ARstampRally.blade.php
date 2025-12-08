@@ -1543,6 +1543,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Santa (サンタクロース) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-santa.patt') }}" id="pattern-santa-marker">
+            <a-entity
+                id="santa-model"
+                gltf-model="{{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1889,6 +1902,8 @@
             'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
             // whiteTiger / 白いトラ
             'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb' },
+            // santa / サンタクロース
+            'santa': { name: 'サンタクロース', icon: '🎅', model: '3d_pro_santa_iwamoto.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2772,6 +2787,8 @@
             const patternHarinezumiMarker = document.querySelector('#pattern-harinezumi-marker');
             const whiteTigerModel = document.querySelector('#whiteTiger-model');
             const patternWhiteTigerMarker = document.querySelector('#pattern-whiteTiger-marker');
+            const santaModel = document.querySelector('#santa-model');
+            const patternSantaMarker = document.querySelector('#pattern-santa-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -4647,6 +4664,75 @@
                             }
                         });
                     }
+
+                    // --- santa marker handlers ---
+                    if (patternSantaMarker) {
+                        patternSantaMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-santa marker found');
+                            activeModel = santaModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'santa';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (santaModel && santaModel.components && santaModel.components.hitbox) {
+                                if (!allHitboxes.includes(santaModel.components.hitbox)) {
+                                    allHitboxes.push(santaModel.components.hitbox);
+                                }
+                            } else if (santaModel) {
+                                const registerIfReady = function sf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(santaModel); applyCurrentScaleTo(santaModel); } catch (e) { /* ignore */ }
+                                        if (santaModel.components && santaModel.components.hitbox) {
+                                            if (!allHitboxes.includes(santaModel.components.hitbox)) {
+                                                allHitboxes.push(santaModel.components.hitbox);
+                                                console.log('Registered santa hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = santaModel.querySelectorAll ? santaModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested santa hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('santa registration check failed', e);
+                                    } finally {
+                                        santaModel.removeEventListener('model-loaded', sf);
+                                    }
+                                };
+                                santaModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternSantaMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-santa marker lost');
+                            if (activeModel === santaModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'santa') currentMarkerStampId = null;
+                            if (santaModel && santaModel.components && santaModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(santaModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (santaModel) {
+                                const nested = santaModel.querySelectorAll ? santaModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -5129,7 +5215,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
