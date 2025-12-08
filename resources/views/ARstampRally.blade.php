@@ -4945,6 +4945,43 @@
                 });
             }
             
+            // カメラを再開するヘルパー関数（モーダルを閉じたときにフリーズを防止）
+            function resumeCamera() {
+                try {
+                    // ビデオ要素を取得
+                    const video = document.querySelector('video');
+                    if (video) {
+                        // ビデオが一時停止している場合は再生
+                        if (video.paused) {
+                            video.play().catch(e => console.log('Video play attempt:', e));
+                        }
+                    }
+                    
+                    // A-Frameシーンのレンダリングを強制再開
+                    const scene = document.querySelector('a-scene');
+                    if (scene && scene.renderer) {
+                        scene.renderer.setAnimationLoop(() => {
+                            scene.renderer.render(scene.object3D, scene.camera);
+                        });
+                    }
+                    
+                    // AR.jsのレンダリングを再開
+                    if (scene && scene.systems && scene.systems.arjs) {
+                        const arjsSystem = scene.systems.arjs;
+                        if (arjsSystem.tick) {
+                            // AR.jsのtickを再開
+                            requestAnimationFrame(() => {
+                                arjsSystem.tick();
+                            });
+                        }
+                    }
+                    
+                    console.log('Camera resumed after modal close');
+                } catch (error) {
+                    console.log('Camera resume attempt:', error);
+                }
+            }
+            
             // スタンプ帳を閉じる
             const closeStampBookButton = document.getElementById('close-stamp-book');
             closeStampBookButton.addEventListener('click', function(e) {
@@ -4953,6 +4990,11 @@
                 
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
+                
+                // カメラを再開（フリーズ防止）
+                setTimeout(() => {
+                    resumeCamera();
+                }, 100);
             });
 
             // 操作説明ボタン（ヘルプ）
@@ -4976,6 +5018,11 @@
                     const modal = document.getElementById('guide-modal');
                     modal.style.display = 'none';
                     modal.setAttribute('aria-hidden', 'true');
+                    
+                    // カメラを再開（フリーズ防止）
+                    setTimeout(() => {
+                        resumeCamera();
+                    }, 100);
                 });
             }
 
@@ -4986,6 +5033,11 @@
                     if (e.target === guideModal) {
                         guideModal.style.display = 'none';
                         guideModal.setAttribute('aria-hidden', 'true');
+                        
+                        // カメラを再開（フリーズ防止）
+                        setTimeout(() => {
+                            resumeCamera();
+                        }, 100);
                     }
                 });
             }
@@ -5346,6 +5398,11 @@
                     e.preventDefault();
                     e.stopPropagation();
                     stampBookModal.style.display = 'none';
+                    
+                    // カメラを再開（フリーズ防止）
+                    setTimeout(() => {
+                        resumeCamera();
+                    }, 100);
                 }
             });
             
