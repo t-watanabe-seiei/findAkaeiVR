@@ -1565,6 +1565,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Wolf (おおかみ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-wolf.patt') }}" id="pattern-wolf-marker">
+            <a-entity
+                id="wolf-model"
+                gltf-model="{{ asset('cg/3d_pro_wolf_morita.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
             <a-entity
@@ -1784,6 +1797,8 @@
             'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
             // araiguma - 新しいマーカー/モデル（あらいぐま）
             'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
+            // wolf / オオカミ
+            'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2651,6 +2666,8 @@
             const patternHamstarMarker = document.querySelector('#pattern-hamstar-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
+            const wolfModel = document.querySelector('#wolf-model');
+            const patternWolfMarker = document.querySelector('#pattern-wolf-marker');
             const araigumaModel = document.querySelector('#araiguma-model');
             const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
             
@@ -4045,6 +4062,75 @@
                             }
                         }
                     });
+
+                    // --- wolf marker handlers ---
+                    if (patternWolfMarker) {
+                        patternWolfMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-wolf marker found');
+                            activeModel = wolfModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'wolf';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
+                                if (!allHitboxes.includes(wolfModel.components.hitbox)) {
+                                    allHitboxes.push(wolfModel.components.hitbox);
+                                }
+                            } else if (wolfModel) {
+                                const registerIfReady = function wf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(wolfModel); applyCurrentScaleTo(wolfModel); } catch (e) { /* ignore */ }
+                                        if (wolfModel.components && wolfModel.components.hitbox) {
+                                            if (!allHitboxes.includes(wolfModel.components.hitbox)) {
+                                                allHitboxes.push(wolfModel.components.hitbox);
+                                                console.log('Registered wolf hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = wolfModel.querySelectorAll ? wolfModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested wolf hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('wolf registration check failed', e);
+                                    } finally {
+                                        wolfModel.removeEventListener('model-loaded', wf);
+                                    }
+                                };
+                                wolfModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternWolfMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-wolf marker lost');
+                            if (activeModel === wolfModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'wolf') currentMarkerStampId = null;
+                            if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(wolfModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (wolfModel) {
+                                const nested = wolfModel.querySelectorAll ? wolfModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -4527,7 +4613,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
