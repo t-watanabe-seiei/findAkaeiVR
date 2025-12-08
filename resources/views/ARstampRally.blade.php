@@ -1530,6 +1530,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- WhiteTiger (白いトラ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteTiger.patt') }}" id="pattern-whiteTiger-marker">
+            <a-entity
+                id="whiteTiger-model"
+                gltf-model="{{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1874,6 +1887,8 @@
             'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
             // harinezumi / はりねずみ
             'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
+            // whiteTiger / 白いトラ
+            'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2755,6 +2770,8 @@
             const patternBearMarker = document.querySelector('#pattern-bear-marker');
             const harinezumiModel = document.querySelector('#harinezumi-model');
             const patternHarinezumiMarker = document.querySelector('#pattern-harinezumi-marker');
+            const whiteTigerModel = document.querySelector('#whiteTiger-model');
+            const patternWhiteTigerMarker = document.querySelector('#pattern-whiteTiger-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -4561,6 +4578,75 @@
                             }
                         });
                     }
+
+                    // --- whiteTiger marker handlers ---
+                    if (patternWhiteTigerMarker) {
+                        patternWhiteTigerMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-whiteTiger marker found');
+                            activeModel = whiteTigerModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'whiteTiger';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (whiteTigerModel && whiteTigerModel.components && whiteTigerModel.components.hitbox) {
+                                if (!allHitboxes.includes(whiteTigerModel.components.hitbox)) {
+                                    allHitboxes.push(whiteTigerModel.components.hitbox);
+                                }
+                            } else if (whiteTigerModel) {
+                                const registerIfReady = function wtf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(whiteTigerModel); applyCurrentScaleTo(whiteTigerModel); } catch (e) { /* ignore */ }
+                                        if (whiteTigerModel.components && whiteTigerModel.components.hitbox) {
+                                            if (!allHitboxes.includes(whiteTigerModel.components.hitbox)) {
+                                                allHitboxes.push(whiteTigerModel.components.hitbox);
+                                                console.log('Registered whiteTiger hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = whiteTigerModel.querySelectorAll ? whiteTigerModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested whiteTiger hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('whiteTiger registration check failed', e);
+                                    } finally {
+                                        whiteTigerModel.removeEventListener('model-loaded', wtf);
+                                    }
+                                };
+                                whiteTigerModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternWhiteTigerMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-whiteTiger marker lost');
+                            if (activeModel === whiteTigerModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'whiteTiger') currentMarkerStampId = null;
+                            if (whiteTigerModel && whiteTigerModel.components && whiteTigerModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(whiteTigerModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (whiteTigerModel) {
+                                const nested = whiteTigerModel.querySelectorAll ? whiteTigerModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -5043,7 +5129,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
