@@ -1439,6 +1439,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Hamstar (ハムスター) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-hamstar.patt') }}" id="pattern-hamstar-marker">
+            <a-entity
+                id="hamstar-model"
+                gltf-model="{{ asset('cg/3d_pro_humstar_harada.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <!-- Burger (バーガー) - 新しいマーカー -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-burger.patt') }}" id="pattern-burger-marker">
             <a-entity
@@ -1758,6 +1771,8 @@
             'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
+            // hamstar / ハムスター
+            'hamstar': { name: 'ハムスター', icon: '🐹', model: '3d_pro_humstar_harada.glb' },
             // burger / バーガー
             'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb' }
         };
@@ -2617,6 +2632,8 @@
             const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
             const burgerModel = document.querySelector('#burger-model');
             const patternBurgerMarker = document.querySelector('#pattern-burger-marker');
+            const hamstarModel = document.querySelector('#hamstar-model');
+            const patternHamstarMarker = document.querySelector('#pattern-hamstar-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             
@@ -2919,8 +2936,46 @@
                     const base = parseFloat(el.dataset.baseScale || 1);
                     const clamped = Math.max(1, Math.min(3, currentScale));
                     const v = base * clamped;
-                    // set uniform scale
+                    // set uniform scale on the A-Frame element
                     el.setAttribute('scale', `${v} ${v} ${v}`);
+
+                    // also update underlying three.js object3D scale (some models have nested meshes)
+                    try {
+                        if (el.object3D && el.object3D.scale && typeof el.object3D.scale.set === 'function') {
+                            el.object3D.scale.set(v, v, v);
+                        }
+
+                        // traverse children and apply to meshes as well (robustness for nested gltf nodes)
+                        if (el.object3D && el.object3D.children) {
+                            el.object3D.traverse((node) => {
+                                if (node.isMesh) {
+                                    if (node.scale && typeof node.scale.set === 'function') {
+                                        node.scale.set(v, v, v);
+                                    }
+                                    // Ensure culling/ordering doesn't hide the mesh unexpectedly
+                                    node.frustumCulled = false;
+                                }
+                            });
+                        }
+
+                        // also apply to any A-Frame child elements that declare scales explicitly
+                        const aframeChildren = el.querySelectorAll && el.querySelectorAll('[scale]');
+                        if (aframeChildren && aframeChildren.length) {
+                            aframeChildren.forEach(child => {
+                                try {
+                                    const cb = parseFloat(child.dataset.baseScale || 1);
+                                    const cv = cb * clamped;
+                                    child.setAttribute('scale', `${cv} ${cv} ${cv}`);
+                                    if (child.object3D && child.object3D.scale && typeof child.object3D.scale.set === 'function') {
+                                        child.object3D.scale.set(cv, cv, cv);
+                                    }
+                                } catch (e) { /* ignore per-child errors */ }
+                            });
+                        }
+                    } catch (err) {
+                        // don't allow this to break the flow
+                        console.debug('applyCurrentScaleTo: three.js traversal failed', err);
+                    }
                 } catch (e) {
                     console.warn('applyCurrentScaleTo failed', el, e);
                 }
@@ -3783,6 +3838,79 @@
                                 if (index > -1) allHitboxes.splice(index, 1);
                             }
                         });
+
+                        // --- hamstar marker handlers ---
+                        if (patternHamstarMarker) {
+                            patternHamstarMarker.addEventListener('markerFound', function() {
+                                console.log('Pattern-hamstar marker found');
+                                activeModel = hamstarModel;
+                                setBaseScaleIfMissing(activeModel);
+                                applyCurrentScaleTo(activeModel);
+                                currentMarkerStampId = 'hamstar';
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                                // try to register hitbox immediately; if missing, wait for model-loaded
+                                if (hamstarModel && hamstarModel.components && hamstarModel.components.hitbox) {
+                                    if (!allHitboxes.includes(hamstarModel.components.hitbox)) {
+                                        allHitboxes.push(hamstarModel.components.hitbox);
+                                    }
+                                } else if (hamstarModel) {
+                                    const registerIfReady = function hf() {
+                                        try {
+                                            // ensure baseScale is set and re-apply user scale when model assets finish loading
+                                            try { setBaseScaleIfMissing(hamstarModel); applyCurrentScaleTo(hamstarModel); } catch (e) { /* ignore */ }
+                                            if (hamstarModel.components && hamstarModel.components.hitbox) {
+                                                if (!allHitboxes.includes(hamstarModel.components.hitbox)) {
+                                                    allHitboxes.push(hamstarModel.components.hitbox);
+                                                    console.log('Registered hamstar hitbox after model-loaded');
+                                                }
+                                            }
+                                            // also check for nested DOM elements with hitbox attribute
+                                            const nested = hamstarModel.querySelectorAll ? hamstarModel.querySelectorAll('[hitbox]') : [];
+                                            if (nested && nested.length) {
+                                                nested.forEach(n => {
+                                                    if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                        allHitboxes.push(n.components.hitbox);
+                                                        console.log('Registered nested hamstar hitbox element', n);
+                                                    }
+                                                });
+                                            }
+                                        } catch (e) {
+                                            console.debug('hamstar registration check failed', e);
+                                        } finally {
+                                            hamstarModel.removeEventListener('model-loaded', hf);
+                                        }
+                                    };
+                                    hamstarModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                                }
+                            });
+
+                            patternHamstarMarker.addEventListener('markerLost', function() {
+                                console.log('Pattern-hamstar marker lost');
+                                if (activeModel === hamstarModel) {
+                                    activeModel = null;
+                                    const _rotationButtons = document.getElementById('rotation-buttons');
+                                    if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                                }
+                                if (currentMarkerStampId === 'hamstar') currentMarkerStampId = null;
+                                if (hamstarModel && hamstarModel.components && hamstarModel.components.hitbox) {
+                                    const index = allHitboxes.indexOf(hamstarModel.components.hitbox);
+                                    if (index > -1) allHitboxes.splice(index, 1);
+                                } else if (hamstarModel) {
+                                    // check for nested hitbox elements and remove
+                                    const nested = hamstarModel.querySelectorAll ? hamstarModel.querySelectorAll('[hitbox]') : [];
+                                    if (nested && nested.length) {
+                                        nested.forEach(n => {
+                                            if (n.components && n.components.hitbox) {
+                                                const idx = allHitboxes.indexOf(n.components.hitbox);
+                                                if (idx > -1) allHitboxes.splice(idx, 1);
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
 
@@ -4312,7 +4440,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
