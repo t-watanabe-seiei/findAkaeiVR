@@ -1928,8 +1928,6 @@
             'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
             // wolf / オオカミ
             'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
-            // namakemono / なまけもの
-            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb' },
             // duck / アヒル
             'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
             // cat / ねこ
@@ -1938,17 +1936,23 @@
             'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
             // harinezumi / はりねずみ
             'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
-            // whiteTiger / 白いトラ
-            'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb' },
-            // santa / サンタクロース
-            'santa': { name: 'サンタクロース', icon: '🎅', model: '3d_pro_santa_iwamoto.glb' },
-            // t-rex (ティラノサウルス)
-            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
             'hamstar': { name: 'ハムスター', icon: '🐹', model: '3d_pro_humstar_harada.glb' },
-            // burger / バーガー
-            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb' }
+            // === シークレット動物（一番下の列に表示） ===
+            // burger / バーガー (シークレット)
+            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb', secret: true },
+            // santa / サンタクロース (シークレット)
+            'santa': { name: 'サンタクロース', icon: '🎅', model: '3d_pro_santa_iwamoto.glb', secret: true },
+            // namakemono / なまけもの (シークレット)
+            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb', secret: true },
+            // t-rex (ティラノサウルス) (シークレット)
+            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb', secret: true },
+            // whiteTiger / 白いトラ (シークレット)
+            'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb', secret: true }
         };
+
+        // シークレット動物のID配列
+        const SECRET_STAMPS = ['burger', 'santa', 'namakemono', 't-rex', 'whiteTiger'];
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
@@ -2626,12 +2630,14 @@
                     const stampId = stampKeys[i];
                     const stamp = STAMPS[stampId];
                     const isCollected = collectedStamps[stampId] !== undefined;
+                    const isSecret = stamp.secret === true;
 
                     const stampItem = document.createElement('div');
                     stampItem.className = `stamp-item ${isCollected ? 'collected' : 'not-collected'}`;
 
                     let dateText = '';
                     let iconContent = stamp.icon; // デフォルトは絵文字
+                    let nameText = stamp.name; // デフォルトは動物名
 
                     if (isCollected) {
                         const date = new Date(collectedStamps[stampId].collectedAt);
@@ -2642,11 +2648,17 @@
                             const screenshotData = collectedStamps[stampId].screenshot;
                             iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
                         }
+                        // シークレット動物でも収集後は実際の名前を表示
+                        nameText = stamp.name;
+                    } else if (isSecret) {
+                        // シークレット動物は未収集時にアイコンと名前を非表示
+                        iconContent = '🐾'; // 足跡アイコン
+                        nameText = 'シークレット'; // 名前も隠す
                     }
 
                     stampItem.innerHTML = `
                         <div class="stamp-icon">${iconContent}</div>
-                        <div class="stamp-name">${stamp.name}</div>
+                        <div class="stamp-name">${nameText}</div>
                         ${dateText}
                     `;
 
@@ -2832,8 +2844,8 @@
                         // --- Guide modal language handling ---
                         const guideLangJPBtn = document.getElementById('lang-jp');
                         const guideLangENBtn = document.getElementById('lang-en');
-                        // initial language: prefer Japanese if browser language starts with 'ja'
-                        let guideLang = (navigator.language && navigator.language.toLowerCase().startsWith('ja')) ? 'jp' : 'en';
+                        // initial language: always start with English (can switch to Japanese via button)
+                        let guideLang = 'en';
 
                         function setGuideLanguage(lang) {
                             guideLang = lang === 'jp' ? 'jp' : 'en';
@@ -5161,7 +5173,8 @@
                 if (!button) return;
                 
                 const collectedStamps = getCollectedStamps();
-                const allCollected = Object.keys(collectedStamps).length === Object.keys(STAMPS).length;
+                const collectedCount = Object.keys(collectedStamps).length;
+                const hasEnoughStamps = collectedCount >= 10; // 10匹以上で景品交換可能
                 
                 // サーバーステータスをチェック
                 const serverStatus = await checkPrizeExchangeStatus();
@@ -5182,11 +5195,11 @@
                     return;
                 }
                 
-                // まだ全て捕まえていない場合
-                if (!allCollected) {
+                // 10匹未満の場合
+                if (!hasEnoughStamps) {
                     button.disabled = true;
                     button.style.backgroundColor = '#ccc';
-                    button.textContent = '全て捕まえると交換可能';
+                    button.textContent = `10匹以上で交換可能 (${collectedCount}/10)`;
                 } else {
                     // 新規交換可能
                     button.disabled = false;
