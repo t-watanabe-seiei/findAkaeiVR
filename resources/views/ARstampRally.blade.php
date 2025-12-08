@@ -3196,6 +3196,54 @@
                 }
             }
 
+            // 指定モデルの表示/アニメーション/ヒットボックスを安全にリセットする
+            function resetActiveModel(el) {
+                if (!el) return;
+                try { el.setAttribute('visible', 'false'); } catch (err) { console.warn('resetActiveModel: set visible failed', err); }
+
+                // click-animation コンポーネントがあれば action を停止し、mixer 停止も試みる
+                try {
+                    const clickComp = el.components && el.components['click-animation'];
+                    if (clickComp) {
+                        if (clickComp.action01) try { clickComp.action01.stop(); } catch (e) {}
+                        if (clickComp.action02) try { clickComp.action02.stop(); } catch (e) {}
+                        if (clickComp.mixer && typeof clickComp.mixer.stopAllAction === 'function') try { clickComp.mixer.stopAllAction(); } catch (e) {}
+                    }
+                } catch (e) { /* ignore */ }
+
+                // gltf-model の mixer 側も念のため停止
+                try {
+                    const gltfMixer = el.components && el.components['gltf-model'] && el.components['gltf-model'].mixer;
+                    if (gltfMixer && typeof gltfMixer.stopAllAction === 'function') gltfMixer.stopAllAction();
+                } catch (e) { /* ignore */ }
+
+                // ヒットボックスが登録されていたら削除
+                try {
+                    if (el.components && el.components.hitbox) {
+                        const idx = allHitboxes.indexOf(el.components.hitbox);
+                        if (idx > -1) allHitboxes.splice(idx, 1);
+                    }
+                } catch (e) { /* ignore */ }
+
+                // 回転ボタンやメッセージを非表示に
+                try {
+                    const _rotationButtons = document.getElementById('rotation-buttons');
+                    if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                    hideCapturedMessage();
+                } catch (e) { /* ignore */ }
+
+                // currentMarkerStampId をクリア（要素の hitbox 属性から stampId を推測）
+                try {
+                    const hb = el.getAttribute && el.getAttribute('hitbox');
+                    if (hb && currentMarkerStampId) {
+                        const stampId = hb.split(':')[1] ? hb.split(':')[1].split(';')[0].trim() : null;
+                        if (stampId && currentMarkerStampId === stampId) {
+                            currentMarkerStampId = null;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
             function getTouchesDistance(t0, t1) {
                 const dx = t0.clientX - t1.clientX;
                 const dy = t0.clientY - t1.clientY;
@@ -5003,20 +5051,10 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
-                // アクティブモデルを非表示にしてアニメーション停止
+                // アクティブモデルを安全にリセット
                 if (typeof activeModel !== 'undefined' && activeModel) {
-                    console.log('Hiding active model before reset:', activeModel.id);
-                    
-                    // モデルを非表示
-                    activeModel.setAttribute('visible', 'false');
-                    
-                    // アニメーションを停止
-                    const mixer = activeModel.components['gltf-model']?.mixer;
-                    if (mixer) {
-                        mixer.stopAllAction();
-                    }
-                    
-                    // activeModelをリセット
+                    console.log('Resetting active model via helper:', activeModel.id);
+                    resetActiveModel(activeModel);
                     activeModel = null;
                 }
                 
@@ -5428,20 +5466,10 @@
                     e.stopPropagation();
                     stampBookModal.style.display = 'none';
                     
-                    // アクティブモデルを非表示にしてアニメーション停止
+                    // アクティブモデルを安全にリセット
                     if (typeof activeModel !== 'undefined' && activeModel) {
-                        console.log('Hiding active model before reset:', activeModel.id);
-                        
-                        // モデルを非表示
-                        activeModel.setAttribute('visible', 'false');
-                        
-                        // アニメーションを停止
-                        const mixer = activeModel.components['gltf-model']?.mixer;
-                        if (mixer) {
-                            mixer.stopAllAction();
-                        }
-                        
-                        // activeModelをリセット
+                        console.log('Resetting active model via helper:', activeModel.id);
+                        resetActiveModel(activeModel);
                         activeModel = null;
                     }
                     
