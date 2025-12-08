@@ -5003,8 +5003,20 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
-                // アクティブモデルをリセット（マーカー検出時に再設定される）
-                if (typeof activeModel !== 'undefined') {
+                // アクティブモデルを非表示にしてアニメーション停止
+                if (typeof activeModel !== 'undefined' && activeModel) {
+                    console.log('Hiding active model before reset:', activeModel.id);
+                    
+                    // モデルを非表示
+                    activeModel.setAttribute('visible', 'false');
+                    
+                    // アニメーションを停止
+                    const mixer = activeModel.components['gltf-model']?.mixer;
+                    if (mixer) {
+                        mixer.stopAllAction();
+                    }
+                    
+                    // activeModelをリセット
                     activeModel = null;
                 }
                 
@@ -5416,8 +5428,20 @@
                     e.stopPropagation();
                     stampBookModal.style.display = 'none';
                     
-                    // アクティブモデルをリセット
-                    if (typeof activeModel !== 'undefined') {
+                    // アクティブモデルを非表示にしてアニメーション停止
+                    if (typeof activeModel !== 'undefined' && activeModel) {
+                        console.log('Hiding active model before reset:', activeModel.id);
+                        
+                        // モデルを非表示
+                        activeModel.setAttribute('visible', 'false');
+                        
+                        // アニメーションを停止
+                        const mixer = activeModel.components['gltf-model']?.mixer;
+                        if (mixer) {
+                            mixer.stopAllAction();
+                        }
+                        
+                        // activeModelをリセット
                         activeModel = null;
                     }
                     
