@@ -5017,22 +5017,21 @@
                         }
                     }
                     
-                    // A-Frameシーンのレンダリングを強制再開
+                    // A-Frameシーンを再生（A-Frame内部のレンダリングループとシステムのtickを復帰）
                     const scene = document.querySelector('a-scene');
-                    if (scene && scene.renderer) {
-                        scene.renderer.setAnimationLoop(() => {
-                            scene.renderer.render(scene.object3D, scene.camera);
-                        });
-                    }
-                    
-                    // AR.jsのレンダリングを再開
-                    if (scene && scene.systems && scene.systems.arjs) {
-                        const arjsSystem = scene.systems.arjs;
-                        if (arjsSystem.tick) {
-                            // AR.jsのtickを再開
-                            requestAnimationFrame(() => {
-                                arjsSystem.tick();
-                            });
+                    if (scene) {
+                        try {
+                            // A-Frame の play() を呼んでレンダリングループを取り戻す
+                            if (typeof scene.play === 'function') {
+                                scene.play();
+                            }
+
+                            // 一度だけ AR.js 系の tick をキックしておく（念のため）
+                            if (scene.systems && scene.systems.arjs && typeof scene.systems.arjs.tick === 'function') {
+                                requestAnimationFrame(() => scene.systems.arjs.tick());
+                            }
+                        } catch (err) {
+                            console.warn('resumeCamera: failed to fully resume A-Frame scene', err);
                         }
                     }
                     
