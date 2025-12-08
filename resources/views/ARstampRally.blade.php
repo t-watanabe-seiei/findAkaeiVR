@@ -5143,9 +5143,10 @@
             async function exchangePrize() {
                 const collectedStamps = getCollectedStamps();
                 
-                // 全種類集めたかチェック
-                if (Object.keys(collectedStamps).length !== Object.keys(STAMPS).length) {
-                    alert('まだ全ての動物を捕まえていません！');
+                // 10匹以上集めているかチェック（10匹以上で景品交換可能）
+                const collectedCount = Object.keys(collectedStamps).length;
+                if (collectedCount < 10) {
+                    alert('隠れている動物を10匹以上捕まえると、景品と交換できるよ！');
                     return;
                 }
                 
