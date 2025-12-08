@@ -352,13 +352,21 @@
                 });
                 
                 marker.addEventListener('markerLost', () => {
-                    console.log('✗ Marker lost');
+                    console.log('✗ Marker lost for:', stampId);
                     markerVisible = false;
                     
                     // 捕獲済みメッセージを非表示
                     hideCapturedMessage();
                     
+                    // モデルを必ず非表示（マーカーがないのに表示される問題を防止）
+                    el.setAttribute('visible', 'false');
+                    
+                    // アニメーションを停止
                     if (!modelCaptured) {
+                        if (action01) action01.stop();
+                        if (action02) action02.stop();
+                    } else {
+                        // 捕獲済みの場合もアニメーションを停止
                         if (action01) action01.stop();
                         if (action02) action02.stop();
                     }
@@ -2465,49 +2473,48 @@
                     exists: !!sceneCanvas
                 });
                 
-                // レンダリングが完了するのを待つ
+                // レンダリングが完了するのを待つ（1フレームのみ）
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        try {
-                            // 一時的なcanvasを作成（元の画像用）
-                            const tempCanvas = document.createElement('canvas');
-                            tempCanvas.width = sceneCanvas.width;
-                            tempCanvas.height = sceneCanvas.height;
-                            const ctx = tempCanvas.getContext('2d');
-                            
-                            // シーン全体を描画
-                            ctx.drawImage(sceneCanvas, 0, 0);
-                            console.log('✓ Canvas drawn successfully');
-                            
-                            // 画像データを取得してモデル部分を検出
-                            const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-                            const bounds = detectModelBounds(imageData);
-                            
-                            console.log('Model bounds:', bounds);
-                            
-                            if (!bounds) {
-                                console.warn('No model detected in image');
-                                callback(null);
-                                return;
-                            }
-                            
-                            // モデル部分をクロップして拡大
-                            const croppedCanvas = cropAndResize(tempCanvas, bounds, 400, 400);
-                            
-                            // Base64に変換
+                    try {
+                        // 一時的なcanvasを作成（元の画像用）
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = sceneCanvas.width;
+                        tempCanvas.height = sceneCanvas.height;
+                        const ctx = tempCanvas.getContext('2d');
+                        
+                        // シーン全体を描画
+                        ctx.drawImage(sceneCanvas, 0, 0);
+                        console.log('✓ Canvas drawn successfully');
+                        
+                        // 画像データを取得してモデル部分を検出
+                        const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                        const bounds = detectModelBounds(imageData);
+                        
+                        console.log('Model bounds:', bounds);
+                        
+                        if (!bounds) {
+                            console.warn('No model detected in image');
+                            callback(null);
+                            return;
+                        }
+                        
+                        // モデル部分をクロップして拡大
+                        const croppedCanvas = cropAndResize(tempCanvas, bounds, 400, 400);
+                        
+                        // Base64に変換（非同期で処理）
+                        setTimeout(() => {
                             const screenshot = croppedCanvas.toDataURL('image/png');
                             console.log('Screenshot created:', {
                                 length: screenshot.length,
                                 bounds: bounds
                             });
-                            
                             callback(screenshot);
-                            
-                        } catch (drawError) {
-                            console.error('Draw error:', drawError);
-                            callback(null);
-                        }
-                    });
+                        }, 0);
+                        
+                    } catch (drawError) {
+                        console.error('Draw error:', drawError);
+                        callback(null);
+                    }
                 });
                 
             } catch (error) {
@@ -2616,6 +2623,11 @@
             const stampsGrid = document.getElementById('stamps-grid');
             const collectedCount = document.getElementById('collected-count');
             const completeMessageContainer = document.getElementById('complete-message-container');
+            
+            // アクティブモデルをリセット（マーカーなしで表示される問題を防止）
+            if (typeof activeModel !== 'undefined') {
+                activeModel = null;
+            }
             
             // グリッドをクリア
             stampsGrid.innerHTML = '';
@@ -4991,6 +5003,19 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
+                // アクティブモデルをリセット
+                if (typeof activeModel !== 'undefined') {
+                    activeModel = null;
+                }
+                
+                // 全てのモデルを強制的に非表示（マーカーなしで表示される問題を防止）
+                const allModels = document.querySelectorAll('[id$="-model"]');
+                allModels.forEach(model => {
+                    if (model.tagName === 'A-ENTITY') {
+                        model.setAttribute('visible', 'false');
+                    }
+                });
+                
                 // カメラを再開（フリーズ防止）
                 setTimeout(() => {
                     resumeCamera();
@@ -5398,6 +5423,19 @@
                     e.preventDefault();
                     e.stopPropagation();
                     stampBookModal.style.display = 'none';
+                    
+                    // アクティブモデルをリセット
+                    if (typeof activeModel !== 'undefined') {
+                        activeModel = null;
+                    }
+                    
+                    // 全てのモデルを強制的に非表示
+                    const allModels = document.querySelectorAll('[id$="-model"]');
+                    allModels.forEach(model => {
+                        if (model.tagName === 'A-ENTITY') {
+                            model.setAttribute('visible', 'false');
+                        }
+                    });
                     
                     // カメラを再開（フリーズ防止）
                     setTimeout(() => {
