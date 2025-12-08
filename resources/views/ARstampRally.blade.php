@@ -1552,6 +1552,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Araiguma (あらいぐま) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-araiguma.patt') }}" id="pattern-araiguma-marker">
+            <a-entity
+                id="araiguma-model"
+                gltf-model="{{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
             <a-entity
@@ -1769,6 +1782,8 @@
             'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
             // white duck - 新しいマーカー/モデル
             'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
+            // araiguma - 新しいマーカー/モデル（あらいぐま）
+            'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2636,6 +2651,8 @@
             const patternHamstarMarker = document.querySelector('#pattern-hamstar-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
+            const araigumaModel = document.querySelector('#araiguma-model');
+            const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -3959,6 +3976,76 @@
                         if (index > -1) allHitboxes.splice(index, 1);
                     }
                 });
+                
+                // --- araiguma marker handlers ---
+                if (patternAraigumaMarker) {
+                    patternAraigumaMarker.addEventListener('markerFound', function() {
+                        console.log('Pattern-araiguma marker found');
+                        activeModel = araigumaModel;
+                        setBaseScaleIfMissing(activeModel);
+                        applyCurrentScaleTo(activeModel);
+                        currentMarkerStampId = 'araiguma';
+                        const _rotationButtons = document.getElementById('rotation-buttons');
+                        if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                        // try to register hitbox immediately; if missing, wait for model-loaded
+                        if (araigumaModel && araigumaModel.components && araigumaModel.components.hitbox) {
+                            if (!allHitboxes.includes(araigumaModel.components.hitbox)) {
+                                allHitboxes.push(araigumaModel.components.hitbox);
+                            }
+                        } else if (araigumaModel) {
+                            const registerIfReady = function af() {
+                                try {
+                                    try { setBaseScaleIfMissing(araigumaModel); applyCurrentScaleTo(araigumaModel); } catch (e) { /* ignore */ }
+                                    if (araigumaModel.components && araigumaModel.components.hitbox) {
+                                        if (!allHitboxes.includes(araigumaModel.components.hitbox)) {
+                                            allHitboxes.push(araigumaModel.components.hitbox);
+                                            console.log('Registered araiguma hitbox after model-loaded');
+                                        }
+                                    }
+                                    const nested = araigumaModel.querySelectorAll ? araigumaModel.querySelectorAll('[hitbox]') : [];
+                                    if (nested && nested.length) {
+                                        nested.forEach(n => {
+                                            if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                allHitboxes.push(n.components.hitbox);
+                                                console.log('Registered nested araiguma hitbox element', n);
+                                            }
+                                        });
+                                    }
+                                } catch (e) {
+                                    console.debug('araiguma registration check failed', e);
+                                } finally {
+                                    araigumaModel.removeEventListener('model-loaded', af);
+                                }
+                            };
+                            araigumaModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                        }
+                    });
+
+                    patternAraigumaMarker.addEventListener('markerLost', function() {
+                        console.log('Pattern-araiguma marker lost');
+                        if (activeModel === araigumaModel) {
+                            activeModel = null;
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                        }
+                        if (currentMarkerStampId === 'araiguma') currentMarkerStampId = null;
+                        if (araigumaModel && araigumaModel.components && araigumaModel.components.hitbox) {
+                            const index = allHitboxes.indexOf(araigumaModel.components.hitbox);
+                            if (index > -1) allHitboxes.splice(index, 1);
+                        } else if (araigumaModel) {
+                            const nested = araigumaModel.querySelectorAll ? araigumaModel.querySelectorAll('[hitbox]') : [];
+                            if (nested && nested.length) {
+                                nested.forEach(n => {
+                                    if (n.components && n.components.hitbox) {
+                                        const idx = allHitboxes.indexOf(n.components.hitbox);
+                                        if (idx > -1) allHitboxes.splice(idx, 1);
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
             }
             
             scene.addEventListener('loaded', function() {
@@ -4440,7 +4527,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
