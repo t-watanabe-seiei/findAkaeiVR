@@ -1491,6 +1491,19 @@
             </a-entity>
         </a-marker>
         
+        <!-- Cat (ねこ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/pattern-cat.patt') }}" id="pattern-cat-marker">
+            <a-entity
+                id="cat-model"
+                gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
+                position="0 0 0.5"
+                scale="0.75 0.75 0.75"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: cat; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
@@ -1829,6 +1842,8 @@
             'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb' },
             // duck / アヒル
             'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
+            // cat / ねこ
+            'cat': { name: 'ねこ', icon: '🐱', model: '3d_pro_cat_fukuda.glb' },
             // t-rex (ティラノサウルス)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb' },
             // hamstar / ハムスター
@@ -2704,6 +2719,8 @@
             const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
             const duckModel = document.querySelector('#duck-model');
             const patternDuckMarker = document.querySelector('#pattern-duck-marker');
+            const catModel = document.querySelector('#cat-model');
+            const patternCatMarker = document.querySelector('#pattern-cat-marker');
             
             let currentMarkerStampId = null; // 現在検出中のマーカーのスタンプID
                         // --- Guide modal language handling ---
@@ -4303,6 +4320,75 @@
                             }
                         });
                     }
+
+                    // --- cat marker handlers ---
+                    if (patternCatMarker) {
+                        patternCatMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-cat marker found');
+                            activeModel = catModel;
+                            setBaseScaleIfMissing(activeModel);
+                            applyCurrentScaleTo(activeModel);
+                            currentMarkerStampId = 'cat';
+                            const _rotationButtons = document.getElementById('rotation-buttons');
+                            if (_rotationButtons) _rotationButtons.classList.add('visible');
+
+                            if (catModel && catModel.components && catModel.components.hitbox) {
+                                if (!allHitboxes.includes(catModel.components.hitbox)) {
+                                    allHitboxes.push(catModel.components.hitbox);
+                                }
+                            } else if (catModel) {
+                                const registerIfReady = function cf() {
+                                    try {
+                                        try { setBaseScaleIfMissing(catModel); applyCurrentScaleTo(catModel); } catch (e) { /* ignore */ }
+                                        if (catModel.components && catModel.components.hitbox) {
+                                            if (!allHitboxes.includes(catModel.components.hitbox)) {
+                                                allHitboxes.push(catModel.components.hitbox);
+                                                console.log('Registered cat hitbox after model-loaded');
+                                            }
+                                        }
+                                        const nested = catModel.querySelectorAll ? catModel.querySelectorAll('[hitbox]') : [];
+                                        if (nested && nested.length) {
+                                            nested.forEach(n => {
+                                                if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
+                                                    allHitboxes.push(n.components.hitbox);
+                                                    console.log('Registered nested cat hitbox element', n);
+                                                }
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.debug('cat registration check failed', e);
+                                    } finally {
+                                        catModel.removeEventListener('model-loaded', cf);
+                                    }
+                                };
+                                catModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                            }
+                        });
+
+                        patternCatMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-cat marker lost');
+                            if (activeModel === catModel) {
+                                activeModel = null;
+                                const _rotationButtons = document.getElementById('rotation-buttons');
+                                if (_rotationButtons) _rotationButtons.classList.remove('visible');
+                            }
+                            if (currentMarkerStampId === 'cat') currentMarkerStampId = null;
+                            if (catModel && catModel.components && catModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(catModel.components.hitbox);
+                                if (index > -1) allHitboxes.splice(index, 1);
+                            } else if (catModel) {
+                                const nested = catModel.querySelectorAll ? catModel.querySelectorAll('[hitbox]') : [];
+                                if (nested && nested.length) {
+                                    nested.forEach(n => {
+                                        if (n.components && n.components.hitbox) {
+                                            const idx = allHitboxes.indexOf(n.components.hitbox);
+                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
             }
             
@@ -4785,7 +4871,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
