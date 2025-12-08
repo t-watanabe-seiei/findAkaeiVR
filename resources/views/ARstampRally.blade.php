@@ -5003,18 +5003,10 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
-                // アクティブモデルをリセット
+                // アクティブモデルをリセット（マーカー検出時に再設定される）
                 if (typeof activeModel !== 'undefined') {
                     activeModel = null;
                 }
-                
-                // 全てのモデルを強制的に非表示（マーカーなしで表示される問題を防止）
-                const allModels = document.querySelectorAll('[id$="-model"]');
-                allModels.forEach(model => {
-                    if (model.tagName === 'A-ENTITY') {
-                        model.setAttribute('visible', 'false');
-                    }
-                });
                 
                 // カメラを再開（フリーズ防止）
                 setTimeout(() => {
@@ -5428,14 +5420,6 @@
                     if (typeof activeModel !== 'undefined') {
                         activeModel = null;
                     }
-                    
-                    // 全てのモデルを強制的に非表示
-                    const allModels = document.querySelectorAll('[id$="-model"]');
-                    allModels.forEach(model => {
-                        if (model.tagName === 'A-ENTITY') {
-                            model.setAttribute('visible', 'false');
-                        }
-                    });
                     
                     // カメラを再開（フリーズ防止）
                     setTimeout(() => {
