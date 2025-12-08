@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AR Stamp Rally</title>
     <script>
@@ -54,6 +54,38 @@
                 return false;
             }
         }, true); // キャプチャフェーズで処理
+        
+        // ブラウザのページズームを完全に防止（モデルのズームは許可）
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('gesturechange', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('gestureend', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // ダブルタップズームを防止
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        // ピンチズームをdocumentレベルでブロック
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches && e.touches.length > 1) {
+                // 2本指以上のタッチはピンチズームの可能性
+                // ブラウザのデフォルト動作をキャンセル
+                e.preventDefault();
+            }
+        }, { passive: false });
         
         // 右クリック無効化
         document.addEventListener('contextmenu', function(e) {
@@ -420,6 +452,12 @@
         body {
             margin: 0;
             overflow: hidden;
+            touch-action: pan-x pan-y; /* ピンチズームを無効化、パンは許可 */
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        a-scene {
+            touch-action: none; /* ARシーン内では全てのデフォルトタッチ動作を無効化 */
         }
         .arjs-loader {
             height: 100%;
