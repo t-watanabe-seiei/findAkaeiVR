@@ -384,6 +384,14 @@
                         markAnimalCaptured(stampId);
                         console.log('Marked as captured immediately:', stampId);
                     }
+
+                    // ★ 即時スタンプ登録（スクリーンショットが後で失敗しても記録は残る）
+                    try {
+                        const saved = collectStamp(stampId, null);
+                        console.log('Immediate collectStamp from playHitAnimation:', stampId, 'saved=', saved);
+                    } catch (e) {
+                        console.warn('Immediate collectStamp failed in playHitAnimation for', stampId, e);
+                    }
                     
                     // anime02を再生（視覚効果のみ）
                     if (action01) action01.stop();
@@ -2257,6 +2265,31 @@
                 console.log('Already collected:', stampId);
                 return false;
             }
+
+        // 既存のスタンプにスクリーンショットを追加/上書きする（スクリーンショット取得後呼び出す）
+        function updateStampScreenshot(stampId, screenshotDataUrl) {
+            if (!stampId || !screenshotDataUrl) return false;
+            try {
+                const stamps = getCollectedStamps();
+                if (!stamps[stampId]) {
+                    // まだ記録がない場合はまず登録（保険）
+                    stamps[stampId] = {
+                        collectedAt: new Date().toISOString(),
+                        name: (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : stampId,
+                        screenshot: screenshotDataUrl
+                    };
+                } else {
+                    stamps[stampId].screenshot = screenshotDataUrl;
+                }
+                saveCollectedStamps(stamps);
+                updateStampBadge();
+                console.log('✓ Updated screenshot for stamp:', stampId);
+                return true;
+            } catch (err) {
+                console.error('updateStampScreenshot failed for', stampId, err);
+                return false;
+            }
+        }
         }
         
         // 音声を再生
@@ -3420,7 +3453,18 @@
                                     hitModel.playHitAnimation();
                                     console.log('Playing hit animation on model:', stampId);
                                 }
+
+                                // ★ 衝突時点で即時スタンプ登録（スクショが取れなかった時の保険）
+                                // (registration fallback executed)
                                 
+                                // ★ 衝突時点で即時スタンプ登録（スクショが取れなかった時の保険）
+                                try {
+                                    const immediateSaved = collectStamp(stampId, null);
+                                    console.log('Immediate collectStamp from throw for', stampId, 'saved=', immediateSaved);
+                                } catch (err) {
+                                    console.warn('Immediate collectStamp failed in throw for', stampId, err);
+                                }
+
                                 // 衝突エフェクト
                                 showHitEffect(pokeball, hitbox);
                                 
@@ -3487,7 +3531,12 @@
                                     // 次のフレームでスクリーンショット撮影（背景透過）
                                     setTimeout(() => {
                                         captureModelScreenshot(function(screenshot) {
-                                            collectStamp(stampId, screenshot);
+                                            // スクリーンショットが取れたら既存レコードに上書きしておく
+                                            if (screenshot) {
+                                                updateStampScreenshot(stampId, screenshot);
+                                            } else {
+                                                console.warn('No screenshot generated for', stampId, '— fallback record should exist');
+                                            }
                                             
                                             // スクリーンショット後、ボールを再表示してフェードアウト継続
                                             pokeball.setAttribute('visible', 'true');
@@ -3788,7 +3837,11 @@
                                     // 次のフレームでスクリーンショット撮影（背景透過）
                                     setTimeout(() => {
                                         captureModelScreenshot(function(screenshot) {
-                                            collectStamp(stampId, screenshot);
+                                            if (screenshot) {
+                                                updateStampScreenshot(stampId, screenshot);
+                                            } else {
+                                                console.warn('No screenshot generated for', stampId, '— fallback record should exist');
+                                            }
                                             
                                             // スクリーンショット後、ボールを再表示してフェードアウト継続
                                             pokeball.setAttribute('visible', 'true');
