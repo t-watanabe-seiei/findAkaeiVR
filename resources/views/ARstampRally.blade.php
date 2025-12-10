@@ -13,47 +13,68 @@
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
-                return false;
-            }
-            // F12 (開発者ツール)
-            if (e.key === 'F12' || e.keyCode === 123) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
-            }
-            // Ctrl+Shift+I, Cmd+Option+I (検証ツール)
-            if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) ||
-                (e.metaKey && e.altKey && (e.key === 'I' || e.keyCode === 73))) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
-            }
-            // Ctrl+Shift+J, Cmd+Option+J (コンソール)
-            if ((e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) ||
-                (e.metaKey && e.altKey && (e.key === 'J' || e.keyCode === 74))) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
-            }
-            // Ctrl+Shift+C, Cmd+Option+C (要素選択)
-            if ((e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) ||
-                (e.metaKey && e.altKey && (e.key === 'C' || e.keyCode === 67))) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
-            }
-            // Ctrl+S, Cmd+S (保存)
-            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
-            }
-        }, true); // キャプチャフェーズで処理
+                // スタンプを登録
+                function collectStamp(stampId, screenshot = null) {
+                    if (!stampId) {
+                        console.warn('collectStamp called with empty stampId');
+                        return false;
+                    }
+                    try {
+                        const collectedStamps = getCollectedStamps();
+
+                        if (!collectedStamps[stampId]) {
+                            const name = (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : (stampId || 'unknown');
+                            collectedStamps[stampId] = {
+                                collectedAt: new Date().toISOString(),
+                                name: name,
+                                screenshot: screenshot // スクリーンショットのBase64データ
+                            };
+                            saveCollectedStamps(collectedStamps);
+                            updateStampBadge();
+
+                            // 動物をゲットした時だけマーカースキャンを記録
+                            try { recordMarkerScan(stampId, name); } catch (e) { console.warn('recordMarkerScan failed', e); }
+
+                            // 新規取得の処理
+                            const totalCollected = Object.keys(collectedStamps).length;
+                            const isComplete = totalCollected === Object.keys(STAMPS).length;
+
+                            // 音声再生
+                            if (isComplete) {
+                                // 全種類コンプリート！
+                                playSound(soundStamp02);
+                                showCompleteParticles();
+                            } else {
+                                // 通常の取得
+                                playSound(soundStamp01);
+                                showNormalParticles();
+                            }
+
+                            // 通知表示
+                            showStampNotification(stampId, isComplete);
+
+                            console.log('✓ Stamp collected:', stampId, 'Total:', totalCollected);
+                            return true;
+                        } else {
+                            // 既にある場合はスクショが提供されれば上書き
+                            if (screenshot && (!collectedStamps[stampId].screenshot || collectedStamps[stampId].screenshot.length < 100)) {
+                                collectedStamps[stampId].screenshot = screenshot;
+                                saveCollectedStamps(collectedStamps);
+                                console.log('Updated screenshot for already-collected stamp:', stampId);
+                                return true;
+                            }
+                            console.log('Already collected:', stampId);
+                            return false;
+                        }
+                    } catch (err) {
+                        console.error('collectStamp failed for', stampId, err);
+                        try {
+                            // 可能であればローカルストレージを初期化して再試行
+                            localStorage.removeItem('ar-stamp-rally');
+                        } catch (e) { /* ignore */ }
+                        return false;
+                    }
+                }
         
         // ブラウザのページズームを完全に防止（モデルのズームは許可）
         document.addEventListener('gesturestart', function(e) {
@@ -274,12 +295,30 @@
                     console.log('  anime01:', clip01.name);
                     console.log('  anime02:', clip02.name);
                     
-                    // anime02の終了イベントを監視（モデル非表示のみ）
+                    // anime02の終了イベントを監視
                     mixer.addEventListener('finished', (e) => {
                         if (e.action === action02) {
-                            console.log('anime02 finished for', stampId, '- hiding model');
-                            // モデルを非表示（捕獲状態は既に保存済み）
-                            el.setAttribute('visible', 'false');
+                            console.log('anime02 finished for', stampId);
+                            // モデル非表示は捕獲済み（一貫したデータ）でのみ実施する
+                            const persistedCaptured = (typeof isAnimalCaptured === 'function') ? isAnimalCaptured(stampId) : false;
+                            if (modelCaptured || persistedCaptured) {
+                                console.log('anime02 finished for', stampId, '- hiding model (captured)', { modelCaptured, persistedCaptured });
+                                el.setAttribute('visible', 'false');
+                            } else {
+                                // まだ捕獲データがない場合はアニメーションを戻す（表示を維持）
+                                console.log('anime02 finished for', stampId, '- not captured; resuming anime01');
+                                try {
+                                    if (action02) action02.stop();
+                                    if (action01) {
+                                        action01.reset();
+                                        action01.play();
+                                        currentAnimation = 1;
+                                    }
+                                    el.setAttribute('visible', 'true');
+                                } catch (err) {
+                                    console.warn('Failed to resume idle animation after anime02 for', stampId, err);
+                                }
+                            }
                         }
                     });
                 });
@@ -298,6 +337,20 @@
                         currentAnimation = 1;
                     }
                     console.log('Capture state reset completed for:', stampId);
+                };
+
+                // 外部から捕獲状態をセットできるようにする
+                el.setCapturedState = (flag) => {
+                    console.log('setCapturedState for', stampId, '->', flag);
+                    modelCaptured = !!flag;
+                    if (modelCaptured) {
+                        // hide model as captured
+                        try { el.setAttribute('visible', 'false'); } catch (e) {}
+                        hideCapturedMessage();
+                    } else {
+                        // show model if not captured
+                        try { el.setAttribute('visible', 'true'); } catch (e) {}
+                    }
                 };
                 
                 marker.addEventListener('markerFound', () => {
@@ -376,23 +429,6 @@
                 el.playHitAnimation = () => {
                     console.log('=== BALL HIT! for', stampId, '===');
                     
-                    // 即座に捕獲状態にする
-                    modelCaptured = true;
-                    
-                    // 捕獲状態をLocalStorageに保存
-                    if (typeof markAnimalCaptured === 'function' && stampId) {
-                        markAnimalCaptured(stampId);
-                        console.log('Marked as captured immediately:', stampId);
-                    }
-
-                    // ★ 即時スタンプ登録（スクリーンショットが後で失敗しても記録は残る）
-                    try {
-                        const saved = collectStamp(stampId, null);
-                        console.log('Immediate collectStamp from playHitAnimation:', stampId, 'saved=', saved);
-                    } catch (e) {
-                        console.warn('Immediate collectStamp failed in playHitAnimation for', stampId, e);
-                    }
-                    
                     // anime02を再生（視覚効果のみ）
                     if (action01) action01.stop();
                     if (action02) {
@@ -400,8 +436,44 @@
                         action02.play();
                         currentAnimation = 2;
                     }
+
+                    // 即時にスタンプを登録し、成功時のみローカルの捕獲フラグを設定する
+                    try {
+                        const saved = collectAndMarkWithRetry(stampId, null, 3, 2000);
+                        console.log('collectAndMarkWithRetry from playHitAnimation returned', saved, 'for', stampId);
+                        const stamps = getCollectedStamps();
+                        if (stamps && stamps[stampId]) {
+                            modelCaptured = true;
+                        } else {
+                            modelCaptured = false;
+                        }
+                    } catch (e) {
+                        console.warn('Immediate collectStamp failed in playHitAnimation for', stampId, e);
+                        // 保存に失敗した場合は modelCaptured を立てず、復帰処理や retry を行う
+                        modelCaptured = false;
+                        // リトライを試みる（短時間間隔、最大3回）
+                        let retryCount = 0;
+                        const retryInterval = setInterval(() => {
+                            retryCount++;
+                            try {
+                                const r = collectStamp(stampId, null);
+                                if (r) {
+                                    if (typeof markAnimalCaptured === 'function' && stampId) markAnimalCaptured(stampId);
+                                    modelCaptured = true;
+                                    console.log('Retry collectStamp succeeded for', stampId);
+                                    clearInterval(retryInterval);
+                                }
+                            } catch (er) {
+                                console.warn('Retry collectStamp error', er);
+                            }
+                            if (retryCount >= 3) {
+                                console.warn('collectStamp retry failed for', stampId, 'after', retryCount, 'attempts');
+                                clearInterval(retryInterval);
+                            }
+                        }, 2000);
+                    }
                     
-                    console.log('Model captured! Will be hidden on next marker detection');
+                    console.log('Model captured! Will be hidden on next marker detection if capture persisted');
                 };
                 
                 // タップでのアニメーション切替機能は廃止（コメントアウト）
@@ -2192,10 +2264,17 @@
         
         // ========== LocalStorage管理 ==========
         
-        // LocalStorageからスタンプデータを取得
+        // LocalStorageからスタンプデータを取得（パースエラーを保護）
         function getCollectedStamps() {
             const stored = localStorage.getItem('ar-stamp-rally');
-            return stored ? JSON.parse(stored) : {};
+            if (!stored) return {};
+            try {
+                return JSON.parse(stored);
+            } catch (err) {
+                console.warn('getCollectedStamps: JSON parse error, resetting storage', err);
+                localStorage.removeItem('ar-stamp-rally');
+                return {};
+            }
         }
         
         // LocalStorageにスタンプデータを保存
@@ -2206,7 +2285,14 @@
         // 捕獲済み動物の管理（モデル非表示用）
         function getCapturedAnimals() {
             const stored = localStorage.getItem('ar-captured-animals');
-            return stored ? JSON.parse(stored) : {};
+            if (!stored) return {};
+            try {
+                return JSON.parse(stored);
+            } catch (err) {
+                console.warn('getCapturedAnimals: JSON parse error, resetting storage', err);
+                localStorage.removeItem('ar-captured-animals');
+                return {};
+            }
         }
         
         function saveCapturedAnimals(captured) {
@@ -2284,9 +2370,50 @@
                 saveCollectedStamps(stamps);
                 updateStampBadge();
                 console.log('✓ Updated screenshot for stamp:', stampId);
+                try {
+                    if (typeof markAnimalCaptured === 'function') markAnimalCaptured(stampId);
+                } catch (e) { console.warn('markAnimalCaptured failed in updateStampScreenshot', e); }
                 return true;
             } catch (err) {
                 console.error('updateStampScreenshot failed for', stampId, err);
+                return false;
+            }
+        }
+
+        // collectStamp を呼んで保存されたことが確認できたら markAnimalCaptured も行う（リトライあり）
+        function collectAndMarkWithRetry(stampId, screenshot = null, maxRetries = 3, intervalMs = 2000) {
+            if (!stampId) return false;
+            try {
+                const saved = collectStamp(stampId, screenshot);
+                const stamps = getCollectedStamps();
+                if (stamps && stamps[stampId]) {
+                    // persisted
+                    try { markAnimalCaptured(stampId); } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
+                    return true;
+                }
+                // Not persisted yet, retry a few times
+                let retries = 0;
+                const handle = setInterval(() => {
+                    retries++;
+                    try {
+                        const s = collectStamp(stampId, screenshot);
+                        const ss = getCollectedStamps();
+                        if (ss && ss[stampId]) {
+                            try { markAnimalCaptured(stampId); } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
+                            clearInterval(handle);
+                            return true;
+                        }
+                    } catch (err) {
+                        console.warn('collectAndMarkWithRetry retry error', err);
+                    }
+                    if (retries >= maxRetries) {
+                        console.warn('collectAndMarkWithRetry failed after', retries, 'retries for', stampId);
+                        clearInterval(handle);
+                    }
+                }, intervalMs);
+                return false;
+            } catch (err) {
+                console.warn('collectAndMarkWithRetry initial collect failed for', stampId, err);
                 return false;
             }
         }
@@ -3459,8 +3586,19 @@
                                 
                                 // ★ 衝突時点で即時スタンプ登録（スクショが取れなかった時の保険）
                                 try {
-                                    const immediateSaved = collectStamp(stampId, null);
-                                    console.log('Immediate collectStamp from throw for', stampId, 'saved=', immediateSaved);
+                                    const saved = collectAndMarkWithRetry(stampId, null, 3, 2000);
+                                    console.log('collectAndMarkWithRetry from throw returned', saved, 'for', stampId);
+                                    const stamps = getCollectedStamps();
+                                    if (stamps && stamps[stampId]) {
+                                        // Ensure component-level captured flag is set (so markerFound hides model properly)
+                                        try {
+                                            if (hitModel && typeof hitModel.setCapturedState === 'function') {
+                                                hitModel.setCapturedState(true);
+                                            }
+                                        } catch (e) { console.warn('Failed to call setCapturedState on hitModel', e); }
+                                    } else {
+                                        console.warn('collectAndMarkWithRetry did not persist for', stampId, 'in throw');
+                                    }
                                 } catch (err) {
                                     console.warn('Immediate collectStamp failed in throw for', stampId, err);
                                 }
@@ -3534,6 +3672,11 @@
                                             // スクリーンショットが取れたら既存レコードに上書きしておく
                                             if (screenshot) {
                                                 updateStampScreenshot(stampId, screenshot);
+                                                try {
+                                                    if (hitModel && typeof hitModel.setCapturedState === 'function') {
+                                                        hitModel.setCapturedState(true);
+                                                    }
+                                                } catch (e) { console.warn('Failed to set captured state after screenshot update', e); }
                                             } else {
                                                 console.warn('No screenshot generated for', stampId, '— fallback record should exist');
                                             }
