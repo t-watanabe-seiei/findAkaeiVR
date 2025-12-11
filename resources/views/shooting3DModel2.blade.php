@@ -1661,7 +1661,9 @@
                     { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
                     { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
                     { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
-                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' }
+                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' },
+                    { id: 'modelGroup_07', hitBoxId: 'hit-boxed_07' },
+                    { id: 'modelGroup_08', hitBoxId: 'hit-boxed_08' }
                 ];
                 
                 for (let modelInfo of models) {
