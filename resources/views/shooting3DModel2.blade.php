@@ -636,10 +636,10 @@
                     { startPos: { x: -7, y: 0, z: -7 }, speed: 0.28, useCamera: true, waitTime: 3000 }
                 ];
                 
-                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
+                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 8体）
                 const initialModelIds = window.currentLevel === 1 
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
-                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
+                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
                 console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
                 // モデルを1秒ずつずらして出現させる
