@@ -2940,7 +2940,7 @@
         </a-entity>
 
         <!-- モデル01グループ（初期非表示・70%縮小） -->
-        <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
+        <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
@@ -2951,7 +2951,7 @@
         </a-entity>
 
         <!-- モデル02グループ（初期非表示） -->
-        <a-entity id="modelGroup_02" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
+        <a-entity id="modelGroup_02" position="0 0 -10" rotation="0 0 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
@@ -2963,7 +2963,7 @@
 
         <!-- モデル03グループ（初期非表示） -->
         <!-- 例: 固定終点を使う場合は useCamera: false; endPos: x y z を指定 -->
-        <a-entity id="modelGroup_03" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
+        <a-entity id="modelGroup_03" position="4 0 -8" rotation="0 -45 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000" 
                   visible="false">
             <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
@@ -2974,7 +2974,7 @@
         </a-entity>
 
         <!-- モデル04グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
+        <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
                   visible="false">
             <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
@@ -2985,7 +2985,7 @@
         </a-entity>
 
         <!-- モデル05グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_05" position="3 0 -9" rotation="0 -30 0" scale="1 1 1" 
+        <a-entity id="modelGroup_05" position="3 0 -9" rotation="0 -30 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
                   visible="false">
             <a-entity gltf-model="#model_05" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
@@ -2996,7 +2996,7 @@
         </a-entity>
 
         <!-- モデル06グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_06" position="-3 0 -9" rotation="0 30 0" scale="1 1 1" 
+        <a-entity id="modelGroup_06" position="-3 0 -9" rotation="0 30 0" scale="0.455 0.455 0.455" 
                   approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
                   visible="false">
             <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
