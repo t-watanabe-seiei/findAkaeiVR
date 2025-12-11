@@ -2531,6 +2531,15 @@
                 console.log('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
+                // 【重要】既存の同じIDのモデルを全て削除（重複を防ぐ）
+                const existingModels = sceneEl.querySelectorAll(`#${modelId}`);
+                existingModels.forEach(existingModel => {
+                    if (existingModel && existingModel.parentNode) {
+                        console.log('Removing existing model before respawn:', modelId);
+                        existingModel.parentNode.removeChild(existingModel);
+                    }
+                });
+                
                 // ランダムパターン設定（8パターン）- ヒット後2秒で再描画
                 const allMovementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
