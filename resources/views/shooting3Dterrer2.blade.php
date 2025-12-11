@@ -24,7 +24,6 @@
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
-        window.bossMode = false; // 残り15秒以降のボスモード（モデル1.5倍、ボス20ヒット）
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -553,18 +552,11 @@
                         timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
                     }
                     
-                    // 60秒経過時（残り15秒）にボスモード突入（モデルの再配置は廃止）
-                    if (window.gameTimeLeft === 15) {
-                        if (!window.bossMode) {
-                            console.log('=== 60 seconds elapsed - BOSS MODE activated (boss needs 20 hits) ===');
-                            window.bossMode = true;
-                        }
-                        if (!window.bossSpawned && window.currentLevel === 2) {
-                            // ボスを出現（Level 2のみ）
-                            console.log('=== Spawning BOSS (Level 2) ===');
-                            window.bossSpawned = true;
-                            this.spawnBoss();
-                        }
+                    // 60秒経過時（残り15秒）にボスを出現（1度のみ、Level 2のみ）
+                    if (window.gameTimeLeft === 15 && !window.bossSpawned && window.currentLevel === 2) {
+                        console.log('=== 60 seconds elapsed - Spawning BOSS (Level 2) ===');
+                        window.bossSpawned = true;
+                        this.spawnBoss();
                     }
                     
                     // 時間切れ
@@ -656,120 +648,6 @@
                 }, 1000);
                 
                 console.log('Timer started, interval ID:', window.gameTimer);
-            },
-            
-            // 全モデルをレベルに応じたサイズで生成（Level 1: 1倍、Level 2: 1.5倍）
-            // ※残り15秒の再描画は廃止（パフォーマンス改善のため）
-            createAllModelsWithSize: function(sceneEl) {
-                // Levelに応じてサイズを決定
-                const sizeMultiplier = window.currentLevel === 2 ? 1.5 : 1.0;
-                console.log(`=== Creating all models with ${sizeMultiplier}x SIZE (Level ${window.currentLevel}) ===`);
-                
-                // Levelに応じたモデルID（Level 1: 3体、Level 2: 6体）
-                const modelIds = window.currentLevel === 2 
-                    ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06']
-                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
-                
-                // 各モデルに対応するGLBファイル
-                const modelFiles = {
-                    'modelGroup_01': '#model_01',
-                    'modelGroup_02': '#model_02',
-                    'modelGroup_03': '#model_03',
-                    'modelGroup_04': '#model_04',
-                    'modelGroup_05': '#model_05',
-                    'modelGroup_06': '#model_06'
-                };
-                
-                // 2倍サイズ用のランダム配置パターン（10パターン）
-                const allPatterns = [
-                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.3 },
-                    { startPos: { x: 0, y: 0, z: -4 }, speed: 0.3 },
-                    { startPos: { x: 3, y: 0, z: -3 }, speed: 0.3 },
-                    { startPos: { x: 4, y: 0, z: 0 }, speed: 0.3 },
-                    { startPos: { x: 5, y: 0, z: 3 }, speed: 0.3 },
-                    { startPos: { x: -6, y: 0, z: 0 }, speed: 0.3 },
-                    { startPos: { x: 0, y: 0, z: 4 }, speed: 0.2 },
-                    { startPos: { x: 3, y: 0, z: 6 }, speed: 0.3 },
-                    { startPos: { x: -4, y: 0, z: 6 }, speed: 0.3 },
-                    { startPos: { x: -7, y: 0, z: 2 }, speed: 0.3 }
-                ];
-                
-                // 使用済みパターンをリセット
-                if (window.usedPatternIndices) {
-                    window.usedPatternIndices.clear();
-                }
-                
-                // パフォーマンス最適化：VRモードではログを最小限に
-                const isVRMode = sceneEl.is && sceneEl.is('vr-mode');
-                
-                // 各モデルを生成
-                modelIds.forEach((modelId, index) => {
-                    // ランダムパターンを選択（重複なし）
-                    const { pattern, index: patternIndex } = window.getAvailablePattern(allPatterns, modelId);
-                    const startPos = pattern.startPos;
-                    const speed = pattern.speed * 1.2; // Level 2スピード
-                    
-                    // カメラ方向への角度を計算
-                    const rotation = Math.atan2(startPos.x, -startPos.z) * (180 / Math.PI);
-                    
-                    // モデルグループを作成
-                    const modelGroup = document.createElement('a-entity');
-                    modelGroup.setAttribute('id', modelId);
-                    modelGroup.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
-                    modelGroup.setAttribute('rotation', `0 ${rotation} 0`);
-                    modelGroup.setAttribute('scale', '0 0 0'); // 最初は見えない
-                    modelGroup.setAttribute('approach-camera', {
-                        speed: speed,
-                        startPos: startPos,
-                        useCamera: true,
-                        autoRespawn: true,
-                        waitTime: 4000
-                    });
-                    
-                    // 3Dモデルエンティティを作成
-                    const modelEntity = document.createElement('a-entity');
-                    modelEntity.setAttribute('gltf-model', modelFiles[modelId]);
-                    modelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                    modelEntity.setAttribute('enhance-materials', '');
-                    modelGroup.appendChild(modelEntity);
-                    
-                    // ヒットボックスを作成（サイズはsizeMultiplierに応じて設定）
-                    const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
-                    const hitBox = document.createElement('a-entity');
-                    hitBox.setAttribute('id', hitBoxId);
-                    hitBox.setAttribute('hit-box', '');
-                    const hitBoxPosY = 0.3 * sizeMultiplier; // 基準値に倍率を掛ける
-                    hitBox.setAttribute('position', `0 ${hitBoxPosY} 0`);
-                    
-                    const cylinder = document.createElement('a-entity');
-                    cylinder.setAttribute('geometry', 'primitive: cylinder');
-                    cylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                    const hitBoxScale = `${0.3 * sizeMultiplier} ${0.4 * sizeMultiplier} ${0.3 * sizeMultiplier}`;
-                    cylinder.setAttribute('scale', hitBoxScale);
-                    cylinder.setAttribute('class', 'collidable');
-                    
-                    hitBox.appendChild(cylinder);
-                    modelGroup.appendChild(hitBox);
-                    
-                    // パフォーマンス最適化：requestAnimationFrameでシーンに追加
-                    requestAnimationFrame(() => {
-                        sceneEl.appendChild(modelGroup);
-                        
-                        // フェードインアニメーション（sizeMultiplierに応じたサイズに）
-                        // 時間差を少し短縮（150ms → 100ms）
-                        setTimeout(() => {
-                            const finalScale = `${sizeMultiplier} ${sizeMultiplier} ${sizeMultiplier}`;
-                            modelGroup.setAttribute('animation__fadein_respawn', {
-                                property: 'scale',
-                                to: finalScale,
-                                dur: 800, // 少し短縮（1000ms → 800ms）
-                                easing: 'easeOutQuad'
-                            });
-                        }, 50 + (index * 100)); // 時間差を短縮（150ms → 100ms）
-                    });
-                });
-                
-                console.log(`All models created with ${sizeMultiplier}x SIZE (Level ${window.currentLevel})`);
             },
             
             spawnBoss: function() {
@@ -1308,7 +1186,6 @@
                 window.respawningModels = {}; // リスポーン中フラグをリセット
                 window.usedPatterns = {}; // パターン使用状況をリセット
                 window.bossSpawned = false; // ボス出現フラグをリセット
-                window.bossMode = false; // ボスモードフラグをリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
@@ -1514,6 +1391,7 @@
                 
                 // VRモードの変更を監視
                 this.el.sceneEl.addEventListener('enter-vr', () => {
+                    console.log('Entered VR mode');
                     // VRモードに入ったらリスナーを再設定
                     setTimeout(() => {
                         this.setupCanvasListeners();
@@ -1522,6 +1400,7 @@
                 });
                 
                 this.el.sceneEl.addEventListener('exit-vr', () => {
+                    console.log('Exited VR mode');
                     // VRモードを出たらリスナーを再設定
                     setTimeout(() => {
                         this.setupCanvasListeners();
@@ -1845,27 +1724,33 @@
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
+                    console.log('Shooting from VR controller');
                     const controller = event.target;
                     
                     // コントローラーの位置を取得
                     controller.object3D.getWorldPosition(position);
+                    console.log('Controller position:', position);
                     
                     // raycasterコンポーネントから方向を取得
                     const raycasterComponent = controller.components.raycaster;
                     if (raycasterComponent && raycasterComponent.raycaster) {
                         // raycasterの方向をコピー
                         direction.copy(raycasterComponent.raycaster.ray.direction).normalize();
+                        console.log('Using raycaster direction:', direction);
                     } else {
                         // raycasterがない場合はコントローラーのローカル前方向を使用
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(controller.object3D.quaternion);
                         direction.normalize();
+                        console.log('Using controller quaternion direction:', direction);
                     }
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射
+                    console.log('Shooting from camera/input');
                     
                     // VRモードかどうかを確認
                     const isVRMode = sceneEl.is('vr-mode');
+                    console.log('Is VR Mode:', isVRMode);
                     
                     if (isVRMode) {
                         // VRモード時
@@ -1875,12 +1760,14 @@
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(sceneEl.camera.quaternion);
                             direction.normalize();
+                            console.log('VR Mode - Using scene.camera');
                         } else {
                             // フォールバック
                             camera.object3D.getWorldPosition(position);
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(camera.object3D.quaternion);
                             direction.normalize();
+                            console.log('VR Mode - Using camera.object3D');
                         }
                     } else {
                         // 通常モード時
@@ -2227,15 +2114,8 @@
                         hitCount++;
                         console.log(`Model hit! (${hitCount} hits) - ${isBoss ? 'BOSS' : 'Normal'} - Level ${window.currentLevel}`, modelEntity);
                         
-                        // 必要なヒット数を判定
-                        // - BOSS: 残り15秒以降（bossMode）なら20回、それ以前は15回
-                        // - 通常モデル: Level 1で1回、Level 2で2回
-                        let requiredHits;
-                        if (isBoss) {
-                            requiredHits = window.bossMode ? 20 : 15;
-                        } else {
-                            requiredHits = window.currentLevel === 2 ? 2 : 1;
-                        }
+                        // 必要なヒット数を判定（BOSS: 15回、Level 1: 1回、Level 2: 2回）
+                        const requiredHits = isBoss ? 15 : (window.currentLevel === 2 ? 2 : 1);
                         
                         // 必要なヒット数に達していない場合
                         if (hitCount < requiredHits) {
@@ -2858,10 +2738,6 @@
                     useCamera: useCamera
                 });
                 
-                // 残り15秒以降（bossMode）の場合、モデルサイズを1.5倍に
-                const modelScale = window.bossMode ? 1.5 : 1.0;
-                console.log(`Creating model with scale multiplier: ${modelScale}x (bossMode: ${window.bossMode})`);
-                
                 // 新しいモデルグループを作成
                 const newModelGroup = document.createElement('a-entity');
                 newModelGroup.setAttribute('id', modelId);
@@ -2892,21 +2768,17 @@
                 newModelEntity.setAttribute('enhance-materials', ''); // マテリアル品質向上
                 newModelGroup.appendChild(newModelEntity);
                 
-                // 当たり判定オブジェクトを作成（残り15秒以降は1.5倍サイズ）
+                // 当たり判定オブジェクトを作成
                 const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
                 const newHitBox = document.createElement('a-entity');
                 newHitBox.setAttribute('id', hitBoxId);
                 newHitBox.setAttribute('hit-box', '');
-                const hitBoxPosY = window.bossMode ? 0.45 : 0.3; // bossModeなら位置も1.5倍
-                newHitBox.setAttribute('position', `0 ${hitBoxPosY} 0`);
+                newHitBox.setAttribute('position', '0 0.3 0'); // HTMLと同じ位置に修正
                 
                 const hitBoxCylinder = document.createElement('a-entity');
                 hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
                 hitBoxCylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                const hitBoxScaleX = window.bossMode ? 0.45 : 0.3; // bossModeなら1.5倍
-                const hitBoxScaleY = window.bossMode ? 0.6 : 0.4; // bossModeなら1.5倍
-                const hitBoxScaleZ = window.bossMode ? 0.45 : 0.3; // bossModeなら1.5倍
-                hitBoxCylinder.setAttribute('scale', `${hitBoxScaleX} ${hitBoxScaleY} ${hitBoxScaleZ}`);
+                hitBoxCylinder.setAttribute('scale', '0.3 0.4 0.3'); // HTMLと同じスケールに修正
                 hitBoxCylinder.setAttribute('class', 'collidable');
                 
                 newHitBox.appendChild(hitBoxCylinder);
@@ -2916,16 +2788,15 @@
                 sceneEl.appendChild(newModelGroup);
                 console.log('Model added to scene with random pattern:', randomPattern);
                 
-                // フェードインアニメーション（残り15秒以降は1.5倍サイズに）
+                // フェードインアニメーション
                 setTimeout(() => {
-                    const finalScale = window.bossMode ? '1.5 1.5 1.5' : '1 1 1';
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
-                        to: finalScale,
+                        to: '1 1 1',
                         dur: 1000,
                         easing: 'easeOutQuad'
                     });
-                    console.log(`Model fading in to scale: ${finalScale}`);
+                    console.log('Model fading in');
                 }, 100);
             }
         });
