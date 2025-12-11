@@ -1049,7 +1049,7 @@
                 model01.setAttribute('id', 'modelGroup_01');
                 model01.setAttribute('position', '-4 0 -8');
                 model01.setAttribute('rotation', '0 45 0');
-                model01.setAttribute('scale', '0.7 0.7 0.7');
+                model01.setAttribute('scale', '0.35 0.35 0.35');
                 model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model01.setAttribute('visible', 'false');
                 
@@ -1072,12 +1072,25 @@
                 model01.appendChild(hitBox01);
                 sceneEl.appendChild(model01);
                 
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_01');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model01, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model01');
+                        }, 50);
+                    }
+                }, 100);
+                
                 // モデル02を再作成
                 const model02 = document.createElement('a-entity');
                 model02.setAttribute('id', 'modelGroup_02');
                 model02.setAttribute('position', '0 0 -10');
                 model02.setAttribute('rotation', '0 0 0');
-                model02.setAttribute('scale', '0.7 0.7 0.7');
+                model02.setAttribute('scale', '0.35 0.35 0.35');
                 model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model02.setAttribute('visible', 'false');
                 
@@ -1100,12 +1113,25 @@
                 model02.appendChild(hitBox02);
                 sceneEl.appendChild(model02);
                 
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_02');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model02, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model02');
+                        }, 50);
+                    }
+                }, 100);
+                
                 // モデル03を再作成
                 const model03 = document.createElement('a-entity');
                 model03.setAttribute('id', 'modelGroup_03');
                 model03.setAttribute('position', '4 0 -8');
                 model03.setAttribute('rotation', '0 -45 0');
-                model03.setAttribute('scale', '0.7 0.7 0.7');
+                model03.setAttribute('scale', '0.35 0.35 0.35');
                 model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000');
                 model03.setAttribute('visible', 'false');
                 
@@ -1128,12 +1154,25 @@
                 model03.appendChild(hitBox03);
                 sceneEl.appendChild(model03);
                 
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_03');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model03, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model03');
+                        }, 50);
+                    }
+                }, 100);
+                
                 // モデル04を再作成
                 const model04 = document.createElement('a-entity');
                 model04.setAttribute('id', 'modelGroup_04');
                 model04.setAttribute('position', '-4 0 -8');
                 model04.setAttribute('rotation', '0 45 0');
-                model04.setAttribute('scale', '0.7 0.7 0.7');
+                model04.setAttribute('scale', '0.35 0.35 0.35');
                 model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model04.setAttribute('visible', 'false');
                 
@@ -1156,12 +1195,25 @@
                 model04.appendChild(hitBox04);
                 sceneEl.appendChild(model04);
                 
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_04');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model04, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model04');
+                        }, 50);
+                    }
+                }, 100);
+                
                 // モデル05を再作成（Level 2専用）
                 const model05 = document.createElement('a-entity');
                 model05.setAttribute('id', 'modelGroup_05');
                 model05.setAttribute('position', '3 0 -9');
                 model05.setAttribute('rotation', '0 -30 0');
-                model05.setAttribute('scale', '0.7 0.7 0.7');
+                model05.setAttribute('scale', '0.35 0.35 0.35');
                 model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
                 model05.setAttribute('visible', 'false');
                 
@@ -1184,12 +1236,25 @@
                 model05.appendChild(hitBox05);
                 sceneEl.appendChild(model05);
                 
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_05');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model05, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model05');
+                        }, 50);
+                    }
+                }, 100);
+                
                 // モデル06を再作成（Level 2専用）
                 const model06 = document.createElement('a-entity');
                 model06.setAttribute('id', 'modelGroup_06');
                 model06.setAttribute('position', '-3 0 -9');
                 model06.setAttribute('rotation', '0 30 0');
-                model06.setAttribute('scale', '0.7 0.7 0.7');
+                model06.setAttribute('scale', '0.35 0.35 0.35');
                 model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
                 model06.setAttribute('visible', 'false');
                 
@@ -1211,6 +1276,19 @@
                 hitBox06.appendChild(cylinder06);
                 model06.appendChild(hitBox06);
                 sceneEl.appendChild(model06);
+                
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_06');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model06, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model06');
+                        }, 50);
+                    }
+                }, 100);
                 
                 console.log('Initial models recreated');
             },
@@ -2521,7 +2599,7 @@
                 setTimeout(() => {
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
-                        to: '0.7 0.7 0.7',
+                        to: '0.35 0.35 0.35',
                         dur: 1000,
                         easing: 'easeOutQuad'
                     });
