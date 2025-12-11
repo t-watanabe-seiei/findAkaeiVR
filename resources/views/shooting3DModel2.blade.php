@@ -1049,7 +1049,7 @@
                 model01.setAttribute('id', 'modelGroup_01');
                 model01.setAttribute('position', '-4 0 -8');
                 model01.setAttribute('rotation', '0 45 0');
-                model01.setAttribute('scale', '1 1 1');
+                model01.setAttribute('scale', '0.7 0.7 0.7');
                 model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model01.setAttribute('visible', 'false');
                 
@@ -1077,7 +1077,7 @@
                 model02.setAttribute('id', 'modelGroup_02');
                 model02.setAttribute('position', '0 0 -10');
                 model02.setAttribute('rotation', '0 0 0');
-                model02.setAttribute('scale', '1 1 1');
+                model02.setAttribute('scale', '0.7 0.7 0.7');
                 model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model02.setAttribute('visible', 'false');
                 
@@ -1105,7 +1105,7 @@
                 model03.setAttribute('id', 'modelGroup_03');
                 model03.setAttribute('position', '4 0 -8');
                 model03.setAttribute('rotation', '0 -45 0');
-                model03.setAttribute('scale', '1 1 1');
+                model03.setAttribute('scale', '0.7 0.7 0.7');
                 model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000');
                 model03.setAttribute('visible', 'false');
                 
@@ -1133,7 +1133,7 @@
                 model04.setAttribute('id', 'modelGroup_04');
                 model04.setAttribute('position', '-4 0 -8');
                 model04.setAttribute('rotation', '0 45 0');
-                model04.setAttribute('scale', '1 1 1');
+                model04.setAttribute('scale', '0.7 0.7 0.7');
                 model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
                 model04.setAttribute('visible', 'false');
                 
@@ -1161,7 +1161,7 @@
                 model05.setAttribute('id', 'modelGroup_05');
                 model05.setAttribute('position', '3 0 -9');
                 model05.setAttribute('rotation', '0 -30 0');
-                model05.setAttribute('scale', '1 1 1');
+                model05.setAttribute('scale', '0.7 0.7 0.7');
                 model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
                 model05.setAttribute('visible', 'false');
                 
@@ -1189,7 +1189,7 @@
                 model06.setAttribute('id', 'modelGroup_06');
                 model06.setAttribute('position', '-3 0 -9');
                 model06.setAttribute('rotation', '0 30 0');
-                model06.setAttribute('scale', '1 1 1');
+                model06.setAttribute('scale', '0.7 0.7 0.7');
                 model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
                 model06.setAttribute('visible', 'false');
                 
@@ -2521,7 +2521,7 @@
                 setTimeout(() => {
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
-                        to: '1 1 1',
+                        to: '0.7 0.7 0.7',
                         dur: 1000,
                         easing: 'easeOutQuad'
                     });
