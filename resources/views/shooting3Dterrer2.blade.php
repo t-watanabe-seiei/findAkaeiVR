@@ -24,8 +24,7 @@
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
-        window.hardMode = false; // 残り30秒以降のハードモード（全モデル3ヒット必要）
-        window.bossMode = false; // 残り15秒以降のボスモード（モデル2倍、ボス20ヒット）
+        window.bossMode = false; // 残り15秒以降のボスモード（モデル1.5倍、ボス20ヒット）
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -554,12 +553,6 @@
                         timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
                     }
                     
-                    // 45秒経過時（残り30秒）にハードモード突入
-                    if (window.gameTimeLeft === 30 && !window.hardMode) {
-                        console.log('=== 45 seconds elapsed - HARD MODE activated (all models need 3 hits) ===');
-                        window.hardMode = true;
-                    }
-                    
                     // 60秒経過時（残り15秒）にボスモード突入＆全モデル再配置
                     if (window.gameTimeLeft === 15) {
                         if (!window.bossMode) {
@@ -672,39 +665,49 @@
             },
             
             // 残り15秒で全モデルをクリアして再配置（Level 1: 通常サイズ、Level 2: 1.5倍サイズ）
+            // パフォーマンス最適化：段階的削除と RequestAnimationFrame 使用
             respawnAllModelsAtTime15: function() {
                 console.log('=== Respawning all models at 15 seconds remaining ===');
                 const sceneEl = document.querySelector('a-scene');
                 
-                // 既存の全モデルをフェードアウトして削除
+                // 既存の全モデルを取得
                 const allModels = document.querySelectorAll('[id^="modelGroup_"]:not([id*="boss"])');
                 console.log(`Found ${allModels.length} models to remove`);
                 
-                allModels.forEach(model => {
-                    // フェードアウトアニメーション
-                    model.setAttribute('animation__fadeout_respawn', {
-                        property: 'scale',
-                        to: '0 0 0',
-                        dur: 500,
-                        easing: 'easeInQuad'
-                    });
-                    
-                    // 0.5秒後に削除
+                // パフォーマンス最適化：段階的にフェードアウト（一度に全部ではなく）
+                allModels.forEach((model, index) => {
+                    // 各モデルを少しずつ時間差でフェードアウト（負荷分散）
                     setTimeout(() => {
-                        if (model.parentNode) {
-                            model.parentNode.removeChild(model);
-                            console.log('Removed model:', model.id);
+                        if (model && model.parentNode) {
+                            model.setAttribute('animation__fadeout_respawn', {
+                                property: 'scale',
+                                to: '0 0 0',
+                                dur: 400, // 少し短縮
+                                easing: 'easeInQuad'
+                            });
+                            
+                            // フェードアウト後に削除
+                            setTimeout(() => {
+                                if (model.parentNode) {
+                                    model.parentNode.removeChild(model);
+                                }
+                            }, 400);
                         }
-                    }, 500);
+                    }, index * 50); // 50ms間隔でずらす
                 });
                 
-                // 0.7秒後に全モデルを再生成（Levelに応じたサイズ）
+                // 全削除完了後に再生成（最後のモデルの削除を待つ）
+                const totalRemoveTime = (allModels.length * 50) + 400;
                 setTimeout(() => {
-                    this.createAllModelsWithSize(sceneEl);
-                }, 700);
+                    // requestAnimationFrameを使用してスムーズに実行
+                    requestAnimationFrame(() => {
+                        this.createAllModelsWithSize(sceneEl);
+                    });
+                }, totalRemoveTime);
             },
             
             // 全モデルをレベルに応じたサイズで生成（Level 1: 1倍、Level 2: 1.5倍）
+            // パフォーマンス最適化：DocumentFragment使用とバッチ処理
             createAllModelsWithSize: function(sceneEl) {
                 // Levelに応じてサイズを決定
                 const sizeMultiplier = window.currentLevel === 2 ? 1.5 : 1.0;
@@ -743,6 +746,9 @@
                 if (window.usedPatternIndices) {
                     window.usedPatternIndices.clear();
                 }
+                
+                // パフォーマンス最適化：VRモードではログを最小限に
+                const isVRMode = sceneEl.is && sceneEl.is('vr-mode');
                 
                 // 各モデルを生成
                 modelIds.forEach((modelId, index) => {
@@ -793,21 +799,22 @@
                     hitBox.appendChild(cylinder);
                     modelGroup.appendChild(hitBox);
                     
-                    // シーンに追加
-                    sceneEl.appendChild(modelGroup);
-                    console.log(`Model ${modelId} created at pattern ${patternIndex}:`, startPos);
-                    
-                    // フェードインアニメーション（sizeMultiplierに応じたサイズに）
-                    setTimeout(() => {
-                        const finalScale = `${sizeMultiplier} ${sizeMultiplier} ${sizeMultiplier}`;
-                        modelGroup.setAttribute('animation__fadein_respawn', {
-                            property: 'scale',
-                            to: finalScale,
-                            dur: 1000,
-                            easing: 'easeOutQuad'
-                        });
-                        console.log(`Model ${modelId} fading in to ${sizeMultiplier}x size`);
-                    }, 100 + (index * 150)); // 少しずつ時間差で出現
+                    // パフォーマンス最適化：requestAnimationFrameでシーンに追加
+                    requestAnimationFrame(() => {
+                        sceneEl.appendChild(modelGroup);
+                        
+                        // フェードインアニメーション（sizeMultiplierに応じたサイズに）
+                        // 時間差を少し短縮（150ms → 100ms）
+                        setTimeout(() => {
+                            const finalScale = `${sizeMultiplier} ${sizeMultiplier} ${sizeMultiplier}`;
+                            modelGroup.setAttribute('animation__fadein_respawn', {
+                                property: 'scale',
+                                to: finalScale,
+                                dur: 800, // 少し短縮（1000ms → 800ms）
+                                easing: 'easeOutQuad'
+                            });
+                        }, 50 + (index * 100)); // 時間差を短縮（150ms → 100ms）
+                    });
                 });
                 
                 console.log(`All models created with ${sizeMultiplier}x SIZE (Level ${window.currentLevel})`);
@@ -2279,16 +2286,12 @@
                         
                         // 必要なヒット数を判定
                         // - BOSS: 残り15秒以降（bossMode）なら20回、それ以前は15回
-                        // - 通常モデル: 残り30秒以降（hardMode）なら3回、それ以前はLevel 1で1回/Level 2で2回
+                        // - 通常モデル: Level 1で1回、Level 2で2回
                         let requiredHits;
                         if (isBoss) {
                             requiredHits = window.bossMode ? 20 : 15;
                         } else {
-                            if (window.hardMode) {
-                                requiredHits = 3; // 残り30秒以降は全モデル3ヒット必要
-                            } else {
-                                requiredHits = window.currentLevel === 2 ? 2 : 1;
-                            }
+                            requiredHits = window.currentLevel === 2 ? 2 : 1;
                         }
                         
                         // 必要なヒット数に達していない場合
