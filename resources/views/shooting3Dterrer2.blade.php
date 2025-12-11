@@ -560,20 +560,18 @@
                         window.hardMode = true;
                     }
                     
-                    // 60秒経過時（残り15秒）にボスモード突入＆全モデル再配置＆ボス出現（Level 2のみ）
+                    // 60秒経過時（残り15秒）にボスモード突入＆全モデル再配置
                     if (window.gameTimeLeft === 15) {
                         if (!window.bossMode) {
-                            console.log('=== 60 seconds elapsed - BOSS MODE activated (models 2x size, boss needs 20 hits) ===');
+                            console.log('=== 60 seconds elapsed - BOSS MODE activated (Level 2: 1.5x size, boss needs 20 hits) ===');
                             window.bossMode = true;
                             
-                            // Level 2の場合、全モデルを2倍サイズで再配置
-                            if (window.currentLevel === 2) {
-                                console.log('=== Respawning all models with DOUBLE SIZE (Level 2) ===');
-                                this.respawnAllModelsDoubleSize();
-                            }
+                            // 全レベルで全モデルを再配置（Level 1: 通常サイズ、Level 2: 1.5倍サイズ）
+                            console.log(`=== Respawning all models (Level ${window.currentLevel}) ===`);
+                            this.respawnAllModelsAtTime15();
                         }
                         if (!window.bossSpawned && window.currentLevel === 2) {
-                            // ボスは全モデル再配置の1.5秒後に出現（視覚的な演出のため）
+                            // ボスは全モデル再配置の1.5秒後に出現（視覚的な演出のため、Level 2のみ）
                             setTimeout(() => {
                                 console.log('=== Spawning BOSS (Level 2) ===');
                                 window.bossSpawned = true;
@@ -673,9 +671,9 @@
                 console.log('Timer started, interval ID:', window.gameTimer);
             },
             
-            // 残り15秒で全モデルをクリアして2倍サイズで再配置（Level 2のみ）
-            respawnAllModelsDoubleSize: function() {
-                console.log('=== Respawning all models with DOUBLE SIZE (Level 2 only) ===');
+            // 残り15秒で全モデルをクリアして再配置（Level 1: 通常サイズ、Level 2: 1.5倍サイズ）
+            respawnAllModelsAtTime15: function() {
+                console.log('=== Respawning all models at 15 seconds remaining ===');
                 const sceneEl = document.querySelector('a-scene');
                 
                 // 既存の全モデルをフェードアウトして削除
@@ -700,19 +698,22 @@
                     }, 500);
                 });
                 
-                // 0.7秒後に全モデルを2倍サイズで再生成
+                // 0.7秒後に全モデルを再生成（Levelに応じたサイズ）
                 setTimeout(() => {
-                    this.createAllModelsDoubleSize(sceneEl);
+                    this.createAllModelsWithSize(sceneEl);
                 }, 700);
             },
             
-            // 全モデルを2倍サイズで生成（Level 2用）
-            createAllModelsDoubleSize: function(sceneEl) {
-                console.log('=== Creating all models with DOUBLE SIZE ===');
+            // 全モデルをレベルに応じたサイズで生成（Level 1: 1倍、Level 2: 1.5倍）
+            createAllModelsWithSize: function(sceneEl) {
+                // Levelに応じてサイズを決定
+                const sizeMultiplier = window.currentLevel === 2 ? 1.5 : 1.0;
+                console.log(`=== Creating all models with ${sizeMultiplier}x SIZE (Level ${window.currentLevel}) ===`);
                 
-                // Level 2の全モデルID（6体）
-                const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 
-                                  'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
+                // Levelに応じたモデルID（Level 1: 3体、Level 2: 6体）
+                const modelIds = window.currentLevel === 2 
+                    ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06']
+                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03'];
                 
                 // 各モデルに対応するGLBファイル
                 const modelFiles = {
@@ -774,17 +775,19 @@
                     modelEntity.setAttribute('enhance-materials', '');
                     modelGroup.appendChild(modelEntity);
                     
-                    // ヒットボックスを作成（2倍サイズ）
+                    // ヒットボックスを作成（サイズはsizeMultiplierに応じて設定）
                     const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
                     const hitBox = document.createElement('a-entity');
                     hitBox.setAttribute('id', hitBoxId);
                     hitBox.setAttribute('hit-box', '');
-                    hitBox.setAttribute('position', '0 0.6 0'); // 2倍の高さ
+                    const hitBoxPosY = 0.3 * sizeMultiplier; // 基準値に倍率を掛ける
+                    hitBox.setAttribute('position', `0 ${hitBoxPosY} 0`);
                     
                     const cylinder = document.createElement('a-entity');
                     cylinder.setAttribute('geometry', 'primitive: cylinder');
                     cylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                    cylinder.setAttribute('scale', '0.6 0.8 0.6'); // 2倍サイズ
+                    const hitBoxScale = `${0.3 * sizeMultiplier} ${0.4 * sizeMultiplier} ${0.3 * sizeMultiplier}`;
+                    cylinder.setAttribute('scale', hitBoxScale);
                     cylinder.setAttribute('class', 'collidable');
                     
                     hitBox.appendChild(cylinder);
@@ -794,19 +797,20 @@
                     sceneEl.appendChild(modelGroup);
                     console.log(`Model ${modelId} created at pattern ${patternIndex}:`, startPos);
                     
-                    // フェードインアニメーション（2倍サイズに）
+                    // フェードインアニメーション（sizeMultiplierに応じたサイズに）
                     setTimeout(() => {
-                        modelGroup.setAttribute('animation__fadein_double', {
+                        const finalScale = `${sizeMultiplier} ${sizeMultiplier} ${sizeMultiplier}`;
+                        modelGroup.setAttribute('animation__fadein_respawn', {
                             property: 'scale',
-                            to: '2 2 2', // 2倍サイズ
+                            to: finalScale,
                             dur: 1000,
                             easing: 'easeOutQuad'
                         });
-                        console.log(`Model ${modelId} fading in to 2x size`);
+                        console.log(`Model ${modelId} fading in to ${sizeMultiplier}x size`);
                     }, 100 + (index * 150)); // 少しずつ時間差で出現
                 });
                 
-                console.log('All models created with DOUBLE SIZE');
+                console.log(`All models created with ${sizeMultiplier}x SIZE (Level ${window.currentLevel})`);
             },
             
             spawnBoss: function() {
@@ -2908,8 +2912,8 @@
                     useCamera: useCamera
                 });
                 
-                // 残り15秒以降（bossMode）の場合、モデルサイズを2倍に
-                const modelScale = window.bossMode ? 2.0 : 1.0;
+                // 残り15秒以降（bossMode）の場合、モデルサイズを1.5倍に
+                const modelScale = window.bossMode ? 1.5 : 1.0;
                 console.log(`Creating model with scale multiplier: ${modelScale}x (bossMode: ${window.bossMode})`);
                 
                 // 新しいモデルグループを作成
@@ -2942,20 +2946,20 @@
                 newModelEntity.setAttribute('enhance-materials', ''); // マテリアル品質向上
                 newModelGroup.appendChild(newModelEntity);
                 
-                // 当たり判定オブジェクトを作成（残り15秒以降は2倍サイズ）
+                // 当たり判定オブジェクトを作成（残り15秒以降は1.5倍サイズ）
                 const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
                 const newHitBox = document.createElement('a-entity');
                 newHitBox.setAttribute('id', hitBoxId);
                 newHitBox.setAttribute('hit-box', '');
-                const hitBoxPosY = window.bossMode ? 0.6 : 0.3; // bossModeなら位置も2倍
+                const hitBoxPosY = window.bossMode ? 0.45 : 0.3; // bossModeなら位置も1.5倍
                 newHitBox.setAttribute('position', `0 ${hitBoxPosY} 0`);
                 
                 const hitBoxCylinder = document.createElement('a-entity');
                 hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
                 hitBoxCylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                const hitBoxScaleX = window.bossMode ? 0.6 : 0.3; // bossModeなら2倍
-                const hitBoxScaleY = window.bossMode ? 0.8 : 0.4; // bossModeなら2倍
-                const hitBoxScaleZ = window.bossMode ? 0.6 : 0.3; // bossModeなら2倍
+                const hitBoxScaleX = window.bossMode ? 0.45 : 0.3; // bossModeなら1.5倍
+                const hitBoxScaleY = window.bossMode ? 0.6 : 0.4; // bossModeなら1.5倍
+                const hitBoxScaleZ = window.bossMode ? 0.45 : 0.3; // bossModeなら1.5倍
                 hitBoxCylinder.setAttribute('scale', `${hitBoxScaleX} ${hitBoxScaleY} ${hitBoxScaleZ}`);
                 hitBoxCylinder.setAttribute('class', 'collidable');
                 
@@ -2966,9 +2970,9 @@
                 sceneEl.appendChild(newModelGroup);
                 console.log('Model added to scene with random pattern:', randomPattern);
                 
-                // フェードインアニメーション（残り15秒以降は2倍サイズに）
+                // フェードインアニメーション（残り15秒以降は1.5倍サイズに）
                 setTimeout(() => {
-                    const finalScale = window.bossMode ? '2 2 2' : '1 1 1';
+                    const finalScale = window.bossMode ? '1.5 1.5 1.5' : '1 1 1';
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
                         to: finalScale,
