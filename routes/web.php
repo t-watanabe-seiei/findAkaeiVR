@@ -19,12 +19,20 @@ Route::match(['get', 'head'], '/cute', function () {
     return view('shooting3DModel2');
 })->name('home.index');
 
+Route::match(['get', 'head'], '/cute2', function () {
+    return view('shooting3DModel');
+})->name('home.index');
+
 Route::match(['get', 'head'], '/stamp', function () {
     return view('ARstampRally');
 })->name('stamp.index');
 
 Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer2');
+})->name('terrer.index');
+
+Route::match(['get', 'head'], '/terrer2', function () {
+    return view('shooting3Dterrer');
 })->name('terrer.index');
 
 Route::match(['get', 'head'], '/insect', function () {

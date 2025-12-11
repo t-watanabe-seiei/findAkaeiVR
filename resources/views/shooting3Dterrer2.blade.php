@@ -553,23 +553,17 @@
                         timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
                     }
                     
-                    // 60秒経過時（残り15秒）にボスモード突入＆全モデル再配置
+                    // 60秒経過時（残り15秒）にボスモード突入（モデルの再配置は廃止）
                     if (window.gameTimeLeft === 15) {
                         if (!window.bossMode) {
-                            console.log('=== 60 seconds elapsed - BOSS MODE activated (Level 2: 1.5x size, boss needs 20 hits) ===');
+                            console.log('=== 60 seconds elapsed - BOSS MODE activated (boss needs 20 hits) ===');
                             window.bossMode = true;
-                            
-                            // 全レベルで全モデルを再配置（Level 1: 通常サイズ、Level 2: 1.5倍サイズ）
-                            console.log(`=== Respawning all models (Level ${window.currentLevel}) ===`);
-                            this.respawnAllModelsAtTime15();
                         }
                         if (!window.bossSpawned && window.currentLevel === 2) {
-                            // ボスは全モデル再配置の1.5秒後に出現（視覚的な演出のため、Level 2のみ）
-                            setTimeout(() => {
-                                console.log('=== Spawning BOSS (Level 2) ===');
-                                window.bossSpawned = true;
-                                this.spawnBoss();
-                            }, 1500);
+                            // ボスを出現（Level 2のみ）
+                            console.log('=== Spawning BOSS (Level 2) ===');
+                            window.bossSpawned = true;
+                            this.spawnBoss();
                         }
                     }
                     
@@ -664,50 +658,8 @@
                 console.log('Timer started, interval ID:', window.gameTimer);
             },
             
-            // 残り15秒で全モデルをクリアして再配置（Level 1: 通常サイズ、Level 2: 1.5倍サイズ）
-            // パフォーマンス最適化：段階的削除と RequestAnimationFrame 使用
-            respawnAllModelsAtTime15: function() {
-                console.log('=== Respawning all models at 15 seconds remaining ===');
-                const sceneEl = document.querySelector('a-scene');
-                
-                // 既存の全モデルを取得
-                const allModels = document.querySelectorAll('[id^="modelGroup_"]:not([id*="boss"])');
-                console.log(`Found ${allModels.length} models to remove`);
-                
-                // パフォーマンス最適化：段階的にフェードアウト（一度に全部ではなく）
-                allModels.forEach((model, index) => {
-                    // 各モデルを少しずつ時間差でフェードアウト（負荷分散）
-                    setTimeout(() => {
-                        if (model && model.parentNode) {
-                            model.setAttribute('animation__fadeout_respawn', {
-                                property: 'scale',
-                                to: '0 0 0',
-                                dur: 400, // 少し短縮
-                                easing: 'easeInQuad'
-                            });
-                            
-                            // フェードアウト後に削除
-                            setTimeout(() => {
-                                if (model.parentNode) {
-                                    model.parentNode.removeChild(model);
-                                }
-                            }, 400);
-                        }
-                    }, index * 50); // 50ms間隔でずらす
-                });
-                
-                // 全削除完了後に再生成（最後のモデルの削除を待つ）
-                const totalRemoveTime = (allModels.length * 50) + 400;
-                setTimeout(() => {
-                    // requestAnimationFrameを使用してスムーズに実行
-                    requestAnimationFrame(() => {
-                        this.createAllModelsWithSize(sceneEl);
-                    });
-                }, totalRemoveTime);
-            },
-            
             // 全モデルをレベルに応じたサイズで生成（Level 1: 1倍、Level 2: 1.5倍）
-            // パフォーマンス最適化：DocumentFragment使用とバッチ処理
+            // ※残り15秒の再描画は廃止（パフォーマンス改善のため）
             createAllModelsWithSize: function(sceneEl) {
                 // Levelに応じてサイズを決定
                 const sizeMultiplier = window.currentLevel === 2 ? 1.5 : 1.0;
@@ -1356,6 +1308,7 @@
                 window.respawningModels = {}; // リスポーン中フラグをリセット
                 window.usedPatterns = {}; // パターン使用状況をリセット
                 window.bossSpawned = false; // ボス出現フラグをリセット
+                window.bossMode = false; // ボスモードフラグをリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
@@ -1561,7 +1514,6 @@
                 
                 // VRモードの変更を監視
                 this.el.sceneEl.addEventListener('enter-vr', () => {
-                    console.log('Entered VR mode');
                     // VRモードに入ったらリスナーを再設定
                     setTimeout(() => {
                         this.setupCanvasListeners();
@@ -1570,7 +1522,6 @@
                 });
                 
                 this.el.sceneEl.addEventListener('exit-vr', () => {
-                    console.log('Exited VR mode');
                     // VRモードを出たらリスナーを再設定
                     setTimeout(() => {
                         this.setupCanvasListeners();
@@ -1894,33 +1845,27 @@
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
-                    console.log('Shooting from VR controller');
                     const controller = event.target;
                     
                     // コントローラーの位置を取得
                     controller.object3D.getWorldPosition(position);
-                    console.log('Controller position:', position);
                     
                     // raycasterコンポーネントから方向を取得
                     const raycasterComponent = controller.components.raycaster;
                     if (raycasterComponent && raycasterComponent.raycaster) {
                         // raycasterの方向をコピー
                         direction.copy(raycasterComponent.raycaster.ray.direction).normalize();
-                        console.log('Using raycaster direction:', direction);
                     } else {
                         // raycasterがない場合はコントローラーのローカル前方向を使用
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(controller.object3D.quaternion);
                         direction.normalize();
-                        console.log('Using controller quaternion direction:', direction);
                     }
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射
-                    console.log('Shooting from camera/input');
                     
                     // VRモードかどうかを確認
                     const isVRMode = sceneEl.is('vr-mode');
-                    console.log('Is VR Mode:', isVRMode);
                     
                     if (isVRMode) {
                         // VRモード時
@@ -1930,14 +1875,12 @@
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(sceneEl.camera.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using scene.camera');
                         } else {
                             // フォールバック
                             camera.object3D.getWorldPosition(position);
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(camera.object3D.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using camera.object3D');
                         }
                     } else {
                         // 通常モード時
