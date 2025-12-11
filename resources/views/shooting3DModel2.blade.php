@@ -1290,6 +1290,88 @@
                     }
                 }, 100);
                 
+                // モデル07を再作成（Level 2専用）
+                const model07 = document.createElement('a-entity');
+                model07.setAttribute('id', 'modelGroup_07');
+                model07.setAttribute('position', '2 0 -7');
+                model07.setAttribute('rotation', '0 -20 0');
+                model07.setAttribute('scale', '0.455 0.455 0.455');
+                model07.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model07.setAttribute('visible', 'false');
+                
+                const model07Entity = document.createElement('a-entity');
+                model07Entity.setAttribute('gltf-model', '#model_07');
+                model07Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model07Entity.setAttribute('enhance-materials', '');
+                model07.appendChild(model07Entity);
+                
+                const hitBox07 = document.createElement('a-entity');
+                hitBox07.setAttribute('id', 'hit-boxed_07');
+                hitBox07.setAttribute('hit-box', '');
+                hitBox07.setAttribute('position', '0 1.5 0');
+                const cylinder07 = document.createElement('a-entity');
+                cylinder07.setAttribute('geometry', 'primitive: cylinder');
+                cylinder07.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder07.setAttribute('scale', '0.3 2.0 0.3');
+                cylinder07.setAttribute('class', 'collidable');
+                hitBox07.appendChild(cylinder07);
+                model07.appendChild(hitBox07);
+                sceneEl.appendChild(model07);
+                
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_07');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model07, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model07');
+                        }, 50);
+                    }
+                }, 100);
+                
+                // モデル08を再作成（Level 2専用）
+                const model08 = document.createElement('a-entity');
+                model08.setAttribute('id', 'modelGroup_08');
+                model08.setAttribute('position', '-2 0 -7');
+                model08.setAttribute('rotation', '0 20 0');
+                model08.setAttribute('scale', '0.455 0.455 0.455');
+                model08.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model08.setAttribute('visible', 'false');
+                
+                const model08Entity = document.createElement('a-entity');
+                model08Entity.setAttribute('gltf-model', '#model_08');
+                model08Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model08Entity.setAttribute('enhance-materials', '');
+                model08.appendChild(model08Entity);
+                
+                const hitBox08 = document.createElement('a-entity');
+                hitBox08.setAttribute('id', 'hit-boxed_08');
+                hitBox08.setAttribute('hit-box', '');
+                hitBox08.setAttribute('position', '0 1.5 0');
+                const cylinder08 = document.createElement('a-entity');
+                cylinder08.setAttribute('geometry', 'primitive: cylinder');
+                cylinder08.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder08.setAttribute('scale', '0.3 2.0 0.3');
+                cylinder08.setAttribute('class', 'collidable');
+                hitBox08.appendChild(cylinder08);
+                model08.appendChild(hitBox08);
+                sceneEl.appendChild(model08);
+                
+                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                setTimeout(() => {
+                    const hitBox = document.getElementById('hit-boxed_08');
+                    if (hitBox && !hitBox.components['hit-box']) {
+                        console.warn('hit-box component not initialized for model08, forcing re-init');
+                        hitBox.removeAttribute('hit-box');
+                        setTimeout(() => {
+                            hitBox.setAttribute('hit-box', '');
+                            console.log('hit-box component re-initialized for model08');
+                        }, 50);
+                    }
+                }, 100);
+                
                 console.log('Initial models recreated');
             },
             
@@ -1331,7 +1413,7 @@
                 const sceneEl = document.querySelector('a-scene');
                 
                 // すべてのモデルを完全に削除（動的に生成されたものも含む）
-                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
@@ -2438,8 +2520,8 @@
                     return;
                 }
                 
-                // Level 1の場合、modelGroup_04, 05, 06はリスポーンしない
-                if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06')) {
+                // Level 1の場合、modelGroup_04, 05, 06, 07, 08はリスポーンしない
+                if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06' || modelId === 'modelGroup_07' || modelId === 'modelGroup_08')) {
                     console.log('Level 1: Skipping', modelId, 'respawn');
                     return;
                 }
@@ -2688,6 +2770,8 @@
             <a-asset-item id="model_04" src={{ asset('cg/3d_pro_burger_fujii.glb') }}></a-asset-item>
             <a-asset-item id="model_05" src={{ asset('cg/3d_pro_cat_fukuda.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/3d_pro_bear_tagashira.glb') }}></a-asset-item>
+            <a-asset-item id="model_07" src={{ asset('cg/3d_pro_harinezumi_harada.glb') }}></a-asset-item>
+            <a-asset-item id="model_08" src={{ asset('cg/3d_pro_tora_iwamoto.glb') }}></a-asset-item>
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
@@ -3001,6 +3085,28 @@
                   visible="false">
             <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
             <a-entity id="hit-boxed_06" hit-box position="0 1.5 0">
+                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
+                          scale="0.3 2.0 0.3" class="collidable"></a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- モデル07グループ（初期非表示・Level 2専用） -->
+        <a-entity id="modelGroup_07" position="2 0 -7" rotation="0 -20 0" scale="0.455 0.455 0.455" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  visible="false">
+            <a-entity gltf-model="#model_07" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
+            <a-entity id="hit-boxed_07" hit-box position="0 1.5 0">
+                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
+                          scale="0.3 2.0 0.3" class="collidable"></a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- モデル08グループ（初期非表示・Level 2専用） -->
+        <a-entity id="modelGroup_08" position="-2 0 -7" rotation="0 20 0" scale="0.455 0.455 0.455" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000" 
+                  visible="false">
+            <a-entity gltf-model="#model_08" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
+            <a-entity id="hit-boxed_08" hit-box position="0 1.5 0">
                 <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
                           scale="0.3 2.0 0.3" class="collidable"></a-entity>
             </a-entity>
