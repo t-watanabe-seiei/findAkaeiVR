@@ -1558,7 +1558,7 @@
                 id="sheep-model"
                 gltf-model="{{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
@@ -1571,7 +1571,7 @@
                 id="namakemono-model"
                 gltf-model="{{ asset('cg/3d_pro_namakemono_oda.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
@@ -1584,7 +1584,7 @@
                 id="hamstar-model"
                 gltf-model="{{ asset('cg/3d_pro_humstar_harada.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
@@ -1597,7 +1597,7 @@
                 id="burger-model"
                 gltf-model="{{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
@@ -1610,7 +1610,7 @@
                 id="duck-model"
                 gltf-model="{{ asset('cg/3d_pro_duck_oonomi.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: duck; width: 1.6; height: 3.2; depth: 1.6">
@@ -1623,7 +1623,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: cat; width: 1.6; height: 3.2; depth: 1.6">
@@ -1636,7 +1636,7 @@
                 id="bear-model"
                 gltf-model="{{ asset('cg/3d_pro_bear_tagashira.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
@@ -1649,7 +1649,7 @@
                 id="harinezumi-model"
                 gltf-model="{{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
@@ -1662,7 +1662,7 @@
                 id="whiteTiger-model"
                 gltf-model="{{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
@@ -1675,7 +1675,7 @@
                 id="santa-model"
                 gltf-model="{{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
@@ -1687,7 +1687,7 @@
                 id="fox-model"
                 gltf-model="{{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
@@ -1723,7 +1723,7 @@
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
@@ -1736,7 +1736,7 @@
                 id="tora-model"
                 gltf-model="{{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
@@ -1749,7 +1749,7 @@
                 id="gollira-model"
                 gltf-model="{{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
@@ -1762,7 +1762,7 @@
                 id="whiteDuck-model"
                 gltf-model="{{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
@@ -1775,7 +1775,7 @@
                 id="araiguma-model"
                 gltf-model="{{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
@@ -1788,7 +1788,7 @@
                 id="wolf-model"
                 gltf-model="{{ asset('cg/3d_pro_wolf_morita.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
@@ -1801,7 +1801,7 @@
                 id="t-rex-model"
                 gltf-model="{{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
                 position="0 0 0.5"
-                scale="2 2 2"
+                scale="1.25 1.25 1.25"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
@@ -2941,7 +2941,7 @@
         let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
         
         // 拡大縮小用の変数
-        let currentScale = 1; // 1〜2 のスケール倍率（UIはモデルの baseScale に乗算）
+        let currentScale = 1.2; // 1.2〜3.2 のスケール倍率（UIはモデルの baseScale 1.25 に乗算 → 1.5〜4）
         let isPinching = false;
         let pinchStartDistance = 0;
         let pinchInitialScale = 1;
@@ -3309,7 +3309,7 @@
                 if (!el) return;
                 try {
                     const base = parseFloat(el.dataset.baseScale || 1);
-                    const clamped = Math.max(1, Math.min(2, currentScale));
+                    const clamped = Math.max(1.2, Math.min(3.2, currentScale));
                     const v = base * clamped;
                     // set uniform scale on the A-Frame element
                     el.setAttribute('scale', `${v} ${v} ${v}`);
@@ -3761,7 +3761,7 @@
                 const d = getTouchesDistance(event.touches[0], event.touches[1]);
                 if (pinchStartDistance <= 0) return;
                 const factor = d / pinchStartDistance;
-                currentScale = Math.max(1, Math.min(2, pinchInitialScale * factor));
+                currentScale = Math.max(1.2, Math.min(3.2, pinchInitialScale * factor));
                 applyCurrentScaleTo(activeModel);
                 if (event.cancelable) event.preventDefault();
             }, { passive: false });
@@ -3808,7 +3808,7 @@
                 const delta = -e.deltaY; // invert so wheel up increases
                 // 歯切れよく変化させる
                 const step = delta * 0.0018; // tuned factor
-                currentScale = Math.max(1, Math.min(2, currentScale + step));
+                currentScale = Math.max(1.2, Math.min(3.2, currentScale + step));
                 applyCurrentScaleTo(activeModel);
                 if (e.cancelable) e.preventDefault();
             }, { passive: false });

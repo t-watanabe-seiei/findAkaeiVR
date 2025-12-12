@@ -1644,29 +1644,28 @@
                             // ボールのanime01アニメーションを再生（1回のみ）
                             ball.setAttribute('animation-mixer', 'clip: anime01; loop: once');
                             
-                            // ボールを明るく光らせる（🚀 パフォーマンス改善: キャッシュカラー使用）
-                            ball.addEventListener('model-loaded', () => {
-                                const mesh = ball.getObject3D('mesh');
-                                if (mesh) {
-                                    mesh.traverse((node) => {
-                                        if (node.isMesh && node.material) {
-                                            // ヒット時は白く光らせる
-                                            if (window.cachedHitEmissiveColor) {
-                                                node.material.emissive = window.cachedHitEmissiveColor;
-                                            }
-                                            node.material.emissiveIntensity = 1.5; // さらに明るく
+                            // 🚀 最適化: ボールを即座に光らせる（model-loadedは既に発火済みなので直接処理）
+                            const mesh = ball.getObject3D('mesh');
+                            if (mesh) {
+                                mesh.traverse((node) => {
+                                    if (node.isMesh && node.material) {
+                                        // ヒット時は白く光らせる
+                                        if (window.cachedHitEmissiveColor) {
+                                            node.material.emissive = window.cachedHitEmissiveColor;
                                         }
-                                    });
-                                }
-                            }, { once: true });
+                                        node.material.emissiveIntensity = 1.5; // さらに明るく
+                                    }
+                                });
+                            }
                             
-                            // ボールが跳ね返るアニメーション
-                            const bounceDirection = direction.clone().multiplyScalar(-2);
-                            const bouncePos = currentPos.clone().add(bounceDirection);
+                            // 🚀 最適化: clone()を避けてスカラー計算でバウンス位置を算出
+                            const bounceX = currentPos.x - direction.x * 2;
+                            const bounceY = currentPos.y - direction.y * 2;
+                            const bounceZ = currentPos.z - direction.z * 2;
                             
                             ball.setAttribute('animation__bounce', {
                                 property: 'position',
-                                to: `${bouncePos.x} ${bouncePos.y} ${bouncePos.z}`,
+                                to: `${bounceX} ${bounceY} ${bounceZ}`,
                                 dur: 300,
                                 easing: 'easeOutQuad'
                             });
@@ -1679,7 +1678,8 @@
                                 easing: 'easeInQuad'
                             });
                             
-                            setTimeout(() => {
+                            // 🚀 修正: setTimeout → registerTimeout（タイマー管理対象に）
+                            window.registerTimeout(() => {
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
                                     window.debugLog('Ball removed after hit animation');
@@ -2052,65 +2052,8 @@ debugLog('Ball created at:', startPos);
                 // モデルの現在位置を取得
                 const modelPos = this.el.object3D.position;
                 
-                // カメラとの距離をチェック（アラート音制御用）
-                // ゲーム終了時はアラート音を鳴らさない
-                // 🚀 最適化: 100msごとにスロットリング
-                if (!window.gameEnded && (time - this._lastAlertCheck > 100)) {
-                    this._lastAlertCheck = time;
-                    const sceneEl = this.el.sceneEl;
-                    const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
-                    if (camera) {
-                        // 🚀 最適化: 事前生成したVector3を再利用
-                        camera.object3D.getWorldPosition(this._cameraPos);
-                        
-                        // カメラとモデルの距離を計算（Y軸を含む3D距離）
-                        const distanceToCamera = modelPos.distanceTo(this._cameraPos);
-                        
-                        // 半径2.5m以内に入ったらアラート音を再生
-                        if (distanceToCamera <= 2.5) {
-                            if (!this.isPlayingAlert && this.alertSound) {
-                                // 既に他のモデルがアラート音を再生中の場合、停止して再スタート
-                                if (window.alertSoundPlaying && window.currentAlertModel !== this.el.id) {
-                                    this.alertSound.pause();
-                                    this.alertSound.currentTime = 0;
-                                    window.debugLog('Alert sound restarted - new model within 2.5m');
-                                }
-                                
-                                this.alertSound.currentTime = 0; // 最初から再生
-                                this.alertSound.play().catch(err => {
-                                    window.debugLog('Alert sound play failed:', err);
-                                });
-                                this.isPlayingAlert = true;
-                                window.alertSoundPlaying = true;
-                                window.currentAlertModel = this.el.id;
-                                window.debugLog(`Alert sound started - ${this.el.id} within 2.5m of camera`);
-                            }
-                        } else {
-                            // 2.5mより遠い場合、このモデルがアラート音を鳴らしていたら停止
-                            if (this.isPlayingAlert && this.alertSound && window.currentAlertModel === this.el.id) {
-                                this.alertSound.pause();
-                                this.alertSound.currentTime = 0;
-                                this.isPlayingAlert = false;
-                                window.alertSoundPlaying = false;
-                                window.currentAlertModel = null;
-                                window.debugLog(`Alert sound stopped - ${this.el.id} outside 2.5m range`);
-                            }
-                        }
-                    }
-                } else {
-                    // ゲーム終了時はアラート音を停止
-                    if (this.isPlayingAlert && this.alertSound) {
-                        this.alertSound.pause();
-                        this.alertSound.currentTime = 0;
-                        this.isPlayingAlert = false;
-                        
-                        // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
-                        if (window.currentAlertModel === this.el.id) {
-                            window.alertSoundPlaying = false;
-                            window.currentAlertModel = null;
-                        }
-                    }
-                }
+                // 🚀 アラート音機能を無効化（パフォーマンス改善のため）
+                // カメラとの距離チェック処理をスキップ
                 
                 // 🚀 最適化: 事前生成したVector3を再利用（毎フレームのnew回避）
                 const direction = this._direction;

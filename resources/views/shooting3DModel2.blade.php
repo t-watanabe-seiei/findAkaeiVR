@@ -1673,13 +1673,14 @@
                                 hitBox.emit('ball-hit');
                             }
                             
-                            // ボールが跳ね返るアニメーション
-                            const bounceDirection = direction.clone().multiplyScalar(-2);
-                            const bouncePos = currentPos.clone().add(bounceDirection);
+                            // 🚀 最適化: clone()を避けてスカラー計算でバウンス位置を算出
+                            const bounceX = currentPos.x - direction.x * 2;
+                            const bounceY = currentPos.y - direction.y * 2;
+                            const bounceZ = currentPos.z - direction.z * 2;
                             
                             ball.setAttribute('animation__bounce', {
                                 property: 'position',
-                                to: `${bouncePos.x} ${bouncePos.y} ${bouncePos.z}`,
+                                to: `${bounceX} ${bounceY} ${bounceZ}`,
                                 dur: 300,
                                 easing: 'easeOutQuad'
                             });
