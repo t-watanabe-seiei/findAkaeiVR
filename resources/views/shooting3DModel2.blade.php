@@ -268,11 +268,21 @@
         });
 
         // テキストを常にカメラの方向へ向けるコンポーネント（Y軸のみ回転: ビルボード）
+        // 🚀 最適化: Vector3を事前生成、tickをスロットリング
         AFRAME.registerComponent('face-camera', {
             init: function() {
                 this.cameraEl = null;
+                // 🚀 最適化: Vector3を事前生成（毎フレームのnew回避）
+                this._cameraPos = new THREE.Vector3();
+                this._textPos = new THREE.Vector3();
+                this._lastUpdate = 0;
+                this._updateInterval = 50; // 50ms間隔（20fps）で更新
             },
-            tick: function () {
+            tick: function (time) {
+                // 🚀 最適化: スロットリング（毎フレーム実行を回避）
+                if (time - this._lastUpdate < this._updateInterval) return;
+                this._lastUpdate = time;
+                
                 // カメラ要素をキャッシュ
                 if (!this.cameraEl) {
                     const sceneEl = this.el.sceneEl;
@@ -282,14 +292,12 @@
                     if (!this.cameraEl) return;
                 }
 
-                const cameraPos = new THREE.Vector3();
-                const textPos = new THREE.Vector3();
-                
-                this.cameraEl.object3D.getWorldPosition(cameraPos);
-                this.el.object3D.getWorldPosition(textPos);
+                // 🚀 最適化: 事前生成したVector3を再利用
+                this.cameraEl.object3D.getWorldPosition(this._cameraPos);
+                this.el.object3D.getWorldPosition(this._textPos);
 
                 // カメラ方向を向く（lookAt使用）
-                this.el.object3D.lookAt(cameraPos);
+                this.el.object3D.lookAt(this._cameraPos);
                 
                 // X軸とZ軸の回転をリセット（Y軸のみ保持）
                 const currentRotation = this.el.object3D.rotation;
@@ -449,7 +457,12 @@
                 this.startGame({ type: 'level-select' });
             },
             
-            tick: function() {
+            tick: function(time) {
+                // 🚀 最適化: スロットリング（100ms間隔で状態チェック）
+                if (!this._lastTickTime) this._lastTickTime = 0;
+                if (time - this._lastTickTime < 100) return;
+                this._lastTickTime = time;
+                
                 // 🚀 改善: 状態フラグで制御（毎フレームのDOM操作を削減）
                 if (window.gameStarted && !window.gameEnded) {
                     // 初回のみ実行
@@ -1742,17 +1755,19 @@
             },
             
             tick: function(time, timeDelta) {
+                // 🚀 最適化: ボールがない場合は即座にリターン
+                const ballCount = window.activeBalls.length;
+                if (ballCount === 0) return;
+                
                 // アクティブなボールを更新（VRモード対応）
-                if (window.activeBalls.length > 0) {
-                    const currentTime = Date.now();
-                    for (let i = window.activeBalls.length - 1; i >= 0; i--) {
-                        const ballData = window.activeBalls[i];
-                        if (ballData && ballData.ball && ballData.ball.parentNode) {
-                            this.updateBallPosition(ballData, currentTime);
-                        } else {
-                            // ボールが削除されている場合は配列から削除
-                            window.activeBalls.splice(i, 1);
-                        }
+                const currentTime = Date.now();
+                for (let i = ballCount - 1; i >= 0; i--) {
+                    const ballData = window.activeBalls[i];
+                    if (ballData && ballData.ball && ballData.ball.parentNode) {
+                        this.updateBallPosition(ballData, currentTime);
+                    } else {
+                        // ボールが削除されている場合は配列から削除
+                        window.activeBalls.splice(i, 1);
                     }
                 }
             },
@@ -1768,8 +1783,14 @@
                 // 経過時間（秒）
                 const elapsedTime = (currentTime - startTime) / 1000;
                 
+                // 🚀 最適化: Vector3再利用（ballDataに紐づけ）
+                if (!ballData._currentPos) {
+                    ballData._currentPos = new THREE.Vector3();
+                }
+                const currentPos = ballData._currentPos;
+                
                 // 放物線運動の計算
-                const currentPos = new THREE.Vector3(
+                currentPos.set(
                     startPos.x + velocity.x * elapsedTime,
                     startPos.y + velocity.y * elapsedTime + 0.5 * gravity * elapsedTime * elapsedTime,
                     startPos.z + velocity.z * elapsedTime
@@ -2147,6 +2168,9 @@
                 this.targetPosition = null;
                 this.isRespawning = false; // 再描画中フラグ
                 
+                // 🚀 最適化: Vector3を事前生成（tick内でのnew回避）
+                this._direction = new THREE.Vector3();
+                
                 // 始点を設定（コンポーネント指定がなければ現在位置）
                 if (this.data.startPos.x === 0 && this.data.startPos.y === 0 && this.data.startPos.z === -5) {
                     // デフォルト値の場合は現在位置を使用
@@ -2201,8 +2225,8 @@
                 // モデルの現在位置を取得
                 const modelPos = this.el.object3D.position;
                 
-                // 終点への方向ベクトルを計算
-                const direction = new THREE.Vector3();
+                // 🚀 最適化: 事前生成したVector3を再利用（毎フレームのnew回避）
+                const direction = this._direction;
                 direction.subVectors(this.targetPosition, modelPos);
                 direction.y = 0; // Y軸方向は移動しない（地面を滑るように）
                 
