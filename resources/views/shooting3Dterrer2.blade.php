@@ -30,6 +30,12 @@
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
         
+        // 🚀 パフォーマンス改善: THREE.js オブジェクトの事前キャッシュ
+        window.cachedBallEmissiveColor = null; // THREE.Color は scene loaded 後に初期化
+        window.cachedHitEmissiveColor = null; // ヒット時の白色
+        window.cachedFlashColors = null; // フラッシュカラー（scene loaded後に初期化）
+        window.cachedEnhanceMaterialColor = null; // enhance-materials用
+        
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
             init: function () {
@@ -49,9 +55,9 @@
                                 
                                 // fukuda.glbの場合は明るさを増加
                                 if (isMattsun) {
-                                    // エミッシブカラーを追加して明るくする
+                                    // エミッシブカラーを追加して明るくする（🚀 キャッシュカラー使用）
                                     if (!node.material.emissive) {
-                                        node.material.emissive = new THREE.Color(0x444444); // グレーのエミッシブ
+                                        node.material.emissive = window.cachedEnhanceMaterialColor || new THREE.Color(0x444444);
                                     } else {
                                         node.material.emissive.multiplyScalar(1.5); // 既存のエミッシブを1.5倍
                                     }
@@ -1668,13 +1674,16 @@
                             // ボールのanime01アニメーションを再生（1回のみ）
                             ball.setAttribute('animation-mixer', 'clip: anime01; loop: once');
                             
-                            // ボールを明るく光らせる
+                            // ボールを明るく光らせる（🚀 パフォーマンス改善: キャッシュカラー使用）
                             ball.addEventListener('model-loaded', () => {
                                 const mesh = ball.getObject3D('mesh');
                                 if (mesh) {
                                     mesh.traverse((node) => {
                                         if (node.isMesh && node.material) {
-                                            node.material.emissive = new THREE.Color(0xFFFFFF);
+                                            // ヒット時は白く光らせる
+                                            if (window.cachedHitEmissiveColor) {
+                                                node.material.emissive = window.cachedHitEmissiveColor;
+                                            }
                                             node.material.emissiveIntensity = 1.5; // さらに明るく
                                         }
                                     });
@@ -1850,23 +1859,24 @@
                 const ball = document.createElement('a-entity');
                 ball.setAttribute('gltf-model', 'cg/poke_ball_05.glb');
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
-                ball.setAttribute('rotation', '0 0 0')
-            5
-                // モデルが読み込まれたら明るくする
-                ball.addEventListener('model-loaded', () => {
+                ball.setAttribute('rotation', '0 0 0');
+                
+                // 🚀 パフォーマンス改善: キャッシュしたカラーを使用し、リスナーを{once: true}で1回だけ実行
+                ball.addEventListener('model-loaded', function onBallLoaded() {
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) {
                         mesh.traverse((node) => {
                             if (node.isMesh && node.material) {
-                                // マテリアルを明るくする
-                                node.material.emissive = new THREE.Color(0x444444); // 発光色を追加
+                                // マテリアルを明るくする（キャッシュしたカラーを使用）
+                                if (window.cachedBallEmissiveColor) {
+                                    node.material.emissive = window.cachedBallEmissiveColor;
+                                }
                                 node.material.emissiveIntensity = 0.1; // 発光強度
-                                node.material.needsUpdate = true
-                                console.log('Ball material brightened');
+                                node.material.needsUpdate = true;
                             }
                         });
                     }
-                });
+                }, { once: true }); // 🚀 1回だけ実行してリスナーを自動削除
                 
                 // 回転アニメーションを追加（飛んでいる間に回転）
                 ball.setAttribute('animation__spin', {
@@ -2299,23 +2309,28 @@
                             if (modelEntity) {
                                 let flashColor;
                                 
+                                // 🚀 パフォーマンス改善: キャッシュしたカラーを使用
+                                const colors = window.cachedFlashColors || {
+                                    blue: new THREE.Color(0x0000FF),
+                                    green: new THREE.Color(0x00FF00),
+                                    yellow: new THREE.Color(0xFFFF00),
+                                    red: new THREE.Color(0xFF0000),
+                                    black: new THREE.Color(0x000000)
+                                };
+                                
                                 // Bossの場合は段階的に色を変更
                                 if (isBoss) {
                                     if (hitCount >= 1 && hitCount <= 3) {
-                                        flashColor = new THREE.Color(0x0000FF); // 青フラッシュ（1-3回目）
-                                        console.log(`BOSS: Blue flash (hit ${hitCount}/15)`);
+                                        flashColor = colors.blue; // 青フラッシュ（1-3回目）
                                     } else if (hitCount >= 4 && hitCount <= 6) {
-                                        flashColor = new THREE.Color(0x00FF00); // 緑フラッシュ（4-6回目）
-                                        console.log(`BOSS: Green flash (hit ${hitCount}/15)`);
+                                        flashColor = colors.green; // 緑フラッシュ（4-6回目）
                                     } else if (hitCount >= 7 && hitCount <= 10) {
-                                        flashColor = new THREE.Color(0xFFFF00); // 黄フラッシュ（7-10回目）
-                                        console.log(`BOSS: Yellow flash (hit ${hitCount}/15)`);
+                                        flashColor = colors.yellow; // 黄フラッシュ（7-10回目）
                                     } else if (hitCount >= 11 && hitCount <= 14) {
-                                        flashColor = new THREE.Color(0xFF0000); // 赤フラッシュ（11-14回目）
-                                        console.log(`BOSS: Red flash (hit ${hitCount}/15)`);
+                                        flashColor = colors.red; // 赤フラッシュ（11-14回目）
                                     }
                                 } else {
-                                    flashColor = new THREE.Color(0xFF0000); // 通常モデルは赤
+                                    flashColor = colors.red; // 通常モデルは赤
                                 }
                                 
                                 // フラッシュエフェクトを適用
@@ -2323,7 +2338,7 @@
                                 if (mesh) {
                                     mesh.traverse((node) => {
                                         if (node.isMesh && node.material) {
-                                            const originalEmissive = node.material.emissive ? node.material.emissive.clone() : new THREE.Color(0x000000);
+                                            const originalEmissive = node.material.emissive ? node.material.emissive.clone() : colors.black;
                                             node.material.emissive = flashColor;
                                             node.material.emissiveIntensity = 0.5;
                                             
@@ -2994,6 +3009,32 @@
                     console.log('Scene loaded, checking for VR device...');
                     window.updateDebug('Checking VR device...');
                     
+                    // 🚀 パフォーマンス改善: THREE.Color を初期化（一度だけ）
+                    if (typeof THREE !== 'undefined') {
+                        if (!window.cachedBallEmissiveColor) {
+                            window.cachedBallEmissiveColor = new THREE.Color(0x444444);
+                            console.log('Cached ball emissive color initialized');
+                        }
+                        if (!window.cachedHitEmissiveColor) {
+                            window.cachedHitEmissiveColor = new THREE.Color(0xFFFFFF);
+                            console.log('Cached hit emissive color initialized');
+                        }
+                        if (!window.cachedFlashColors) {
+                            window.cachedFlashColors = {
+                                blue: new THREE.Color(0x0000FF),
+                                green: new THREE.Color(0x00FF00),
+                                yellow: new THREE.Color(0xFFFF00),
+                                red: new THREE.Color(0xFF0000),
+                                black: new THREE.Color(0x000000)
+                            };
+                            console.log('Cached flash colors initialized');
+                        }
+                        if (!window.cachedEnhanceMaterialColor) {
+                            window.cachedEnhanceMaterialColor = new THREE.Color(0x444444);
+                            console.log('Cached enhance material color initialized');
+                        }
+                    }
+                    
                     // VRデバイスが利用可能かチェック
                     if (navigator.xr) {
                         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -3387,35 +3428,36 @@
         <a-sky id="aSky" src="#sky02"></a-sky>
 
         <!-- Particle Effects - 3 Tiers -->
-        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 10 particles -->
+        <!-- 🚀 パフォーマンス改善: パーティクル数削減 -->
+        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 5 particles -->
         <a-entity id="particle-normal" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FFFFFF; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+                  particle-system="preset: default; color: #FFFFFF; particleCount: 5; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 20 particles -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 10 particles -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #00FFFF; particleCount: 20; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #00FFFF; particleCount: 10; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 30 particles -->
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 15 particles -->
         <a-entity id="particle-tier2" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF6600; particleCount: 30; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF6600; particleCount: 15; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 40 particles -->
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 20 particles -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF00FF; particleCount: 40; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF00FF; particleCount: 20; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Top 5 Celebration Particle - 豪華なゴールドパーティクル -->
+        <!-- Top 5 Celebration Particle - 🚀 パフォーマンス改善: パーティクル数削減 -->
         <a-entity id="particle-celebration" visible="false" position="0 2 -3">
-            <!-- メインゴールドパーティクル：大量の金色パーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 100; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            <!-- メインゴールドパーティクル：金色パーティクル -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 30; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
             
             <!-- 輝く星パーティクル：キラキラ効果 -->
-            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 50; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 20; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
             
             <!-- 紙吹雪効果：カラフルな紙吹雪 -->
-            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 80; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 25; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
             
             <!-- 輪っか状に広がるパーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 60; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 15; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
         </a-entity>
         
 

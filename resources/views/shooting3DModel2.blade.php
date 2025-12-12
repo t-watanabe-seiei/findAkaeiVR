@@ -214,6 +214,10 @@
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
         
+        // 🚀 パフォーマンス改善: THREE.js オブジェクトの事前キャッシュ
+        window.cachedBallEmissiveColor = null; // THREE.Color は DOMContentLoaded 後に初期化
+        window.cachedHitEmissiveColor = null; // ヒット時の白色
+        
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
             init: function () {
@@ -716,10 +720,11 @@
                     { startPos: { x: -7, y: 0, z: -7 }, speed: 0.28, useCamera: true, waitTime: 3000 }
                 ];
                 
-                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 8体）
+                // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
+                // 🚀 最適化: モデル数8→6に削減（処理落ち対策）
                 const initialModelIds = window.currentLevel === 1 
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
-                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
+                    : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
                 // モデルを1秒ずつずらして出現させる
@@ -822,7 +827,8 @@
                         console.log('Total Score:', window.totalScore);
                         
                         // 🚀 改善: すべてのモデルを非表示（IDで直接取得）
-                        const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
+                        // 🚀 最適化: モデル6体に削減
+                        const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                         modelIds.forEach(modelId => {
                             const model = document.getElementById(modelId);
                             if (model) {
@@ -1373,89 +1379,10 @@
                     }
                 }, 200); // 🚀 20msずらして負荷分散
                 
-                // モデル07を再作成（Level 2専用）
-                const model07 = document.createElement('a-entity');
-                model07.setAttribute('id', 'modelGroup_07');
-                model07.setAttribute('position', '2 0 -7');
-                model07.setAttribute('rotation', '0 -20 0');
-                model07.setAttribute('scale', '0.455 0.455 0.455');
-                model07.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
-                model07.setAttribute('visible', 'false');
+                // 🚀 パフォーマンス改善: model07とmodel08を削除（6体に削減）
+                // model07, model08は作成しない
                 
-                const model07Entity = document.createElement('a-entity');
-                model07Entity.setAttribute('gltf-model', '#model_07');
-                model07Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model07Entity.setAttribute('enhance-materials', '');
-                model07.appendChild(model07Entity);
-                
-                const hitBox07 = document.createElement('a-entity');
-                hitBox07.setAttribute('id', 'hit-boxed_07');
-                hitBox07.setAttribute('hit-box', '');
-                hitBox07.setAttribute('position', '0 1.5 0');
-                const cylinder07 = document.createElement('a-entity');
-                cylinder07.setAttribute('geometry', 'primitive: cylinder');
-                cylinder07.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder07.setAttribute('scale', '0.3 2.0 0.3');
-                cylinder07.setAttribute('class', 'collidable');
-                hitBox07.appendChild(cylinder07);
-                model07.appendChild(hitBox07);
-                sceneEl.appendChild(model07);
-                
-                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
-                window.registerTimeout(() => {
-                    const hitBox = document.getElementById('hit-boxed_07');
-                    if (hitBox && !hitBox.components['hit-box']) {
-                        console.warn('hit-box component not initialized for model07, forcing re-init');
-                        hitBox.removeAttribute('hit-box');
-                        window.registerTimeout(() => {
-                            hitBox.setAttribute('hit-box', '');
-                            console.log('hit-box component re-initialized for model07');
-                        }, 50);
-                    }
-                }, 220); // 🚀 20msずらして負荷分散
-                
-                // モデル08を再作成（Level 2専用）
-                const model08 = document.createElement('a-entity');
-                model08.setAttribute('id', 'modelGroup_08');
-                model08.setAttribute('position', '-2 0 -7');
-                model08.setAttribute('rotation', '0 20 0');
-                model08.setAttribute('scale', '0.455 0.455 0.455');
-                model08.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
-                model08.setAttribute('visible', 'false');
-                
-                const model08Entity = document.createElement('a-entity');
-                model08Entity.setAttribute('gltf-model', '#model_08');
-                model08Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model08Entity.setAttribute('enhance-materials', '');
-                model08.appendChild(model08Entity);
-                
-                const hitBox08 = document.createElement('a-entity');
-                hitBox08.setAttribute('id', 'hit-boxed_08');
-                hitBox08.setAttribute('hit-box', '');
-                hitBox08.setAttribute('position', '0 1.5 0');
-                const cylinder08 = document.createElement('a-entity');
-                cylinder08.setAttribute('geometry', 'primitive: cylinder');
-                cylinder08.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder08.setAttribute('scale', '0.3 2.0 0.3');
-                cylinder08.setAttribute('class', 'collidable');
-                hitBox08.appendChild(cylinder08);
-                model08.appendChild(hitBox08);
-                sceneEl.appendChild(model08);
-                
-                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
-                window.registerTimeout(() => {
-                    const hitBox = document.getElementById('hit-boxed_08');
-                    if (hitBox && !hitBox.components['hit-box']) {
-                        console.warn('hit-box component not initialized for model08, forcing re-init');
-                        hitBox.removeAttribute('hit-box');
-                        window.registerTimeout(() => {
-                            hitBox.setAttribute('hit-box', '');
-                            console.log('hit-box component re-initialized for model08');
-                        }, 50);
-                    }
-                }, 240); // 🚀 20msずらして負荷分散
-                
-                console.log('Initial models recreated');
+                console.log('Initial models recreated (6 models)');
             },
             
             restartGame: function() {
@@ -1519,7 +1446,8 @@
                 });
                 
                 // すべてのモデルを完全に削除（アニメーションとコンポーネントもクリア）
-                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
+                // 🚀 最適化: モデル6体に削減
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
@@ -1806,6 +1734,7 @@
                 
                 // 🚀 改善: 衝突判定の最適化（毎フレーム実行されるため重要）
                 // モデル配列を初回のみ生成（キャッシュ）
+                // 🚀 最適化: モデル6体に削減
                 if (!this.modelsList) {
                     this.modelsList = [
                         { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
@@ -1813,9 +1742,7 @@
                         { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
                         { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
                         { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
-                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' },
-                        { id: 'modelGroup_07', hitBoxId: 'hit-boxed_07' },
-                        { id: 'modelGroup_08', hitBoxId: 'hit-boxed_08' }
+                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' }
                     ];
                 }
                 const models = this.modelsList;
@@ -2032,21 +1959,22 @@
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
                 ball.setAttribute('rotation', '0 0 0');
                 
-                // モデルが読み込まれたら明るくする
-                ball.addEventListener('model-loaded', () => {
+                // 🚀 パフォーマンス改善: キャッシュしたカラーを使用し、リスナーを{once: true}で1回だけ実行
+                ball.addEventListener('model-loaded', function onBallLoaded() {
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) {
                         mesh.traverse((node) => {
                             if (node.isMesh && node.material) {
-                                // マテリアルを明るくする
-                                node.material.emissive = new THREE.Color(0x444444); // 発光色を追加
+                                // マテリアルを明るくする（キャッシュしたカラーを使用）
+                                if (window.cachedBallEmissiveColor) {
+                                    node.material.emissive = window.cachedBallEmissiveColor;
+                                }
                                 node.material.emissiveIntensity = 0.1; // 発光強度
-                                node.material.needsUpdate = true
-                                console.log('Ball material brightened');
+                                node.material.needsUpdate = true;
                             }
                         });
                     }
-                });
+                }, { once: true }); // 🚀 1回だけ実行してリスナーを自動削除
                 
                 // 回転アニメーションを追加（飛んでいる間に回転）
                 ball.setAttribute('animation__spin', {
@@ -2690,8 +2618,14 @@
                     return;
                 }
                 
-                // Level 1の場合、modelGroup_04, 05, 06, 07, 08はリスポーンしない
-                if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06' || modelId === 'modelGroup_07' || modelId === 'modelGroup_08')) {
+                // model07, 08は常にスキップ（6体に削減）
+                if (modelId === 'modelGroup_07' || modelId === 'modelGroup_08') {
+                    console.log('Skipping', modelId, 'respawn (reduced to 6 models)');
+                    return;
+                }
+                
+                // Level 1の場合、modelGroup_04, 05, 06はリスポーンしない
+                if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06')) {
                     console.log('Level 1: Skipping', modelId, 'respawn');
                     return;
                 }
@@ -2898,6 +2832,18 @@
                 sceneEl.addEventListener('loaded', () => {
                     console.log('Scene loaded, checking for VR device...');
                     window.updateDebug('Checking VR device...');
+                    
+                    // 🚀 パフォーマンス改善: THREE.Color を初期化（一度だけ）
+                    if (typeof THREE !== 'undefined') {
+                        if (!window.cachedBallEmissiveColor) {
+                            window.cachedBallEmissiveColor = new THREE.Color(0x444444);
+                            console.log('Cached ball emissive color initialized');
+                        }
+                        if (!window.cachedHitEmissiveColor) {
+                            window.cachedHitEmissiveColor = new THREE.Color(0xFFFFFF);
+                            console.log('Cached hit emissive color initialized');
+                        }
+                    }
                     
                     // VRデバイスが利用可能かチェック
                     if (navigator.xr) {
@@ -3312,35 +3258,36 @@
         <a-sky id="aSky" src="#sky02"></a-sky>
 
         <!-- Particle Effects - 3 Tiers -->
-        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 10 particles -->
+        <!-- 🚀 パフォーマンス改善: パーティクル数削減 -->
+        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 5 particles -->
         <a-entity id="particle-normal" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FFFFFF; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+                  particle-system="preset: default; color: #FFFFFF; particleCount: 5; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 20 particles -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 10 particles -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #00FFFF; particleCount: 20; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #00FFFF; particleCount: 10; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 30 particles -->
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 15 particles -->
         <a-entity id="particle-tier2" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF6600; particleCount: 30; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF6600; particleCount: 15; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 40 particles -->
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 20 particles -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF00FF; particleCount: 40; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF00FF; particleCount: 20; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Top 5 Celebration Particle - 豪華なゴールドパーティクル -->
+        <!-- Top 5 Celebration Particle - 🚀 パフォーマンス改善: パーティクル数削減 -->
         <a-entity id="particle-celebration" visible="false" position="0 2 -3">
-            <!-- メインゴールドパーティクル：大量の金色パーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 100; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            <!-- メインゴールドパーティクル：金色パーティクル -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 30; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
             
             <!-- 輝く星パーティクル：キラキラ効果 -->
-            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 50; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 20; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
             
             <!-- 紙吹雪効果：カラフルな紙吹雪 -->
-            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 80; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 25; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
             
             <!-- 輪っか状に広がるパーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 60; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 15; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
         </a-entity>
         
 
