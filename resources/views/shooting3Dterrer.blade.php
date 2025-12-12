@@ -1026,21 +1026,6 @@
                 model01.appendChild(hitBox01);
                 sceneEl.appendChild(model01);
                 
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    if (model01.components && model01.components['approach-camera']) {
-                        console.log('terrer model01: approach-camera initialized');
-                    }
-                    const hitBoxComp = hitBox01.components['hit-box'];
-                    if (hitBoxComp) {
-                        console.log('terrer model01: hit-box initialized');
-                    } else {
-                        console.warn('terrer model01: hit-box NOT initialized - retrying');
-                        hitBox01.removeAttribute('hit-box');
-                        setTimeout(() => hitBox01.setAttribute('hit-box', ''), 50);
-                    }
-                }, 100);
-                
                 // モデル02を再作成
                 const model02 = document.createElement('a-entity');
                 model02.setAttribute('id', 'modelGroup_02');
@@ -1068,16 +1053,6 @@
                 hitBox02.appendChild(cylinder02);
                 model02.appendChild(hitBox02);
                 sceneEl.appendChild(model02);
-                
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    const hitBoxComp = hitBox02.components['hit-box'];
-                    if (!hitBoxComp) {
-                        console.warn('terrer model02: hit-box NOT initialized - retrying');
-                        hitBox02.removeAttribute('hit-box');
-                        setTimeout(() => hitBox02.setAttribute('hit-box', ''), 50);
-                    }
-                }, 100);
                 
                 // モデル03を再作成
                 const model03 = document.createElement('a-entity');
@@ -1107,16 +1082,6 @@
                 model03.appendChild(hitBox03);
                 sceneEl.appendChild(model03);
                 
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    const hitBoxComp = hitBox03.components['hit-box'];
-                    if (!hitBoxComp) {
-                        console.warn('terrer model03: hit-box NOT initialized - retrying');
-                        hitBox03.removeAttribute('hit-box');
-                        setTimeout(() => hitBox03.setAttribute('hit-box', ''), 50);
-                    }
-                }, 100);
-                
                 // モデル04を再作成
                 const model04 = document.createElement('a-entity');
                 model04.setAttribute('id', 'modelGroup_04');
@@ -1144,16 +1109,6 @@
                 hitBox04.appendChild(cylinder04);
                 model04.appendChild(hitBox04);
                 sceneEl.appendChild(model04);
-                
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    const hitBoxComp = hitBox04.components['hit-box'];
-                    if (!hitBoxComp) {
-                        console.warn('terrer model04: hit-box NOT initialized - retrying');
-                        hitBox04.removeAttribute('hit-box');
-                        setTimeout(() => hitBox04.setAttribute('hit-box', ''), 50);
-                    }
-                }, 100);
                 
                 // モデル05を再作成
                 const model05 = document.createElement('a-entity');
@@ -1183,16 +1138,6 @@
                 model05.appendChild(hitBox05);
                 sceneEl.appendChild(model05);
                 
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    const hitBoxComp = hitBox05.components['hit-box'];
-                    if (!hitBoxComp) {
-                        console.warn('terrer model05: hit-box NOT initialized - retrying');
-                        hitBox05.removeAttribute('hit-box');
-                        setTimeout(() => hitBox05.setAttribute('hit-box', ''), 50);
-                    }
-                }, 100);
-                
                 // モデル06を再作成
                 const model06 = document.createElement('a-entity');
                 model06.setAttribute('id', 'modelGroup_06');
@@ -1221,16 +1166,7 @@
                 model06.appendChild(hitBox06);
                 sceneEl.appendChild(model06);
                 
-                // コンポーネントの初期化を確実にする
-                setTimeout(() => {
-                    const hitBoxComp = hitBox06.components['hit-box'];
-                    if (!hitBoxComp) {
-                        console.warn('terrer model06: hit-box NOT initialized - retrying');
-                        hitBox06.removeAttribute('hit-box');
-                        setTimeout(() => hitBox06.setAttribute('hit-box', ''), 50);
-                    }
-                    console.log('Initial models recreated - all hit-boxes checked');
-                }, 100);
+                console.log('Initial models recreated');
             },
             
             restartGame: function() {
@@ -1285,27 +1221,13 @@
                     });
                 });
                 
-                // すべてのボールを完全削除（アニメーション停止とメモリ解放）
+                // すべてのボールを削除
                 window.activeBalls.forEach(ballData => {
-                    if (ballData.ball) {
-                        // アニメーションを停止
-                        ballData.ball.removeAttribute('animation__spin');
-                        // DOMから削除
-                        if (ballData.ball.parentNode) {
-                            ballData.ball.parentNode.removeChild(ballData.ball);
-                        }
+                    if (ballData.ball && ballData.ball.parentNode) {
+                        ballData.ball.parentNode.removeChild(ballData.ball);
                     }
                 });
                 window.activeBalls = [];
-                
-                // GLBボールの残骸を徹底的にクリーンアップ
-                const remainingBalls = sceneEl.querySelectorAll('[gltf-model*="poke_ball"]');
-                remainingBalls.forEach(ball => {
-                    if (ball.parentNode) {
-                        console.log('Removing remaining ball');
-                        ball.parentNode.removeChild(ball);
-                    }
-                });
                 
                 // シーン上の動的に生成されたテキスト（スコア・コンボ）を削除
                 const scoreTexts = sceneEl.querySelectorAll('a-text[face-camera]');
@@ -1753,12 +1675,6 @@
                 // ゲーム終了後は撃てない
                 if (window.gameEnded) {
                     console.log('Game ended, ignoring shoot');
-                    return;
-                }
-                
-                // ボールの同時描画数を制限（2個まで）
-                if (window.activeBalls.length >= 2) {
-                    console.log('Ball limit reached (2), ignoring shoot');
                     return;
                 }
                 

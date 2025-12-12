@@ -133,6 +133,12 @@
         // タイマーID管理用のグローバル配列（メモリリーク防止）
         window.activeTimers = [];
         
+        // 🚀 最適化: THREE.Vector3のグローバルキャッシュ（hit-box用）
+        window._cachedModelPos = new THREE.Vector3();
+        window._cachedCameraPos = new THREE.Vector3();
+        window._cachedScorePos = new THREE.Vector3();
+        window._cachedParticlePos = new THREE.Vector3();
+        
         // タイマー登録用のヘルパー関数
         window.registerTimeout = function(callback, delay) {
             const timerId = setTimeout(callback, delay);
@@ -1093,177 +1099,60 @@
             },
             
             recreateInitialModels: function(sceneEl) {
-                console.log('Recreating initial models...');
+                console.log('Recreating initial models with staggered creation...');
                 
-                // モデル01を再作成
-                const model01 = document.createElement('a-entity');
-                model01.setAttribute('id', 'modelGroup_01');
-                model01.setAttribute('position', '-4 0 -8');
-                model01.setAttribute('rotation', '0 45 0');
-                model01.setAttribute('scale', '1 1 1');
-                model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
-                model01.setAttribute('visible', 'false');
+                // 🚀 最適化: モデル定義を配列化して時間分散で作成
+                const modelConfigs = [
+                    { id: 'modelGroup_01', gltf: '#model_01', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'blue' },
+                    { id: 'modelGroup_02', gltf: '#model_02', pos: '0 0 -10', rot: '0 0 0', approachConfig: 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'green' },
+                    { id: 'modelGroup_03', gltf: '#model_03', pos: '4 0 -8', rot: '0 -45 0', approachConfig: 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000', cylinderColor: 'red' },
+                    { id: 'modelGroup_04', gltf: '#model_04', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'yellow' },
+                    { id: 'modelGroup_05', gltf: '#model_05', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'purple' },
+                    { id: 'modelGroup_06', gltf: '#model_06', pos: '4 0 -8', rot: '0 -45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'cyan' }
+                ];
                 
-                const model01Entity = document.createElement('a-entity');
-                model01Entity.setAttribute('gltf-model', '#model_01');
-                model01Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model01Entity.setAttribute('enhance-materials', '');
-                model01.appendChild(model01Entity);
+                // 各モデルを時間分散で作成（100ms間隔）
+                modelConfigs.forEach((config, index) => {
+                    window.registerTimeout(() => {
+                        this.createSingleModel(sceneEl, config);
+                    }, index * 100); // 100ms間隔で1体ずつ作成
+                });
                 
-                const hitBox01 = document.createElement('a-entity');
-                hitBox01.setAttribute('id', 'hit-boxed_01');
-                hitBox01.setAttribute('hit-box', '');
-                hitBox01.setAttribute('position', '0 1.0 0');
-                const cylinder01 = document.createElement('a-entity');
-                cylinder01.setAttribute('geometry', 'primitive: cylinder');
-                cylinder01.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                cylinder01.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder01.setAttribute('class', 'collidable');
-                hitBox01.appendChild(cylinder01);
-                model01.appendChild(hitBox01);
-                sceneEl.appendChild(model01);
+                console.log('Initial models creation scheduled (6 models, 100ms intervals)');
+            },
+            
+            // 🚀 新規: 単一モデル作成関数（リファクタリング）
+            createSingleModel: function(sceneEl, config) {
+                const model = document.createElement('a-entity');
+                model.setAttribute('id', config.id);
+                model.setAttribute('position', config.pos);
+                model.setAttribute('rotation', config.rot);
+                model.setAttribute('scale', '1 1 1');
+                model.setAttribute('approach-camera', config.approachConfig);
+                model.setAttribute('visible', 'false');
                 
-                // モデル02を再作成
-                const model02 = document.createElement('a-entity');
-                model02.setAttribute('id', 'modelGroup_02');
-                model02.setAttribute('position', '0 0 -10');
-                model02.setAttribute('rotation', '0 0 0');
-                model02.setAttribute('scale', '1 1 1');
-                model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000');
-                model02.setAttribute('visible', 'false');
+                const modelEntity = document.createElement('a-entity');
+                modelEntity.setAttribute('gltf-model', config.gltf);
+                modelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                modelEntity.setAttribute('enhance-materials', '');
+                model.appendChild(modelEntity);
                 
-                const model02Entity = document.createElement('a-entity');
-                model02Entity.setAttribute('gltf-model', '#model_02');
-                model02Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model02Entity.setAttribute('enhance-materials', '');
-                model02.appendChild(model02Entity);
+                const hitBoxId = config.id.replace('modelGroup', 'hit-boxed');
+                const hitBox = document.createElement('a-entity');
+                hitBox.setAttribute('id', hitBoxId);
+                hitBox.setAttribute('hit-box', '');
+                hitBox.setAttribute('position', '0 1.0 0');
                 
-                const hitBox02 = document.createElement('a-entity');
-                hitBox02.setAttribute('id', 'hit-boxed_02');
-                hitBox02.setAttribute('hit-box', '');
-                hitBox02.setAttribute('position', '0 1.0 0');
-                const cylinder02 = document.createElement('a-entity');
-                cylinder02.setAttribute('geometry', 'primitive: cylinder');
-                cylinder02.setAttribute('material', 'color: green; opacity: 0.0; transparent: true');
-                cylinder02.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder02.setAttribute('class', 'collidable');
-                hitBox02.appendChild(cylinder02);
-                model02.appendChild(hitBox02);
-                sceneEl.appendChild(model02);
+                const cylinder = document.createElement('a-entity');
+                cylinder.setAttribute('geometry', 'primitive: cylinder');
+                cylinder.setAttribute('material', `color: ${config.cylinderColor}; opacity: 0.0; transparent: true`);
+                cylinder.setAttribute('scale', '0.75 1.5 0.75');
+                cylinder.setAttribute('class', 'collidable');
+                hitBox.appendChild(cylinder);
+                model.appendChild(hitBox);
                 
-                // モデル03を再作成
-                const model03 = document.createElement('a-entity');
-                model03.setAttribute('id', 'modelGroup_03');
-                model03.setAttribute('position', '4 0 -8');
-                model03.setAttribute('rotation', '0 -45 0');
-                model03.setAttribute('scale', '1 1 1');
-                model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000');
-                model03.setAttribute('visible', 'false');
-                
-                const model03Entity = document.createElement('a-entity');
-                model03Entity.setAttribute('gltf-model', '#model_03');
-                model03Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model03Entity.setAttribute('enhance-materials', '');
-                model03.appendChild(model03Entity);
-                
-                const hitBox03 = document.createElement('a-entity');
-                hitBox03.setAttribute('id', 'hit-boxed_03');
-                hitBox03.setAttribute('hit-box', '');
-                hitBox03.setAttribute('position', '0 1.0 0');
-                const cylinder03 = document.createElement('a-entity');
-                cylinder03.setAttribute('geometry', 'primitive: cylinder');
-                cylinder03.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
-                cylinder03.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder03.setAttribute('class', 'collidable');
-                hitBox03.appendChild(cylinder03);
-                model03.appendChild(hitBox03);
-                sceneEl.appendChild(model03);
-                
-                // モデル04を再作成
-                const model04 = document.createElement('a-entity');
-                model04.setAttribute('id', 'modelGroup_04');
-                model04.setAttribute('position', '-4 0 -8');
-                model04.setAttribute('rotation', '0 45 0');
-                model04.setAttribute('scale', '1 1 1');
-                model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
-                model04.setAttribute('visible', 'false');
-                
-                const model04Entity = document.createElement('a-entity');
-                model04Entity.setAttribute('gltf-model', '#model_04');
-                model04Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model04Entity.setAttribute('enhance-materials', '');
-                model04.appendChild(model04Entity);
-                
-                const hitBox04 = document.createElement('a-entity');
-                hitBox04.setAttribute('id', 'hit-boxed_04');
-                hitBox04.setAttribute('hit-box', '');
-                hitBox04.setAttribute('position', '0 1.0 0');
-                const cylinder04 = document.createElement('a-entity');
-                cylinder04.setAttribute('geometry', 'primitive: cylinder');
-                cylinder04.setAttribute('material', 'color: yellow; opacity: 0.0; transparent: true');
-                cylinder04.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder04.setAttribute('class', 'collidable');
-                hitBox04.appendChild(cylinder04);
-                model04.appendChild(hitBox04);
-                sceneEl.appendChild(model04);
-                
-                // モデル05を再作成
-                const model05 = document.createElement('a-entity');
-                model05.setAttribute('id', 'modelGroup_05');
-                model05.setAttribute('position', '-4 0 -8');
-                model05.setAttribute('rotation', '0 45 0');
-                model05.setAttribute('scale', '1 1 1');
-                model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
-                model05.setAttribute('visible', 'false');
-                
-                const model05Entity = document.createElement('a-entity');
-                model05Entity.setAttribute('gltf-model', '#model_05');
-                model05Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model05Entity.setAttribute('enhance-materials', '');
-                model05.appendChild(model05Entity);
-                
-                const hitBox05 = document.createElement('a-entity');
-                hitBox05.setAttribute('id', 'hit-boxed_05');
-                hitBox05.setAttribute('hit-box', '');
-                hitBox05.setAttribute('position', '0 1.0 0');
-                const cylinder05 = document.createElement('a-entity');
-                cylinder05.setAttribute('geometry', 'primitive: cylinder');
-                cylinder05.setAttribute('material', 'color: purple; opacity: 0.0; transparent: true');
-                cylinder05.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder05.setAttribute('class', 'collidable');
-                hitBox05.appendChild(cylinder05);
-                model05.appendChild(hitBox05);
-                sceneEl.appendChild(model05);
-                
-                // モデル06を再作成
-                const model06 = document.createElement('a-entity');
-                model06.setAttribute('id', 'modelGroup_06');
-                model06.setAttribute('position', '4 0 -8');
-                model06.setAttribute('rotation', '0 -45 0');
-                model06.setAttribute('scale', '1 1 1');
-                model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000');
-                model06.setAttribute('visible', 'false');
-                
-                const model06Entity = document.createElement('a-entity');
-                model06Entity.setAttribute('gltf-model', '#model_06');
-                model06Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                model06Entity.setAttribute('enhance-materials', '');
-                model06.appendChild(model06Entity);
-                
-                const hitBox06 = document.createElement('a-entity');
-                hitBox06.setAttribute('id', 'hit-boxed_06');
-                hitBox06.setAttribute('hit-box', '');
-                hitBox06.setAttribute('position', '0 1.0 0');
-                const cylinder06 = document.createElement('a-entity');
-                cylinder06.setAttribute('geometry', 'primitive: cylinder');
-                cylinder06.setAttribute('material', 'color: cyan; opacity: 0.0; transparent: true');
-                cylinder06.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder06.setAttribute('class', 'collidable');
-                hitBox06.appendChild(cylinder06);
-                model06.appendChild(hitBox06);
-                sceneEl.appendChild(model06);
-                
-                console.log('Initial models recreated');
+                sceneEl.appendChild(model);
+                console.log('Model created:', config.id);
             },
             
             restartGame: function() {
@@ -1421,8 +1310,8 @@
                     }
                 }
                 
-                // 元のモデルを再作成（初期状態に戻す）
-                this.recreateInitialModels(sceneEl);
+                // 🚀 変更: モデル再作成は最後に遅延実行（GCに時間を与えるため）
+                // this.recreateInitialModels(sceneEl); は restartGame の最後で遅延呼び出し
                 
                 // UI表示を初期状態に戻す
                 const startMenu = document.getElementById('startMenu');
@@ -1508,8 +1397,12 @@
                     console.log('Cleared shoot component modelsList cache');
                 }
                 
-                console.log('Game reset complete - Ready to start new game');
-                window.updateDebug('Ready to start');
+                // 🚀 追加: 少し遅延を入れてからモデルを再作成（GCに時間を与える）
+                window.registerTimeout(() => {
+                    this.recreateInitialModels(sceneEl);
+                    console.log('Game reset complete - Ready to start new game');
+                    window.updateDebug('Ready to start');
+                }, 100);
             }
         });
         
@@ -2261,6 +2154,31 @@
                 
                 // フェードアウト後に削除して再生成
                 setTimeout(() => {
+                    // 🚀 改善: 削除前にメモリを解放
+                    if (modelGroup.object3D) {
+                        modelGroup.object3D.traverse((node) => {
+                            if (node.geometry) {
+                                node.geometry.dispose();
+                            }
+                            if (node.material) {
+                                if (Array.isArray(node.material)) {
+                                    node.material.forEach(mat => {
+                                        if (mat.map) mat.map.dispose();
+                                        mat.dispose();
+                                    });
+                                } else {
+                                    if (node.material.map) node.material.map.dispose();
+                                    node.material.dispose();
+                                }
+                            }
+                        });
+                    }
+                    
+                    // パターン使用状況をクリア
+                    if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
+                        delete window.usedPatterns[modelId];
+                    }
+                    
                     if (modelGroup.parentNode) {
                         modelGroup.parentNode.removeChild(modelGroup);
                     }
@@ -2461,8 +2379,9 @@
                         
                         let distance = 0;
                         if (camera) {
-                            const modelPos = new THREE.Vector3();
-                            const cameraPos = new THREE.Vector3();
+                            // 🚀 最適化: キャッシュされたVector3を再利用
+                            const modelPos = window._cachedModelPos;
+                            const cameraPos = window._cachedCameraPos;
                             
                             modelGroup.object3D.getWorldPosition(modelPos);
                             camera.object3D.getWorldPosition(cameraPos);
@@ -2606,7 +2525,8 @@
                             // パーティクルエフェクトを表示
                             const particle = document.getElementById(particleId);
                             if (particle) {
-                                const modelPos = new THREE.Vector3();
+                                // 🚀 最適化: キャッシュされたVector3を再利用
+                                const modelPos = window._cachedParticlePos;
                                 modelGroup.object3D.getWorldPosition(modelPos);
                                 particle.setAttribute('position', `${modelPos.x} ${modelPos.y + 0.5} ${modelPos.z}`);
                                 particle.setAttribute('visible', true);
@@ -2750,8 +2670,9 @@
                     let distance = 0;
                     
                     if (camera) {
-                        const modelPos = new THREE.Vector3();
-                        const cameraPos = new THREE.Vector3();
+                        // 🚀 最適化: キャッシュされたVector3を再利用
+                        const modelPos = window._cachedModelPos;
+                        const cameraPos = window._cachedCameraPos;
                         modelGroup.object3D.getWorldPosition(modelPos);
                         camera.object3D.getWorldPosition(cameraPos);
                         distance = modelPos.distanceTo(cameraPos);
