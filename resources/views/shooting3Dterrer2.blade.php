@@ -180,23 +180,47 @@
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
+                console.log('🎮 Start menu init - Setting up event listeners');
+                
                 // レベル選択ボタンのイベントリスナーを追加
                 const level1Button = document.getElementById('level1Button');
                 const level2Button = document.getElementById('level2Button');
                 
+                console.log('Level buttons:', {
+                    level1: level1Button ? 'found' : 'NOT FOUND',
+                    level2: level2Button ? 'found' : 'NOT FOUND'
+                });
+                
                 if (level1Button) {
-                    level1Button.addEventListener('click', () => this.selectLevel(1));
-                    level1Button.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
+                    // 🔧 修正: 既存のリスナーを削除してから追加（重複防止）
+                    const level1Handler = (e) => {
+                        console.log('🎯 Level 1 button clicked!');
+                        if (e) e.preventDefault();
                         this.selectLevel(1);
-                    });
+                    };
+                    level1Button.removeEventListener('click', level1Handler);
+                    level1Button.removeEventListener('touchstart', level1Handler);
+                    level1Button.addEventListener('click', level1Handler);
+                    level1Button.addEventListener('touchstart', level1Handler, { passive: false });
+                    console.log('✅ Level 1 button listeners attached');
+                } else {
+                    console.error('❌ Level 1 button NOT FOUND in DOM!');
                 }
+                
                 if (level2Button) {
-                    level2Button.addEventListener('click', () => this.selectLevel(2));
-                    level2Button.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
+                    // 🔧 修正: 既存のリスナーを削除してから追加（重複防止）
+                    const level2Handler = (e) => {
+                        console.log('🎯 Level 2 button clicked!');
+                        if (e) e.preventDefault();
                         this.selectLevel(2);
-                    });
+                    };
+                    level2Button.removeEventListener('click', level2Handler);
+                    level2Button.removeEventListener('touchstart', level2Handler);
+                    level2Button.addEventListener('click', level2Handler);
+                    level2Button.addEventListener('touchstart', level2Handler, { passive: false });
+                    console.log('✅ Level 2 button listeners attached');
+                } else {
+                    console.error('❌ Level 2 button NOT FOUND in DOM!');
                 }
                 
                 // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
@@ -207,12 +231,18 @@
                     console.log('Click and Touch listeners added to:', element.id || element.tagName);
                 });
                 
-                console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
+                console.log('🎮 Start menu initialized with', clickableElements.length, 'clickable elements');
             },
             
             selectLevel: function(level) {
-                console.log('Level selected:', level);
+                console.log('🎯 ========================================');
+                console.log('🎯 selectLevel called with level:', level);
+                console.log('🎯 Current gameStarted:', window.gameStarted);
+                console.log('🎯 Current gameEnded:', window.gameEnded);
+                console.log('🎯 ========================================');
+                
                 window.gameLevel = level;
+                window.currentLevel = level;
                 
                 // レベルを保存してゲーム開始
                 this.startGame({ type: 'level-select' });
