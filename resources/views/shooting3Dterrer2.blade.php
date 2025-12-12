@@ -361,10 +361,17 @@
             
             handleClick: function(event) {
                 console.log('=== Menu Click Detected ===');
+                console.log('Target:', event.target ? event.target.id : 'unknown');
                 console.log('Menu visible:', this.el.getAttribute('visible'));
                 console.log('Game started:', window.gameStarted);
                 console.log('Game ended:', window.gameEnded);
                 console.log('Click blocked:', this.clickBlocked);
+                
+                // 🚀 修正: レベルボタンのクリックはここでは処理しない（level1Handler/level2Handlerで処理）
+                if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
+                    console.log('Level button click - handled by dedicated handler');
+                    return; // レベルボタンの専用ハンドラに任せる
+                }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
@@ -404,10 +411,17 @@
             
             handleTouch: function(event) {
                 console.log('=== Menu Touch Detected ===');
+                console.log('Target:', event.target ? event.target.id : 'unknown');
                 console.log('Menu visible:', this.el.getAttribute('visible'));
                 console.log('Game started:', window.gameStarted);
                 console.log('Game ended:', window.gameEnded);
                 console.log('Click blocked:', this.clickBlocked);
+                
+                // 🚀 修正: レベルボタンのタッチはここでは処理しない（level1Handler/level2Handlerで処理）
+                if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
+                    console.log('Level button touch - handled by dedicated handler');
+                    return; // レベルボタンの専用ハンドラに任せる
+                }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
