@@ -1216,12 +1216,83 @@
                     window.gameTimer = null;
                 }
                 
-                // 🚀 追加: THREE.jsレンダラーのキャッシュをクリア（メモリリーク対策）
+                // 🚀🚀 強化: THREE.jsの完全なGPUリソース解放（カクツキ対策）
                 const sceneEl = document.querySelector('a-scene');
                 if (sceneEl && sceneEl.renderer) {
-                    // レンダラーの内部キャッシュをクリア
-                    sceneEl.renderer.renderLists.dispose();
-                    window.debugLog('THREE.js renderer cache cleared');
+                    const renderer = sceneEl.renderer;
+                    
+                    // 1. レンダーリストをクリア
+                    if (renderer.renderLists) {
+                        renderer.renderLists.dispose();
+                    }
+                    
+                    // 2. レンダーターゲットをクリア（フレームバッファ等）
+                    if (renderer.renderTarget) {
+                        renderer.setRenderTarget(null);
+                    }
+                    
+                    // 3. メモリ情報をリセット
+                    if (renderer.info) {
+                        renderer.info.reset();
+                    }
+                    
+                    // 4. THREE.jsのグローバルキャッシュをクリア（テクスチャ等）
+                    if (THREE.Cache) {
+                        THREE.Cache.clear();
+                    }
+                    
+                    // 5. シーン内の全オブジェクトのgeometry/materialを解放
+                    if (sceneEl.object3D) {
+                        sceneEl.object3D.traverse((node) => {
+                            if (node.geometry) {
+                                node.geometry.dispose();
+                            }
+                            if (node.material) {
+                                if (Array.isArray(node.material)) {
+                                    node.material.forEach(mat => {
+                                        if (mat.map) mat.map.dispose();
+                                        if (mat.lightMap) mat.lightMap.dispose();
+                                        if (mat.bumpMap) mat.bumpMap.dispose();
+                                        if (mat.normalMap) mat.normalMap.dispose();
+                                        if (mat.specularMap) mat.specularMap.dispose();
+                                        if (mat.envMap) mat.envMap.dispose();
+                                        mat.dispose();
+                                    });
+                                } else {
+                                    if (node.material.map) node.material.map.dispose();
+                                    if (node.material.lightMap) node.material.lightMap.dispose();
+                                    if (node.material.bumpMap) node.material.bumpMap.dispose();
+                                    if (node.material.normalMap) node.material.normalMap.dispose();
+                                    if (node.material.specularMap) node.material.specularMap.dispose();
+                                    if (node.material.envMap) node.material.envMap.dispose();
+                                    node.material.dispose();
+                                }
+                            }
+                        });
+                    }
+                    
+                    // 6. WebGLコンテキストのロスを強制的にトリガー（画面が一瞬黒くなる）
+                    try {
+                        const gl = renderer.getContext();
+                        if (gl) {
+                            // WEBGL_lose_context拡張を使用してコンテキストをリセット
+                            const loseContext = gl.getExtension('WEBGL_lose_context');
+                            if (loseContext) {
+                                loseContext.loseContext();
+                                window.debugLog('WebGL context lost intentionally for memory cleanup');
+                                
+                                // 100ms後にコンテキストを復元
+                                window.registerTimeout(() => {
+                                    loseContext.restoreContext();
+                                    window.debugLog('WebGL context restored');
+                                }, 100);
+                            }
+                        }
+                    } catch (e) {
+                        window.debugLog('WebGL context reset failed:', e);
+                    }
+                    
+                    window.debugLog('🚀 THREE.js complete GPU resource cleanup done');
                 }
                 
                 // BGMを停止
