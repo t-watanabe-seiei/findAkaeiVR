@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>seieiVR</title>
+    <title>seieiVR - DEBUG VERSION 2025-12-12</title>
     <script src="{{ asset('js/aframe.min.js') }}"></script>
     <!-- Set DRACO decoder path to CDN to ensure Draco-compressed GLBs can be decoded -->
     <script>
@@ -183,12 +183,15 @@
             }
             console.log('%c', devtools);
             
+            // TEMPORARILY DISABLED FOR DEBUGGING
+            /*
             setInterval(function() {
                 if (devtools.opened) {
                     console.clear();
                     devtools.opened = false;
                 }
             }, 1000);
+            */
         })();
     </script>
 
@@ -1864,7 +1867,6 @@
                             }, 300);
                             
                             return;
-                        }
                     }
                 }
                 
