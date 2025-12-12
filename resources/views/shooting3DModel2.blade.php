@@ -357,23 +357,33 @@
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
+                // 🚀 改善: イベントリスナーの重複登録を防止
+                if (this.listenersAttached) {
+                    console.log('Listeners already attached, skipping');
+                    return;
+                }
+                
                 // レベル選択ボタンのイベントリスナーを追加
                 const level1Button = document.getElementById('level1Button');
                 const level2Button = document.getElementById('level2Button');
                 
                 if (level1Button) {
-                    level1Button.addEventListener('click', () => this.selectLevel(1));
-                    level1Button.addEventListener('touchstart', (e) => {
+                    const level1Handler = () => this.selectLevel(1);
+                    const level1TouchHandler = (e) => {
                         e.preventDefault();
                         this.selectLevel(1);
-                    });
+                    };
+                    level1Button.addEventListener('click', level1Handler);
+                    level1Button.addEventListener('touchstart', level1TouchHandler);
                 }
                 if (level2Button) {
-                    level2Button.addEventListener('click', () => this.selectLevel(2));
-                    level2Button.addEventListener('touchstart', (e) => {
+                    const level2Handler = () => this.selectLevel(2);
+                    const level2TouchHandler = (e) => {
                         e.preventDefault();
                         this.selectLevel(2);
-                    });
+                    };
+                    level2Button.addEventListener('click', level2Handler);
+                    level2Button.addEventListener('touchstart', level2TouchHandler);
                 }
                 
                 // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
@@ -383,6 +393,8 @@
                     element.addEventListener('touchstart', this.handleTouch, { passive: false, capture: true }); // captureフェーズで処理
                     console.log('Click and Touch listeners added to:', element.id || element.tagName);
                 });
+                
+                this.listenersAttached = true;
                 
                 console.log('Start menu initialized with', clickableElements.length, 'clickable elements');
             },
@@ -396,16 +408,14 @@
             },
             
             tick: function() {
-                // ゲーム中はメニューを完全に非表示・無効化
+                // 🚀 改善: 状態フラグで制御（毎フレームのDOM操作を削減）
                 if (window.gameStarted && !window.gameEnded) {
-                    const isVisible = this.el.getAttribute('visible');
-                    
-                    // メニューが表示されている場合のみ非表示にする（無限ループ防止）
-                    // visible属性はブーリアンまたは文字列で返される可能性があるため厳密にチェック
-                    if (isVisible === true || isVisible === 'true') {
-                        console.log('WARNING: Menu visible during game! Force hiding...');
+                    // 初回のみ実行
+                    if (!this.menuHidden) {
                         this.el.setAttribute('visible', false);
                         this.el.setAttribute('scale', '0 0 0');
+                        this.menuHidden = true;
+                        console.log('Menu hidden (one-time)');
                     }
                     
                     // マウスカーソルとVRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
@@ -432,6 +442,11 @@
                     
                     this.clickBlocked = true;
                 } else {
+                    // 🚀 改善: メニュー非表示フラグをリセット
+                    if (this.menuHidden) {
+                        this.menuHidden = false;
+                    }
+                    
                     // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
                     if (this.controllersUpdated) {
                         const mouseCursor = document.getElementById('mouseCursor');
@@ -751,12 +766,15 @@
                         console.log('gameEnded after set:', window.gameEnded);
                         console.log('Total Score:', window.totalScore);
                         
-                        // すべてのモデルを非表示
-                        const models = document.querySelectorAll('[id^="modelGroup_"]');
-                        console.log('Hiding models, count:', models.length);
-                        models.forEach(model => {
-                            model.setAttribute('visible', false);
+                        // 🚀 改善: すべてのモデルを非表示（IDで直接取得）
+                        const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
+                        modelIds.forEach(modelId => {
+                            const model = document.getElementById(modelId);
+                            if (model) {
+                                model.setAttribute('visible', false);
+                            }
                         });
+                        console.log('All models hidden');
                         
                         // タイマー非表示
                         const timerDisplay = document.getElementById('timerDisplay');
@@ -1724,16 +1742,20 @@
                 }
                 
                 // 🚀 改善: 衝突判定の最適化（毎フレーム実行されるため重要）
-                const models = [
-                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
-                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
-                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
-                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
-                    { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
-                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' },
-                    { id: 'modelGroup_07', hitBoxId: 'hit-boxed_07' },
-                    { id: 'modelGroup_08', hitBoxId: 'hit-boxed_08' }
-                ];
+                // モデル配列を初回のみ生成（キャッシュ）
+                if (!this.modelsList) {
+                    this.modelsList = [
+                        { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
+                        { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
+                        { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
+                        { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
+                        { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
+                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' },
+                        { id: 'modelGroup_07', hitBoxId: 'hit-boxed_07' },
+                        { id: 'modelGroup_08', hitBoxId: 'hit-boxed_08' }
+                    ];
+                }
+                const models = this.modelsList;
                 
                 const hitThresholdSquared = 0.25; // 0.5 * 0.5 = 0.25（2乗で比較）
                 

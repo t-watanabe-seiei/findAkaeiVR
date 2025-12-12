@@ -219,16 +219,14 @@
             },
             
             tick: function() {
-                // ゲーム中はメニューを完全に非表示・無効化
+                // 🚀 改善: 状態フラグで制御（毎フレームのDOM操作を削減）
                 if (window.gameStarted && !window.gameEnded) {
-                    const isVisible = this.el.getAttribute('visible');
-                    
-                    // メニューが表示されている場合のみ非表示にする（無限ループ防止）
-                    // visible属性はブーリアンまたは文字列で返される可能性があるため厳密にチェック
-                    if (isVisible === true || isVisible === 'true') {
-                        console.log('WARNING: Menu visible during game! Force hiding...');
+                    // 初回のみ実行
+                    if (!this.menuHidden) {
                         this.el.setAttribute('visible', false);
                         this.el.setAttribute('scale', '0 0 0');
+                        this.menuHidden = true;
+                        console.log('Menu hidden (one-time)');
                     }
                     
                     // マウスカーソルとVRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
@@ -255,6 +253,11 @@
                     
                     this.clickBlocked = true;
                 } else {
+                    // 🚀 改善: メニュー非表示フラグをリセット
+                    if (this.menuHidden) {
+                        this.menuHidden = false;
+                    }
+                    
                     // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
                     if (this.controllersUpdated) {
                         const mouseCursor = document.getElementById('mouseCursor');
@@ -1519,17 +1522,19 @@
                     console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
-                // 各モデルの位置を取得して衝突判定
-                // モデルごとに異なるヒットボックスサイズを定義
-                const models = [
-                    { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
-                    { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.8, height: 3.2 } // ボスはすり抜け防止のため大きめに設定
-                ];
+                // 🚀 改善: モデル配列を初回のみ生成（キャッシュでメモリ効率向上）
+                if (!this.modelsList) {
+                    this.modelsList = [
+                        { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
+                        { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.8, height: 3.2 } // ボスはすり抜け防止のため大きめに設定
+                    ];
+                }
+                const models = this.modelsList;
                 
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
