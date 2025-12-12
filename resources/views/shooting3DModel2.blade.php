@@ -1321,28 +1321,7 @@
                         });
                     }
                     
-                    // 6. WebGLコンテキストのロスを強制的にトリガー（画面が一瞬黒くなる）
-                    try {
-                        const gl = renderer.getContext();
-                        if (gl) {
-                            // WEBGL_lose_context拡張を使用してコンテキストをリセット
-                            const loseContext = gl.getExtension('WEBGL_lose_context');
-                            if (loseContext) {
-                                loseContext.loseContext();
-                                window.debugLog('WebGL context lost intentionally for memory cleanup');
-                                
-                                // 100ms後にコンテキストを復元
-                                window.registerTimeout(() => {
-                                    loseContext.restoreContext();
-                                    window.debugLog('WebGL context restored');
-                                }, 100);
-                            }
-                        }
-                    } catch (e) {
-                        window.debugLog('WebGL context reset failed:', e);
-                    }
-                    
-                    window.debugLog('🚀 THREE.js complete GPU resource cleanup done');
+                    window.debugLog('🚀 THREE.js GPU resource cleanup done (safe mode)');
                 }
                 
                 // BGMを停止
