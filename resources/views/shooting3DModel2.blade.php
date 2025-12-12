@@ -193,6 +193,11 @@
     </script>
 
     <script>  
+        console.log('========================================');
+        console.log('🚀 SCRIPT EXECUTION STARTED!');
+        console.log('AFRAME object exists:', typeof AFRAME !== 'undefined');
+        console.log('========================================');
+        
         // ゲーム状態管理
         window.gameStarted = false;
         window.gameEnded = false;
@@ -348,8 +353,18 @@
         };
         
         // スタートメニューコンポーネント
+        console.log('========================================');
+        console.log('🔧 About to register start-menu component');
+        console.log('AFRAME:', typeof AFRAME);
+        console.log('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
+        console.log('========================================');
+        
         AFRAME.registerComponent('start-menu', {
             init: function() {
+                console.log('🎮🎮🎮 START-MENU INIT CALLED! 🎮🎮🎮');
+                console.log('Element:', this.el);
+                console.log('Element ID:', this.el.id);
+                
                 this.startGame = this.startGame.bind(this);
                 this.selectLevel = this.selectLevel.bind(this);
                 this.handleClick = this.handleClick.bind(this);
@@ -358,6 +373,22 @@
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
                 console.log('🎮 Start menu init - Setting up event listeners');
+                
+                // 🔧 修正: イベントハンドラをプロパティとして保存（関数参照を再利用）
+                if (!this.level1Handler) {
+                    this.level1Handler = (e) => {
+                        console.log('🎯 Level 1 button clicked!');
+                        if (e) e.preventDefault();
+                        this.selectLevel(1);
+                    };
+                }
+                if (!this.level2Handler) {
+                    this.level2Handler = (e) => {
+                        console.log('🎯 Level 2 button clicked!');
+                        if (e) e.preventDefault();
+                        this.selectLevel(2);
+                    };
+                }
                 
                 // レベル選択ボタンのイベントリスナーを追加
                 const level1Button = document.getElementById('level1Button');
@@ -369,32 +400,22 @@
                 });
                 
                 if (level1Button) {
-                    // 🔧 修正: 既存のリスナーを削除してから追加（重複防止）
-                    const level1Handler = (e) => {
-                        console.log('🎯 Level 1 button clicked!');
-                        if (e) e.preventDefault();
-                        this.selectLevel(1);
-                    };
-                    level1Button.removeEventListener('click', level1Handler);
-                    level1Button.removeEventListener('touchstart', level1Handler);
-                    level1Button.addEventListener('click', level1Handler);
-                    level1Button.addEventListener('touchstart', level1Handler, { passive: false });
+                    // 既存のリスナーを削除してから追加（重複防止）
+                    level1Button.removeEventListener('click', this.level1Handler);
+                    level1Button.removeEventListener('touchstart', this.level1Handler);
+                    level1Button.addEventListener('click', this.level1Handler);
+                    level1Button.addEventListener('touchstart', this.level1Handler, { passive: false });
                     console.log('✅ Level 1 button listeners attached');
                 } else {
                     console.error('❌ Level 1 button NOT FOUND in DOM!');
                 }
                 
                 if (level2Button) {
-                    // 🔧 修正: 既存のリスナーを削除してから追加（重複防止）
-                    const level2Handler = (e) => {
-                        console.log('🎯 Level 2 button clicked!');
-                        if (e) e.preventDefault();
-                        this.selectLevel(2);
-                    };
-                    level2Button.removeEventListener('click', level2Handler);
-                    level2Button.removeEventListener('touchstart', level2Handler);
-                    level2Button.addEventListener('click', level2Handler);
-                    level2Button.addEventListener('touchstart', level2Handler, { passive: false });
+                    // 既存のリスナーを削除してから追加（重複防止）
+                    level2Button.removeEventListener('click', this.level2Handler);
+                    level2Button.removeEventListener('touchstart', this.level2Handler);
+                    level2Button.addEventListener('click', this.level2Handler);
+                    level2Button.addEventListener('touchstart', this.level2Handler, { passive: false });
                     console.log('✅ Level 2 button listeners attached');
                 } else {
                     console.error('❌ Level 2 button NOT FOUND in DOM!');
