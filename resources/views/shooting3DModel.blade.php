@@ -1520,7 +1520,7 @@
                 
                 // ボールエンティティを作成（GLBモデルを使用）
                 const ball = document.createElement('a-entity');
-                ball.setAttribute('gltf-model', 'cg/poke_ball_04.glb');
+                ball.setAttribute('gltf-model', 'cg/poke_ball_05.glb');
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
                 ball.setAttribute('rotation', '0 0 0');
                 
