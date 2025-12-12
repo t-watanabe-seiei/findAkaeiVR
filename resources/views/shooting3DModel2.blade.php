@@ -1597,7 +1597,8 @@
                 );
                 
                 // ボールの位置を更新
-                ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                // 🚀 最適化: setAttributeではなくobject3Dを直接操作（大幅に高速化）
+                ball.object3D.position.copy(currentPos);
                 
                 // 🚀 最適化: 最初の3フレームのみログ出力（DEBUG_MODE時のみ）
                 ballData.frameCount++;
@@ -1622,18 +1623,33 @@
                 
                 const hitThresholdSquared = 0.25; // 0.5 * 0.5 = 0.25（2乗で比較）
                 
-                for (let modelInfo of models) {
-                    const modelGroup = document.getElementById(modelInfo.id);
+                for (let i = 0; i < models.length; i++) {
+                    const modelInfo = models[i];
+                    
+                    // 🚀 最適化: モデル参照をキャッシュ（document.getElementByIdを毎フレーム呼ばない）
+                    let modelGroup = this.modelsCache[modelInfo.id];
+                    if (!modelGroup || !modelGroup.parentNode) {
+                        modelGroup = document.getElementById(modelInfo.id);
+                        if (modelGroup) {
+                            this.modelsCache[modelInfo.id] = modelGroup;
+                        }
+                    }
                     if (!modelGroup || !modelGroup.parentNode) continue;
                     
-                    // 🚀 最適化1: visible=falseのモデルをスキップ
-                    if (!modelGroup.getAttribute('visible')) continue;
+                    // 🚀 最適化1: visible=falseのモデルをスキップ（object3Dを直接参照）
+                    if (!modelGroup.object3D.visible) continue;
                     
-                    // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
-                    const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                    // 🚀 最適化: hitbox参照をキャッシュ（querySelectorを毎フレーム呼ばない）
+                    let hitBox = this.hitBoxCache ? this.hitBoxCache[modelInfo.hitBoxId] : null;
+                    if (!hitBox || !hitBox.parentNode) {
+                        hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                        if (!this.hitBoxCache) this.hitBoxCache = {};
+                        if (hitBox) this.hitBoxCache[modelInfo.hitBoxId] = hitBox;
+                    }
                     if (!hitBox) continue;
                     
-                    const modelPos = modelGroup.getAttribute('position');
+                    // 🚀 最適化: getAttributeではなくobject3D.positionを直接参照
+                    const modelPos = modelGroup.object3D.position;
                     
                     // 🚀 最適化2: 大まかな範囲チェック（XZ平面のみ、高速）
                     const dx = currentPos.x - modelPos.x;
@@ -1647,9 +1663,9 @@
                     if (distanceSquared < hitThresholdSquared) {
                             ballData.hasHit = true;
                             debugLog(`Ball hit ${modelInfo.id}!`);
-                            const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
-                            if (hitBoxComponent) {
-                                hitBoxComponent.emit('ball-hit');
+                            // 🚀 最適化: 既にキャッシュ済みのhitBoxを再利用
+                            if (hitBox) {
+                                hitBox.emit('ball-hit');
                             }
                             
                             // ボールが跳ね返るアニメーション

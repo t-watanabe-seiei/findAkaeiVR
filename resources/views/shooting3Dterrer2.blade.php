@@ -1542,7 +1542,8 @@
                 );
                 
                 // ボールの位置を更新
-                ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                // 🚀 最適化: setAttributeではなくobject3Dを直接操作（大幅に高速化）
+                ball.object3D.position.copy(currentPos);
                 
                 ballData.frameCount++;
                 if (DEBUG_MODE && ballData.frameCount <= 3) {
@@ -1560,15 +1561,32 @@
                         { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
                         { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.8, height: 3.2 } // ボスはすり抜け防止のため大きめに設定
                     ];
+                    // 🚀 最適化: モデル参照もキャッシュ用配列を準備
+                    this.modelsCache = {};
                 }
                 const models = this.modelsList;
                 
-                for (let modelInfo of models) {
-                    const modelGroup = document.getElementById(modelInfo.id);
-                    if (!modelGroup || !modelGroup.parentNode || !modelGroup.getAttribute('visible')) continue;
+                for (let i = 0; i < models.length; i++) {
+                    const modelInfo = models[i];
                     
-                    // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
-                    const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                    // 🚀 最適化: モデル参照をキャッシュ（document.getElementByIdを毎フレーム呼ばない）
+                    let modelGroup = this.modelsCache[modelInfo.id];
+                    if (!modelGroup || !modelGroup.parentNode) {
+                        modelGroup = document.getElementById(modelInfo.id);
+                        if (modelGroup) {
+                            this.modelsCache[modelInfo.id] = modelGroup;
+                        }
+                    }
+                    // 🚀 最適化: object3D.visibleを直接参照
+                    if (!modelGroup || !modelGroup.parentNode || !modelGroup.object3D.visible) continue;
+                    
+                    // 🚀 最適化: hitbox参照をキャッシュ（querySelectorを毎フレーム呼ばない）
+                    let hitBox = this.hitBoxCache ? this.hitBoxCache[modelInfo.hitBoxId] : null;
+                    if (!hitBox || !hitBox.parentNode) {
+                        hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                        if (!this.hitBoxCache) this.hitBoxCache = {};
+                        if (hitBox) this.hitBoxCache[modelInfo.hitBoxId] = hitBox;
+                    }
                     if (!hitBox) {
                         // hitboxが削除されている場合はスキップ（anime02再生中）
                         if (DEBUG_MODE && ballData.frameCount <= 5) {
@@ -1577,7 +1595,8 @@
                         continue;
                     }
                     
-                    const modelPos = modelGroup.getAttribute('position');
+                    // 🚀 最適化: getAttributeではなくobject3D.positionを直接参照
+                    const modelPos = modelGroup.object3D.position;
                     
                     // 🚀 最適化1: 大まかな範囲チェック（早期スキップ）
                     const dx = currentPos.x - modelPos.x;
@@ -1612,9 +1631,9 @@
                             ballData.hasHit = true;
                             const xzDistance = Math.sqrt(xzDistanceSquared); // ログ用のみ計算
                             debugLog(`✓ Ball HIT ${modelInfo.id}! xzDist=${xzDistance.toFixed(2)}m, y=${currentPos.y.toFixed(2)}m`);
-                            const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
-                            if (hitBoxComponent) {
-                                hitBoxComponent.emit('ball-hit');
+                            // 🚀 最適化: 既にキャッシュ済みのhitBoxを再利用
+                            if (hitBox) {
+                                hitBox.emit('ball-hit');
                             }
                             
                             // ボールの回転アニメーションを停止
@@ -1952,6 +1971,7 @@ debugLog('Ball created at:', startPos);
                 // 🚀 最適化: Vector3を事前生成（tick内でのnew回避）
                 this._direction = new THREE.Vector3();
                 this._cameraPos = new THREE.Vector3();
+                this._lastAlertCheck = 0; // アラート音チェックのスロットリング用
                 
                 // 始点を設定（コンポーネント指定がなければ現在位置）
                 if (this.data.startPos.x === 0 && this.data.startPos.y === 0 && this.data.startPos.z === -5) {
@@ -2032,7 +2052,9 @@ debugLog('Ball created at:', startPos);
                 
                 // カメラとの距離をチェック（アラート音制御用）
                 // ゲーム終了時はアラート音を鳴らさない
-                if (!window.gameEnded) {
+                // 🚀 最適化: 100msごとにスロットリング
+                if (!window.gameEnded && (time - this._lastAlertCheck > 100)) {
+                    this._lastAlertCheck = time;
                     const sceneEl = this.el.sceneEl;
                     const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
                     if (camera) {
