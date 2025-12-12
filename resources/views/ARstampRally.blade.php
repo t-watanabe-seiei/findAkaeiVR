@@ -1710,9 +1710,9 @@
             <a-entity
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.7 0.7 0.7"
-                rotation="0 0 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -1722,7 +1722,7 @@
             <a-entity
                 id="pig-model"
                 gltf-model="{{ asset('cg/3d_pro_pig_matsubara.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="0.75 0.75 0.75"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"

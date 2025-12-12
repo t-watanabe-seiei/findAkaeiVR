@@ -19,7 +19,7 @@
         // デバッグログ関数（DEBUG_MODE が true の時のみ出力）
         window.debugLog = function(...args) {
             if (window.DEBUG_MODE) {
-                window.debugLog(...args);
+                console.log(...args);
             }
         };
         
