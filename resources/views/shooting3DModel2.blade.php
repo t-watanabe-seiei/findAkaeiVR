@@ -1599,9 +1599,10 @@
                 // ボールの位置を更新
                 ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
                 
+                // 🚀 最適化: 最初の3フレームのみログ出力（DEBUG_MODE時のみ）
                 ballData.frameCount++;
-                if (ballData.frameCount <= 3) {
-                    console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
+                if (ballData.frameCount <= 3 && window.DEBUG_MODE) {
+                    window.debugLog(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
                 // 🚀 改善: 衝突判定の最適化（毎フレーム実行されるため重要）
@@ -1645,7 +1646,7 @@
                     
                     if (distanceSquared < hitThresholdSquared) {
                             ballData.hasHit = true;
-                            console.log(`Ball hit ${modelInfo.id}!`);
+                            debugLog(`Ball hit ${modelInfo.id}!`);
                             const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
                             if (hitBoxComponent) {
                                 hitBoxComponent.emit('ball-hit');
@@ -1682,7 +1683,7 @@
                             window.registerTimeout(() => {
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
-                                    console.log('Ball removed after bounce');
+                                    debugLog('Ball removed after bounce');
                                 }
                             }, 300);
                             
@@ -1693,14 +1694,14 @@
                 // 地面に落ちたら削除（y < -2）
                 if (currentPos.y < -2 || elapsedTime > 3) {
                     if (elapsedTime > 3) {
-                        console.log('Ball timeout after 3 seconds');
+                        debugLog('Ball timeout after 3 seconds');
                     } else {
-                        console.log('Ball fell to ground');
+                        debugLog('Ball fell to ground');
                     }
                     
                     // ヒットしなかった場合、コンボをリセット
                     if (!ballData.hasHit) {
-                        console.log('Ball missed - Resetting combo');
+                        debugLog('Ball missed - Resetting combo');
                         window.comboCount = 0;
                         window.lastBallHit = false;
                         // コンボ表示を非表示
@@ -1728,7 +1729,7 @@
                     // 通常のバブリングフェーズで捕捉（captureを使わない）
                     canvas.addEventListener('click', this.onClick);
                     canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
-                    console.log('Canvas listeners set up (bubble phase)');
+                    debugLog('Canvas listeners set up (bubble phase)');
                 }
             },
             
@@ -1739,12 +1740,12 @@
                 if (leftController) {
                     leftController.removeEventListener('triggerdown', this.shoot);
                     leftController.addEventListener('triggerdown', this.shoot);
-                    console.log('Left controller listener set up');
+                    debugLog('Left controller listener set up');
                 }
                 if (rightController) {
                     rightController.removeEventListener('triggerdown', this.shoot);
                     rightController.addEventListener('triggerdown', this.shoot);
-                    console.log('Right controller listener set up');
+                    debugLog('Right controller listener set up');
                 }
             },
             
@@ -1753,7 +1754,7 @@
                 if (event.code === 'Space') {
                     event.preventDefault(); // デフォルトのスペースキー動作を防ぐ
                     this.shoot(event);
-                    console.log('space key pressed');
+                    debugLog('space key pressed');
                 }
             },
             
@@ -1761,7 +1762,7 @@
                 // 重複発火を防ぐ（touchstartとclickの両方が発火する場合に対応）
                 const currentTime = Date.now();
                 if (currentTime - this.lastShootTime < this.shootCooldown) {
-                    console.log('Click ignored (too soon after last shoot)');
+                    debugLog('Click ignored (too soon after last shoot)');
                     event.stopPropagation();
                     event.preventDefault();
                     return;
@@ -1769,14 +1770,14 @@
                 
                 // マウスクリックの場合（A-Frameのcanvas上でのみ）
                 this.shoot(event);
-                console.log('mouse clicked on canvas');
+                debugLog('mouse clicked on canvas');
             },
             
             onTouchStart: function (event) {
                 // 重複発火を防ぐ
                 const currentTime = Date.now();
                 if (currentTime - this.lastShootTime < this.shootCooldown) {
-                    console.log('Touch ignored (too soon after last shoot)');
+                    debugLog('Touch ignored (too soon after last shoot)');
                     event.stopPropagation();
                     event.preventDefault();
                     return;
@@ -1786,7 +1787,7 @@
                 event.preventDefault(); // デフォルトのタッチ動作を防ぐ
                 event.stopPropagation(); // イベントの伝播を防ぐ
                 this.shoot(event);
-                console.log('screen tapped on canvas');
+                debugLog('screen tapped on canvas');
             },
             
             shoot: function (event) {
@@ -1800,27 +1801,27 @@
                 
                 // ゲームが開始されていない場合は撃てない
                 if (!window.gameStarted) {
-                    console.log('Game not started, ignoring shoot');
+                    debugLog('Game not started, ignoring shoot');
                     return;
                 }
                 
                 // ゲーム終了後は撃てない
                 if (window.gameEnded) {
-                    console.log('Game ended, ignoring shoot');
+                    debugLog('Game ended, ignoring shoot');
                     return;
                 }
                 
                 // ボールの同時描画数を制限（2個まで）
                 if (window.activeBalls.length >= 2) {
-                    console.log('Ball limit reached (2), ignoring shoot');
+                    debugLog('Ball limit reached (2), ignoring shoot');
                     return;
                 }
                 
                 // 最後のshoot時刻を更新
                 this.lastShootTime = Date.now();
                 
-                console.log('=== Shoot function called ===');
-                console.log('Event type:', event.type);
+                debugLog('=== Shoot function called ===');
+                debugLog('Event type:', event.type);
                 
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
@@ -1863,33 +1864,33 @@
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
-                    console.log('Shooting from VR controller');
+                    debugLog('Shooting from VR controller');
                     const controller = event.target;
                     
                     // コントローラーの位置を取得
                     controller.object3D.getWorldPosition(position);
-                    console.log('Controller position:', position);
+                    debugLog('Controller position:', position);
                     
                     // raycasterコンポーネントから方向を取得
                     const raycasterComponent = controller.components.raycaster;
                     if (raycasterComponent && raycasterComponent.raycaster) {
                         // raycasterの方向をコピー
                         direction.copy(raycasterComponent.raycaster.ray.direction).normalize();
-                        console.log('Using raycaster direction:', direction);
+                        debugLog('Using raycaster direction:', direction);
                     } else {
                         // raycasterがない場合はコントローラーのローカル前方向を使用
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(controller.object3D.quaternion);
                         direction.normalize();
-                        console.log('Using controller quaternion direction:', direction);
+                        debugLog('Using controller quaternion direction:', direction);
                     }
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射
-                    console.log('Shooting from camera/input');
+                    debugLog('Shooting from camera/input');
                     
                     // VRモードかどうかを確認
                     const isVRMode = sceneEl.is('vr-mode');
-                    console.log('Is VR Mode:', isVRMode);
+                    debugLog('Is VR Mode:', isVRMode);
                     
                     if (isVRMode) {
                         // VRモード時
@@ -1899,14 +1900,14 @@
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(sceneEl.camera.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using scene.camera');
+                            debugLog('VR Mode - Using scene.camera');
                         } else {
                             // フォールバック
                             camera.object3D.getWorldPosition(position);
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(camera.object3D.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using camera.object3D');
+                            debugLog('VR Mode - Using camera.object3D');
                         }
                     } else {
                         // 通常モード時
@@ -1914,11 +1915,11 @@
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(camera.object3D.quaternion);
                         direction.normalize();
-                        console.log('Normal Mode - Using camera.object3D');
+                        debugLog('Normal Mode - Using camera.object3D');
                     }
                     
-                    console.log('Camera position:', position);
-                    console.log('Camera direction:', direction);
+                    debugLog('Camera position:', position);
+                    debugLog('Camera direction:', direction);
                 }
                 
                 // コントローラー/カメラの少し前にボールを配置
@@ -1926,15 +1927,15 @@
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-                console.log('Ball created at:', startPos);
-                
+debugLog('Ball created at:', startPos);
+
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
                 const initialSpeed = 10; // 初速度 (m/s)
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
-                console.log('Initial velocity:', velocity);
-                console.log('=== Ball added to activeBalls array ===');
+                debugLog('Initial velocity:', velocity);
+                debugLog('=== Ball added to activeBalls array ===');
                 
                 // ボールデータを配列に追加（A-Frameのtickで更新される）
                 window.activeBalls.push({
@@ -1980,7 +1981,7 @@
                     this.startPosition = new THREE.Vector3(this.data.startPos.x, this.data.startPos.y, this.data.startPos.z);
                 }
                 
-                console.log('approach-camera initialized:', {
+                debugLog('approach-camera initialized:', {
                     speed: this.data.speed,
                     useCamera: this.data.useCamera,
                     endPos: this.data.endPos,
@@ -1996,7 +1997,7 @@
                     if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning) {
                         const elapsed = Date.now() - this.reachedTime;
                         if (elapsed >= this.data.waitTime) {
-                            console.log('Auto-respawn triggered after', this.data.waitTime, 'ms');
+                            window.debugLog('Auto-respawn triggered after', this.data.waitTime, 'ms');
                             this.isRespawning = true; // 再描画中フラグを立てる
                             this.despawnAndRespawn();
                         }
@@ -2014,11 +2015,11 @@
                         this.targetPosition = new THREE.Vector3();
                         camera.object3D.getWorldPosition(this.targetPosition);
                         this.targetPosition.y = 0; // 地面レベルに調整
-                        console.log('Target set to camera position:', this.targetPosition);
+                        window.debugLog('Target set to camera position:', this.targetPosition);
                     } else {
                         // useCameraがfalseの場合はendPosを使用
                         this.targetPosition = new THREE.Vector3(this.data.endPos.x, this.data.endPos.y, this.data.endPos.z);
-                        console.log('Target set to fixed endPos:', this.targetPosition);
+                        window.debugLog('Target set to fixed endPos:', this.targetPosition);
                     }
                 }
                 
@@ -2037,7 +2038,7 @@
                     this.isMoving = false;
                     this.hasReachedEnd = true;
                     this.reachedTime = Date.now();
-                    console.log('Model reached end position. Waiting for', this.data.waitTime, 'ms before respawn');
+                    window.debugLog('Model reached end position. Waiting for', this.data.waitTime, 'ms before respawn');
                     return;
                 }
                 
@@ -2159,17 +2160,17 @@
                 this.el.addEventListener('ball-hit', () => {
                     if(!hitFlag) {
                         hitFlag = true;
-                        console.log('Model hit!', modelEntity);
+                        debugLog('Model hit!', modelEntity);
                         
                         // 捕獲した動物の数をインクリメント
                         window.enemiesDefeated++;
-                        console.log('Animals Captured:', window.enemiesDefeated);
+                        debugLog('Animals Captured:', window.enemiesDefeated);
                         
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
                         if (hitBox && hitBox.parentNode) {
                             hitBox.parentNode.removeChild(hitBox);
-                            console.log('Hit box removed immediately');
+                            debugLog('Hit box removed immediately');
                         }
                         
                         // ヒット音を再生
@@ -2177,9 +2178,9 @@
                         if (hitSound) {
                             hitSound.currentTime = 0; // 最初から再生
                             hitSound.play().then(() => {
-                                console.log('Hit sound played');
+                                debugLog('Hit sound played');
                             }).catch(err => {
-                                console.log('Hit sound play failed:', err);
+                                debugLog('Hit sound play failed:', err);
                             });
                         }
                         
@@ -2198,7 +2199,7 @@
                             
                             // 距離を計算（メートル単位）
                             distance = modelPos.distanceTo(cameraPos);
-                            console.log('Hit distance from camera:', distance.toFixed(2), 'm');
+                            debugLog('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
                         // 基本スコアを計算（距離を10倍して小数第一位まで）
@@ -2207,7 +2208,7 @@
                         // コンボカウントを増やす（スコア計算前に）
                         window.comboCount++;
                         window.lastBallHit = true;
-                        console.log('Combo Count:', window.comboCount);
+                        debugLog('Combo Count:', window.comboCount);
                         
                         // コンボ倍率を計算
                         let comboMultiplier = 1.0;
@@ -2229,16 +2230,16 @@
                         
                         // 最終スコアを計算
                         const finalScore = baseScore * comboMultiplier;
-                        console.log('Base Score:', baseScore, 'Multiplier:', comboMultiplier, 'Final Score:', finalScore);
+                        debugLog('Base Score:', baseScore, 'Multiplier:', comboMultiplier, 'Final Score:', finalScore);
                         
                         // 合計スコアに加算
                         window.totalScore += finalScore;
-                        console.log('Total Score:', window.totalScore.toFixed(1));
+                        debugLog('Total Score:', window.totalScore.toFixed(1));
                         
                         // 最大コンボ数を更新
                         if (window.comboCount > window.maxComboCount) {
                             window.maxComboCount = window.comboCount;
-                            console.log('New Max Combo:', window.maxComboCount);
+                            debugLog('New Max Combo:', window.maxComboCount);
                         }
                         
                         // コンボ表示を更新（2連続以上の場合）
@@ -2267,8 +2268,8 @@
                             scoreWidth = scoreWidth * 1.1;
                         }
                         
-                        console.log('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
-                        
+                        debugLog('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
+
                         // スコアテキストをモデルの上に表示
                         const scoreText = document.createElement('a-text');
                         const scoreDisplay = comboBonus ? `Combo ${window.comboCount} ${comboBonus}\n${finalScore.toFixed(1)}pt` : `${finalScore.toFixed(1)}pt`;
@@ -2292,7 +2293,7 @@
                         
                         // シーンに直接追加
                         sceneEl.appendChild(scoreText);
-                        console.log('Score text added to scene at world position');
+                        debugLog('Score text added to scene at world position');
                         
                         // 通常ヒット時（コンボなし）のパーティクル表示
                         if (!comboBonus) {
@@ -2384,7 +2385,7 @@
                         const approachComponent = modelGroup.components['approach-camera'];
                         if (approachComponent) {
                             approachComponent.stop();
-                            console.log('Stopped approaching camera');
+                            debugLog('Stopped approaching camera');
                         }
 
                         // anime02に切り替え（1.5秒間再生）
@@ -2392,14 +2393,14 @@
                             modelEntity.removeAttribute('animation-mixer'); // 一旦削除
                             window.registerTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
-                                console.log('Playing anime02 for 1.5 seconds');
+                                debugLog('Playing anime02 for 1.5 seconds');
                             }, 50);
                         }
                         
                         // 1.5秒後にフェードアウト開始（anime03はスキップ）
                         window.registerTimeout(() => {
                             if (modelGroup && modelGroup.parentNode) {
-                                console.log('Starting fadeout for modelGroup');
+                                debugLog('Starting fadeout for modelGroup');
                                 // フェードアウトアニメーション（0.5秒かけて縮小）
                                 modelGroup.setAttribute('animation__modelfadeout', {
                                     property: 'scale',
@@ -2412,12 +2413,12 @@
                                 window.registerTimeout(() => {
                                     if (modelGroup.parentNode) {
                                         modelGroup.parentNode.removeChild(modelGroup);
-                                        console.log('Model removed');
+                                        debugLog('Model removed');
                                         
                                         // パターン使用状況をクリア（他のモデルがこのパターンを使用可能に）
                                         if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
                                             delete window.usedPatterns[modelId];
-                                            console.log(`📍 Pattern freed for model ${modelId}`);
+                                            debugLog(`📍 Pattern freed for model ${modelId}`);
                                         }
                                         
                                         // 4秒後に別の場所に再描画
@@ -2447,8 +2448,9 @@
                     let distance = 0;
                     
                     if (camera) {
-                        const modelPos = new THREE.Vector3();
-                        const cameraPos = new THREE.Vector3();
+                        // 🚀 最適化: キャッシュされたVector3を再利用（new回避）
+                        const modelPos = window._cachedModelPos;
+                        const cameraPos = window._cachedCameraPos;
                         modelGroup.object3D.getWorldPosition(modelPos);
                         camera.object3D.getWorldPosition(cameraPos);
                         distance = modelPos.distanceTo(cameraPos);
@@ -2463,7 +2465,7 @@
                     }
                     // 4m以内は基準サイズ（8 = 1倍）
                     
-                    console.log('Combo - Distance:', distance.toFixed(2), 'm, Combo width:', comboWidth);
+                    window.debugLog('Combo - Distance:', distance.toFixed(2), 'm, Combo width:', comboWidth);
                     
                     // コンボテキストを作成
                     const comboText = document.createElement('a-text');
@@ -2476,8 +2478,8 @@
                     comboText.setAttribute('anchor', 'center');
                     comboText.classList.add('combo-text');
                     
-                    // ワールド座標を取得
-                    const comboModelPos = new THREE.Vector3();
+                    // ワールド座標を取得 - 🚀 最適化: キャッシュされたVector3を再利用
+                    const comboModelPos = window._cachedScorePos;
                     modelGroup.object3D.getWorldPosition(comboModelPos);
                     
                     // スコアの上に配置（スコアは+0.5なので+1.0）
@@ -2488,7 +2490,7 @@
                     
                     // シーンに直接追加
                     sceneEl.appendChild(comboText);
-                    console.log('Combo text added to scene at world position');
+                    window.debugLog('Combo text added to scene at world position');
                     
                     // コンボテキストをフェードアウトさせる（ワールド座標で上に移動）
                     window.registerTimeout(() => {
@@ -2523,30 +2525,30 @@
             respawnModel: function(modelId, gltfModelSrc) {
                 // ゲームが終了している場合はリスポーンしない
                 if (window.gameEnded || !window.gameStarted) {
-                    console.log('Game ended, no respawn');
+                    debugLog('Game ended, no respawn');
                     return;
                 }
                 
                 // model07, 08は常にスキップ（6体に削減）
                 if (modelId === 'modelGroup_07' || modelId === 'modelGroup_08') {
-                    console.log('Skipping', modelId, 'respawn (reduced to 6 models)');
+                    debugLog('Skipping', modelId, 'respawn (reduced to 6 models)');
                     return;
                 }
                 
                 // Level 1の場合、modelGroup_04, 05, 06はリスポーンしない
                 if (window.currentLevel === 1 && (modelId === 'modelGroup_04' || modelId === 'modelGroup_05' || modelId === 'modelGroup_06')) {
-                    console.log('Level 1: Skipping', modelId, 'respawn');
+                    debugLog('Level 1: Skipping', modelId, 'respawn');
                     return;
                 }
                 
-                console.log('Respawning model:', modelId);
+                debugLog('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
                 // 【重要】既存の同じIDのモデルを全て削除（重複を防ぐ）
                 const existingModels = sceneEl.querySelectorAll(`#${modelId}`);
                 existingModels.forEach(existingModel => {
                     if (existingModel && existingModel.parentNode) {
-                        console.log('Removing existing model before respawn:', modelId);
+                        debugLog('Removing existing model before respawn:', modelId);
                         
                         // 🚀 改善: THREE.jsメモリ解放（respawnModel時）
                         if (existingModel.object3D) {
@@ -2636,7 +2638,7 @@
                 // スピード倍率（Level 2は2倍速）
                 const speedMultiplier = window.currentLevel === 2 ? 2.0 : 1.0;
                 
-                console.log('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
+                debugLog('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
                 // 使用可能なパターンを取得（他のモデルと重複しない）
                 const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
@@ -2659,7 +2661,7 @@
                     rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
                 }
                 
-                console.log('Selected random pattern:', {
+                debugLog('Selected random pattern:', {
                     startPos: startPos,
                     endPos: endPos,
                     speed: speed,
@@ -2714,7 +2716,7 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(newModelGroup);
-                console.log('Model added to scene with pattern', patternIndex, ':', randomPattern);
+                debugLog('Model added to scene with pattern', patternIndex, ':', randomPattern);
                 
                 // フェードインアニメーション
                 window.registerTimeout(() => {
@@ -2724,7 +2726,7 @@
                         dur: 1000,
                         easing: 'easeOutQuad'
                     });
-                    console.log('Model fading in');
+                    debugLog('Model fading in');
                 }, 100);
             }
         });
@@ -2739,18 +2741,18 @@
                 
                 // シーンが読み込まれたら実行
                 sceneEl.addEventListener('loaded', () => {
-                    console.log('Scene loaded, checking for VR device...');
+                    debugLog('Scene loaded, checking for VR device...');
                     window.updateDebug('Checking VR device...');
                     
                     // 🚀 パフォーマンス改善: THREE.Color を初期化（一度だけ）
                     if (typeof THREE !== 'undefined') {
                         if (!window.cachedBallEmissiveColor) {
                             window.cachedBallEmissiveColor = new THREE.Color(0x444444);
-                            console.log('Cached ball emissive color initialized');
+                            debugLog('Cached ball emissive color initialized');
                         }
                         if (!window.cachedHitEmissiveColor) {
                             window.cachedHitEmissiveColor = new THREE.Color(0xFFFFFF);
-                            console.log('Cached hit emissive color initialized');
+                            debugLog('Cached hit emissive color initialized');
                         }
                     }
                     
@@ -2758,25 +2760,25 @@
                     if (navigator.xr) {
                         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                             if (supported) {
-                                console.log('VR device detected! Auto-entering VR mode...');
+                                debugLog('VR device detected! Auto-entering VR mode...');
                                 window.updateDebug('VR device found! Entering VR...');
                                 
                                 // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
                                 window.registerTimeout(() => {
                                     sceneEl.enterVR();
-                                    console.log('Entered VR mode automatically');
+                                    debugLog('Entered VR mode automatically');
                                     window.updateDebug('VR mode activated');
                                 }, 1000);
                             } else {
-                                console.log('VR not supported on this device');
+                                debugLog('VR not supported on this device');
                                 window.updateDebug('VR not supported');
                             }
                         }).catch((err) => {
-                            console.log('Error checking VR support:', err);
+                            debugLog('Error checking VR support:', err);
                             window.updateDebug('VR check failed');
                         });
                     } else {
-                        console.log('WebXR not available');
+                        debugLog('WebXR not available');
                         window.updateDebug('WebXR not available');
                     }
                 });
