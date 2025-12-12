@@ -1412,14 +1412,50 @@
                 // シーンを取得
                 const sceneEl = document.querySelector('a-scene');
                 
-                // すべてのモデルを完全に削除（動的に生成されたものも含む）
+                // 全パーティクルシステムを強制停止（パフォーマンス向上）
+                const particleIds = ['particle-normal', 'particle-tier1', 'particle-tier2', 'particle-tier3', 'particle-celebration'];
+                particleIds.forEach(particleId => {
+                    const particle = document.getElementById(particleId);
+                    if (particle) {
+                        const particleSystem = particle.components['particle-system'];
+                        if (particleSystem) {
+                            particleSystem.stopParticles();
+                        }
+                        particle.setAttribute('visible', 'false');
+                        console.log('Stopped particle system:', particleId);
+                    }
+                });
+                
+                // すべてのモデルを完全に削除（アニメーションとコンポーネントもクリア）
                 const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_07', 'modelGroup_08'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
                     models.forEach(model => {
                         if (model && model.parentNode) {
-                            console.log('Removing model:', modelId);
+                            // アニメーションを全て停止
+                            model.removeAttribute('animation__fadein');
+                            model.removeAttribute('animation__fadeout');
+                            model.removeAttribute('animation__timeoverfadeout');
+                            model.removeAttribute('animation-mixer');
+                            
+                            // THREE.jsレベルのクリーンアップ
+                            if (model.object3D) {
+                                model.object3D.traverse((node) => {
+                                    if (node.geometry) {
+                                        node.geometry.dispose();
+                                    }
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => mat.dispose());
+                                        } else {
+                                            node.material.dispose();
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            console.log('Removing model with cleanup:', modelId);
                             model.parentNode.removeChild(model);
                         }
                     });
