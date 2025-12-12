@@ -1285,13 +1285,27 @@
                     });
                 });
                 
-                // すべてのボールを削除
+                // すべてのボールを完全削除（アニメーション停止とメモリ解放）
                 window.activeBalls.forEach(ballData => {
-                    if (ballData.ball && ballData.ball.parentNode) {
-                        ballData.ball.parentNode.removeChild(ballData.ball);
+                    if (ballData.ball) {
+                        // アニメーションを停止
+                        ballData.ball.removeAttribute('animation__spin');
+                        // DOMから削除
+                        if (ballData.ball.parentNode) {
+                            ballData.ball.parentNode.removeChild(ballData.ball);
+                        }
                     }
                 });
                 window.activeBalls = [];
+                
+                // GLBボールの残骸を徹底的にクリーンアップ
+                const remainingBalls = sceneEl.querySelectorAll('[gltf-model*="poke_ball"]');
+                remainingBalls.forEach(ball => {
+                    if (ball.parentNode) {
+                        console.log('Removing remaining ball');
+                        ball.parentNode.removeChild(ball);
+                    }
+                });
                 
                 // シーン上の動的に生成されたテキスト（スコア・コンボ）を削除
                 const scoreTexts = sceneEl.querySelectorAll('a-text[face-camera]');
@@ -1739,6 +1753,12 @@
                 // ゲーム終了後は撃てない
                 if (window.gameEnded) {
                     console.log('Game ended, ignoring shoot');
+                    return;
+                }
+                
+                // ボールの同時描画数を制限（2個まで）
+                if (window.activeBalls.length >= 2) {
+                    console.log('Ball limit reached (2), ignoring shoot');
                     return;
                 }
                 
