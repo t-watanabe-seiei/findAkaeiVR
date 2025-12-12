@@ -1680,6 +1680,23 @@
                             
                             // 🚀 修正: setTimeout → registerTimeout（タイマー管理対象に）
                             window.registerTimeout(() => {
+                                // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
+                                if (ball.object3D) {
+                                    ball.object3D.traverse((node) => {
+                                        if (node.geometry) node.geometry.dispose();
+                                        if (node.material) {
+                                            if (Array.isArray(node.material)) {
+                                                node.material.forEach(mat => {
+                                                    if (mat.map) mat.map.dispose();
+                                                    mat.dispose();
+                                                });
+                                            } else {
+                                                if (node.material.map) node.material.map.dispose();
+                                                node.material.dispose();
+                                            }
+                                        }
+                                    });
+                                }
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
                                     window.debugLog('Ball removed after hit animation');
@@ -1710,6 +1727,23 @@
                         }
                     }
                     
+                    // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
+                    if (ball.object3D) {
+                        ball.object3D.traverse((node) => {
+                            if (node.geometry) node.geometry.dispose();
+                            if (node.material) {
+                                if (Array.isArray(node.material)) {
+                                    node.material.forEach(mat => {
+                                        if (mat.map) mat.map.dispose();
+                                        mat.dispose();
+                                    });
+                                } else {
+                                    if (node.material.map) node.material.map.dispose();
+                                    node.material.dispose();
+                                }
+                            }
+                        });
+                    }
                     if (ball.parentNode) {
                         ball.parentNode.removeChild(ball);
                     }
@@ -1926,7 +1960,7 @@
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-debugLog('Ball created at:', startPos);
+                window.debugLog('Ball created at:', startPos);
 
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
