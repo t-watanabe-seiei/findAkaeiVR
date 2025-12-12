@@ -292,6 +292,16 @@
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
+        // タイマーID管理用のグローバル配列（メモリリーク防止）
+        window.activeTimers = [];
+        
+        // タイマー登録用のヘルパー関数
+        window.registerTimeout = function(callback, delay) {
+            const timerId = setTimeout(callback, delay);
+            window.activeTimers.push(timerId);
+            return timerId;
+        };
+        
         // パターン使用状況の管理（重複スポーン防止）
         window.usedPatterns = {}; // { modelId: patternIndex } の形式で保存
         
@@ -644,7 +654,7 @@
                 
                 // モデルを1秒ずつずらして出現させる
                 initialModelIds.forEach((modelId, index) => {
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         const model = document.getElementById(modelId);
                         if (model) {
                             // 使用可能なパターンを取得（他のモデルと重複しない）
@@ -864,7 +874,7 @@
                 resultMenu.removeAttribute('animation__scale');
                 
                 // 少し待ってからアニメーション開始（確実に反映させる）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     resultMenu.setAttribute('animation', {
                         property: 'scale',
                         to: '1 1 1',
@@ -966,7 +976,7 @@
                     }
                     
                     // 5秒後にパーティクルを停止
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         if (particleSystem) {
                             particleSystem.stopParticles();
                         }
@@ -1073,12 +1083,12 @@
                 sceneEl.appendChild(model01);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_01');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model01, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model01');
                         }, 50);
@@ -1114,12 +1124,12 @@
                 sceneEl.appendChild(model02);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_02');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model02, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model02');
                         }, 50);
@@ -1155,12 +1165,12 @@
                 sceneEl.appendChild(model03);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_03');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model03, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model03');
                         }, 50);
@@ -1196,12 +1206,12 @@
                 sceneEl.appendChild(model04);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_04');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model04, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model04');
                         }, 50);
@@ -1237,12 +1247,12 @@
                 sceneEl.appendChild(model05);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_05');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model05, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model05');
                         }, 50);
@@ -1278,12 +1288,12 @@
                 sceneEl.appendChild(model06);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_06');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model06, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model06');
                         }, 50);
@@ -1319,12 +1329,12 @@
                 sceneEl.appendChild(model07);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_07');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model07, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model07');
                         }, 50);
@@ -1360,12 +1370,12 @@
                 sceneEl.appendChild(model08);
                 
                 // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_08');
                     if (hitBox && !hitBox.components['hit-box']) {
                         console.warn('hit-box component not initialized for model08, forcing re-init');
                         hitBox.removeAttribute('hit-box');
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             hitBox.setAttribute('hit-box', '');
                             console.log('hit-box component re-initialized for model08');
                         }, 50);
@@ -1395,6 +1405,15 @@
                 this.clickBlocked = false;
                 this.controllersUpdated = false;
                 console.log('Click block flags reset');
+                
+                // 【重要】全ての未実行setTimeoutをクリア（リスタート時のカクカク対策）
+                if (window.activeTimers && window.activeTimers.length > 0) {
+                    console.log('Clearing', window.activeTimers.length, 'active timers');
+                    window.activeTimers.forEach(timerId => {
+                        clearTimeout(timerId);
+                    });
+                    window.activeTimers = [];
+                }
                 
                 // タイマーをクリア
                 if (window.gameTimer) {
@@ -1647,7 +1666,7 @@
                 this.el.sceneEl.addEventListener('enter-vr', () => {
                     console.log('Entered VR mode');
                     // VRモードに入ったらリスナーを再設定
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         this.setupCanvasListeners();
                         this.setupControllerListeners();
                     }, 100);
@@ -1656,7 +1675,7 @@
                 this.el.sceneEl.addEventListener('exit-vr', () => {
                     console.log('Exited VR mode');
                     // VRモードを出たらリスナーを再設定
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         this.setupCanvasListeners();
                     }, 100);
                 });
@@ -1770,7 +1789,7 @@
                                 easing: 'linear'
                             });
                             
-                            setTimeout(() => {
+                            window.registerTimeout(() => {
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
                                     console.log('Ball removed after bounce');
@@ -2170,7 +2189,7 @@
                 });
                 
                 // フェードアウト後に削除して再生成
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     if (modelGroup.parentNode) {
                         modelGroup.parentNode.removeChild(modelGroup);
                     }
@@ -2357,7 +2376,7 @@
                                 normalParticle.setAttribute('visible', true);
                                 
                                 // 1秒後に非表示
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     normalParticle.setAttribute('visible', false);
                                 }, 1000);
                             }
@@ -2388,7 +2407,7 @@
                                 particle.setAttribute('visible', true);
                                 
                                 // 1.5秒後に非表示
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     particle.setAttribute('visible', false);
                                 }, 1500);
                             }
@@ -2407,7 +2426,7 @@
                         }
                         
                         // スコアテキストをフェードアウトさせる（ワールド座標で上に移動）
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             const currentPos = scoreText.getAttribute('position');
                             scoreText.setAttribute('animation__scoreup', {
                                 property: 'position',
@@ -2424,7 +2443,7 @@
                             });
                             
                             // アニメーション完了後に削除
-                            setTimeout(() => {
+                            window.registerTimeout(() => {
                                 if (scoreText.parentNode) {
                                     scoreText.parentNode.removeChild(scoreText);
                                 }
@@ -2441,14 +2460,14 @@
                         // anime02に切り替え（1.5秒間再生）
                         if (modelEntity) {
                             modelEntity.removeAttribute('animation-mixer'); // 一旦削除
-                            setTimeout(() => {
+                            window.registerTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
                                 console.log('Playing anime02 for 1.5 seconds');
                             }, 50);
                         }
                         
                         // 1.5秒後にフェードアウト開始（anime03はスキップ）
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             if (modelGroup && modelGroup.parentNode) {
                                 console.log('Starting fadeout for modelGroup');
                                 // フェードアウトアニメーション（0.5秒かけて縮小）
@@ -2460,7 +2479,7 @@
                                 });
                                 
                                 // フェードアウト完了後に削除して、4秒後に再描画
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     if (modelGroup.parentNode) {
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
@@ -2472,7 +2491,7 @@
                                         }
                                         
                                         // 4秒後に別の場所に再描画
-                                        setTimeout(() => {
+                                        window.registerTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
                                         }, 4000);
                                     }
@@ -2542,7 +2561,7 @@
                     console.log('Combo text added to scene at world position');
                     
                     // コンボテキストをフェードアウトさせる（ワールド座標で上に移動）
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         const currentPos = comboText.getAttribute('position');
                         comboText.setAttribute('animation__fadeup', {
                             property: 'position',
@@ -2559,7 +2578,7 @@
                         });
                         
                         // アニメーション後に削除
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             if (comboText.parentNode) {
                                 comboText.parentNode.removeChild(comboText);
                             }
@@ -2745,7 +2764,7 @@
                 console.log('Model added to scene with pattern', patternIndex, ':', randomPattern);
                 
                 // フェードインアニメーション
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
                         to: '0.455 0.455 0.455',
@@ -2778,7 +2797,7 @@
                                 window.updateDebug('VR device found! Entering VR...');
                                 
                                 // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     sceneEl.enterVR();
                                     console.log('Entered VR mode automatically');
                                     window.updateDebug('VR mode activated');
