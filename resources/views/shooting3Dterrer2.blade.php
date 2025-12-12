@@ -1290,15 +1290,20 @@
                     window.gameTimer = null;
                 }
                 
+                // 🚀 追加: THREE.jsレンダラーのキャッシュをクリア（メモリリーク対策）
+                const sceneEl = document.querySelector('a-scene');
+                if (sceneEl && sceneEl.renderer) {
+                    // レンダラーの内部キャッシュをクリア
+                    sceneEl.renderer.renderLists.dispose();
+                    console.log('THREE.js renderer cache cleared');
+                }
+                
                 // BGMを停止
                 const bgm = document.getElementById('sound_bgm');
                 if (bgm) {
                     bgm.pause();
                     bgm.currentTime = 0;
                 }
-                
-                // シーンを取得
-                const sceneEl = document.querySelector('a-scene');
                 
                 // 全パーティクルシステムを強制停止（パフォーマンス向上）
                 const particleIds = ['particle-normal', 'particle-tier1', 'particle-tier2', 'particle-tier3', 'particle-celebration'];
@@ -1321,6 +1326,11 @@
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
                     models.forEach(model => {
                         if (model && model.parentNode) {
+                            // 🚀 改善: approach-cameraコンポーネントを先に削除（メモリリーク対策）
+                            if (model.components && model.components['approach-camera']) {
+                                model.removeAttribute('approach-camera');
+                            }
+                            
                             // アニメーションを全て停止
                             model.removeAttribute('animation__fadein');
                             model.removeAttribute('animation__fadeout');
@@ -1340,6 +1350,10 @@
                                             node.material.dispose();
                                         }
                                     }
+                                    // 🚀 追加: テクスチャも破棄
+                                    if (node.material && node.material.map) {
+                                        node.material.map.dispose();
+                                    }
                                 });
                             }
                             
@@ -1349,11 +1363,16 @@
                     });
                 });
                 
+                // 🚀 改善: respawnModelGlobalをリセット（次回のモデル作成時に再バインド）
+                window.respawnModelGlobal = null;
+                
                 // すべてのボールを完全削除（アニメーション停止とメモリ解放）
                 window.activeBalls.forEach(ballData => {
                     if (ballData.ball) {
                         // アニメーションを停止
                         ballData.ball.removeAttribute('animation__spin');
+                        // 🚀 追加: model-loadedリスナーのクリーンアップ
+                        ballData.ball.removeAttribute('gltf-model');
                         // DOMから削除
                         if (ballData.ball.parentNode) {
                             ballData.ball.parentNode.removeChild(ballData.ball);
@@ -1367,6 +1386,7 @@
                 remainingBalls.forEach(ball => {
                     if (ball.parentNode) {
                         console.log('Removing remaining ball');
+                        ball.removeAttribute('gltf-model');
                         ball.parentNode.removeChild(ball);
                     }
                 });
@@ -1465,6 +1485,13 @@
                 const currentScoreText = document.getElementById('currentScore');
                 if (currentScoreText) {
                     currentScoreText.setAttribute('value', 'SCORE: 0.0');
+                }
+                
+                // 🚀 追加: shootコンポーネントのキャッシュをクリア
+                const camera = document.getElementById('my_camera');
+                if (camera && camera.components && camera.components['shoot']) {
+                    camera.components['shoot'].modelsList = null;
+                    console.log('Cleared shoot component modelsList cache');
                 }
                 
                 console.log('Game reset complete - Ready to start new game');
@@ -2256,6 +2283,23 @@
                 this.targetPosition = null;
                 this.isRespawning = false; // 再描画中フラグもリセット
                 console.log('Approach-camera component reset');
+            },
+            
+            // 🚀 追加: コンポーネント削除時のクリーンアップ
+            remove: function() {
+                // アラートサウンドを停止
+                if (this.isPlayingAlert) {
+                    const alertSound = document.getElementById('sound_alert');
+                    if (alertSound) {
+                        alertSound.pause();
+                        alertSound.currentTime = 0;
+                    }
+                }
+                // Vector3オブジェクトの参照を解放
+                this._direction = null;
+                this.startPosition = null;
+                this.targetPosition = null;
+                console.log('Approach-camera component removed and cleaned up');
             }
         });
         
