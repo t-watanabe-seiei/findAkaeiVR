@@ -664,6 +664,10 @@
             startGame: function(event) {
                 window.debugLog('Game Start triggered!');
                 
+                // 🚀 メモリリーク対策: プレイ回数をインクリメント
+                window.playCount++;
+                window.debugLog('Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
+                
                 // レベル選択イベントの場合、window.gameLevelを使用
                 if (event && event.type === 'level-select' && window.gameLevel) {
                     window.currentLevel = window.gameLevel;
@@ -1496,6 +1500,15 @@
             restart: function(event) {
                 window.debugLog('Restart button clicked');
                 
+                // 🚀 メモリリーク対策: プレイ回数チェック
+                if (window.playCount >= window.MAX_PLAY_COUNT) {
+                    window.debugLog('最大プレイ回数に達しました。ページを閉じます。');
+                    alert('ゲーム終了！お疲れ様でした。\nブラウザを閉じてください。');
+                    // ブラウザを閉じる試行（ポップアップで開いた場合のみ有効）
+                    window.close();
+                    return;
+                }
+                
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu && startMenu.components['start-menu']) {
@@ -1507,6 +1520,14 @@
                 window.debugLog('Restart button touched');
                 event.preventDefault();
                 event.stopPropagation();
+                
+                // 🚀 メモリリーク対策: プレイ回数チェック
+                if (window.playCount >= window.MAX_PLAY_COUNT) {
+                    window.debugLog('最大プレイ回数に達しました。ページを閉じます。');
+                    alert('ゲーム終了！お疲れ様でした。\nブラウザを閉じてください。');
+                    window.close();
+                    return;
+                }
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -2351,53 +2372,46 @@
                         sceneEl.appendChild(scoreText);
                         window.debugLog('Score text added to scene at world position');
                         
-                        // 通常ヒット時（コンボなし）のパーティクル表示
+                        // 🚀🚀 パフォーマンス改善: パーティクルエフェクト無効化（GPUメモリ節約）
+                        // 通常ヒット時（コンボなし）のパーティクル表示 - 無効化
+                        /*
                         if (!comboBonus) {
                             const normalParticle = document.getElementById('particle-normal');
                             if (normalParticle) {
-                                // 🚀 最適化: キャッシュされたVector3を再利用
                                 const normalParticlePos = window._cachedParticlePos;
                                 modelGroup.object3D.getWorldPosition(normalParticlePos);
                                 normalParticle.setAttribute('position', `${normalParticlePos.x} ${normalParticlePos.y + 0.5} ${normalParticlePos.z}`);
                                 normalParticle.setAttribute('visible', true);
-                                
-                                // 1秒後に非表示
                                 window.registerTimeout(() => {
                                     normalParticle.setAttribute('visible', false);
                                 }, 1000);
                             }
                         }
+                        */
                         
-                        // ボーナス時のエフェクト
+                        // ボーナス時のエフェクト - パーティクル無効化、スケールアニメーションのみ維持
                         if (comboBonus) {
-                            // ボーナスレベルに応じて使用するパーティクルを選択
-                            let particleId = 'particle-tier1'; // デフォルト
-                            
+                            // 🚀🚀 パーティクルエフェクト無効化（GPUメモリ節約）
+                            /*
+                            let particleId = 'particle-tier1';
                             if (bonusTier === 1) {
-                                // 1.1倍: Tier1パーティクル（シアン、サイズ0.1、20個）
                                 particleId = 'particle-tier1';
                             } else if (bonusTier === 2) {
-                                // 1.2倍: Tier2パーティクル（オレンジ、サイズ0.15、30個）
                                 particleId = 'particle-tier2';
                             } else if (bonusTier === 3) {
-                                // 1.3倍: Tier3パーティクル（マゼンタ、サイズ0.2、40個）
                                 particleId = 'particle-tier3';
                             }
-                            
-                            // パーティクルエフェクトを表示
                             const particle = document.getElementById(particleId);
                             if (particle) {
-                                // 🚀 最適化: キャッシュされたVector3を再利用
                                 const modelPos = window._cachedParticlePos;
                                 modelGroup.object3D.getWorldPosition(modelPos);
                                 particle.setAttribute('position', `${modelPos.x} ${modelPos.y + 0.5} ${modelPos.z}`);
                                 particle.setAttribute('visible', true);
-                                
-                                // 1.5秒後に非表示
                                 window.registerTimeout(() => {
                                     particle.setAttribute('visible', false);
                                 }, 1500);
                             }
+                            */
                             
                             // スコアテキストを拡大縮小アニメーション（ボーナスレベルに応じて拡大率を変更）
                             const scaleMultiplier = 1.1 + (bonusTier * 0.2); // 1.3, 1.5, 1.7

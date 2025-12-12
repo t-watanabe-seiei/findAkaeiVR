@@ -1699,7 +1699,7 @@
                 id="pengin-model"
                 gltf-model="{{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0.5"
-                scale="0.7 0.7 0.7"
+                scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
@@ -1711,7 +1711,7 @@
                 id="tonakai-model"
                 gltf-model="{{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0.5"
-                scale="0.7 0.7 0.7"
+                scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
