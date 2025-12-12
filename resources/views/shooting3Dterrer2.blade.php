@@ -19,15 +19,15 @@
         // デバッグログ関数（DEBUG_MODE が true の時のみ出力）
         window.debugLog = function(...args) {
             if (window.DEBUG_MODE) {
-                console.log(...args);
+                window.debugLog(...args);
             }
         };
         
         if (window.DEBUG_MODE) {
-            console.log('========================================');
-            console.log('🚀 SCRIPT EXECUTION STARTED!');
-            console.log('AFRAME object exists:', typeof AFRAME !== 'undefined');
-            console.log('========================================');
+            window.debugLog('========================================');
+            window.debugLog('🚀 SCRIPT EXECUTION STARTED!');
+            window.debugLog('AFRAME object exists:', typeof AFRAME !== 'undefined');
+            window.debugLog('========================================');
         }
         
         // ゲーム状態管理
@@ -96,7 +96,7 @@
                                 }
                             }
                         });
-                        console.log('Model materials enhanced' + (isMattsun ? ' (mattsun2: brightness increased)' : ''));
+                        window.debugLog('Model materials enhanced' + (isMattsun ? ' (mattsun2: brightness increased)' : ''));
                     }
                 });
             }
@@ -210,11 +210,11 @@
         
         // スタートメニューコンポーネント
         if (window.DEBUG_MODE) {
-            console.log('========================================');
-            console.log('🔧 About to register start-menu component');
-            console.log('AFRAME:', typeof AFRAME);
-            console.log('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
-            console.log('========================================');
+            window.debugLog('========================================');
+            window.debugLog('🔧 About to register start-menu component');
+            window.debugLog('AFRAME:', typeof AFRAME);
+            window.debugLog('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
+            window.debugLog('========================================');
         }
         
         AFRAME.registerComponent('start-menu', {
@@ -953,7 +953,7 @@
             },
             
             saveScoreToDatabase: function(score) {
-                console.log('Saving score to database:', score, 'Level:', window.currentLevel, 'Game Mode: terrer');
+                window.debugLog('Saving score to database:', score, 'Level:', window.currentLevel, 'Game Mode: terrer');
                 
                 fetch('api/shooting-scores', {
                     method: 'POST',
@@ -972,7 +972,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Score saved successfully:', data);
+                    window.debugLog('Score saved successfully:', data);
                     if (data && data.data && data.data.id) {
                         window.lastSavedScoreId = data.data.id;
                     } else {
@@ -989,12 +989,12 @@
             },
             
             fetchAndDisplayRankings: function() {
-                console.log('Fetching top 5 rankings for Level:', window.currentLevel, 'Game Mode: terrer');
+                window.debugLog('Fetching top 5 rankings for Level:', window.currentLevel, 'Game Mode: terrer');
                 
                 fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}&game_mode=terrer`)
                     .then(response => response.json())
                     .then(data => {
-                        console.log('Rankings fetched:', data);
+                        window.debugLog('Rankings fetched:', data);
                         if (data.success && data.data) {
                             this.displayRankings(data.data);
                             
@@ -1007,7 +1007,7 @@
                             );
                             
                             if (isInTop5) {
-                                console.log('🎉 Congratulations! You made it to Top 5!');
+                                window.debugLog('🎉 Congratulations! You made it to Top 5!');
                                 this.celebrateTop5();
                             }
                         }
@@ -1110,11 +1110,11 @@
                     rankingDisplay.appendChild(textEntity);
                 });
                 
-                console.log('Rankings displayed:', rankings.length, 'entries');
+                window.debugLog('Rankings displayed:', rankings.length, 'entries');
             },
             
             recreateInitialModels: function(sceneEl) {
-                console.log('Recreating initial models with staggered creation...');
+                window.debugLog('Recreating initial models with staggered creation...');
                 
                 // 🚀 最適化: モデル定義を配列化して時間分散で作成
                 const modelConfigs = [
@@ -1133,7 +1133,7 @@
                     }, index * 100); // 100ms間隔で1体ずつ作成
                 });
                 
-                console.log('Initial models creation scheduled (6 models, 100ms intervals)');
+                window.debugLog('Initial models creation scheduled (6 models, 100ms intervals)');
             },
             
             // 🚀 新規: 単一モデル作成関数（リファクタリング）
@@ -1409,13 +1409,13 @@
                 const camera = document.getElementById('my_camera');
                 if (camera && camera.components && camera.components['shoot']) {
                     camera.components['shoot'].modelsList = null;
-                    console.log('Cleared shoot component modelsList cache');
+                    window.debugLog('Cleared shoot component modelsList cache');
                 }
                 
                 // 🚀 追加: 少し遅延を入れてからモデルを再作成（GCに時間を与える）
                 window.registerTimeout(() => {
                     this.recreateInitialModels(sceneEl);
-                    console.log('Game reset complete - Ready to start new game');
+                    window.debugLog('Game reset complete - Ready to start new game');
                     window.updateDebug('Ready to start');
                 }, 100);
             }
@@ -1432,12 +1432,12 @@
                 if (restartButton) {
                     restartButton.addEventListener('click', this.restart);
                     restartButton.addEventListener('touchstart', this.restartTouch); // スマホ対応
-                    console.log('Restart button click and touch listeners added');
+                    window.debugLog('Restart button click and touch listeners added');
                 }
             },
             
             restart: function(event) {
-                console.log('Restart button clicked');
+                window.debugLog('Restart button clicked');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1447,7 +1447,7 @@
             },
             
             restartTouch: function(event) {
-                console.log('Restart button touched');
+                window.debugLog('Restart button touched');
                 event.preventDefault();
                 event.stopPropagation();
                 
@@ -1546,8 +1546,8 @@
                 ball.object3D.position.copy(currentPos);
                 
                 ballData.frameCount++;
-                if (DEBUG_MODE && ballData.frameCount <= 3) {
-                    console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
+                if (window.DEBUG_MODE && ballData.frameCount <= 3) {
+                    window.debugLog(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
                 // 🚀 改善: モデル配列を初回のみ生成（キャッシュでメモリ効率向上）
@@ -1589,8 +1589,8 @@
                     }
                     if (!hitBox) {
                         // hitboxが削除されている場合はスキップ（anime02再生中）
-                        if (DEBUG_MODE && ballData.frameCount <= 5) {
-                            console.log(`${modelInfo.id}: hitbox removed, skipping collision`);
+                        if (window.DEBUG_MODE && ballData.frameCount <= 5) {
+                            window.debugLog(`${modelInfo.id}: hitbox removed, skipping collision`);
                         }
                         continue;
                     }
@@ -1622,9 +1622,9 @@
                     const cylinderRadiusSquared = modelInfo.radius * modelInfo.radius;
                         
                         // デバッグ出力（最初の数フレームのみ）
-                        if (DEBUG_MODE && ballData.frameCount <= 5) {
+                        if (window.DEBUG_MODE && ballData.frameCount <= 5) {
                             const xzDistance = Math.sqrt(xzDistanceSquared); // デバッグ用のみ計算
-                            console.log(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${modelInfo.radius}m, H=${modelInfo.height}m`);
+                            window.debugLog(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${modelInfo.radius}m, H=${modelInfo.height}m`);
                         }
                         
                         if (xzDistanceSquared < cylinderRadiusSquared) { // 🚀 2乗で比較
@@ -1726,7 +1726,7 @@
                     // 通常のバブリングフェーズで捕捉（captureを使わない）
                     canvas.addEventListener('click', this.onClick);
                     canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
-                    console.log('Canvas listeners set up (bubble phase)');
+                    window.debugLog('Canvas listeners set up (bubble phase)');
                 }
             },
             
@@ -1737,12 +1737,12 @@
                 if (leftController) {
                     leftController.removeEventListener('triggerdown', this.shoot);
                     leftController.addEventListener('triggerdown', this.shoot);
-                    console.log('Left controller listener set up');
+                    window.debugLog('Left controller listener set up');
                 }
                 if (rightController) {
                     rightController.removeEventListener('triggerdown', this.shoot);
                     rightController.addEventListener('triggerdown', this.shoot);
-                    console.log('Right controller listener set up');
+                    window.debugLog('Right controller listener set up');
                 }
             },
             
@@ -1985,7 +1985,7 @@ debugLog('Ball created at:', startPos);
                 // アラート音の参照を取得
                 this.alertSound = document.getElementById('sound_alert');
                 
-                console.log('approach-camera initialized:', {
+                window.debugLog('approach-camera initialized:', {
                     speed: this.data.speed,
                     useCamera: this.data.useCamera,
                     endPos: this.data.endPos,
@@ -2151,7 +2151,7 @@ debugLog('Ball created at:', startPos);
             despawnAndRespawn: function() {
                 // ゲーム終了時は再描画しない
                 if (window.gameEnded) {
-                    console.log('Game ended, skipping despawn and respawn');
+                    window.debugLog('Game ended, skipping despawn and respawn');
                     return;
                 }
                 
@@ -2243,7 +2243,7 @@ debugLog('Ball created at:', startPos);
                         window.alertSoundPlaying = false;
                         window.currentAlertModel = null;
                     }
-                    console.log('Alert sound stopped - component reset');
+                    window.debugLog('Alert sound stopped - component reset');
                 }
                 
                 this.isMoving = true;
@@ -2251,7 +2251,7 @@ debugLog('Ball created at:', startPos);
                 this.reachedTime = 0;
                 this.targetPosition = null;
                 this.isRespawning = false; // 再描画中フラグもリセット
-                console.log('Approach-camera component reset');
+                window.debugLog('Approach-camera component reset');
             },
             
             // 🚀 追加: コンポーネント削除時のクリーンアップ
@@ -2268,7 +2268,7 @@ debugLog('Ball created at:', startPos);
                 this._direction = null;
                 this.startPosition = null;
                 this.targetPosition = null;
-                console.log('Approach-camera component removed and cleaned up');
+                window.debugLog('Approach-camera component removed and cleaned up');
             }
         });
         
@@ -2616,7 +2616,7 @@ debugLog('Ball created at:', startPos);
                         // カメラへの移動を停止（既に宣言済みのapproachComponentを使用）
                         if (approachComponent) {
                             approachComponent.stop();
-                            console.log('Stopped approaching camera');
+                            window.debugLog('Stopped approaching camera');
                         }
 
                         // anime02に切り替え（1.5秒間再生）
@@ -3074,7 +3074,7 @@ debugLog('Ball created at:', startPos);
                             window.updateDebug('VR check failed');
                         });
                     } else {
-                        console.log('WebXR not available');
+                        window.debugLog('WebXR not available');
                         window.updateDebug('WebXR not available');
                     }
                 });
@@ -3085,7 +3085,7 @@ debugLog('Ball created at:', startPos);
         AFRAME.registerComponent("vr-controller", {
             dependencies: ["raycaster"],// Important
             init: function () {
-                // console.log("vr-controller");
+                // window.debugLog("vr-controller");
                 // const text = document.getElementById("my_text");
                 // text.setAttribute("value", "Controller is ready!?");
 
