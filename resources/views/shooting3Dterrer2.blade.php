@@ -12,10 +12,23 @@
     <script src="{{ asset('js/axios.min.js') }}"></script>
 
     <script>  
-        console.log('========================================');
-        console.log('🚀 SCRIPT EXECUTION STARTED!');
-        console.log('AFRAME object exists:', typeof AFRAME !== 'undefined');
-        console.log('========================================');
+        // 🚀🚀 パフォーマンス改善: デバッグモードの制御
+        // 本番環境では false に設定してconsole.logを無効化
+        window.DEBUG_MODE = false;
+        
+        // デバッグログ関数（DEBUG_MODE が true の時のみ出力）
+        window.debugLog = function(...args) {
+            if (window.DEBUG_MODE) {
+                console.log(...args);
+            }
+        };
+        
+        if (window.DEBUG_MODE) {
+            console.log('========================================');
+            console.log('🚀 SCRIPT EXECUTION STARTED!');
+            console.log('AFRAME object exists:', typeof AFRAME !== 'undefined');
+            console.log('========================================');
+        }
         
         // ゲーム状態管理
         window.gameStarted = false;
@@ -170,7 +183,7 @@
             
             // 使用可能なパターンがない場合は全パターンから選択（安全策）
             if (availableIndices.length === 0) {
-                console.warn('⚠️ All patterns in use, selecting random pattern');
+                window.debugLog('⚠️ All patterns in use, selecting random pattern');
                 const randomIndex = Math.floor(Math.random() * patterns.length);
                 window.usedPatterns[modelId] = randomIndex;
                 return { pattern: patterns[randomIndex], index: randomIndex };
@@ -180,7 +193,7 @@
             const selectedIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
             window.usedPatterns[modelId] = selectedIndex;
             
-            console.log(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
+            window.debugLog(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
             
             return { pattern: patterns[selectedIndex], index: selectedIndex };
         };
@@ -192,21 +205,23 @@
                 const timestamp = new Date().toLocaleTimeString();
                 debugText.setAttribute('value', `${timestamp}: ${message}`);
             }
-            console.log('DEBUG:', message);
+            window.debugLog('DEBUG:', message);
         };
         
         // スタートメニューコンポーネント
-        console.log('========================================');
-        console.log('🔧 About to register start-menu component');
-        console.log('AFRAME:', typeof AFRAME);
-        console.log('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
-        console.log('========================================');
+        if (window.DEBUG_MODE) {
+            console.log('========================================');
+            console.log('🔧 About to register start-menu component');
+            console.log('AFRAME:', typeof AFRAME);
+            console.log('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
+            console.log('========================================');
+        }
         
         AFRAME.registerComponent('start-menu', {
             init: function() {
-                console.log('🎮🎮🎮 START-MENU INIT CALLED! 🎮🎮🎮');
-                console.log('Element:', this.el);
-                console.log('Element ID:', this.el.id);
+                window.debugLog('🎮🎮🎮 START-MENU INIT CALLED! 🎮🎮🎮');
+                window.debugLog('Element:', this.el);
+                window.debugLog('Element ID:', this.el.id);
                 
                 this.startGame = this.startGame.bind(this);
                 this.selectLevel = this.selectLevel.bind(this);
@@ -215,19 +230,19 @@
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
-                console.log('🎮 Start menu init - Setting up event listeners');
+                window.debugLog('🎮 Start menu init - Setting up event listeners');
                 
                 // 🔧 修正: イベントハンドラをプロパティとして保存（関数参照を再利用）
                 if (!this.level1Handler) {
                     this.level1Handler = (e) => {
-                        console.log('🎯 Level 1 button clicked!');
+                        window.debugLog('🎯 Level 1 button clicked!');
                         if (e) e.preventDefault();
                         this.selectLevel(1);
                     };
                 }
                 if (!this.level2Handler) {
                     this.level2Handler = (e) => {
-                        console.log('🎯 Level 2 button clicked!');
+                        window.debugLog('🎯 Level 2 button clicked!');
                         if (e) e.preventDefault();
                         this.selectLevel(2);
                     };
@@ -237,7 +252,7 @@
                 const level1Button = document.getElementById('level1Button');
                 const level2Button = document.getElementById('level2Button');
                 
-                console.log('Level buttons:', {
+                window.debugLog('Level buttons:', {
                     level1: level1Button ? 'found' : 'NOT FOUND',
                     level2: level2Button ? 'found' : 'NOT FOUND'
                 });
@@ -248,9 +263,9 @@
                     level1Button.removeEventListener('touchstart', this.level1Handler);
                     level1Button.addEventListener('click', this.level1Handler);
                     level1Button.addEventListener('touchstart', this.level1Handler, { passive: false });
-                    console.log('✅ Level 1 button listeners attached');
+                    window.debugLog('✅ Level 1 button listeners attached');
                 } else {
-                    console.error('❌ Level 1 button NOT FOUND in DOM!');
+                    window.debugLog('❌ Level 1 button NOT FOUND in DOM!');
                 }
                 
                 if (level2Button) {
@@ -259,9 +274,9 @@
                     level2Button.removeEventListener('touchstart', this.level2Handler);
                     level2Button.addEventListener('click', this.level2Handler);
                     level2Button.addEventListener('touchstart', this.level2Handler, { passive: false });
-                    console.log('✅ Level 2 button listeners attached');
+                    window.debugLog('✅ Level 2 button listeners attached');
                 } else {
-                    console.error('❌ Level 2 button NOT FOUND in DOM!');
+                    window.debugLog('❌ Level 2 button NOT FOUND in DOM!');
                 }
                 
                 // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
@@ -269,18 +284,18 @@
                 clickableElements.forEach(element => {
                     element.addEventListener('click', this.handleClick);
                     element.addEventListener('touchstart', this.handleTouch, { passive: false, capture: true }); // captureフェーズで処理
-                    console.log('Click and Touch listeners added to:', element.id || element.tagName);
+                    window.debugLog('Click and Touch listeners added to:', element.id || element.tagName);
                 });
                 
-                console.log('🎮 Start menu initialized with', clickableElements.length, 'clickable elements');
+                window.debugLog('🎮 Start menu initialized with', clickableElements.length, 'clickable elements');
             },
             
             selectLevel: function(level) {
-                console.log('🎯 ========================================');
-                console.log('🎯 selectLevel called with level:', level);
-                console.log('🎯 Current gameStarted:', window.gameStarted);
-                console.log('🎯 Current gameEnded:', window.gameEnded);
-                console.log('🎯 ========================================');
+                window.debugLog('🎯 ========================================');
+                window.debugLog('🎯 selectLevel called with level:', level);
+                window.debugLog('🎯 Current gameStarted:', window.gameStarted);
+                window.debugLog('🎯 Current gameEnded:', window.gameEnded);
+                window.debugLog('🎯 ========================================');
                 
                 window.gameLevel = level;
                 window.currentLevel = level;
@@ -302,7 +317,7 @@
                         this.el.setAttribute('visible', false);
                         this.el.setAttribute('scale', '0 0 0');
                         this.menuHidden = true;
-                        console.log('Menu hidden (one-time)');
+                        window.debugLog('Menu hidden (one-time)');
                     }
                     
                     // マウスカーソルとVRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
@@ -313,15 +328,15 @@
                         
                         if (mouseCursor) {
                             mouseCursor.setAttribute('raycaster', 'objects: .collidable');
-                            console.log('Removed .clickable from mouse cursor raycaster');
+                            window.debugLog('Removed .clickable from mouse cursor raycaster');
                         }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                            console.log('Removed .clickable from left controller raycaster');
+                            window.debugLog('Removed .clickable from left controller raycaster');
                         }
                         if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                            console.log('Removed .clickable from right controller raycaster');
+                            window.debugLog('Removed .clickable from right controller raycaster');
                         }
                         
                         this.controllersUpdated = true;
@@ -342,15 +357,15 @@
                         
                         if (mouseCursor) {
                             mouseCursor.setAttribute('raycaster', 'objects: .clickable, .collidable');
-                            console.log('Restored .clickable to mouse cursor raycaster');
+                            window.debugLog('Restored .clickable to mouse cursor raycaster');
                         }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                            console.log('Restored .clickable to left controller raycaster');
+                            window.debugLog('Restored .clickable to left controller raycaster');
                         }
                         if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                            console.log('Restored .clickable to right controller raycaster');
+                            window.debugLog('Restored .clickable to right controller raycaster');
                         }
                         
                         this.controllersUpdated = false;
@@ -366,22 +381,22 @@
             },
             
             handleClick: function(event) {
-                console.log('=== Menu Click Detected ===');
-                console.log('Target:', event.target ? event.target.id : 'unknown');
-                console.log('Menu visible:', this.el.getAttribute('visible'));
-                console.log('Game started:', window.gameStarted);
-                console.log('Game ended:', window.gameEnded);
-                console.log('Click blocked:', this.clickBlocked);
+                window.debugLog('=== Menu Click Detected ===');
+                window.debugLog('Target:', event.target ? event.target.id : 'unknown');
+                window.debugLog('Menu visible:', this.el.getAttribute('visible'));
+                window.debugLog('Game started:', window.gameStarted);
+                window.debugLog('Game ended:', window.gameEnded);
+                window.debugLog('Click blocked:', this.clickBlocked);
                 
                 // 🚀 修正: レベルボタンのクリックはここでは処理しない（level1Handler/level2Handlerで処理）
                 if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
-                    console.log('Level button click - handled by dedicated handler');
+                    window.debugLog('Level button click - handled by dedicated handler');
                     return; // レベルボタンの専用ハンドラに任せる
                 }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
-                    console.log('Click BLOCKED - Game in progress');
+                    window.debugLog('Click BLOCKED - Game in progress');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -389,7 +404,7 @@
                 
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
-                    console.log('Click BLOCKED by flag');
+                    window.debugLog('Click BLOCKED by flag');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -398,7 +413,7 @@
                 // メニューが非表示の場合は無視
                 const isVisible = this.el.getAttribute('visible');
                 if (isVisible === false || isVisible === 'false') {
-                    console.log('Click BLOCKED - Menu not visible');
+                    window.debugLog('Click BLOCKED - Menu not visible');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -406,7 +421,7 @@
                 
                 // ゲーム終了時は無視
                 if (window.gameEnded) {
-                    console.log('Click BLOCKED - Game ended');
+                    window.debugLog('Click BLOCKED - Game ended');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -416,22 +431,22 @@
             },
             
             handleTouch: function(event) {
-                console.log('=== Menu Touch Detected ===');
-                console.log('Target:', event.target ? event.target.id : 'unknown');
-                console.log('Menu visible:', this.el.getAttribute('visible'));
-                console.log('Game started:', window.gameStarted);
-                console.log('Game ended:', window.gameEnded);
-                console.log('Click blocked:', this.clickBlocked);
+                window.debugLog('=== Menu Touch Detected ===');
+                window.debugLog('Target:', event.target ? event.target.id : 'unknown');
+                window.debugLog('Menu visible:', this.el.getAttribute('visible'));
+                window.debugLog('Game started:', window.gameStarted);
+                window.debugLog('Game ended:', window.gameEnded);
+                window.debugLog('Click blocked:', this.clickBlocked);
                 
                 // 🚀 修正: レベルボタンのタッチはここでは処理しない（level1Handler/level2Handlerで処理）
                 if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
-                    console.log('Level button touch - handled by dedicated handler');
+                    window.debugLog('Level button touch - handled by dedicated handler');
                     return; // レベルボタンの専用ハンドラに任せる
                 }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
-                    console.log('Touch BLOCKED - Game in progress');
+                    window.debugLog('Touch BLOCKED - Game in progress');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -439,7 +454,7 @@
                 
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
-                    console.log('Touch BLOCKED by flag');
+                    window.debugLog('Touch BLOCKED by flag');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -448,7 +463,7 @@
                 // メニューが非表示の場合は無視
                 const isVisible = this.el.getAttribute('visible');
                 if (isVisible === false || isVisible === 'false') {
-                    console.log('Touch BLOCKED - Menu not visible');
+                    window.debugLog('Touch BLOCKED - Menu not visible');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -456,14 +471,14 @@
                 
                 // ゲーム終了時は無視
                 if (window.gameEnded) {
-                    console.log('Touch BLOCKED - Game ended');
+                    window.debugLog('Touch BLOCKED - Game ended');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
                 }
                 
                 // 有効なタッチの場合はイベントを停止してゲーム開始
-                console.log('Valid touch - starting game!');
+                window.debugLog('Valid touch - starting game!');
                 event.preventDefault();
                 event.stopPropagation();
                 this.startGame(event);
@@ -471,12 +486,12 @@
             },
             
             startGame: function(event) {
-                console.log('Game Start triggered!');
+                window.debugLog('Game Start triggered!');
                 
                 // レベル選択イベントの場合、window.gameLevelを使用
                 if (event && event.type === 'level-select' && window.gameLevel) {
                     window.currentLevel = window.gameLevel;
-                    console.log('Level set to:', window.currentLevel);
+                    window.debugLog('Level set to:', window.currentLevel);
                 }
                 
                 window.updateDebug('Game Started! Level: ' + window.currentLevel);
@@ -496,7 +511,7 @@
                     element.classList.add('non-clickable'); // 一時的なクラス
                 });
                 
-                console.log('Start menu hidden immediately (visible=false, scale=0, class removed)');
+                window.debugLog('Start menu hidden immediately (visible=false, scale=0, class removed)');
                 
                 // マウスカーソルとVRコントローラーから.clickableを即座に除外
                 const mouseCursor = document.getElementById('mouseCursor');
@@ -505,15 +520,15 @@
                 
                 if (mouseCursor) {
                     mouseCursor.setAttribute('raycaster', 'objects: .collidable');
-                    console.log('Removed .clickable from mouse cursor');
+                    window.debugLog('Removed .clickable from mouse cursor');
                 }
                 if (leftController) {
                     leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                    console.log('Removed .clickable from left controller');
+                    window.debugLog('Removed .clickable from left controller');
                 }
                 if (rightController) {
                     rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                    console.log('Removed .clickable from right controller');
+                    window.debugLog('Removed .clickable from right controller');
                 }
                 this.controllersUpdated = true;
                 
@@ -523,9 +538,9 @@
                     bgmSound.volume = 0.7; // 音量を70%に設定
                     bgmSound.currentTime = 0; // 最初から再生
                     bgmSound.play().then(() => {
-                        console.log('BGM started playing at 70% volume');
+                        window.debugLog('BGM started playing at 70% volume');
                     }).catch(err => {
-                        console.log('BGM play failed:', err);
+                        window.debugLog('BGM play failed:', err);
                     });
                 }
                 
@@ -533,7 +548,7 @@
                 if (window.gameTimer) {
                     clearInterval(window.gameTimer);
                     window.gameTimer = null;
-                    console.log('Cleared existing timer');
+                    window.debugLog('Cleared existing timer');
                 }
                 
                 window.gameStarted = true;
@@ -568,11 +583,11 @@
                 const initialModelIds = window.currentLevel === 1 
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
                     : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
-                console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
+                window.debugLog('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
-                // モデルを1秒ずつずらして出現させる
+                // モデルを1秒ずつずらして出現させる - 🚀 registerTimeout使用
                 initialModelIds.forEach((modelId, index) => {
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         const model = document.getElementById(modelId);
                         if (model) {
                             // 使用可能なパターンを取得（他のモデルと重複しない）
@@ -606,9 +621,9 @@
                             model.setAttribute('approach-camera', cameraConfig);
                             
                             model.setAttribute('visible', true);
-                            console.log(`Model ${modelId} appeared after ${index} seconds (pattern ${patternIndex}:`, randomPattern, ')');
+                            window.debugLog(`Model ${modelId} appeared after ${index} seconds (pattern ${patternIndex}:`, randomPattern, ')');
                         } else {
-                            console.error('Model not found:', modelId);
+                            window.debugLog('Model not found:', modelId);
                         }
                     }, index * 1000); // 0秒、1秒、2秒、3秒後に出現
                 });
@@ -634,15 +649,15 @@
                 const resultMenu = document.getElementById('resultMenu');
                 const self = this; // thisのコンテキストを保存
                 
-                console.log('=== Starting timer ===');
-                console.log('ResultMenu element:', resultMenu);
-                console.log('ResultMenu exists:', resultMenu ? 'YES' : 'NO');
-                console.log('Current gameEnded:', window.gameEnded);
-                console.log('Current gameStarted:', window.gameStarted);
+                window.debugLog('=== Starting timer ===');
+                window.debugLog('ResultMenu element:', resultMenu);
+                window.debugLog('ResultMenu exists:', resultMenu ? 'YES' : 'NO');
+                window.debugLog('Current gameEnded:', window.gameEnded);
+                window.debugLog('Current gameStarted:', window.gameStarted);
                 
                 // 既存のタイマーがあればクリア
                 if (window.gameTimer) {
-                    console.log('Clearing existing timer before start');
+                    window.debugLog('Clearing existing timer before start');
                     clearInterval(window.gameTimer);
                     window.gameTimer = null;
                 }
@@ -657,15 +672,15 @@
                     
                     // 60秒経過時（残り15秒）にボスを出現（1度のみ、Level 2のみ）
                     if (window.gameTimeLeft === 15 && !window.bossSpawned && window.currentLevel === 2) {
-                        console.log('=== 60 seconds elapsed - Spawning BOSS (Level 2) ===');
+                        window.debugLog('=== 60 seconds elapsed - Spawning BOSS (Level 2) ===');
                         window.bossSpawned = true;
                         this.spawnBoss();
                     }
                     
                     // 時間切れ
                     if (window.gameTimeLeft <= 0) {
-                        console.log('=== Timer reached 0 ===');
-                        console.log('gameEnded before set:', window.gameEnded);
+                        window.debugLog('=== Timer reached 0 ===');
+                        window.debugLog('gameEnded before set:', window.gameEnded);
                         window.updateDebug('Timer ended!');
                         
                         clearInterval(window.gameTimer);
@@ -673,38 +688,38 @@
                         window.gameEnded = true;
                         window.gameStarted = false;
                         
-                        console.log('gameEnded after set:', window.gameEnded);
-                        console.log('Total Score:', window.totalScore);
+                        window.debugLog('gameEnded after set:', window.gameEnded);
+                        window.debugLog('Total Score:', window.totalScore);
                         
                         // すべてのモデルにanime02と死亡音を再生してからフェードアウト
                         const models = document.querySelectorAll('[id^="modelGroup_"]');
-                        console.log('Playing death animation for models, count:', models.length);
+                        window.debugLog('Playing death animation for models, count:', models.length);
                         
                         // 死亡音を1回だけ再生
                         const dieSound = document.getElementById('sound_zombie_die');
                         if (dieSound) {
                             dieSound.currentTime = 0;
                             dieSound.play().then(() => {
-                                console.log('Zombie die sound played (time over)');
+                                window.debugLog('Zombie die sound played (time over)');
                             }).catch(err => {
-                                console.log('Zombie die sound play failed:', err);
+                                window.debugLog('Zombie die sound play failed:', err);
                             });
                         }
                         
                         models.forEach(model => {
                             if (model.getAttribute('visible')) {
-                                // anime02に切り替え
+                                // anime02に切り替え - 🚀 registerTimeout使用
                                 const modelEntity = model.querySelector('[gltf-model]');
                                 if (modelEntity) {
                                     modelEntity.removeAttribute('animation-mixer');
-                                    setTimeout(() => {
+                                    window.registerTimeout(() => {
                                         modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
-                                        console.log('Playing anime02 for model:', model.id);
+                                        window.debugLog('Playing anime02 for model:', model.id);
                                     }, 50);
                                 }
                                 
-                                // 1.5秒後にフェードアウト
-                                setTimeout(() => {
+                                // 1.5秒後にフェードアウト - 🚀 registerTimeout使用
+                                window.registerTimeout(() => {
                                     model.setAttribute('animation__timeoverfadeout', {
                                         property: 'scale',
                                         to: '0 0 0',
@@ -713,8 +728,8 @@
                                     });
                                 }, 1500);
                                 
-                                // 2秒後に完全に非表示
-                                setTimeout(() => {
+                                // 2秒後に完全に非表示 - 🚀 registerTimeout使用
+                                window.registerTimeout(() => {
                                     model.setAttribute('visible', false);
                                 }, 2000);
                             }
@@ -726,35 +741,35 @@
                             timerDisplay.setAttribute('visible', false);
                         }
                         
-                        // 2.5秒後にリザルト画面を表示（モデルのフェードアウト完了を待つ）
-                        setTimeout(() => {
+                        // 2.5秒後にリザルト画面を表示（モデルのフェードアウト完了を待つ）- 🚀 registerTimeout使用
+                        window.registerTimeout(() => {
                             const currentResultMenu = document.getElementById('resultMenu');
-                            console.log('=== Looking for result menu ===');
-                            console.log('Result menu element:', currentResultMenu);
-                            console.log('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
+                            window.debugLog('=== Looking for result menu ===');
+                            window.debugLog('Result menu element:', currentResultMenu);
+                            window.debugLog('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
                             
                             if (currentResultMenu) {
-                                console.log('Calling showResult...');
+                                window.debugLog('Calling showResult...');
                                 window.updateDebug('Showing result...');
                                 self.showResult(currentResultMenu);
                             } else {
-                                console.error('ERROR: Result menu element NOT FOUND!');
+                                window.debugLog('ERROR: Result menu element NOT FOUND!');
                                 window.updateDebug('ERROR: Result menu NOT FOUND!');
                                 // デバッグ: DOM内のすべての要素を確認
                                 const allEntities = document.querySelectorAll('a-entity');
-                                console.log('Total a-entity count:', allEntities.length);
+                                window.debugLog('Total a-entity count:', allEntities.length);
                                 const menuEntities = document.querySelectorAll('[result-menu]');
-                                console.log('Entities with result-menu attribute:', menuEntities.length);
+                                window.debugLog('Entities with result-menu attribute:', menuEntities.length);
                             }
                         }, 2500);
                     }
                 }, 1000);
                 
-                console.log('Timer started, interval ID:', window.gameTimer);
+                window.debugLog('Timer started, interval ID:', window.gameTimer);
             },
             
             spawnBoss: function() {
-                console.log('=== Spawning BOSS ===');
+                window.debugLog('=== Spawning BOSS ===');
                 const sceneEl = document.querySelector('a-scene');
                 
                 // ランダムパターンから1つ選択（4パターン）
@@ -811,56 +826,56 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(bossGroup);
-                console.log('BOSS added to scene at:', startPos);
+                window.debugLog('BOSS added to scene at:', startPos);
                 
                 // BOSS出現音を再生
                 const appearSound = document.getElementById('sound_zombie_appear');
                 if (appearSound) {
                     appearSound.currentTime = 0;
                     appearSound.play().then(() => {
-                        console.log('BOSS appear sound played');
+                        window.debugLog('BOSS appear sound played');
                     }).catch(err => {
-                        console.log('BOSS appear sound play failed:', err);
+                        window.debugLog('BOSS appear sound play failed:', err);
                     });
                 }
                 
-                // フェードインアニメーション
-                setTimeout(() => {
+                // フェードインアニメーション - 🚀 registerTimeout使用
+                window.registerTimeout(() => {
                     bossGroup.setAttribute('animation__fadein', {
                         property: 'scale',
                         to: '1 1 1',
                         dur: 2000,
                         easing: 'easeOutQuad'
                     });
-                    console.log('BOSS fading in');
+                    window.debugLog('BOSS fading in');
                 }, 100);
             },
             
             showResult: function(resultMenu) {
-                console.log('=== showResult function called ===');
+                window.debugLog('=== showResult function called ===');
                 window.updateDebug(`Result: Score ${window.totalScore.toFixed(1)}`);
-                console.log('resultMenu parameter:', resultMenu);
-                console.log('resultMenu is null?', resultMenu === null);
-                console.log('resultMenu is undefined?', resultMenu === undefined);
+                window.debugLog('resultMenu parameter:', resultMenu);
+                window.debugLog('resultMenu is null?', resultMenu === null);
+                window.debugLog('resultMenu is undefined?', resultMenu === undefined);
                 
                 if (!resultMenu) {
-                    console.error('ERROR: resultMenu is null or undefined!');
+                    window.debugLog('ERROR: resultMenu is null or undefined!');
                     return;
                 }
                 
-                console.log('Result menu visible attribute before:', resultMenu.getAttribute('visible'));
-                console.log('Result menu position:', resultMenu.getAttribute('position'));
+                window.debugLog('Result menu visible attribute before:', resultMenu.getAttribute('visible'));
+                window.debugLog('Result menu position:', resultMenu.getAttribute('position'));
                 
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
                 const maxComboText = document.getElementById('maxComboText');
                 const levelText = document.getElementById('resultLevel');
                 
-                console.log('Score text element:', scoreText ? 'found' : 'NOT FOUND');
-                console.log('Comment text element:', commentText ? 'found' : 'NOT FOUND');
+                window.debugLog('Score text element:', scoreText ? 'found' : 'NOT FOUND');
+                window.debugLog('Comment text element:', commentText ? 'found' : 'NOT FOUND');
                 
-                console.log('Score text:', scoreText ? 'found' : 'NOT FOUND');
-                console.log('Comment text:', commentText ? 'found' : 'NOT FOUND');
+                window.debugLog('Score text:', scoreText ? 'found' : 'NOT FOUND');
+                window.debugLog('Comment text:', commentText ? 'found' : 'NOT FOUND');
                 
                 // レベルを表示
                 if (levelText) {
@@ -868,19 +883,19 @@
                     const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
                     levelText.setAttribute('value', levelName);
                     levelText.setAttribute('color', levelColor);
-                    console.log('Level updated:', levelName);
+                    window.debugLog('Level updated:', levelName);
                 }
                 
                 // スコアを表示（小数第一位まで）
                 if (scoreText) {
                     scoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
-                    console.log('Score updated:', window.totalScore.toFixed(1));
+                    window.debugLog('Score updated:', window.totalScore.toFixed(1));
                 }
                 
                 // 最大コンボ数を表示
                 if (maxComboText) {
                     maxComboText.setAttribute('value', `MAX COMBO: ${window.maxComboCount}`);
-                    console.log('Max Combo updated:', window.maxComboCount);
+                    window.debugLog('Max Combo updated:', window.maxComboCount);
                 }
                 
                 // スコアに応じたコメント
@@ -901,18 +916,18 @@
                 
                 if (commentText) {
                     commentText.setAttribute('value', comment);
-                    console.log('Comment updated:', comment);
+                    window.debugLog('Comment updated:', comment);
                 }
                 
                 // スタートメニューを確実に非表示
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu) {
                     startMenu.setAttribute('visible', false);
-                    console.log('Start menu hidden in showResult');
+                    window.debugLog('Start menu hidden in showResult');
                 }
                 
                 // リザルトメニューを表示
-                console.log('Setting result menu visible and animating...');
+                window.debugLog('Setting result menu visible and animating...');
                 resultMenu.setAttribute('visible', true);
                 resultMenu.setAttribute('scale', '0 0 0');
                 
@@ -920,18 +935,18 @@
                 resultMenu.removeAttribute('animation');
                 resultMenu.removeAttribute('animation__scale');
                 
-                // 少し待ってからアニメーション開始（確実に反映させる）
-                setTimeout(() => {
+                // 少し待ってからアニメーション開始（確実に反映させる） - 🚀 registerTimeout使用
+                window.registerTimeout(() => {
                     resultMenu.setAttribute('animation', {
                         property: 'scale',
                         to: '1 1 1',
                         dur: 500,
                         easing: 'easeOutBack'
                     });
-                    console.log('Result menu animation started');
+                    window.debugLog('Result menu animation started');
                 }, 50);
                 
-                console.log('Result menu should be visible now');
+                window.debugLog('Result menu should be visible now');
                 
                 // スコアをデータベースに保存
                 this.saveScoreToDatabase(window.totalScore);
@@ -1022,8 +1037,8 @@
                         particleSystem.startParticles();
                     }
                     
-                    // 5秒後にパーティクルを停止
-                    setTimeout(() => {
+                    // 5秒後にパーティクルを停止 - 🚀 registerTimeout使用
+                    window.registerTimeout(() => {
                         if (particleSystem) {
                             particleSystem.stopParticles();
                         }
@@ -1031,7 +1046,7 @@
                     }, 5000);
                 }
                 
-                console.log('Top 5 celebration particles activated!');
+                window.debugLog('Top 5 celebration particles activated!');
             },
             
             displayRankings: function(rankings) {
@@ -1152,11 +1167,11 @@
                 model.appendChild(hitBox);
                 
                 sceneEl.appendChild(model);
-                console.log('Model created:', config.id);
+                window.debugLog('Model created:', config.id);
             },
             
             restartGame: function() {
-                console.log('=== Restarting game - Reset without reload ===');
+                window.debugLog('=== Restarting game - Reset without reload ===');
                 window.updateDebug('Restarting...');
                 
                 // ゲーム状態をリセット
@@ -1176,11 +1191,11 @@
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
                 this.controllersUpdated = false;
-                console.log('Click block flags reset');
+                window.debugLog('Click block flags reset');
                 
                 // 【重要】全ての未実行setTimeoutをクリア（途中からカクカク対策）
                 if (window.activeTimers && window.activeTimers.length > 0) {
-                    console.log('Clearing', window.activeTimers.length, 'active timers');
+                    window.debugLog('Clearing', window.activeTimers.length, 'active timers');
                     window.activeTimers.forEach(timerId => {
                         clearTimeout(timerId);
                     });
@@ -1198,7 +1213,7 @@
                 if (sceneEl && sceneEl.renderer) {
                     // レンダラーの内部キャッシュをクリア
                     sceneEl.renderer.renderLists.dispose();
-                    console.log('THREE.js renderer cache cleared');
+                    window.debugLog('THREE.js renderer cache cleared');
                 }
                 
                 // BGMを停止
@@ -1218,7 +1233,7 @@
                             particleSystem.stopParticles();
                         }
                         particle.setAttribute('visible', 'false');
-                        console.log('Stopped particle system:', particleId);
+                        window.debugLog('Stopped particle system:', particleId);
                     }
                 });
                 
@@ -1260,7 +1275,7 @@
                                 });
                             }
                             
-                            console.log('Removing model with cleanup:', modelId);
+                            window.debugLog('Removing model with cleanup:', modelId);
                             model.parentNode.removeChild(model);
                         }
                     });
@@ -1288,7 +1303,7 @@
                 const remainingBalls = sceneEl.querySelectorAll('[gltf-model*="poke_ball"]');
                 remainingBalls.forEach(ball => {
                     if (ball.parentNode) {
-                        console.log('Removing remaining ball');
+                        window.debugLog('Removing remaining ball');
                         ball.removeAttribute('gltf-model');
                         ball.parentNode.removeChild(ball);
                     }
@@ -1318,14 +1333,14 @@
                 const resultMenu = document.getElementById('resultMenu');
                 const timerDisplay = document.getElementById('timerDisplay');
                 
-                console.log('Checking UI elements:');
-                console.log('- startMenu:', startMenu ? 'found' : 'NOT FOUND');
-                console.log('- resultMenu:', resultMenu ? 'found' : 'NOT FOUND');
-                console.log('- timerDisplay:', timerDisplay ? 'found' : 'NOT FOUND');
+                window.debugLog('Checking UI elements:');
+                window.debugLog('- startMenu:', startMenu ? 'found' : 'NOT FOUND');
+                window.debugLog('- resultMenu:', resultMenu ? 'found' : 'NOT FOUND');
+                window.debugLog('- timerDisplay:', timerDisplay ? 'found' : 'NOT FOUND');
                 
                 if (startMenu) {
                     startMenu.setAttribute('visible', 'true');
-                    console.log('Start menu set to visible');
+                    window.debugLog('Start menu set to visible');
                     
                     // 強制的に前面に配置
                     startMenu.setAttribute('position', '0 1.6 -3');
@@ -1338,13 +1353,13 @@
                         element.classList.remove('non-clickable');
                         element.classList.add('clickable');
                     });
-                    console.log('Restored clickable classes to', nonClickableElements.length, 'elements');
+                    window.debugLog('Restored clickable classes to', nonClickableElements.length, 'elements');
                     
                     // 子要素も確認
                     const menuBg = startMenu.querySelector('#menuBackground');
                     const level1Btn = startMenu.querySelector('#level1Button');
                     const level2Btn = startMenu.querySelector('#level2Button');
-                    console.log('Start menu children:', {
+                    window.debugLog('Start menu children:', {
                         background: menuBg ? 'found' : 'missing',
                         level1Button: level1Btn ? 'found' : 'missing',
                         level2Button: level2Btn ? 'found' : 'missing'
@@ -1354,7 +1369,7 @@
                 if (resultMenu) {
                     resultMenu.setAttribute('visible', 'false');
                     resultMenu.setAttribute('scale', '1 1 1'); // スケールを元に戻す
-                    console.log('Result menu set to hidden');
+                    window.debugLog('Result menu set to hidden');
                     
                     // アニメーションをクリア（次回の表示のため）
                     resultMenu.removeAttribute('animation');
@@ -1363,7 +1378,7 @@
                 
                 if (timerDisplay) {
                     timerDisplay.setAttribute('visible', 'false');
-                    console.log('Timer display set to hidden');
+                    window.debugLog('Timer display set to hidden');
                 }
                 
                 // raycasterを.clickableと.collidableの両方を対象に戻す
@@ -1373,15 +1388,15 @@
                 
                 if (mouseCursor) {
                     mouseCursor.setAttribute('raycaster', 'objects: .clickable, .collidable');
-                    console.log('Restored .clickable to mouse cursor');
+                    window.debugLog('Restored .clickable to mouse cursor');
                 }
                 if (leftController) {
                     leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                    console.log('Restored .clickable to left controller');
+                    window.debugLog('Restored .clickable to left controller');
                 }
                 if (rightController) {
                     rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                    console.log('Restored .clickable to right controller');
+                    window.debugLog('Restored .clickable to right controller');
                 }
                 
                 // スコア表示をリセット
@@ -1467,18 +1482,18 @@
                 
                 // VRモードの変更を監視
                 this.el.sceneEl.addEventListener('enter-vr', () => {
-                    console.log('Entered VR mode');
-                    // VRモードに入ったらリスナーを再設定
-                    setTimeout(() => {
+                    window.debugLog('Entered VR mode');
+                    // VRモードに入ったらリスナーを再設定 - 🚀 registerTimeout使用
+                    window.registerTimeout(() => {
                         this.setupCanvasListeners();
                         this.setupControllerListeners();
                     }, 100);
                 });
                 
                 this.el.sceneEl.addEventListener('exit-vr', () => {
-                    console.log('Exited VR mode');
-                    // VRモードを出たらリスナーを再設定
-                    setTimeout(() => {
+                    window.debugLog('Exited VR mode');
+                    // VRモードを出たらリスナーを再設定 - 🚀 registerTimeout使用
+                    window.registerTimeout(() => {
                         this.setupCanvasListeners();
                     }, 100);
                 });
@@ -2128,7 +2143,7 @@
                     return;
                 }
                 
-                console.log('Despawning model:', modelId);
+                window.debugLog('Despawning model:', modelId);
                 
                 // アラート音を停止（グローバル変数もリセット）
                 if (this.isPlayingAlert && this.alertSound) {
@@ -2141,7 +2156,7 @@
                         window.alertSoundPlaying = false;
                         window.currentAlertModel = null;
                     }
-                    console.log('Alert sound stopped - model despawning');
+                    window.debugLog('Alert sound stopped - model despawning');
                 }
                 
                 // フェードアウト
@@ -2152,8 +2167,8 @@
                     easing: 'easeInQuad'
                 });
                 
-                // フェードアウト後に削除して再生成
-                setTimeout(() => {
+                // フェードアウト後に削除して再生成 - 🚀 registerTimeout使用
+                window.registerTimeout(() => {
                     // 🚀 改善: 削除前にメモリを解放
                     if (modelGroup.object3D) {
                         modelGroup.object3D.traverse((node) => {
@@ -2318,8 +2333,8 @@
                                             node.material.emissive = flashColor;
                                             node.material.emissiveIntensity = 0.5;
                                             
-                                            // 0.2秒後に元に戻す
-                                            setTimeout(() => {
+                                            // 0.2秒後に元に戻す - 🚀 registerTimeout使用
+                                            window.registerTimeout(() => {
                                                 node.material.emissive = originalEmissive;
                                                 node.material.emissiveIntensity = 0;
                                             }, 200);
@@ -2499,8 +2514,8 @@
                                 normalParticle.setAttribute('position', `${normalParticlePos.x} ${normalParticlePos.y + 0.5} ${normalParticlePos.z}`);
                                 normalParticle.setAttribute('visible', true);
                                 
-                                // 1秒後に非表示
-                                setTimeout(() => {
+                                // 1秒後に非表示 - 🚀 registerTimeout使用
+                                window.registerTimeout(() => {
                                     normalParticle.setAttribute('visible', false);
                                 }, 1000);
                             }
@@ -2960,17 +2975,17 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(newModelGroup);
-                console.log('Model added to scene with random pattern:', randomPattern);
+                window.debugLog('Model added to scene with random pattern:', randomPattern);
                 
-                // フェードインアニメーション
-                setTimeout(() => {
+                // フェードインアニメーション - 🚀 registerTimeout使用
+                window.registerTimeout(() => {
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
                         to: '1 1 1',
                         dur: 1000,
                         easing: 'easeOutQuad'
                     });
-                    console.log('Model fading in');
+                    window.debugLog('Model fading in');
                 }, 100);
             }
         });
@@ -3018,21 +3033,21 @@
                     if (navigator.xr) {
                         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                             if (supported) {
-                                console.log('VR device detected! Auto-entering VR mode...');
+                                window.debugLog('VR device detected! Auto-entering VR mode...');
                                 window.updateDebug('VR device found! Entering VR...');
                                 
-                                // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
-                                setTimeout(() => {
+                                // 少し待ってからVRモードに入る（アセット読み込み完了を待つ） - 🚀 registerTimeout使用
+                                window.registerTimeout(() => {
                                     sceneEl.enterVR();
-                                    console.log('Entered VR mode automatically');
+                                    window.debugLog('Entered VR mode automatically');
                                     window.updateDebug('VR mode activated');
                                 }, 1000);
                             } else {
-                                console.log('VR not supported on this device');
+                                window.debugLog('VR not supported on this device');
                                 window.updateDebug('VR not supported');
                             }
                         }).catch((err) => {
-                            console.log('Error checking VR support:', err);
+                            window.debugLog('Error checking VR support:', err);
                             window.updateDebug('VR check failed');
                         });
                     } else {
@@ -3407,36 +3422,36 @@
         <a-sky id="aSky" src="#sky02"></a-sky>
 
         <!-- Particle Effects - 3 Tiers -->
-        <!-- 🚀 パフォーマンス改善: パーティクル数削減 -->
-        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 5 particles -->
+        <!-- 🚀🚀 パフォーマンス改善: パーティクル数を更に半分に削減 -->
+        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 3 particles -->
         <a-entity id="particle-normal" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FFFFFF; particleCount: 5; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+                  particle-system="preset: default; color: #FFFFFF; particleCount: 3; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 10 particles -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 5 particles -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #00FFFF; particleCount: 10; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #00FFFF; particleCount: 5; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 15 particles -->
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 8 particles -->
         <a-entity id="particle-tier2" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF6600; particleCount: 15; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF6600; particleCount: 8; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 20 particles -->
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 10 particles -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF00FF; particleCount: 20; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF00FF; particleCount: 10; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
         
-        <!-- Top 5 Celebration Particle - 🚀 パフォーマンス改善: パーティクル数削減 -->
+        <!-- Top 5 Celebration Particle - 🚀🚀 パフォーマンス改善: パーティクル数を更に半分に削減 -->
         <a-entity id="particle-celebration" visible="false" position="0 2 -3">
             <!-- メインゴールドパーティクル：金色パーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 30; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 15; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
             
             <!-- 輝く星パーティクル：キラキラ効果 -->
-            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 20; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 10; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
             
             <!-- 紙吹雪効果：カラフルな紙吹雪 -->
-            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 25; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 12; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
             
             <!-- 輪っか状に広がるパーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 15; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 8; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
         </a-entity>
         
 
