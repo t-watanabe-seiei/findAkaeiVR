@@ -494,6 +494,8 @@
                 
                 // 🚀 メモリリーク対策: プレイ回数をインクリメント
                 window.playCount++;
+                console.log('=== GAME START ===');
+                console.log('🎮 Play count incremented:', window.playCount, '/', window.MAX_PLAY_COUNT);
                 window.debugLog('Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
                 
                 // レベル選択イベントの場合、window.gameLevelを使用
@@ -1500,13 +1502,20 @@
                 window.debugLog('Restart button clicked');
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
+                console.log('=== RESTART CHECK ===');
+                console.log('Current playCount:', window.playCount);
+                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
                     alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
                     // ページをリフレッシュ（F5相当）
                     location.reload();
                     return;
                 }
+                
+                console.log('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1521,12 +1530,19 @@
                 event.stopPropagation();
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
+                console.log('=== RESTART TOUCH CHECK ===');
+                console.log('Current playCount:', window.playCount);
+                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
                     alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
                     location.reload();
                     return;
                 }
+                
+                console.log('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
