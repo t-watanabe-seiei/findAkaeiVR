@@ -1499,6 +1499,15 @@
             restart: function(event) {
                 window.debugLog('Restart button clicked');
                 
+                // 🚀 メモリリーク対策: プレイ回数チェック
+                if (window.playCount >= window.MAX_PLAY_COUNT) {
+                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
+                    // ページをリフレッシュ（F5相当）
+                    location.reload();
+                    return;
+                }
+                
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu && startMenu.components['start-menu']) {
@@ -1510,6 +1519,14 @@
                 window.debugLog('Restart button touched');
                 event.preventDefault();
                 event.stopPropagation();
+                
+                // 🚀 メモリリーク対策: プレイ回数チェック
+                if (window.playCount >= window.MAX_PLAY_COUNT) {
+                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
+                    location.reload();
+                    return;
+                }
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');

@@ -1552,10 +1552,10 @@
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    window.debugLog('最大プレイ回数に達しました。ページを閉じます。');
-                    alert('ゲーム終了！お疲れ様でした。\nブラウザを閉じてください。');
-                    // ブラウザを閉じる試行（ポップアップで開いた場合のみ有効）
-                    window.close();
+                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
+                    // ページをリフレッシュ（F5相当）
+                    location.reload();
                     return;
                 }
                 
@@ -1573,9 +1573,9 @@
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    window.debugLog('最大プレイ回数に達しました。ページを閉じます。');
-                    alert('ゲーム終了！お疲れ様でした。\nブラウザを閉じてください。');
-                    window.close();
+                    window.debugLog('最大プレイ回数に達しました。ページをリフレッシュします。');
+                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
+                    location.reload();
                     return;
                 }
                 
