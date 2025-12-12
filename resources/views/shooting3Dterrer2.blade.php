@@ -1509,9 +1509,32 @@
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
                     console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
-                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
-                    // ページをリフレッシュ（F5相当）
-                    location.reload();
+                    
+                    // 🎯 VRゴーグル対応: VRモードを終了してからリフレッシュ
+                    const sceneEl = document.querySelector('a-scene');
+                    const isVRMode = sceneEl && sceneEl.is('vr-mode');
+                    
+                    console.log('🥽 VR Mode:', isVRMode);
+                    
+                    if (isVRMode) {
+                        console.log('🚪 Exiting VR mode before reload...');
+                        
+                        // VRモード終了後にリロード
+                        sceneEl.exitVR().then(() => {
+                            console.log('✅ VR mode exited, reloading page...');
+                            window.registerTimeout(() => {
+                                this.performReload();
+                            }, 500);
+                        }).catch((err) => {
+                            console.error('❌ VR exit error:', err);
+                            // エラーでも強制リロード
+                            this.performReload();
+                        });
+                    } else {
+                        // 通常モードならすぐにリロード
+                        console.log('💻 Normal mode, reloading immediately...');
+                        this.performReload();
+                    }
                     return;
                 }
                 
@@ -1521,6 +1544,40 @@
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu && startMenu.components['start-menu']) {
                     startMenu.components['start-menu'].restartGame();
+                }
+            },
+            
+            performReload: function() {
+                console.log('🔄 Attempting page reload...');
+                
+                // 複数の方法を試行（VRゴーグルのブラウザ互換性対応）
+                try {
+                    // 方法1: 標準的なリロード
+                    if (window.location && window.location.reload) {
+                        console.log('Method 1: location.reload()');
+                        window.location.reload(true); // キャッシュ無視
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Method 1 failed:', e);
+                }
+                
+                try {
+                    // 方法2: location.href再設定
+                    console.log('Method 2: location.href reassignment');
+                    window.location.href = window.location.href;
+                } catch (e) {
+                    console.error('Method 2 failed:', e);
+                    
+                    try {
+                        // 方法3: location.replace（履歴残さない）
+                        console.log('Method 3: location.replace()');
+                        window.location.replace(window.location.href);
+                    } catch (e2) {
+                        console.error('All reload methods failed:', e2);
+                        // 最終手段: 手動リロード指示
+                        console.error('⚠️ 自動リロード失敗。手動でページをリロードしてください。');
+                    }
                 }
             },
             
@@ -1537,8 +1594,29 @@
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
                     console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
-                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
-                    location.reload();
+                    
+                    // 🎯 VRゴーグル対応: restart()と同じ処理を実行
+                    const sceneEl = document.querySelector('a-scene');
+                    const isVRMode = sceneEl && sceneEl.is('vr-mode');
+                    
+                    console.log('🥽 VR Mode:', isVRMode);
+                    
+                    if (isVRMode) {
+                        console.log('🚪 Exiting VR mode before reload...');
+                        
+                        sceneEl.exitVR().then(() => {
+                            console.log('✅ VR mode exited, reloading page...');
+                            window.registerTimeout(() => {
+                                this.performReload();
+                            }, 500);
+                        }).catch((err) => {
+                            console.error('❌ VR exit error:', err);
+                            this.performReload();
+                        });
+                    } else {
+                        console.log('💻 Normal mode, reloading immediately...');
+                        this.performReload();
+                    }
                     return;
                 }
                 
