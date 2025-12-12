@@ -1533,44 +1533,52 @@
                 
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
-                    if (modelGroup && modelGroup.parentNode && modelGroup.getAttribute('visible')) {
-                        // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
-                        const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
-                        if (!hitBox) {
-                            // hitboxが削除されている場合はスキップ（anime02再生中）
-                            if (ballData.frameCount <= 5) {
-                                console.log(`${modelInfo.id}: hitbox removed, skipping collision`);
-                            }
-                            continue;
+                    if (!modelGroup || !modelGroup.parentNode || !modelGroup.getAttribute('visible')) continue;
+                    
+                    // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
+                    const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                    if (!hitBox) {
+                        // hitboxが削除されている場合はスキップ（anime02再生中）
+                        if (ballData.frameCount <= 5) {
+                            console.log(`${modelInfo.id}: hitbox removed, skipping collision`);
                         }
-                        
-                        const modelPos = modelGroup.getAttribute('position');
-                        
-                        // ヒットボックスの中心位置（モデルグループ + ヒットボックスのオフセット）
-                        // ヒットボックスはposition='0 1.0 0'に配置されている
-                        const hitBoxCenterY = modelPos.y + 1.0;
-                        
-                        // モデルごとの円柱形状での当たり判定
-                        // Y軸方向の距離チェック（円柱の高さ範囲内か）
-                        const halfHeight = modelInfo.height / 2;
-                        const yMin = hitBoxCenterY - halfHeight; // 円柱の底面
-                        const yMax = hitBoxCenterY + halfHeight; // 円柱の天面
-                        const isInHeightRange = currentPos.y >= yMin && currentPos.y <= yMax;
-                        
-                        // XZ平面での距離チェック（円柱の半径範囲内か）
-                        const xzDistance = Math.sqrt(
-                            Math.pow(currentPos.x - modelPos.x, 2) +
-                            Math.pow(currentPos.z - modelPos.z, 2)
-                        );
-                        const cylinderRadius = modelInfo.radius;
+                        continue;
+                    }
+                    
+                    const modelPos = modelGroup.getAttribute('position');
+                    
+                    // 🚀 最適化1: 大まかな範囲チェック（早期スキップ）
+                    const dx = currentPos.x - modelPos.x;
+                    const dz = currentPos.z - modelPos.z;
+                    const maxRadius = modelInfo.radius + 0.5; // 余裕を持たせる
+                    if (Math.abs(dx) > maxRadius || Math.abs(dz) > maxRadius) continue;
+                    
+                    // ヒットボックスの中心位置（モデルグループ + ヒットボックスのオフセット）
+                    // ヒットボックスはposition='0 1.0 0'に配置されている
+                    const hitBoxCenterY = modelPos.y + 1.0;
+                    
+                    // モデルごとの円柱形状での当たり判定
+                    // Y軸方向の距離チェック（円柱の高さ範囲内か）
+                    const halfHeight = modelInfo.height / 2;
+                    const yMin = hitBoxCenterY - halfHeight; // 円柱の底面
+                    const yMax = hitBoxCenterY + halfHeight; // 円柱の天面
+                    const isInHeightRange = currentPos.y >= yMin && currentPos.y <= yMax;
+                    
+                    if (!isInHeightRange) continue; // Y範囲外なら早期スキップ
+                    
+                    // 🚀 最適化2: XZ平面での距離チェック（Math.sqrtを回避）
+                    const xzDistanceSquared = dx * dx + dz * dz;
+                    const cylinderRadiusSquared = modelInfo.radius * modelInfo.radius;
                         
                         // デバッグ出力（最初の数フレームのみ）
                         if (ballData.frameCount <= 5) {
-                            console.log(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${cylinderRadius}m, H=${modelInfo.height}m`);
+                            const xzDistance = Math.sqrt(xzDistanceSquared); // デバッグ用のみ計算
+                            console.log(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${modelInfo.radius}m, H=${modelInfo.height}m`);
                         }
                         
-                        if (isInHeightRange && xzDistance < cylinderRadius) {
+                        if (xzDistanceSquared < cylinderRadiusSquared) { // 🚀 2乗で比較
                             ballData.hasHit = true;
+                            const xzDistance = Math.sqrt(xzDistanceSquared); // ログ用のみ計算
                             console.log(`✓ Ball HIT ${modelInfo.id}! xzDist=${xzDistance.toFixed(2)}m, y=${currentPos.y.toFixed(2)}m`);
                             const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
                             if (hitBoxComponent) {
@@ -2682,6 +2690,23 @@
                 const existingModel = document.getElementById(modelId);
                 if (existingModel) {
                     console.log('⚠️ WARNING: Model', modelId, 'already exists! Removing duplicate...');
+                    
+                    // 🚀 改善: THREE.jsメモリ解放（respawnModel時）
+                    if (existingModel.object3D) {
+                        existingModel.object3D.traverse((node) => {
+                            if (node.geometry) {
+                                node.geometry.dispose();
+                            }
+                            if (node.material) {
+                                if (Array.isArray(node.material)) {
+                                    node.material.forEach(mat => mat.dispose());
+                                } else {
+                                    node.material.dispose();
+                                }
+                            }
+                        });
+                    }
+                    
                     if (existingModel.parentNode) {
                         existingModel.parentNode.removeChild(existingModel);
                     }

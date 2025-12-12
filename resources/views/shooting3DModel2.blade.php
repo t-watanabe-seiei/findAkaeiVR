@@ -1082,7 +1082,7 @@
                 model01.appendChild(hitBox01);
                 sceneEl.appendChild(model01);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認（負荷分散）
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_01');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1123,7 +1123,7 @@
                 model02.appendChild(hitBox02);
                 sceneEl.appendChild(model02);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認（負荷分散）
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_02');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1134,7 +1134,7 @@
                             console.log('hit-box component re-initialized for model02');
                         }, 50);
                     }
-                }, 100);
+                }, 120); // 🚀 20msずらして負荷分散
                 
                 // モデル03を再作成
                 const model03 = document.createElement('a-entity');
@@ -1164,7 +1164,7 @@
                 model03.appendChild(hitBox03);
                 sceneEl.appendChild(model03);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認（負荷分散）
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_03');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1175,7 +1175,7 @@
                             console.log('hit-box component re-initialized for model03');
                         }, 50);
                     }
-                }, 100);
+                }, 140); // 🚀 20msずらして負荷分散
                 
                 // モデル04を再作成
                 const model04 = document.createElement('a-entity');
@@ -1205,7 +1205,7 @@
                 model04.appendChild(hitBox04);
                 sceneEl.appendChild(model04);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認（負荷分散）
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_04');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1216,7 +1216,7 @@
                             console.log('hit-box component re-initialized for model04');
                         }, 50);
                     }
-                }, 100);
+                }, 160); // 🚀 20msずらして負荷分散
                 
                 // モデル05を再作成（Level 2専用）
                 const model05 = document.createElement('a-entity');
@@ -1246,7 +1246,7 @@
                 model05.appendChild(hitBox05);
                 sceneEl.appendChild(model05);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_05');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1257,7 +1257,7 @@
                             console.log('hit-box component re-initialized for model05');
                         }, 50);
                     }
-                }, 100);
+                }, 180); // 🚀 20msずらして負荷分散
                 
                 // モデル06を再作成（Level 2専用）
                 const model06 = document.createElement('a-entity');
@@ -1287,7 +1287,7 @@
                 model06.appendChild(hitBox06);
                 sceneEl.appendChild(model06);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_06');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1298,7 +1298,7 @@
                             console.log('hit-box component re-initialized for model06');
                         }, 50);
                     }
-                }, 100);
+                }, 200); // 🚀 20msずらして負荷分散
                 
                 // モデル07を再作成（Level 2専用）
                 const model07 = document.createElement('a-entity');
@@ -1328,7 +1328,7 @@
                 model07.appendChild(hitBox07);
                 sceneEl.appendChild(model07);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_07');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1339,7 +1339,7 @@
                             console.log('hit-box component re-initialized for model07');
                         }, 50);
                     }
-                }, 100);
+                }, 220); // 🚀 20msずらして負荷分散
                 
                 // モデル08を再作成（Level 2専用）
                 const model08 = document.createElement('a-entity');
@@ -1369,7 +1369,7 @@
                 model08.appendChild(hitBox08);
                 sceneEl.appendChild(model08);
                 
-                // hit-boxコンポーネントの初期化を確認（100ms後にチェック）
+                // 🚀 改善: hit-boxコンポーネントの初期化を時間差で確認
                 window.registerTimeout(() => {
                     const hitBox = document.getElementById('hit-boxed_08');
                     if (hitBox && !hitBox.components['hit-box']) {
@@ -1380,7 +1380,7 @@
                             console.log('hit-box component re-initialized for model08');
                         }, 50);
                     }
-                }, 100);
+                }, 240); // 🚀 20msずらして負荷分散
                 
                 console.log('Initial models recreated');
             },
@@ -1723,7 +1723,7 @@
                     console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
-                // 各モデルの位置を取得して衝突判定
+                // 🚀 改善: 衝突判定の最適化（毎フレーム実行されるため重要）
                 const models = [
                     { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
                     { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
@@ -1735,25 +1735,31 @@
                     { id: 'modelGroup_08', hitBoxId: 'hit-boxed_08' }
                 ];
                 
+                const hitThresholdSquared = 0.25; // 0.5 * 0.5 = 0.25（2乗で比較）
+                
                 for (let modelInfo of models) {
                     const modelGroup = document.getElementById(modelInfo.id);
-                    if (modelGroup && modelGroup.parentNode) {
-                        // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
-                        const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
-                        if (!hitBox) {
-                            // hitboxが削除されている場合はスキップ（anime02再生中）
-                            continue;
-                        }
-                        
-                        const modelPos = modelGroup.getAttribute('position');
-                        
-                        const distance = new THREE.Vector3(
-                            currentPos.x - modelPos.x,
-                            currentPos.y - modelPos.y,
-                            currentPos.z - modelPos.z
-                        ).length();
-                        
-                        if (distance < 0.5) {
+                    if (!modelGroup || !modelGroup.parentNode) continue;
+                    
+                    // 🚀 最適化1: visible=falseのモデルをスキップ
+                    if (!modelGroup.getAttribute('visible')) continue;
+                    
+                    // 【重要】hitboxが存在する場合のみ衝突判定を行う（anime02再生中はhitboxが削除されているのでスルー）
+                    const hitBox = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
+                    if (!hitBox) continue;
+                    
+                    const modelPos = modelGroup.getAttribute('position');
+                    
+                    // 🚀 最適化2: 大まかな範囲チェック（XZ平面のみ、高速）
+                    const dx = currentPos.x - modelPos.x;
+                    const dz = currentPos.z - modelPos.z;
+                    if (Math.abs(dx) > 1.0 || Math.abs(dz) > 1.0) continue; // 1m以上離れていたらスキップ
+                    
+                    // 🚀 最適化3: 距離の2乗で比較（Math.sqrtを回避）
+                    const dy = currentPos.y - modelPos.y;
+                    const distanceSquared = dx * dx + dy * dy + dz * dz;
+                    
+                    if (distanceSquared < hitThresholdSquared) {
                             ballData.hasHit = true;
                             console.log(`Ball hit ${modelInfo.id}!`);
                             const hitBoxComponent = modelGroup.querySelector(`#${modelInfo.hitBoxId}`);
@@ -2611,6 +2617,23 @@
                 existingModels.forEach(existingModel => {
                     if (existingModel && existingModel.parentNode) {
                         console.log('Removing existing model before respawn:', modelId);
+                        
+                        // 🚀 改善: THREE.jsメモリ解放（respawnModel時）
+                        if (existingModel.object3D) {
+                            existingModel.object3D.traverse((node) => {
+                                if (node.geometry) {
+                                    node.geometry.dispose();
+                                }
+                                if (node.material) {
+                                    if (Array.isArray(node.material)) {
+                                        node.material.forEach(mat => mat.dispose());
+                                    } else {
+                                        node.material.dispose();
+                                    }
+                                }
+                            });
+                        }
+                        
                         existingModel.parentNode.removeChild(existingModel);
                     }
                 });
