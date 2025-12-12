@@ -111,6 +111,16 @@
         // ボール管理用のグローバル配列
         window.activeBalls = [];
         
+        // タイマーID管理用のグローバル配列（メモリリーク防止）
+        window.activeTimers = [];
+        
+        // タイマー登録用のヘルパー関数
+        window.registerTimeout = function(callback, delay) {
+            const timerId = setTimeout(callback, delay);
+            window.activeTimers.push(timerId);
+            return timerId;
+        };
+        
         // アラート音の管理用グローバル変数
         window.alertSoundPlaying = false;
         window.currentAlertModel = null; // 現在アラート音を鳴らしているモデル
@@ -1191,6 +1201,15 @@
                 this.clickBlocked = false;
                 this.controllersUpdated = false;
                 console.log('Click block flags reset');
+                
+                // 【重要】全ての未実行setTimeoutをクリア（途中からカクカク対策）
+                if (window.activeTimers && window.activeTimers.length > 0) {
+                    console.log('Clearing', window.activeTimers.length, 'active timers');
+                    window.activeTimers.forEach(timerId => {
+                        clearTimeout(timerId);
+                    });
+                    window.activeTimers = [];
+                }
                 
                 // タイマーをクリア
                 if (window.gameTimer) {
@@ -2432,7 +2451,7 @@
                                 particle.setAttribute('visible', true);
                                 
                                 // 1.5秒後に非表示
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     particle.setAttribute('visible', false);
                                 }, 1500);
                             }
@@ -2451,7 +2470,7 @@
                         }
                         
                         // スコアテキストをフェードアウトさせる（ワールド座標で上に移動）
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             const currentPos = scoreText.getAttribute('position');
                             scoreText.setAttribute('animation__scoreup', {
                                 property: 'position',
@@ -2468,7 +2487,7 @@
                             });
                             
                             // アニメーション完了後に削除
-                            setTimeout(() => {
+                            window.registerTimeout(() => {
                                 if (scoreText.parentNode) {
                                     scoreText.parentNode.removeChild(scoreText);
                                 }
@@ -2484,7 +2503,7 @@
                         // anime02に切り替え（1.5秒間再生）
                         if (modelEntity) {
                             modelEntity.removeAttribute('animation-mixer'); // 一旦削除
-                            setTimeout(() => {
+                            window.registerTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
                                 console.log('Playing anime02 for 1.5 seconds');
                                 
@@ -2504,7 +2523,7 @@
                         }
                         
                         // 1.5秒後にフェードアウト開始（anime03はスキップ）
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             if (modelGroup && modelGroup.parentNode) {
                                 console.log('Starting fadeout for modelGroup');
                                 // フェードアウトアニメーション（0.5秒かけて縮小）
@@ -2516,7 +2535,7 @@
                                 });
                                 
                                 // フェードアウト完了後に削除して、4秒後に再描画
-                                setTimeout(() => {
+                                window.registerTimeout(() => {
                                     if (modelGroup.parentNode) {
                                         modelGroup.parentNode.removeChild(modelGroup);
                                         console.log('Model removed');
@@ -2542,7 +2561,7 @@
                                         window.respawningModels[modelId] = true;
                                         
                                         // 4秒後に別の場所に再描画
-                                        setTimeout(() => {
+                                        window.registerTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
                                             // リスポーン完了後、フラグをクリア
                                             delete window.respawningModels[modelId];
@@ -2614,7 +2633,7 @@
                     console.log('Combo text added to scene at world position');
                     
                     // コンボテキストをフェードアウトさせる（ワールド座標で上に移動）
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         const currentPos = comboText.getAttribute('position');
                         comboText.setAttribute('animation__fadeup', {
                             property: 'position',
@@ -2631,7 +2650,7 @@
                         });
                         
                         // アニメーション後に削除
-                        setTimeout(() => {
+                        window.registerTimeout(() => {
                             if (comboText.parentNode) {
                                 comboText.parentNode.removeChild(comboText);
                             }
@@ -2667,7 +2686,7 @@
                         existingModel.parentNode.removeChild(existingModel);
                     }
                     // 削除後、少し待機してからリスポーン
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         this.createNewModel(modelId, gltfModelSrc, sceneEl);
                     }, 100);
                     return;
