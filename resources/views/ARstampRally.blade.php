@@ -1575,8 +1575,8 @@
             <a-entity 
                 id="holding-pokeball"
                 gltf-model="{{ asset('cg/poke_ball_05.glb') }}"
-                position="0 -0.3 -0.5"
-                scale="0.1 0.1 0.1"
+                position="0 -0.24 -0.5"
+                scale="0.075 0.075 0.075"
                 rotation="0 0 0"
                 visible="true">
             </a-entity>
@@ -6335,7 +6335,7 @@
                     // 手元のボールを隠す
                     ballEntity.setAttribute('visible', 'false');
                     // 位置を戻す
-                    ballEntity.setAttribute('position', '0 -0.3 -0.5');
+                    ballEntity.setAttribute('position', '0 -0.24 -0.5');
                     canThrow = false;
                 });
                 
@@ -6364,7 +6364,7 @@
                     throwBall(dx, dy, distance);
                     
                     ballEntity.setAttribute('visible', 'false');
-                    ballEntity.setAttribute('position', '0 -0.3 -0.5');
+                    ballEntity.setAttribute('position', '0 -0.24 -0.5');
                     canThrow = false;
                 });
                 
@@ -6382,7 +6382,7 @@
                     
                     newBall.setAttribute('position', worldPos);
                     newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
-                    newBall.setAttribute('scale', '0.15 0.15 0.15'); // 投げるときは少し大きく
+                    newBall.setAttribute('scale', '0.075 0.075 0.075'); // 投げるときは少し大きく
                     newBall.setAttribute('pokeball-throwable', '');
                     
                     // 投擲ベクトル計算
@@ -6398,10 +6398,14 @@
                     direction.applyQuaternion(camera.quaternion);
                     direction.normalize();
                     
-                    // 速度決定（以前の半分に設定）
-                    let speed = 7.5; // 基本速度 (15 -> 7.5)
-                    if (distance > 50) speed += distance * 0.015; // スワイプ加速 (0.03 -> 0.015)
-                    speed = Math.min(speed, 15); // 最大速度制限 (30 -> 15)
+                    // 速度決定（スワイプ時の最大速度を基本速度の1.5倍程度に制限）
+                    let speed = 7.5; // 基本速度
+                    if (distance > 50) {
+                        // 加速分を追加するが、係数を調整
+                        speed += distance * 0.01; 
+                    }
+                    // 最大速度を基本速度の約1.5倍（11.5）に制限
+                    speed = Math.min(speed, 11.5);
                     
                     scene.appendChild(newBall);
                     
