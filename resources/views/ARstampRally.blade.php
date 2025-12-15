@@ -6388,14 +6388,14 @@
                     direction.applyQuaternion(camera.quaternion);
                     direction.normalize();
                     
-                    // 速度決定（スワイプ時の最大速度を基本速度の1.1倍程度に制限）
+                    // 速度決定（スワイプ時の最大速度を基本速度の2倍程度に制限）
                     let speed = 7.5; // 基本速度
                     if (distance > 50) {
                         // 加速分を追加するが、係数を調整
-                        speed += distance * 0.01; 
+                        speed += distance * 0.025; 
                     }
-                    // 最大速度を基本速度の約1.2倍（10.5）に制限
-                    speed = Math.min(speed, 12.5);
+                    // 最大速度を基本速度の約2倍（15.0）に制限
+                    speed = Math.min(speed, 15.0);
                     
                     scene.appendChild(newBall);
                     
