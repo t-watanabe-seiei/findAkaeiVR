@@ -158,7 +158,10 @@
                 
                 // 寿命チェック
                 if (this.lifetime > this.maxLifetime || pos.y < -5) {
-                    this.el.parentNode.removeChild(this.el);
+                    this.el.emit('pokeball-gone');
+                    if (this.el.parentNode) {
+                        this.el.parentNode.removeChild(this.el);
+                    }
                 }
             }
         });
@@ -651,8 +654,9 @@
             background-color: rgba(240, 240, 240, 0.9);
         }
 
-        /* 投げるボタン（下中央） */
+        /* 投げるボタン（下中央） - 非表示にして新しい操作方法へ移行 */
         #throw-button {
+            display: none !important;
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -1566,7 +1570,17 @@
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: highp; powerPreference: high-performance;">
         
-        <a-entity camera="near: 0.2; far: 800;"></a-entity>
+        <a-entity camera="near: 0.2; far: 800;">
+            <!-- 手持ちのポケボール (HUD) -->
+            <a-entity 
+                id="holding-pokeball"
+                gltf-model="{{ asset('cg/poke_ball_05.glb') }}"
+                position="0 -0.3 -0.5"
+                scale="0.1 0.1 0.1"
+                rotation="0 0 0"
+                visible="true">
+            </a-entity>
+        </a-entity>
         
         <!-- iPhone対応：シーン全体で1つのライトのみ使用（パフォーマンス向上） -->
         <a-light type="ambient" intensity="1.5"></a-light>
@@ -6254,6 +6268,246 @@
             });
             
             // Double-tap behavior removed - no global touch handlers required.
+            
+            // ========== 新しいポケボール操作ロジック ==========
+            (function() {
+                let isHoldingBall = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let ballEntity = document.querySelector('#holding-pokeball');
+                let canThrow = true;
+                
+                // 画面下部中央のエリア定義（ボールがあるあたり）
+                function isBallArea(x, y) {
+                    const w = window.innerWidth;
+                    const h = window.innerHeight;
+                    // 下部30%、横幅40% (中央)
+                    return y > h * 0.7 && x > w * 0.3 && x < w * 0.7;
+                }
+                
+                // タッチ開始
+                document.addEventListener('touchstart', (e) => {
+                    if (!canThrow || !ballEntity) return;
+                    
+                    // UIボタン上のタッチは無視
+                    const touch = e.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (isUIButton(element)) return;
+                    
+                    if (isBallArea(touch.clientX, touch.clientY)) {
+                        isHoldingBall = true;
+                        touchStartX = touch.clientX;
+                        touchStartY = touch.clientY;
+                        
+                        // ボールを持ち上げる演出
+                        ballEntity.setAttribute('position', '0 -0.2 -0.5');
+                        
+                        // デフォルトのスクロール等を防止
+                        if (e.cancelable) e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                // タッチ移動（スワイプ）
+                document.addEventListener('touchmove', (e) => {
+                    if (!isHoldingBall) return;
+                    if (e.cancelable) e.preventDefault();
+                    
+                    // 指に合わせて少し動かす演出（オプション）
+                    // const touch = e.touches[0];
+                    // const dx = (touch.clientX - touchStartX) * 0.001;
+                    // const dy = (touch.clientY - touchStartY) * 0.001;
+                    // ballEntity.setAttribute('position', `${dx} ${-0.2 - dy} -0.5`);
+                }, { passive: false });
+                
+                // タッチ終了（投げる）
+                document.addEventListener('touchend', (e) => {
+                    if (!isHoldingBall) return;
+                    isHoldingBall = false;
+                    
+                    const touch = e.changedTouches[0];
+                    const dx = touch.clientX - touchStartX;
+                    const dy = touch.clientY - touchStartY;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // 投げる処理
+                    throwBall(dx, dy, distance);
+                    
+                    // 手元のボールを隠す
+                    ballEntity.setAttribute('visible', 'false');
+                    // 位置を戻す
+                    ballEntity.setAttribute('position', '0 -0.3 -0.5');
+                    canThrow = false;
+                });
+                
+                // PCでのデバッグ用（マウス操作）
+                document.addEventListener('mousedown', (e) => {
+                    if (!canThrow || !ballEntity) return;
+                    const element = document.elementFromPoint(e.clientX, e.clientY);
+                    if (isUIButton(element)) return;
+                    
+                    if (isBallArea(e.clientX, e.clientY)) {
+                        isHoldingBall = true;
+                        touchStartX = e.clientX;
+                        touchStartY = e.clientY;
+                        ballEntity.setAttribute('position', '0 -0.2 -0.5');
+                    }
+                });
+                
+                document.addEventListener('mouseup', (e) => {
+                    if (!isHoldingBall) return;
+                    isHoldingBall = false;
+                    
+                    const dx = e.clientX - touchStartX;
+                    const dy = e.clientY - touchStartY;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    throwBall(dx, dy, distance);
+                    
+                    ballEntity.setAttribute('visible', 'false');
+                    ballEntity.setAttribute('position', '0 -0.3 -0.5');
+                    canThrow = false;
+                });
+                
+                function throwBall(dx, dy, distance) {
+                    const scene = document.querySelector('a-scene');
+                    const camera = scene.camera;
+                    if (!camera) return;
+                    
+                    // 新しいボールを生成
+                    const newBall = document.createElement('a-entity');
+                    
+                    // 手元のボールのワールド座標を取得して初期位置とする
+                    const worldPos = new THREE.Vector3();
+                    ballEntity.object3D.getWorldPosition(worldPos);
+                    
+                    newBall.setAttribute('position', worldPos);
+                    newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                    newBall.setAttribute('scale', '0.15 0.15 0.15'); // 投げるときは少し大きく
+                    newBall.setAttribute('pokeball-throwable', '');
+                    
+                    // 投擲ベクトル計算
+                    const direction = new THREE.Vector3(0, 0, -1); // カメラ前方
+                    
+                    // スワイプによる補正
+                    // 画面幅に対する割合で計算
+                    const factor = 0.002; 
+                    direction.x += dx * factor;
+                    direction.y += -dy * factor; // 画面上はYが下プラス、3Dは上がプラス
+                    
+                    // カメラの回転を適用
+                    direction.applyQuaternion(camera.quaternion);
+                    direction.normalize();
+                    
+                    // 速度決定
+                    let speed = 15; // 基本速度
+                    if (distance > 50) speed += distance * 0.03; // スワイプが速ければ速く
+                    speed = Math.min(speed, 30); // 最大速度制限
+                    
+                    scene.appendChild(newBall);
+                    
+                    // コンポーネントが初期化されたら投げる
+                    newBall.addEventListener('loaded', () => {
+                        // マテリアル調整（既存コードと同様）
+                        const model = newBall.getObject3D('mesh');
+                        if (model) {
+                            model.traverse(function(node) {
+                                if (node.isMesh) {
+                                    if (node.geometry) node.geometry.computeVertexNormals();
+                                    if (node.material) {
+                                        const materials = Array.isArray(node.material) ? node.material : [node.material];
+                                        materials.forEach(mat => {
+                                            mat.side = THREE.DoubleSide;
+                                            mat.depthWrite = true;
+                                            mat.depthTest = true;
+                                            mat.flatShading = false;
+                                            mat.transparent = false;
+                                            mat.opacity = 1.0;
+                                            mat.needsUpdate = true;
+                                        });
+                                    }
+                                    node.frustumCulled = false;
+                                }
+                            });
+                        }
+                        
+                        newBall.components['pokeball-throwable'].throw(direction, speed);
+                        
+                        // 当たり判定チェック（既存ロジックを流用）
+                        let hasHit = false;
+                        const checkInterval = setInterval(() => {
+                            if (hasHit) return;
+                            
+                            const ballPos = newBall.object3D.getWorldPosition(new THREE.Vector3());
+                            
+                            for (let i = 0; i < allHitboxes.length; i++) {
+                                const hitbox = allHitboxes[i];
+                                if (hitbox.checkCollision(ballPos)) {
+                                    hasHit = true;
+                                    const stampId = hitbox.data.stampId;
+                                    console.log('✓ Hit!', stampId);
+                                    
+                                    const hitModel = hitbox.el;
+                                    if (hitModel && hitModel.playHitAnimation) {
+                                        hitModel.playHitAnimation();
+                                    }
+                                    
+                                    // 即時登録
+                                    try {
+                                        collectAndMarkWithRetry(stampId, null, 3, 2000);
+                                        if (hitModel && typeof hitModel.setCapturedState === 'function') {
+                                            hitModel.setCapturedState(true);
+                                        }
+                                    } catch (e) { console.warn('Hit registration failed', e); }
+                                    
+                                    showHitEffect(newBall, hitbox);
+                                    
+                                    // 跳ね返り
+                                    const throwable = newBall.components['pokeball-throwable'];
+                                    if (throwable) {
+                                        throwable.velocity.multiplyScalar(-0.6);
+                                        throwable.velocity.y += 3;
+                                    }
+                                    
+                                    // 消滅イベント発火して削除
+                                    setTimeout(() => {
+                                        clearInterval(checkInterval);
+                                        newBall.emit('pokeball-gone');
+                                        if (newBall.parentNode) newBall.parentNode.removeChild(newBall);
+                                    }, 1000);
+                                    
+                                    // スクショ処理
+                                    setTimeout(() => {
+                                        newBall.setAttribute('visible', 'false');
+                                        setTimeout(() => {
+                                            captureModelScreenshot(function(screenshot) {
+                                                if (screenshot) updateStampScreenshot(stampId, screenshot);
+                                                newBall.setAttribute('visible', 'true');
+                                            });
+                                        }, 16);
+                                    }, 200);
+                                    
+                                    break;
+                                }
+                            }
+                        }, 16);
+                        
+                        // タイムアウト（pokeball-throwable側でも消えるが念のため）
+                        setTimeout(() => clearInterval(checkInterval), 8000);
+                    });
+                    
+                    // 削除イベント監視（寿命 or ヒットで消滅時）
+                    newBall.addEventListener('pokeball-gone', () => {
+                        console.log('Pokeball gone, reloading...');
+                        setTimeout(() => {
+                            if (ballEntity) {
+                                ballEntity.setAttribute('visible', 'true');
+                                canThrow = true;
+                            }
+                        }, 500); // 0.5秒後に再表示
+                    });
+                }
+            })();
+            // ========== 新しいポケボール操作ロジック ここまで ==========
             // Previously, a double-tap on the scene triggered click/animation toggles on the active model.
             // That behavior was intentionally removed per design — do not add new global touch handlers here.
             
