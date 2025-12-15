@@ -6382,7 +6382,7 @@
                     // 画面幅に対する割合で計算
                     const factor = 0.002; 
                     direction.x += dx * factor;
-                    direction.y += -dy * factor; // 画面上はYが下プラス、3Dは上がプラス
+                    // direction.y += -dy * factor; // 縦方向（Y）の角度変化は無効化（常に正面へ）
                     
                     // カメラの回転を適用
                     direction.applyQuaternion(camera.quaternion);
@@ -6394,8 +6394,8 @@
                         // 加速分を追加するが、係数を調整
                         speed += distance * 0.01; 
                     }
-                    // 最大速度を基本速度の約1.1倍（8.25）に制限
-                    speed = Math.min(speed, 7.7);
+                    // 最大速度を基本速度の約1.2倍（10.5）に制限
+                    speed = Math.min(speed, 12.5);
                     
                     scene.appendChild(newBall);
                     
