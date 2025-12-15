@@ -1192,6 +1192,7 @@
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.3s, opacity 0.3s;
+            background-color: #4CAF50;
         }
         
         #exchange-prize-button:disabled {
@@ -1201,6 +1202,23 @@
         }
         
         #exchange-prize-button:not(:disabled):hover {
+            background-color: #45a049;
+        }
+
+        #hint-button {
+            flex: 1;
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, opacity 0.3s;
+            background-color: #FF9800;
+        }
+
+        #hint-button:hover {
             background-color: #F57C00;
         }
         
@@ -1440,7 +1458,8 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
-                <button id="exchange-prize-button" type="button" style="background-color: #FF9800;">景品と交換する</button>
+                <button id="hint-button" type="button">ヒントを見る</button>
+                <button id="exchange-prize-button" type="button">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
         </div>
@@ -3016,8 +3035,8 @@
                         // --- Guide modal language handling ---
                         const guideLangJPBtn = document.getElementById('lang-jp');
                         const guideLangENBtn = document.getElementById('lang-en');
-                        // initial language: always start with English (can switch to Japanese via button)
-                        let guideLang = 'en';
+                        // initial language: always start with Japanese (can switch to English via button)
+                        let guideLang = 'jp';
 
                         function setGuideLanguage(lang) {
                             guideLang = lang === 'jp' ? 'jp' : 'en';
@@ -3152,6 +3171,13 @@
 
                         // initialize content
                         setGuideLanguage(guideLang);
+
+                        // Show guide modal on startup
+                        const startupGuideModal = document.getElementById('guide-modal');
+                        if (startupGuideModal) {
+                            startupGuideModal.style.display = 'block';
+                            startupGuideModal.setAttribute('aria-hidden', 'false');
+                        }
 
                         // --- Camera permission detection & help modal ---
                         const cameraHelpModal = document.getElementById('camera-help-modal');
@@ -5259,6 +5285,16 @@
                 }, 100);
             });
 
+            // ヒントボタン
+            const hintButton = document.getElementById('hint-button');
+            if (hintButton) {
+                hintButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open('{{ asset("/cg/stampRallyHints.pdf") }}', '_blank');
+                });
+            }
+
             // 操作説明ボタン（ヘルプ）
             const guideButton = document.getElementById('guide-button');
             if (guideButton) {
@@ -5518,7 +5554,7 @@
                 } else {
                     // 新規交換可能
                     button.disabled = false;
-                    button.style.backgroundColor = '#FF9800';
+                    button.style.backgroundColor = '#4CAF50';
                     button.textContent = '景品と交換する';
                 }
             }
