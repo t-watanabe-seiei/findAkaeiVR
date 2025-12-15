@@ -3088,14 +3088,9 @@
 
                                 if (stepThrow) stepThrow.innerHTML = `
                                     <div class="step-text">
-                                        <strong>投げるボタン（画面中央下部）</strong>
-                                        <p>画面中央下のビーチボールボタンを長押しするとボールが回転します。離すとその強さでボールを投げます（3段階）。</p>
-                                        <ul>
-                                            <li>短く: 低速</li>
-                                            <li>中くらい: 中速</li>
-                                            <li>長押し: 高速</li>
-                                        </ul>
-                                        <p>長押し中はボールの回転が速くなり、視覚的に強さを確認できます。</p>
+                                        <strong>ボールを投げる</strong>
+                                        <p>画面下部にあるモンスターボールをスワイプ（フリック）して投げます。</p>
+                                        <p>スワイプの速さと長さで、ボールの飛距離や速度が変わります。</p>
                                     </div>`;
 
                                 if (stepPrize) stepPrize.innerHTML = `
@@ -3144,14 +3139,9 @@
 
                                 if (stepThrow) stepThrow.innerHTML = `
                                     <div class="step-text">
-                                        <strong>Throw button (center-bottom)</strong>
-                                        <p>Long-press the beach-ball button at the center-bottom to make the ball rotate. Release to throw with one of three power levels.</p>
-                                        <ul>
-                                            <li>Short press: low speed</li>
-                                            <li>Medium press: medium speed</li>
-                                            <li>Long press: high speed</li>
-                                        </ul>
-                                        <p>The preview rotates; rotation speed indicates power level visually.</p>
+                                        <strong>Throw the ball</strong>
+                                        <p>Swipe (flick) the Poké Ball at the bottom of the screen to throw it.</p>
+                                        <p>The speed and distance of the throw depend on how fast and far you swipe.</p>
                                     </div>`;
 
                                 if (stepPrize) stepPrize.innerHTML = `
@@ -6300,7 +6290,7 @@
                         touchStartY = touch.clientY;
                         
                         // ボールを持ち上げる演出
-                        ballEntity.setAttribute('position', '0 -0.2 -0.5');
+                        ballEntity.setAttribute('position', '0 -0.23 -0.5');
                         
                         // デフォルトのスクロール等を防止
                         if (e.cancelable) e.preventDefault();
@@ -6349,7 +6339,7 @@
                         isHoldingBall = true;
                         touchStartX = e.clientX;
                         touchStartY = e.clientY;
-                        ballEntity.setAttribute('position', '0 -0.2 -0.5');
+                        ballEntity.setAttribute('position', '0 -0.23 -0.5');
                     }
                 });
                 
@@ -6398,14 +6388,14 @@
                     direction.applyQuaternion(camera.quaternion);
                     direction.normalize();
                     
-                    // 速度決定（スワイプ時の最大速度を基本速度の1.5倍程度に制限）
+                    // 速度決定（スワイプ時の最大速度を基本速度の1.1倍程度に制限）
                     let speed = 7.5; // 基本速度
                     if (distance > 50) {
                         // 加速分を追加するが、係数を調整
                         speed += distance * 0.01; 
                     }
-                    // 最大速度を基本速度の約1.5倍（11.5）に制限
-                    speed = Math.min(speed, 11.5);
+                    // 最大速度を基本速度の約1.1倍（8.25）に制限
+                    speed = Math.min(speed, 7.7);
                     
                     scene.appendChild(newBall);
                     
