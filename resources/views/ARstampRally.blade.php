@@ -295,49 +295,68 @@
                 console.log('✓ Hit!', stampId);
                 
                 const hitModel = hitbox.el;
+
+                // 再生可能なモデルなら anime02 を再生して、完了後にモデルを非表示にする
+                let animationPromise = Promise.resolve();
                 if (hitModel && hitModel.playHitAnimation) {
-                    hitModel.playHitAnimation();
+                    try {
+                        animationPromise = hitModel.playHitAnimation(); // この関数は Promise を返すように改善済み
+                    } catch (e) {
+                        console.warn('playHitAnimation threw', e);
+                        animationPromise = Promise.resolve();
+                    }
+                } else {
+                    // playHitAnimation が無い場合は即時に登録（フォールバック）
+                    try {
+                        if (typeof collectAndMarkWithRetry === 'function') {
+                            collectAndMarkWithRetry(stampId, null, 3, 2000);
+                        }
+                        if (hitModel && typeof hitModel.setCapturedState === 'function') {
+                            hitModel.setCapturedState(true);
+                        }
+                    } catch (e) { console.warn('Fallback registration failed', e); }
                 }
-                
-                // 即時登録
-                try {
-                    if (typeof collectAndMarkWithRetry === 'function') {
-                        collectAndMarkWithRetry(stampId, null, 3, 2000);
-                    }
-                    if (hitModel && typeof hitModel.setCapturedState === 'function') {
-                        hitModel.setCapturedState(true);
-                    }
-                } catch (e) { console.warn('Hit registration failed', e); }
-                
+
+                // 衝突エフェクト（視覚エフェクトは即時）
                 if (typeof showHitEffect === 'function') {
                     showHitEffect(this.el, hitbox);
                 }
-                
-                // 跳ね返り
+
+                // 跳ね返り（物理表現） - すぐに跳ね返す
                 this.velocity.multiplyScalar(-0.6);
                 this.velocity.y += 3;
-                
-                // 少し待ってから消滅
-                setTimeout(() => {
-                    this.el.emit('pokeball-gone');
-                    if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                }, 1000);
-                
-                // スクショ処理
+
+                // ボールを少しだけ表示した後に非表示にする（スクリーンショット用に少しだけ待つ）
                 const ballEl = this.el;
+                // まず短時間で視認上の跳ね返りを見せるため、ボールは 50ms 後に見えなくする
                 setTimeout(() => {
-                    ballEl.setAttribute('visible', 'false');
-                    setTimeout(() => {
+                    try { ballEl.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
+                }, 50);
+
+                // ボールは跳ね返り後すぐ（300ms）に消去する
+                setTimeout(() => {
+                    try { ballEl.emit('pokeball-gone'); } catch (e) {}
+                    if (ballEl.parentNode) ballEl.parentNode.removeChild(ballEl);
+                }, 300);
+
+                // アニメーション終了後にモデルのスクリーンショットを取り、モデルを非表示にする
+                animationPromise.then(() => {
+                    try {
                         if (typeof captureModelScreenshot === 'function') {
+                            // ボールは既に非表示になっているのでモデルのみ撮影
                             captureModelScreenshot(function(screenshot) {
                                 if (screenshot && typeof updateStampScreenshot === 'function') {
                                     updateStampScreenshot(stampId, screenshot);
                                 }
-                                if (ballEl.object3D) ballEl.setAttribute('visible', 'true');
+                                // モデルを非表示（捕獲済み扱い）
+                                try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
+                                try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
                             });
+                        } else {
+                            try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
                         }
-                    }, 16);
-                }, 200);
+                    } catch (e) { console.warn('Post-animation handling failed', e); }
+                });
                 
                 // ヒットしたので以降のtick処理を停止（簡易的）
                 this.isThrown = false; 
@@ -733,52 +752,98 @@
                 // ボールヒット時にanime02を再生する関数（外部から呼び出し可能）
                 el.playHitAnimation = () => {
                     console.log('=== BALL HIT! for', stampId, '===');
-                    
-                    // anime02を再生（視覚効果のみ）
-                    if (action01) action01.stop();
-                    if (action02) {
-                        action02.reset();
-                        action02.play();
-                        currentAnimation = 2;
-                    }
 
-                    // 即時にスタンプを登録し、成功時のみローカルの捕獲フラグを設定する
-                    try {
-                        const saved = collectAndMarkWithRetry(stampId, null, 3, 2000);
-                        console.log('collectAndMarkWithRetry from playHitAnimation returned', saved, 'for', stampId);
-                        const stamps = getCollectedStamps();
-                        if (stamps && stamps[stampId]) {
-                            modelCaptured = true;
-                        } else {
-                            modelCaptured = false;
-                        }
-                    } catch (e) {
-                        console.warn('Immediate collectStamp failed in playHitAnimation for', stampId, e);
-                        // 保存に失敗した場合は modelCaptured を立てず、復帰処理や retry を行う
-                        modelCaptured = false;
-                        // リトライを試みる（短時間間隔、最大3回）
-                        let retryCount = 0;
-                        const retryInterval = setInterval(() => {
-                            retryCount++;
+                    // 戻り値は、anime02が終了したときに解決されるPromiseにする
+                    return new Promise((resolve) => {
+                        // anime02を再生（視覚効果のみ）
+                        if (action01) action01.stop();
+                        if (action02) {
                             try {
-                                const r = collectStamp(stampId, null);
-                                if (r) {
-                                    if (typeof markAnimalCaptured === 'function' && stampId) markAnimalCaptured(stampId);
-                                    modelCaptured = true;
-                                    console.log('Retry collectStamp succeeded for', stampId);
+                                // 1回だけ再生して終了時に停止する
+                                action02.reset();
+                                action02.setLoop(THREE.LoopOnce, 0);
+                                action02.clampWhenFinished = true;
+                                action02.play();
+                                currentAnimation = 2;
+
+                                let resolved = false;
+                                const onFinished = (ev) => {
+                                    try {
+                                        if (ev && ev.action === action02) {
+                                            if (mixer && typeof mixer.removeEventListener === 'function') {
+                                                mixer.removeEventListener('finished', onFinished);
+                                            }
+                                            if (!resolved) {
+                                                resolved = true;
+                                                resolve();
+                                            }
+                                        }
+                                    } catch (err) { /* ignore */ }
+                                };
+
+                                if (mixer && typeof mixer.addEventListener === 'function') {
+                                    mixer.addEventListener('finished', onFinished);
+                                }
+
+                                // フォールバック: クリップの長さを用いたタイムアウト
+                                let clipDuration = 1.0;
+                                try {
+                                    if (action02._clip && action02._clip.duration) clipDuration = action02._clip.duration;
+                                    else if (typeof action02.getClip === 'function' && action02.getClip() && action02.getClip().duration) clipDuration = action02.getClip().duration;
+                                } catch (err) { /* ignore */ }
+                                setTimeout(() => {
+                                    if (!resolved) {
+                                        resolved = true;
+                                        try { if (mixer && typeof mixer.removeEventListener === 'function') mixer.removeEventListener('finished', onFinished); } catch (e) {}
+                                        resolve();
+                                    }
+                                }, (clipDuration * 1000) + 120);
+                            } catch (e) {
+                                console.warn('Failed to play action02', e);
+                                resolve();
+                            }
+                        } else {
+                            // action02が無ければ直ちに解決
+                            resolve();
+                        }
+
+                        // 即時にスタンプを登録し、成功時のみローカルの捕獲フラグを設定する（非同期処理）
+                        try {
+                            const saved = collectAndMarkWithRetry(stampId, null, 3, 2000);
+                            console.log('collectAndMarkWithRetry from playHitAnimation returned', saved, 'for', stampId);
+                            const stamps = getCollectedStamps();
+                            if (stamps && stamps[stampId]) {
+                                modelCaptured = true;
+                            } else {
+                                modelCaptured = false;
+                            }
+                        } catch (e) {
+                            console.warn('Immediate collectStamp failed in playHitAnimation for', stampId, e);
+                            modelCaptured = false;
+                            // リトライを試みる（短時間間隔、最大3回）
+                            let retryCount = 0;
+                            const retryInterval = setInterval(() => {
+                                retryCount++;
+                                try {
+                                    const r = collectStamp(stampId, null);
+                                    if (r) {
+                                        if (typeof markAnimalCaptured === 'function' && stampId) markAnimalCaptured(stampId);
+                                        modelCaptured = true;
+                                        console.log('Retry collectStamp succeeded for', stampId);
+                                        clearInterval(retryInterval);
+                                    }
+                                } catch (er) {
+                                    console.warn('Retry collectStamp error', er);
+                                }
+                                if (retryCount >= 3) {
+                                    console.warn('collectStamp retry failed for', stampId, 'after', retryCount, 'attempts');
                                     clearInterval(retryInterval);
                                 }
-                            } catch (er) {
-                                console.warn('Retry collectStamp error', er);
-                            }
-                            if (retryCount >= 3) {
-                                console.warn('collectStamp retry failed for', stampId, 'after', retryCount, 'attempts');
-                                clearInterval(retryInterval);
-                            }
-                        }, 2000);
-                    }
-                    
-                    console.log('Model captured! Will be hidden on next marker detection if capture persisted');
+                            }, 2000);
+                        }
+
+                        console.log('Model captured! Will be hidden on next marker detection if capture persisted');
+                    });
                 };
                 
                 // タップでのアニメーション切替機能は廃止（コメントアウト）
@@ -3951,88 +4016,62 @@
 
                                 // 衝突エフェクト
                                 showHitEffect(pokeball, hitbox);
-                                
-                                // 跳ね返りアニメーション
+
+                                // 跳ね返りアニメーション（物理的な速度反転 + 見た目のスケール）
                                 const throwableComponent = pokeball.components['pokeball-throwable'];
                                 if (throwableComponent) {
-                                    // 速度を反転させて跳ね返り
-                                    throwableComponent.velocity.multiplyScalar(-0.6); // 60%の速度で跳ね返る
-                                    throwableComponent.velocity.y += 3; // 上向きに跳ねる
-                                    
-                                    // 回転速度を上げる
+                                    throwableComponent.velocity.multiplyScalar(-0.6);
+                                    throwableComponent.velocity.y += 3;
+
                                     const model = pokeball.getObject3D('mesh');
                                     if (model) {
                                         model.traverse(function(node) {
                                             if (node.isMesh) {
-                                                // ヒット時に一瞬拡大
                                                 const originalScale = pokeball.object3D.scale.clone();
-                                                pokeball.object3D.scale.multiplyScalar(1.3);
+                                                pokeball.object3D.scale.multiplyScalar(1.25);
                                                 setTimeout(() => {
                                                     pokeball.object3D.scale.copy(originalScale);
-                                                }, 100);
+                                                }, 120);
                                             }
                                         });
                                     }
                                 }
-                                
-                                // ボールを消すまでの時間を設定
-                                setTimeout(() => {
-                                    clearInterval(checkInterval);
-                                    if (pokeball.parentNode) {
-                                        // フェードアウトアニメーション
-                                        let opacity = 1;
-                                        const fadeInterval = setInterval(() => {
-                                            opacity -= 0.1;
-                                            const model = pokeball.getObject3D('mesh');
-                                            if (model) {
-                                                model.traverse(function(node) {
-                                                    if (node.isMesh && node.material) {
-                                                        const materials = Array.isArray(node.material) ? node.material : [node.material];
-                                                        materials.forEach(mat => {
-                                                            mat.transparent = true;
-                                                            mat.opacity = opacity;
-                                                        });
-                                                    }
+
+                                // ボールは 50ms 後に非表示、300ms 後に完全に削除（跳ね返り後に短時間表示）
+                                setTimeout(() => { try { pokeball.setAttribute('visible', 'false'); } catch(e) {} }, 50);
+                                setTimeout(() => { try { pokeball.emit('pokeball-gone'); } catch(e) {} if (pokeball.parentNode) pokeball.parentNode.removeChild(pokeball); }, 300);
+
+                                // アニメーションが終わったらスクリーンショット→モデル非表示
+                                if (hitModel && hitModel.playHitAnimation) {
+                                    const animPromise = hitModel.playHitAnimation();
+                                    animPromise.then(() => {
+                                        try {
+                                            if (typeof captureModelScreenshot === 'function') {
+                                                captureModelScreenshot(function(screenshot) {
+                                                    if (screenshot) updateStampScreenshot(stampId, screenshot);
+                                                    try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                                    try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
                                                 });
-                                            }
-                                            
-                                            if (opacity <= 0) {
-                                                clearInterval(fadeInterval);
-                                                if (pokeball.parentNode) {
-                                                    pokeball.parentNode.removeChild(pokeball);
-                                                }
-                                            }
-                                        }, 50);
-                                    }
-                                }, 1000); // 1秒後にフェードアウト開始
-                                
-                                // スクリーンショット撮影してスタンプ登録
-                                // ヒット後0.2秒間ボールを表示し、その後非表示にしてモデルのみ撮影
-                                setTimeout(() => {
-                                    // ボールを非表示
-                                    pokeball.setAttribute('visible', 'false');
-                                    
-                                    // 次のフレームでスクリーンショット撮影（背景透過）
-                                    setTimeout(() => {
-                                        captureModelScreenshot(function(screenshot) {
-                                            // スクリーンショットが取れたら既存レコードに上書きしておく
-                                            if (screenshot) {
-                                                updateStampScreenshot(stampId, screenshot);
-                                                try {
-                                                    if (hitModel && typeof hitModel.setCapturedState === 'function') {
-                                                        hitModel.setCapturedState(true);
-                                                    }
-                                                } catch (e) { console.warn('Failed to set captured state after screenshot update', e); }
                                             } else {
-                                                console.warn('No screenshot generated for', stampId, '— fallback record should exist');
+                                                try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                                try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
                                             }
-                                            
-                                            // スクリーンショット後、ボールを再表示してフェードアウト継続
-                                            pokeball.setAttribute('visible', 'true');
-                                        });
-                                    }, 16); // 1フレーム後
-                                }, 200); // ヒット後0.2秒
-                                
+                                        } catch (e) { console.warn('Post-animation handling failed in throw path', e); }
+                                    });
+                                } else {
+                                    // フォールバック: 直ちにスクショを取り、モデルを非表示
+                                    try {
+                                        if (typeof captureModelScreenshot === 'function') {
+                                            captureModelScreenshot(function(screenshot) {
+                                                if (screenshot) updateStampScreenshot(stampId, screenshot);
+                                                try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                            });
+                                        } else {
+                                            try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                        }
+                                    } catch (e) { console.warn('Fallback post-hit handling failed', e); }
+                                }
+
                                 break;
                             }
                         }
