@@ -1568,7 +1568,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: highp; powerPreference: high-performance;">
+        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: mediump;">
         
         <a-entity camera="near: 0.2; far: 800;">
             <!-- 手持ちのポケボール (HUD) -->
