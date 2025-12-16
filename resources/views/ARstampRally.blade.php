@@ -1446,7 +1446,9 @@
         #close-guide:active { transform: scale(0.98); }
         /* guide notes (privacy / cookies / photo) */
         .guide-notes { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; color: #333; font-size: 13px; }
-        .guide-note { display:flex; gap: 10px; align-items:flex-start; margin-bottom: 8px; }
+        .guide-note { display:flex; gap: 12px; align-items:flex-start; margin-bottom: 14px; padding: 12px 14px; background: linear-gradient(135deg, #fffdf0 0%, #fff3d6 100%); border: 1px solid #ffd66b; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); color: #2b2b2b; font-weight: 500; }
+        .guide-note strong { display:block; margin-bottom:6px; font-weight:700; }
+        .guide-note p { margin:0; line-height:1.25; }
         /* removed note-icon: notes now use full-width text */
         .note-text { line-height: 1.12; }
         
@@ -1895,6 +1897,9 @@
     <!-- 操作説明モーダル -->
     <div id="guide-modal" aria-hidden="true">
         <div id="guide-content">
+            <div id="stamp-rally-note" class="guide-note" aria-hidden="false" style="margin-bottom:10px;">
+                <!-- Localized notice about the stamp rally will be injected here by JS -->
+            </div>
             <div class="guide-header">
                 <h2 id="guide-title">How to play</h2>
                 <div class="lang-switch" id="guide-lang-switch" role="tablist" aria-label="言語切替">
@@ -3530,6 +3535,11 @@
 
                             if (guideLang === 'jp') {
                                 if (title) title.textContent = '操作方法';
+                                // Stamp rally notice (Japanese) - show above the guide title
+                                try {
+                                    const noteEl = document.getElementById('stamp-rally-note');
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>このスタンプラリーについて</strong><br>2025年12月21日(日)まで、イオンタウン防府にてマーカーを掲示しています。スタンプ帳下部にマーカー設置場所のヒントも掲載しておりますので、ぜひイオンタウン防府にて動物たちをGETしてみてください。</p>`;
+                                } catch (e) { console.warn('Failed to set JP stamp-rally-note', e); }
 
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
                                 if (stepFind) stepFind.innerHTML = `
@@ -3582,6 +3592,11 @@
                                 guideLangENBtn.setAttribute('aria-pressed','false');
                             } else {
                                 if (title) title.textContent = 'How to play';
+                                // Stamp rally notice (English) - show above the guide title
+                                try {
+                                    const noteEl = document.getElementById('stamp-rally-note');
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this stamp rally</strong><br>Markers will be displayed at AEON TOWN Hofu until Sunday, December 21, 2025. Hints for marker locations are provided at the bottom of the stamp book, so please visit AEON TOWN Hofu and try to collect the animals.</p>`;
+                                } catch (e) { console.warn('Failed to set EN stamp-rally-note', e); }
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
                                 if (stepFind) stepFind.innerHTML = `
                                     <div class="step-text">
