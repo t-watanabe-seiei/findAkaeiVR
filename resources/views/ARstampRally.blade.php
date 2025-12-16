@@ -684,6 +684,18 @@
                             }
                         }
                     });
+
+                    // マーカーが既に見えている状態でモデルがロード完了した場合は anime01 を自動再生する
+                    try {
+                        if (markerVisible && !modelCaptured && action01) {
+                            action01.reset();
+                            action01.play();
+                            currentAnimation = 1;
+                            console.log('Auto-started anime01 on model load for', stampId);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to auto-start anime01 on model load', e);
+                    }
                 });
                 
                 // マーカー検出時の処理
@@ -3086,6 +3098,26 @@
                     exists: !!sceneCanvas
                 });
                 
+                // ボール等の一時エンティティが映り込まないよう一時的に非表示にしてから1フレーム待つ
+                const _tmpHiddenEls = [];
+                try {
+                    document.querySelectorAll('[pokeball-throwable]').forEach(el => {
+                        try {
+                            if (el && el.getAttribute && el.getAttribute('visible') !== 'false') {
+                                el._prevVisible = el.getAttribute('visible');
+                                el.setAttribute('visible', 'false');
+                                _tmpHiddenEls.push(el);
+                            }
+                        } catch (e) { /* ignore per-element errors */ }
+                    });
+                    const holding = document.getElementById('holding-pokeball');
+                    if (holding) {
+                        holding._prevDisplay = holding.style.display || '';
+                        holding.style.display = 'none';
+                        _tmpHiddenEls.push(holding);
+                    }
+                } catch (e) { console.warn('Failed to hide transient elements for screenshot', e); }
+
                 // レンダリングが完了するのを待つ（1フレームのみ）
                 requestAnimationFrame(() => {
                     try {
@@ -3107,6 +3139,7 @@
                         
                         if (!bounds) {
                             console.warn('No model detected in image');
+                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                             callback(null);
                             return;
                         }
@@ -3121,11 +3154,13 @@
                                 length: screenshot.length,
                                 bounds: bounds
                             });
+                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                             callback(screenshot);
                         }, 0);
                         
                     } catch (drawError) {
                         console.error('Draw error:', drawError);
+                        try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                         callback(null);
                     }
                 });
