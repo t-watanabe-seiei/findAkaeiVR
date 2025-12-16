@@ -1449,6 +1449,16 @@
         .guide-note { display:flex; gap: 12px; align-items:flex-start; margin-bottom: 14px; padding: 12px 14px; background: linear-gradient(135deg, #fffdf0 0%, #fff3d6 100%); border: 1px solid #ffd66b; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); color: #2b2b2b; font-weight: 500; }
         .guide-note strong { display:block; margin-bottom:6px; font-weight:700; }
         .guide-note p { margin:0; line-height:1.25; }
+
+        /* Hint PDF styling */
+        .hint-pdf { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px; box-shadow: 0 6px 14px rgba(0,0,0,0.06); margin-top: 12px; }
+        .hint-pdf .step-text { margin-bottom: 8px; }
+        .pdf-embed object { width: 100%; height: 280px; border: 1px solid #ddd; border-radius: 6px; }
+        .pdf-actions { margin-top: 8px; display:flex; gap:8px; }
+        .pdf-actions .btn { padding:8px 12px; border-radius:6px; text-decoration:none; display:inline-block; }
+        .pdf-actions .btn-primary { background:#0078D4; color:white; }
+        .pdf-actions .btn-open { background: #ff8c00; color: #fff; }
+        .pdf-actions .btn-light { background:#f4f4f4; color:#333; }
         /* removed note-icon: notes now use full-width text */
         .note-text { line-height: 1.12; }
         
@@ -1936,6 +1946,11 @@
                 <div class="step" id="guide-step-others">
                     <!-- privacy / cookies / made by students / learning content set dynamically for EN/JP -->
                 </div>
+
+                <div class="step" id="guide-step-hints">
+                    <!-- Marker hint PDF (localized) will be injected here -->
+                </div>
+
                     </div>
                 </div>
 
@@ -2555,6 +2570,9 @@
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
+
+        // Path to hint PDF asset
+        const HINT_PDF_PATH = '{{ asset("cg/stampRallyHints.pdf") }}';
         
         // 音声ファイルをプリロード
         const soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
@@ -3584,6 +3602,22 @@
                                         生徒たちはプロトタイピングやPDCAサイクルを通じて作品を改善し、論理的思考力や問題解決能力を身に着けていきます。</p>
                                     </div>`;
 
+                                // Populate JP hint PDF in the hints section
+                                try {
+                                    const stepHints = document.getElementById('guide-step-hints');
+                                    if (stepHints) {
+                                        stepHints.innerHTML = `
+                                            <div class="step-text">
+                                                <strong>マーカー設置ヒント（PDF）</strong>
+                                                <p>館内のヒントをまとめたPDFです。開いて確認するかダウンロードしてご利用ください。</p>
+                                            </div>
+                                            <div class="hint-pdf">
+                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">開く</a></div>
+                                            </div>
+                                        `;
+                                    }
+                                } catch (e) { console.warn('Failed to populate JP hint PDF', e); }
+
                                 if (closeGuideBtn) closeGuideBtn.textContent = '閉じる';
 
                                 guideLangJPBtn.classList.add('active');
@@ -3639,6 +3673,22 @@
                                         <p><strong>Made by students</strong> — This project was created by students in the Welfare class at Seiei High School as part of their coursework. Seiei High School was chosen for the DX High School program in 2024 and has produced many VR/AR projects.</p>
                                         <p><strong>Learning & prototyping</strong> — Students receive feedback and improve their works through prototyping and the PDCA cycle. This helps them develop logical thinking and problem-solving skills.</p>
                                     </div>`;
+
+                                // Populate EN hint PDF in the hints section
+                                try {
+                                    const stepHints = document.getElementById('guide-step-hints');
+                                    if (stepHints) {
+                                        stepHints.innerHTML = `
+                                            <div class="step-text">
+                                                <strong>Marker location hints (PDF)</strong>
+                                                <p>This PDF summarizes hints for marker locations. Open it or download to use offline.</p>
+                                            </div>
+                                            <div class="hint-pdf">
+                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">Open PDF</a></div>
+                                            </div>
+                                        `;
+                                    }
+                                } catch (e) { console.warn('Failed to populate EN hint PDF', e); }
 
                                 if (closeGuideBtn) closeGuideBtn.textContent = 'Close';
 
