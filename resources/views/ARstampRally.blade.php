@@ -10,6 +10,58 @@
         window.activeBalls = 0;
         window.allHitboxes = []; // グローバルでヒットボックスを管理
 
+        // グローバルエラーハンドラ（解析用／実行継続の助け）
+        window.addEventListener('error', function(e) {
+            try { console.error('Global error:', e && e.message ? e.message : e); } catch (err) { /* ignore */ }
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            try { console.error('UnhandledPromiseRejection:', e && e.reason ? e.reason : e); } catch (err) { /* ignore */ }
+        });
+
+        // 古いAndroidを自動判定（Android 7以下なら true）
+        function detectOldAndroid() {
+            try {
+                const ua = navigator.userAgent || '';
+                const m = ua.match(/Android\s([0-9]+)(?:[\.\_][0-9]*)?/i);
+                if (m && m[1]) {
+                    const major = parseInt(m[1], 10);
+                    return major <= 7;
+                }
+            } catch (e) { /* ignore */ }
+            return false;
+        }
+
+        // lowres フラグ（URLパラメータ or 自動判定）
+        window.AR_FORCE_LOWRES = (function() {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('lowres') === '1') return true;
+            return detectOldAndroid();
+        })();
+
+        // デバッグ用: ARカメラの起動を監視し、失敗時に再試行UIを表示
+        function monitorCameraStartup(timeoutMs = 6000) {
+            const start = Date.now();
+            const interval = setInterval(() => {
+                // 動画要素が見つかり、ある程度読み込みが進んでいればOK
+                const v = document.querySelector('video');
+                if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
+                    clearInterval(interval);
+                    console.log('Camera started OK');
+                    const el = document.getElementById('camera-error'); if (el) el.style.display = 'none';
+                    return;
+                }
+                if (Date.now() - start > timeoutMs) {
+                    clearInterval(interval);
+                    console.warn('Camera did not start within', timeoutMs, 'ms');
+                    const el = document.getElementById('camera-error'); if (el) el.style.display = 'flex';
+
+                    // もし古い端末であれば低解像度再試行ボタンを自動で表示（UIにボタンがあるのでこちらは任意）
+                    const lowBtn = document.getElementById('retry-camera-lowres');
+                    if (lowBtn) lowBtn.style.display = 'inline-block';
+                }
+            }, 500);
+        }
+
         // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
         document.addEventListener('keydown', function(e) {
             // Ctrl+U, Cmd+U (ソースコード表示)
@@ -2097,6 +2149,18 @@
         
     </a-scene>
 
+    <!-- カメラ起動失敗の案内（古い端末や権限エラー向けの再試行UI） -->
+    <div id="camera-error" style="display:none; position:fixed; left:0; right:0; top:0; bottom:0; background: rgba(0,0,0,0.75); color:#fff; z-index:9999; align-items:center; justify-content:center; display:flex; flex-direction:column;">
+        <div style="max-width:420px; text-align:center; padding:20px;">
+            <h2 style="margin-top:0;">カメラが起動できません</h2>
+            <p>カメラの許可が拒否されているか、端末がカメラを初期化できませんでした。カメラの許可を確認し、もう一度お試しください。<br>それでもダメなら別のブラウザや端末でお試しください。</p>
+            <div style="margin-top:12px;">
+                <button id="retry-camera" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#0078D4;color:#fff;border:none;margin-right:8px;">再試行</button>
+                <button id="retry-camera-lowres" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#ff8c00;color:#fff;border:none;display:none;">低解像度で再試行</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ソースコード保護: 右クリック・キーボードショートカット無効化（バブリングフェーズでも処理）
         document.addEventListener('contextmenu', function(e) {
@@ -2105,6 +2169,44 @@
             e.stopImmediatePropagation();
             return false;
         }, false);
+
+        // カメラ監視: ページロード時にカメラが起動するか確認して、失敗時は再試行UIを表示
+        window.addEventListener('load', function() {
+            try {
+                // 少し遅らせて監視を開始（AR.jsの初期化に時間がかかる場合があるため）
+                setTimeout(function() {
+                    monitorCameraStartup(7000); // 7秒待ってもカメラが起動しなければUI表示
+                }, 600);
+            } catch (e) { console.warn('monitorCameraStartup failed to schedule', e); }
+
+            // 再試行ボタン
+            const retryBtn = document.getElementById('retry-camera');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', function() {
+                    // ページリロードで最も確実に再試行
+                    try { location.reload(); } catch (e) { window.location.href = window.location.href; }
+                });
+            }
+
+            // 低解像度で再試行ボタン
+            const retryLowBtn = document.getElementById('retry-camera-lowres');
+            if (retryLowBtn) {
+                retryLowBtn.addEventListener('click', function() {
+                    try {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('lowres', '1');
+                        window.location.href = url.toString();
+                    } catch (e) {
+                        // フォールバック
+                        if (window.location.href.indexOf('?') === -1) {
+                            window.location.href = window.location.href + '?lowres=1';
+                        } else {
+                            window.location.href = window.location.href + '&lowres=1';
+                        }
+                    }
+                });
+            }
+        });
         
         document.addEventListener('keydown', function(e) {
             // Ctrl+U, Cmd+U（ソース表示）
@@ -2665,8 +2767,7 @@
                 return false;
             }
         }
-        }
-        
+
         // 音声を再生
         function playSound(audioElement) {
             try {
@@ -4165,7 +4266,24 @@
                             allHitboxes.push(sheepModel.components.hitbox);
                         }
                     }
+
+                    // 低解像度モードを自動で適用するフラグ（デバッグログ）
+                    if (window.AR_FORCE_LOWRES) {
+                        console.log('Low-res mode active for older device or URL param');
+                    }
                 });
+
+                // シーン設定: 低解像度モードの場合はAR.jsのパラメータを弱めて初期化（DOMContentLoadedより前に参照されることがあるため追加）
+                try {
+                    const scene = document.querySelector('a-scene');
+                    if (scene && window.AR_FORCE_LOWRES) {
+                        // 低解像度/低検出レートを適用
+                        scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 320; sourceHeight: 240; detectionMode: mono; maxDetectionRate: 8;');
+                        scene.setAttribute('renderer', 'antialias: false; alpha: true; precision: lowp;');
+                        console.log('Applied low-res AR.js settings');
+                    }
+                } catch (e) { /* ignore */ }
+            }
                 patternSheepMarker.addEventListener('markerLost', function() {
                     console.log('Pattern-sheep marker lost');
                     if (activeModel === sheepModel) {
@@ -4185,7 +4303,6 @@
                         }
                     }
                 });
-            }
             
             if (patternFoxMarker) {
                 patternFoxMarker.addEventListener('markerFound', function() {
@@ -6554,14 +6671,6 @@
                             }
                         }, 500); // 0.5秒後に再表示
                     });
-                        console.log('Pokeball gone, reloading...');
-                        setTimeout(() => {
-                            if (ballEntity) {
-                                ballEntity.setAttribute('visible', 'true');
-                                canThrow = true;
-                            }
-                        }, 500); // 0.5秒後に再表示
-                    });
                 }
             })();
             // ========== 新しいポケボール操作ロジック ここまで ==========
@@ -6575,6 +6684,8 @@
             // 画面全体のタップを検出（削除：ダブルタップに置き換え）
             // シングルタップでのアニメーション切り替えは無効化
             
+            }); // end of DOMContentLoaded
+
             // ページ終了時のクリーンアップ（Android 7対策）
             window.addEventListener('pagehide', function() {
                 console.log('Page hiding, cleaning up resources...');
@@ -6596,7 +6707,6 @@
                     console.warn('Cleanup error:', e);
                 }
             });
-        });
     </script>
 </body>
 </html>
