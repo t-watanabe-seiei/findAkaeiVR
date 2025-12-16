@@ -62,6 +62,53 @@
             }, 500);
         }
 
+        // ボール（entity）を即時非表示にしてメモリを開放し、DOMから削除するユーティリティ
+        function destroyAndFreeEntity(el) {
+            if (!el) return;
+            try {
+                try { el.setAttribute('visible', 'false'); } catch (e) {}
+
+                // Three.js の mesh を取得して traverse で dispose
+                const mesh = el.getObject3D && el.getObject3D('mesh');
+                if (mesh) {
+                    mesh.traverse((node) => {
+                        try {
+                            if (node.isMesh) {
+                                if (node.geometry) {
+                                    try { node.geometry.dispose(); } catch (e) {}
+                                    node.geometry = undefined;
+                                }
+                                if (node.material) {
+                                    const materials = Array.isArray(node.material) ? node.material.slice() : [node.material];
+                                    materials.forEach((mat) => {
+                                        try {
+                                            // dispose common texture maps
+                                            ['map','metalnessMap','roughnessMap','normalMap','emissiveMap','aoMap','alphaMap'].forEach(k => {
+                                                if (mat[k] && typeof mat[k].dispose === 'function') {
+                                                    try { mat[k].dispose(); mat[k] = null; } catch (e) {}
+                                                }
+                                            });
+                                            if (typeof mat.dispose === 'function') mat.dispose();
+                                        } catch (e) {}
+                                    });
+                                    node.material = undefined;
+                                }
+                            }
+                        } catch (e) { /* ignore per-node errors */ }
+                    });
+                }
+
+                // emit for existing listeners and remove element from DOM
+                try { el.emit('pokeball-gone'); } catch (e) {}
+                if (el.parentNode) {
+                    try { el.parentNode.removeChild(el); } catch (e) {}
+                }
+            } catch (err) {
+                console.warn('destroyAndFreeEntity failed', err);
+                try { if (el.parentNode) el.parentNode.removeChild(el); } catch (e) {}
+            }
+        }
+
         // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
         document.addEventListener('keydown', function(e) {
             // Ctrl+U, Cmd+U (ソースコード表示)
@@ -326,18 +373,10 @@
                 this.velocity.multiplyScalar(-0.6);
                 this.velocity.y += 3;
 
-                // ボールを少しだけ表示した後に非表示にする（スクリーンショット用に少しだけ待つ）
-                const ballEl = this.el;
-                // まず短時間で視認上の跳ね返りを見せるため、ボールは 50ms 後に見えなくする
-                setTimeout(() => {
-                    try { ballEl.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
-                }, 50);
-
-                // ボールは跳ね返り後すぐ（300ms）に消去する
-                setTimeout(() => {
-                    try { ballEl.emit('pokeball-gone'); } catch (e) {}
-                    if (ballEl.parentNode) ballEl.parentNode.removeChild(ballEl);
-                }, 300);
+                // ボールは即時で非表示にし、メモリを解放してDOMから削除する（即時処理）
+                try {
+                    destroyAndFreeEntity(this.el);
+                } catch (e) { console.warn('Immediate destroy failed', e); }
 
                 // アニメーション終了後にモデルのスクリーンショットを取り、モデルを非表示にする
                 animationPromise.then(() => {
@@ -4037,9 +4076,10 @@
                                     }
                                 }
 
-                                // ボールは 50ms 後に非表示、300ms 後に完全に削除（跳ね返り後に短時間表示）
-                                setTimeout(() => { try { pokeball.setAttribute('visible', 'false'); } catch(e) {} }, 50);
-                                setTimeout(() => { try { pokeball.emit('pokeball-gone'); } catch(e) {} if (pokeball.parentNode) pokeball.parentNode.removeChild(pokeball); }, 300);
+                                // ボールは即時で非表示にしてメモリを解放（DOMから削除）
+                                try {
+                                    destroyAndFreeEntity(pokeball);
+                                } catch (e) { console.warn('Immediate destroy for thrown ball failed', e); }
 
                                 // アニメーションが終わったらスクリーンショット→モデル非表示
                                 if (hitModel && hitModel.playHitAnimation) {
