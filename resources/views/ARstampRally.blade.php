@@ -6435,8 +6435,15 @@
                         
                         // 当たり判定チェック（既存ロジックを流用）
                         let hasHit = false;
-                        const checkInterval = setInterval(() => {
+                        // インターバルIDを要素に保存して管理
+                        newBall.checkInterval = setInterval(() => {
                             if (hasHit) return;
+                            
+                            // ボールが削除されていたらインターバルを停止
+                            if (!newBall.parentNode || !newBall.object3D) {
+                                if (newBall.checkInterval) clearInterval(newBall.checkInterval);
+                                return;
+                            }
                             
                             const ballPos = newBall.object3D.getWorldPosition(new THREE.Vector3());
                             
@@ -6471,7 +6478,7 @@
                                     
                                     // 消滅イベント発火して削除
                                     setTimeout(() => {
-                                        clearInterval(checkInterval);
+                                        if (newBall.checkInterval) clearInterval(newBall.checkInterval);
                                         newBall.emit('pokeball-gone');
                                         if (newBall.parentNode) newBall.parentNode.removeChild(newBall);
                                     }, 1000);
@@ -6490,14 +6497,21 @@
                                     break;
                                 }
                             }
-                        }, 16);
+                        }, 33); // 16ms -> 33ms (負荷軽減)
                         
                         // タイムアウト（pokeball-throwable側でも消えるが念のため）
-                        setTimeout(() => clearInterval(checkInterval), 8000);
+                        setTimeout(() => {
+                            if (newBall.checkInterval) clearInterval(newBall.checkInterval);
+                        }, 8000);
                     });
                     
                     // 削除イベント監視（寿命 or ヒットで消滅時）
                     newBall.addEventListener('pokeball-gone', () => {
+                        // インターバルを確実に停止
+                        if (newBall.checkInterval) {
+                            clearInterval(newBall.checkInterval);
+                            newBall.checkInterval = null;
+                        }
                         console.log('Pokeball gone, reloading...');
                         setTimeout(() => {
                             if (ballEntity) {
@@ -6518,6 +6532,28 @@
             
             // 画面全体のタップを検出（削除：ダブルタップに置き換え）
             // シングルタップでのアニメーション切り替えは無効化
+            
+            // ページ終了時のクリーンアップ（Android 7対策）
+            window.addEventListener('pagehide', function() {
+                console.log('Page hiding, cleaning up resources...');
+                try {
+                    // AR.jsのビデオ停止
+                    const video = document.querySelector('video');
+                    if (video && video.srcObject) {
+                        const tracks = video.srcObject.getTracks();
+                        tracks.forEach(track => track.stop());
+                    }
+                    
+                    // シーンのレンダラー破棄
+                    const scene = document.querySelector('a-scene');
+                    if (scene && scene.renderer) {
+                        scene.renderer.dispose();
+                        scene.renderer.forceContextLoss();
+                    }
+                } catch (e) {
+                    console.warn('Cleanup error:', e);
+                }
+            });
         });
     </script>
 </body>
