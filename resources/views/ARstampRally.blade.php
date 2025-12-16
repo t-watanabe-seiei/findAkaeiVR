@@ -390,20 +390,19 @@
                                 // モデルを非表示（捕獲済み扱い）
                                 try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
                                 try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                                // アイコン表示
+                                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in handleHit capture callback', e); }
                             });
                         } else {
                             try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
+                            try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                            try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
                         }
                     } catch (e) { console.warn('Post-animation handling failed', e); }
                 });
-                
-                // ヒットしたので以降のtick処理を停止（簡易的）
-                this.isThrown = false; 
-                // ただし跳ね返りアニメーションのために少し動かしたい場合は別ロジックが必要だが
-                // ここではシンプルに物理挙動を止めて、setTimeoutで消す
-            }
+            },
         });
-        
+
         // 当たり判定ボックスコンポーネント
         AFRAME.registerComponent('hitbox', {
             schema: {
@@ -865,6 +864,7 @@
                             const stamps = getCollectedStamps();
                             if (stamps && stamps[stampId]) {
                                 modelCaptured = true;
+                                try { if (saved && typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in playHitAnimation', e); }
                             } else {
                                 modelCaptured = false;
                             }
@@ -2838,6 +2838,8 @@
                 console.log('✓ Updated screenshot for stamp:', stampId);
                 try {
                     if (typeof markAnimalCaptured === 'function') markAnimalCaptured(stampId);
+                    // 表示用のアイコンを即時に出す
+                    try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in updateStampScreenshot', e); }
                 } catch (e) { console.warn('markAnimalCaptured failed in updateStampScreenshot', e); }
                 return true;
             } catch (err) {
@@ -2854,7 +2856,10 @@
                 const stamps = getCollectedStamps();
                 if (stamps && stamps[stampId]) {
                     // persisted
-                    try { markAnimalCaptured(stampId); } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
+                    try { 
+                        markAnimalCaptured(stampId);
+                        try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in collectAndMarkWithRetry', e); }
+                    } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
                     return true;
                 }
                 // Not persisted yet, retry a few times
@@ -2865,7 +2870,10 @@
                         const s = collectStamp(stampId, screenshot);
                         const ss = getCollectedStamps();
                         if (ss && ss[stampId]) {
-                            try { markAnimalCaptured(stampId); } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
+                            try { 
+                                markAnimalCaptured(stampId); 
+                                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in collectAndMarkWithRetry (retry)', e); }
+                            } catch (e) { console.warn('markAnimalCaptured failed in collectAndMarkWithRetry', e); }
                             clearInterval(handle);
                             return true;
                         }
@@ -4126,10 +4134,12 @@
                                                     if (screenshot) updateStampScreenshot(stampId, screenshot);
                                                     try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
                                                     try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                                                    try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in throw capture callback', e); }
                                                 });
                                             } else {
                                                 try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
                                                 try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                                                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
                                             }
                                         } catch (e) { console.warn('Post-animation handling failed in throw path', e); }
                                     });
