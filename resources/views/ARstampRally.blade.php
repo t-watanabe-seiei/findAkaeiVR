@@ -8,6 +8,7 @@
     <script>
         // グローバル変数：飛んでいるボールの数（パフォーマンス最適化用）
         window.activeBalls = 0;
+        window.allHitboxes = []; // グローバルでヒットボックスを管理
 
         // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
         document.addEventListener('keydown', function(e) {
@@ -16,12 +17,16 @@
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
-                // スタンプを登録
-                function collectStamp(stampId, screenshot = null) {
-                    if (!stampId) {
-                        console.warn('collectStamp called with empty stampId');
-                        return false;
-                    }
+                return false;
+            }
+        }, true);
+
+        // スタンプを登録（グローバル関数として定義）
+        function collectStamp(stampId, screenshot = null) {
+            if (!stampId) {
+                console.warn('collectStamp called with empty stampId');
+                return false;
+            }
                     try {
                         const collectedStamps = getCollectedStamps();
 
@@ -129,6 +134,7 @@
                 this.isThrown = false;
                 this.lifetime = 0;
                 this.maxLifetime = 8; // 8秒後に消滅（より長く）
+                this.prevPosition = new THREE.Vector3(); // 前フレームの位置（すり抜け防止用）
                 
                 // アクティブなボール数をカウントアップ
                 window.activeBalls = (window.activeBalls || 0) + 1;
@@ -147,6 +153,7 @@
                 this.velocity.y += 2.5; // 上方向への追加速度
                 this.isThrown = true;
                 this.lifetime = 0;
+                this.prevPosition.copy(this.el.object3D.position); // 初期位置を記録
                 console.log('Pokeball thrown with velocity:', this.velocity);
             },
             
@@ -157,6 +164,9 @@
                 const dt = (deltaTime || 16) / 1000;
                 this.lifetime += dt;
                 
+                // 現在位置を保存（移動前）
+                this.prevPosition.copy(this.el.object3D.position);
+
                 // 重力を適用
                 this.velocity.y += this.gravity * dt;
                 
@@ -180,17 +190,45 @@
                 }
 
                 // 当たり判定チェック（ここで行うことでsetIntervalを廃止し同期させる）
-                // 3フレームに1回程度チェックする（負荷軽減）
-                if (this.el.sceneEl.frame && this.el.sceneEl.frame % 3 !== 0) return;
+                // すり抜け防止のため毎フレームチェックする
+                // if (this.el.sceneEl.frame && this.el.sceneEl.frame % 3 !== 0) return;
 
-                const ballPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const currentPos = this.el.object3D.position; // 現在位置（移動後）
                 
+                // レイキャストによるすり抜け防止判定
+                // 前回の位置から現在の位置へのベクトル
+                const direction = new THREE.Vector3().subVectors(currentPos, this.prevPosition);
+                const distance = direction.length();
+                
+                // 移動距離が極端に短い場合はスキップ
+                if (distance < 0.001) return;
+
+                direction.normalize();
+                const ray = new THREE.Ray(this.prevPosition, direction);
+
                 // グローバルのallHitboxesを参照
-                if (typeof allHitboxes !== 'undefined') {
-                    for (let i = 0; i < allHitboxes.length; i++) {
-                        const hitbox = allHitboxes[i];
+                if (typeof window.allHitboxes !== 'undefined') {
+                    for (let i = 0; i < window.allHitboxes.length; i++) {
+                        const hitbox = window.allHitboxes[i];
                         // hitboxの要素が見えている場合のみ判定
-                        if (hitbox.el.object3D.visible && hitbox.checkCollision(ballPos)) {
+                        if (!hitbox.el.object3D.visible) continue;
+
+                        let isHit = false;
+
+                        // 1. 従来の包含チェック（ボールが内部にあるか）
+                        const ballWorldPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                        if (hitbox.checkCollision(ballWorldPos)) {
+                            isHit = true;
+                        } 
+                        // 2. レイキャストチェック（通り抜けたか）
+                        else if (hitbox.checkIntersection) {
+                            if (hitbox.checkIntersection(ray, distance)) {
+                                isHit = true;
+                                console.log('Tunneling hit detected!'); // すり抜け防止ログ
+                            }
+                        }
+
+                        if (isHit) {
                             // ヒット処理
                             this.handleHit(hitbox);
                             break;
@@ -261,12 +299,19 @@
                 stampId: {type: 'string', default: ''},
                 width: {type: 'number', default: 1},
                 height: {type: 'number', default: 1},
-                depth: {type: 'number', default: 1}
+                depth: {type: 'number', default: 1},
+                offset: {type: 'vec3', default: {x: 0, y: 0, z: 0}},
+                autoCenter: {type: 'boolean', default: true} // 高さの半分だけ自動で上にずらす（足元基準のモデル用）
             },
             
             init: function() {
                 const data = this.data;
                 
+                // グローバルリストに登録
+                if (typeof window.allHitboxes !== 'undefined' && !window.allHitboxes.includes(this)) {
+                    window.allHitboxes.push(this);
+                }
+
                 // Three.jsのバウンディングボックスを作成
                 this.box = new THREE.Box3();
                 this.updateBox();
@@ -281,7 +326,25 @@
                         transparent: true
                     });
                     const mesh = new THREE.Mesh(geometry, material);
+                    
+                    // オフセットの適用（デバッグ表示用）
+                    const debugOffset = new THREE.Vector3(data.offset.x, data.offset.y, data.offset.z);
+                    if (data.autoCenter) {
+                        debugOffset.y += data.height / 2;
+                    }
+                    mesh.position.copy(debugOffset);
+                    
                     this.el.object3D.add(mesh);
+                }
+            },
+
+            remove: function() {
+                // グローバルリストから削除
+                if (typeof window.allHitboxes !== 'undefined') {
+                    const index = window.allHitboxes.indexOf(this);
+                    if (index > -1) {
+                        window.allHitboxes.splice(index, 1);
+                    }
                 }
             },
             
@@ -297,15 +360,27 @@
                 const halfHeight = (data.height / 2) * (worldScale.y || 1);
                 const halfDepth = (data.depth / 2) * (worldScale.z || 1);
 
+                // 中心位置の計算（オフセット適用）
+                const center = pos.clone();
+                
+                // ローカルオフセットをワールドスケールに合わせて適用
+                const scaledOffset = new THREE.Vector3(data.offset.x, data.offset.y, data.offset.z);
+                if (data.autoCenter) {
+                    scaledOffset.y += data.height / 2;
+                }
+                scaledOffset.multiply(worldScale);
+                
+                center.add(scaledOffset);
+
                 this.box.min.set(
-                    pos.x - halfWidth,
-                    pos.y - halfHeight,
-                    pos.z - halfDepth
+                    center.x - halfWidth,
+                    center.y - halfHeight,
+                    center.z - halfDepth
                 );
                 this.box.max.set(
-                    pos.x + halfWidth,
-                    pos.y + halfHeight,
-                    pos.z + halfDepth
+                    center.x + halfWidth,
+                    center.y + halfHeight,
+                    center.z + halfDepth
                 );
             },
             
@@ -322,6 +397,84 @@
             
             checkCollision: function(point) {
                 return this.box.containsPoint(point);
+            },
+
+            // レイキャストによる交差判定（すり抜け防止用）
+            checkIntersection: function(ray, maxDistance) {
+                if (!this.box) return false;
+                const intersection = ray.intersectBox(this.box, new THREE.Vector3());
+                if (intersection) {
+                    const dist = ray.origin.distanceTo(intersection);
+                    return dist <= maxDistance;
+                }
+                return false;
+            }
+        });
+        
+        // 遅延読み込みコンポーネント（メモリ対策）
+        AFRAME.registerComponent('lazy-model', {
+            schema: {
+                src: {type: 'string'},
+                timeout: {type: 'number', default: 5000} // 5秒後にメモリ解放（Android 7向けに短縮）
+            },
+            init: function() {
+                this.timer = null;
+                this.isLoaded = false;
+                
+                // マーカー検出イベント
+                this.el.sceneEl.addEventListener('markerFound', (e) => {
+                    if (e.target === this.el.parentElement) {
+                        this.onMarkerFound();
+                    }
+                });
+                
+                // マーカーロストイベント
+                this.el.sceneEl.addEventListener('markerLost', (e) => {
+                    if (e.target === this.el.parentElement) {
+                        this.onMarkerLost();
+                    }
+                });
+            },
+            onMarkerFound: function() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+                
+                // まだモデルが設定されていなければ設定
+                if (!this.isLoaded) {
+                    console.log('Lazy loading model:', this.data.src);
+                    this.el.setAttribute('gltf-model', this.data.src);
+                    this.isLoaded = true;
+                }
+            },
+            onMarkerLost: function() {
+                // 即座には消さない（ちらつき防止）
+                if (this.timer) clearTimeout(this.timer);
+                
+                this.timer = setTimeout(() => {
+                    console.log('Unloading model to free memory:', this.data.src);
+                    this.el.removeAttribute('gltf-model');
+                    this.isLoaded = false;
+                    this.el.emit('model-unloaded'); // カスタムイベント発火
+                    
+                    // メモリ解放（Three.jsのキャッシュクリア）
+                    const mesh = this.el.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.traverse((node) => {
+                            if (node.isMesh) {
+                                if (node.geometry) node.geometry.dispose();
+                                if (node.material) {
+                                    if (Array.isArray(node.material)) {
+                                        node.material.forEach(m => m.dispose());
+                                    } else {
+                                        node.material.dispose();
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }, this.data.timeout);
             }
         });
         
@@ -1689,7 +1842,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-sheep.patt') }}" id="pattern-sheep-marker">
             <a-entity
                 id="sheep-model"
-                gltf-model="{{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1702,7 +1855,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-namakemono.patt') }}" id="pattern-namakemono-marker">
             <a-entity
                 id="namakemono-model"
-                gltf-model="{{ asset('cg/3d_pro_namakemono_oda.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_namakemono_oda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1715,7 +1868,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-hamstar.patt') }}" id="pattern-hamstar-marker">
             <a-entity
                 id="hamstar-model"
-                gltf-model="{{ asset('cg/3d_pro_humstar_harada.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_humstar_harada.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1728,7 +1881,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-burger.patt') }}" id="pattern-burger-marker">
             <a-entity
                 id="burger-model"
-                gltf-model="{{ asset('cg/3d_pro_burger_fujii.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1741,7 +1894,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-duck.patt') }}" id="pattern-duck-marker">
             <a-entity
                 id="duck-model"
-                gltf-model="{{ asset('cg/3d_pro_duck_oonomi.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_duck_oonomi.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1754,7 +1907,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-cat.patt') }}" id="pattern-cat-marker">
             <a-entity
                 id="cat-model"
-                gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_cat_fukuda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1767,7 +1920,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-bear.patt') }}" id="pattern-bear-marker">
             <a-entity
                 id="bear-model"
-                gltf-model="{{ asset('cg/3d_pro_bear_tagashira.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_bear_tagashira.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1780,7 +1933,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-harinezumi.patt') }}" id="pattern-harinezumi-marker">
             <a-entity
                 id="harinezumi-model"
-                gltf-model="{{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1793,7 +1946,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-whiteTiger.patt') }}" id="pattern-whiteTiger-marker">
             <a-entity
                 id="whiteTiger-model"
-                gltf-model="{{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1806,7 +1959,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-santa.patt') }}" id="pattern-santa-marker">
             <a-entity
                 id="santa-model"
-                gltf-model="{{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1818,7 +1971,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-fox.patt') }}" id="pattern-fox-marker">
             <a-entity
                 id="fox-model"
-                gltf-model="{{ asset('cg/3d_pro_fox_isobe.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1830,7 +1983,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-pengin.patt') }}" id="pattern-pengin-marker">
             <a-entity
                 id="pengin-model"
-                gltf-model="{{ asset('cg/3d_pro_pengin_morita.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1842,7 +1995,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-tonakai.patt') }}" id="pattern-tonakai-marker">
             <a-entity
                 id="tonakai-model"
-                gltf-model="{{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1854,7 +2007,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-pig.patt') }}" id="pattern-pig-marker">
             <a-entity
                 id="pig-model"
-                gltf-model="{{ asset('cg/3d_pro_pig_matsubara.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1867,7 +2020,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-tora.patt') }}" id="pattern-tora-marker">
             <a-entity
                 id="tora-model"
-                gltf-model="{{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1880,7 +2033,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-gollira.patt') }}" id="pattern-gollira-marker">
             <a-entity
                 id="gollira-model"
-                gltf-model="{{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1893,7 +2046,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-whiteDuck.patt') }}" id="pattern-whiteDuck-marker">
             <a-entity
                 id="whiteDuck-model"
-                gltf-model="{{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1906,7 +2059,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-araiguma.patt') }}" id="pattern-araiguma-marker">
             <a-entity
                 id="araiguma-model"
-                gltf-model="{{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1919,7 +2072,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-wolf.patt') }}" id="pattern-wolf-marker">
             <a-entity
                 id="wolf-model"
-                gltf-model="{{ asset('cg/3d_pro_wolf_morita.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_wolf_morita.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -1932,7 +2085,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
             <a-entity
                 id="t-rex-model"
-                gltf-model="{{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -3511,7 +3664,7 @@
                 try {
                     if (el.components && el.components.hitbox) {
                         const idx = allHitboxes.indexOf(el.components.hitbox);
-                        if (idx > -1) allHitboxes.splice(idx, 1);
+                        if (idx > -1) // allHitboxes.splice(idx, 1);
                     }
                 } catch (e) { /* ignore */ }
 
@@ -4028,107 +4181,8 @@
                     
                     pokeball.components['pokeball-throwable'].throw(forward, speed);
                     
-                    // 当たり判定チェック（フレームごと）
-                    let hasHit = false;
-                    const checkInterval = setInterval(() => {
-                        if (hasHit) return;
-                        
-                        const ballPos = pokeball.object3D.getWorldPosition(new THREE.Vector3());
-                        
-                        // すべてのヒットボックスと衝突判定
-                        for (let i = 0; i < allHitboxes.length; i++) {
-                            const hitbox = allHitboxes[i];
-                            if (hitbox.checkCollision(ballPos)) {
-                                hasHit = true;
-                                const stampId = hitbox.data.stampId;
-                                console.log('✓ Hit!', stampId);
-                                
-                                // ヒットしたモデルのanime02を再生
-                                const hitModel = hitbox.el;
-                                if (hitModel && hitModel.playHitAnimation) {
-                                    hitModel.playHitAnimation();
-                                    console.log('Playing hit animation on model:', stampId);
-                                }
-                                
-                                // 衝突エフェクト
-                                showHitEffect(pokeball, hitbox);
-                                
-                                // 跳ね返りアニメーション
-                                const throwableComponent = pokeball.components['pokeball-throwable'];
-                                if (throwableComponent) {
-                                    throwableComponent.velocity.multiplyScalar(-0.6);
-                                    throwableComponent.velocity.y += 3;
-                                    
-                                    const model = pokeball.getObject3D('mesh');
-                                    if (model) {
-                                        model.traverse(function(node) {
-                                            if (node.isMesh) {
-                                                const originalScale = pokeball.object3D.scale.clone();
-                                                pokeball.object3D.scale.multiplyScalar(1.3);
-                                                setTimeout(() => {
-                                                    pokeball.object3D.scale.copy(originalScale);
-                                                }, 100);
-                                            }
-                                        });
-                                    }
-                                    
-                                    // フェードアウト処理
-                                    setTimeout(() => {
-                                        let opacity = 1.0;
-                                        const fadeInterval = setInterval(() => {
-                                            opacity -= 0.05;
-                                            const model = pokeball.getObject3D('mesh');
-                                            if (model) {
-                                                model.traverse(function(node) {
-                                                    if (node.material) {
-                                                        const materials = Array.isArray(node.material) ? node.material : [node.material];
-                                                        materials.forEach(mat => {
-                                                            mat.transparent = true;
-                                                            mat.opacity = Math.max(0, opacity);
-                                                            mat.needsUpdate = true;
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                            
-                                            if (opacity <= 0) {
-                                                clearInterval(fadeInterval);
-                                                if (pokeball.parentNode) {
-                                                    pokeball.parentNode.removeChild(pokeball);
-                                                }
-                                            }
-                                        }, 50);
-                                    }, 1000);
-                                }
-                                
-                                // スクリーンショット撮影してスタンプ登録
-                                // ヒット後0.2秒間ボールを表示し、その後非表示にしてモデルのみ撮影
-                                setTimeout(() => {
-                                    // ボールを非表示
-                                    pokeball.setAttribute('visible', 'false');
-                                    
-                                    // 次のフレームでスクリーンショット撮影（背景透過）
-                                    setTimeout(() => {
-                                        captureModelScreenshot(function(screenshot) {
-                                            if (screenshot) {
-                                                updateStampScreenshot(stampId, screenshot);
-                                            } else {
-                                                console.warn('No screenshot generated for', stampId, '— fallback record should exist');
-                                            }
-                                            
-                                            // スクリーンショット後、ボールを再表示してフェードアウト継続
-                                            pokeball.setAttribute('visible', 'true');
-                                        });
-                                    }, 16); // 1フレーム後
-                                }, 200); // ヒット後0.2秒
-                                
-                                break;
-                            }
-                        }
-                    }, 16); // 約60FPS
-                    
-                    // 8秒後にチェック終了
-                    setTimeout(() => clearInterval(checkInterval), 8000);
+                    // 当たり判定は pokeball-throwable コンポーネント内で処理されるため、
+                    // ここでの重複した判定ループは削除しました。
                 });
             }
             
@@ -4165,7 +4219,7 @@
                     if (sheepModel.components.hitbox) {
                         const index = allHitboxes.indexOf(sheepModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4201,7 +4255,7 @@
                     if (foxModel.components.hitbox) {
                         const index = allHitboxes.indexOf(foxModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4237,7 +4291,7 @@
                     if (penginModel.components.hitbox) {
                         const index = allHitboxes.indexOf(penginModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4273,7 +4327,7 @@
                     if (tonakaiModel.components.hitbox) {
                         const index = allHitboxes.indexOf(tonakaiModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4309,7 +4363,7 @@
                     if (pigModel.components.hitbox) {
                         const index = allHitboxes.indexOf(pigModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4344,7 +4398,7 @@
                     if (toraModel && toraModel.components && toraModel.components.hitbox) {
                         const index = allHitboxes.indexOf(toraModel.components.hitbox);
                         if (index > -1) {
-                            allHitboxes.splice(index, 1);
+                            // allHitboxes.splice(index, 1);
                         }
                     }
                 });
@@ -4393,7 +4447,7 @@
                         if (currentMarkerStampId === 't-rex') currentMarkerStampId = null;
                         if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
                             const index = allHitboxes.indexOf(tRexModel.components.hitbox);
-                            if (index > -1) allHitboxes.splice(index, 1);
+                            if (index > -1) // allHitboxes.splice(index, 1);
                         }
                     });
                     
@@ -4424,7 +4478,7 @@
                             if (currentMarkerStampId === 'burger') currentMarkerStampId = null;
                             if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(burgerModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             }
                         });
 
@@ -4485,7 +4539,7 @@
                                 if (currentMarkerStampId === 'hamstar') currentMarkerStampId = null;
                                 if (hamstarModel && hamstarModel.components && hamstarModel.components.hitbox) {
                                     const index = allHitboxes.indexOf(hamstarModel.components.hitbox);
-                                    if (index > -1) allHitboxes.splice(index, 1);
+                                    if (index > -1) // allHitboxes.splice(index, 1);
                                 } else if (hamstarModel) {
                                     // check for nested hitbox elements and remove
                                     const nested = hamstarModel.querySelectorAll ? hamstarModel.querySelectorAll('[hitbox]') : [];
@@ -4493,7 +4547,7 @@
                                         nested.forEach(n => {
                                             if (n.components && n.components.hitbox) {
                                                 const idx = allHitboxes.indexOf(n.components.hitbox);
-                                                if (idx > -1) allHitboxes.splice(idx, 1);
+                                                if (idx > -1) // allHitboxes.splice(idx, 1);
                                             }
                                         });
                                     }
@@ -4513,7 +4567,7 @@
                     if (currentMarkerStampId === 'gollira') currentMarkerStampId = null;
                     if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
                         const index = allHitboxes.indexOf(golliraModel.components.hitbox);
-                        if (index > -1) allHitboxes.splice(index, 1);
+                        if (index > -1) // allHitboxes.splice(index, 1);
                     }
                 });
             }
@@ -4545,7 +4599,7 @@
                     if (currentMarkerStampId === 'whiteDuck') currentMarkerStampId = null;
                     if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
                         const index = allHitboxes.indexOf(whiteDuckModel.components.hitbox);
-                        if (index > -1) allHitboxes.splice(index, 1);
+                        if (index > -1) // allHitboxes.splice(index, 1);
                     }
                 });
                 
@@ -4604,14 +4658,14 @@
                         if (currentMarkerStampId === 'araiguma') currentMarkerStampId = null;
                         if (araigumaModel && araigumaModel.components && araigumaModel.components.hitbox) {
                             const index = allHitboxes.indexOf(araigumaModel.components.hitbox);
-                            if (index > -1) allHitboxes.splice(index, 1);
+                            if (index > -1) // allHitboxes.splice(index, 1);
                         } else if (araigumaModel) {
                             const nested = araigumaModel.querySelectorAll ? araigumaModel.querySelectorAll('[hitbox]') : [];
                             if (nested && nested.length) {
                                 nested.forEach(n => {
                                     if (n.components && n.components.hitbox) {
                                         const idx = allHitboxes.indexOf(n.components.hitbox);
-                                        if (idx > -1) allHitboxes.splice(idx, 1);
+                                        if (idx > -1) // allHitboxes.splice(idx, 1);
                                     }
                                 });
                             }
@@ -4672,14 +4726,14 @@
                             if (currentMarkerStampId === 'wolf') currentMarkerStampId = null;
                             if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(wolfModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (wolfModel) {
                                 const nested = wolfModel.querySelectorAll ? wolfModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4741,14 +4795,14 @@
                             if (currentMarkerStampId === 'namakemono') currentMarkerStampId = null;
                             if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(namakemonoModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (namakemonoModel) {
                                 const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4810,14 +4864,14 @@
                             if (currentMarkerStampId === 'duck') currentMarkerStampId = null;
                             if (duckModel && duckModel.components && duckModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(duckModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (duckModel) {
                                 const nested = duckModel.querySelectorAll ? duckModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4879,14 +4933,14 @@
                             if (currentMarkerStampId === 'cat') currentMarkerStampId = null;
                             if (catModel && catModel.components && catModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(catModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (catModel) {
                                 const nested = catModel.querySelectorAll ? catModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4948,14 +5002,14 @@
                             if (currentMarkerStampId === 'bear') currentMarkerStampId = null;
                             if (bearModel && bearModel.components && bearModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(bearModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (bearModel) {
                                 const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5017,14 +5071,14 @@
                             if (currentMarkerStampId === 'harinezumi') currentMarkerStampId = null;
                             if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(harinezumiModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (harinezumiModel) {
                                 const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5086,14 +5140,14 @@
                             if (currentMarkerStampId === 'whiteTiger') currentMarkerStampId = null;
                             if (whiteTigerModel && whiteTigerModel.components && whiteTigerModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(whiteTigerModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (whiteTigerModel) {
                                 const nested = whiteTigerModel.querySelectorAll ? whiteTigerModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5155,14 +5209,14 @@
                             if (currentMarkerStampId === 'santa') currentMarkerStampId = null;
                             if (santaModel && santaModel.components && santaModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(santaModel.components.hitbox);
-                                if (index > -1) allHitboxes.splice(index, 1);
+                                if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (santaModel) {
                                 const nested = santaModel.querySelectorAll ? santaModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) allHitboxes.splice(idx, 1);
+                                            if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
