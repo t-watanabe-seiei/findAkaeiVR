@@ -222,7 +222,8 @@
             
             tick: function() {
                 // 可視状態でない場合は更新しない（パフォーマンス最適化）
-                if (!this.el.object3D.visible) return;
+                // 親（マーカー）が見えていない場合もスキップ
+                if (!this.el.object3D.visible || (this.el.parentElement && this.el.parentElement.object3D && !this.el.parentElement.object3D.visible)) return;
                 this.updateBox();
             },
             
@@ -527,7 +528,8 @@
             },
             tick: function(time, deltaTime) {
                 // 可視状態でない場合は更新しない（パフォーマンス最適化）
-                if (!this.el.object3D.visible) return;
+                // 親（マーカー）が見えていない場合もスキップ
+                if (!this.el.object3D.visible || (this.el.parentElement && this.el.parentElement.object3D && !this.el.parentElement.object3D.visible)) return;
                 
                 // mixerが存在する場合のみ更新
                 if (this.mixer) {
@@ -1571,7 +1573,7 @@
     
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 30;"
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
