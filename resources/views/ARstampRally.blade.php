@@ -378,25 +378,26 @@
                     destroyAndFreeEntity(this.el);
                 } catch (e) { console.warn('Immediate destroy failed', e); }
 
-                // アニメーション終了後にモデルのスクリーンショットを取り、モデルを非表示にする
+                // アニメーション終了後：スクリーンショットは取得せず、既知のアイコン（STAMPS）を用いて
+                // スタンプを登録・マークしてモデルを非表示にする（軽量な処理）
                 animationPromise.then(() => {
                     try {
-                        if (typeof captureModelScreenshot === 'function') {
-                            // ボールは既に非表示になっているのでモデルのみ撮影
-                            captureModelScreenshot(function(screenshot) {
-                                if (screenshot && typeof updateStampScreenshot === 'function') {
-                                    updateStampScreenshot(stampId, screenshot);
-                                }
-                                // モデルを非表示（捕獲済み扱い）
-                                try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
-                                try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
-                                // アイコン表示
-                                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in handleHit capture callback', e); }
-                            });
-                        } else {
+                        try {
+                            // まずは記録（スクショ無し）を試みる
+                            const saved = (typeof collectAndMarkWithRetry === 'function') ? collectAndMarkWithRetry(stampId, null, 3, 2000) : false;
+                            console.log('collectAndMarkWithRetry (no-screenshot) returned', saved, 'for', stampId);
+                            // markAnimalCaptured は内部で呼ばれているはずだが念のため補助的に呼ぶ
+                            try { if (typeof markAnimalCaptured === 'function') markAnimalCaptured(stampId); } catch (e) { /* ignore */ }
+
+                            // モデルを非表示・状態更新・アイコン表示
                             try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
-                            try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
-                            try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
+                            try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) { /* ignore */ }
+                            try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in handleHit (no-screenshot) callback', e); }
+                        } catch (err) {
+                            console.warn('Non-screenshot capture failed for', stampId, err);
+                            try { hitModel.setAttribute('visible', 'false'); } catch (e) { /* ignore */ }
+                            try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) { /* ignore */ }
+                            try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { /* ignore */ }
                         }
                     } catch (e) { console.warn('Post-animation handling failed', e); }
                 });
@@ -4129,14 +4130,15 @@
                                     const animPromise = hitModel.playHitAnimation();
                                     animPromise.then(() => {
                                         try {
-                                            if (typeof captureModelScreenshot === 'function') {
-                                                captureModelScreenshot(function(screenshot) {
-                                                    if (screenshot) updateStampScreenshot(stampId, screenshot);
-                                                    try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
-                                                    try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
-                                                    try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in throw capture callback', e); }
-                                                });
-                                            } else {
+                                            try {
+                                                const saved = (typeof collectAndMarkWithRetry === 'function') ? collectAndMarkWithRetry(stampId, null, 3, 2000) : false;
+                                                console.log('collectAndMarkWithRetry (no-screenshot) returned', saved, 'for', stampId, 'in throw path');
+                                                try { if (typeof markAnimalCaptured === 'function') markAnimalCaptured(stampId); } catch (e) { /* ignore */ }
+                                                try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                                try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                                                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) { console.warn('showCapturedMessage failed in throw (no-screenshot) callback', e); }
+                                            } catch (err) {
+                                                console.warn('Non-screenshot capture failed in throw for', stampId, err);
                                                 try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
                                                 try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
                                                 try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
@@ -4146,12 +4148,16 @@
                                 } else {
                                     // フォールバック: 直ちにスクショを取り、モデルを非表示
                                     try {
-                                        if (typeof captureModelScreenshot === 'function') {
-                                            captureModelScreenshot(function(screenshot) {
-                                                if (screenshot) updateStampScreenshot(stampId, screenshot);
-                                                try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
-                                            });
-                                        } else {
+                                        // フォールバック: スクリーンショットは取らず、即座に記録とUI更新を行う
+                                        try {
+                                            const saved = (typeof collectAndMarkWithRetry === 'function') ? collectAndMarkWithRetry(stampId, null, 3, 2000) : false;
+                                            console.log('collectAndMarkWithRetry (no-screenshot, fallback) returned', saved, 'for', stampId);
+                                            try { if (typeof markAnimalCaptured === 'function') markAnimalCaptured(stampId); } catch (e) { /* ignore */ }
+                                            try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                                            try { if (hitModel && typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                                            try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
+                                        } catch (err) {
+                                            console.warn('Non-screenshot fallback failed for', stampId, err);
                                             try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
                                         }
                                     } catch (e) { console.warn('Fallback post-hit handling failed', e); }
