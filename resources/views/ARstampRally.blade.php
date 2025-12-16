@@ -221,6 +221,8 @@
             },
             
             tick: function() {
+                // 可視状態でない場合は更新しない（パフォーマンス最適化）
+                if (!this.el.object3D.visible) return;
                 this.updateBox();
             },
             
@@ -524,6 +526,9 @@
                 */
             },
             tick: function(time, deltaTime) {
+                // 可視状態でない場合は更新しない（パフォーマンス最適化）
+                if (!this.el.object3D.visible) return;
+                
                 // mixerが存在する場合のみ更新
                 if (this.mixer) {
                     // deltaTimeを秒に変換（ミリ秒 → 秒）
@@ -1568,7 +1573,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: mediump;">
+        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
         <a-entity camera="near: 0.2; far: 800;">
             <!-- 手持ちのポケボール (HUD) -->
