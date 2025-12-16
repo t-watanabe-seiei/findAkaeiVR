@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AR Stamp Rally</title>
     <script>
+        // グローバル変数：飛んでいるボールの数（パフォーマンス最適化用）
+        window.activeBalls = 0;
+
         // 最優先でキーボードイベントをブロック（キャプチャフェーズで捕捉）
         document.addEventListener('keydown', function(e) {
             // Ctrl+U, Cmd+U (ソースコード表示)
@@ -126,6 +129,16 @@
                 this.isThrown = false;
                 this.lifetime = 0;
                 this.maxLifetime = 8; // 8秒後に消滅（より長く）
+                
+                // アクティブなボール数をカウントアップ
+                window.activeBalls = (window.activeBalls || 0) + 1;
+                // console.log('Active balls:', window.activeBalls);
+            },
+            
+            remove: function() {
+                // アクティブなボール数をカウントダウン
+                window.activeBalls = Math.max(0, (window.activeBalls || 1) - 1);
+                // console.log('Active balls:', window.activeBalls);
             },
             
             throw: function(direction, speed) {
@@ -140,21 +153,22 @@
             tick: function(time, deltaTime) {
                 if (!this.isThrown) return;
                 
-                const delta = deltaTime / 1000;
-                this.lifetime += delta;
+                // deltaTimeの安全性チェック
+                const dt = (deltaTime || 16) / 1000;
+                this.lifetime += dt;
                 
                 // 重力を適用
-                this.velocity.y += this.gravity * delta;
+                this.velocity.y += this.gravity * dt;
                 
                 // 位置を更新
                 const pos = this.el.object3D.position;
-                pos.x += this.velocity.x * delta;
-                pos.y += this.velocity.y * delta;
-                pos.z += this.velocity.z * delta;
+                pos.x += this.velocity.x * dt;
+                pos.y += this.velocity.y * dt;
+                pos.z += this.velocity.z * dt;
                 
                 // 回転させる（投げた感じを出す）- Android向けに速度調整
-                this.el.object3D.rotation.x += delta * 4; // 8 → 4に減速（ちらつき軽減）
-                this.el.object3D.rotation.z += delta * 2.5; // 5 → 2.5に減速
+                this.el.object3D.rotation.x += dt * 4; // 8 → 4に減速（ちらつき軽減）
+                this.el.object3D.rotation.z += dt * 2.5; // 5 → 2.5に減速
                 
                 // 寿命チェック
                 if (this.lifetime > this.maxLifetime || pos.y < -5) {
@@ -162,7 +176,82 @@
                     if (this.el.parentNode) {
                         this.el.parentNode.removeChild(this.el);
                     }
+                    return;
                 }
+
+                // 当たり判定チェック（ここで行うことでsetIntervalを廃止し同期させる）
+                // 3フレームに1回程度チェックする（負荷軽減）
+                if (this.el.sceneEl.frame && this.el.sceneEl.frame % 3 !== 0) return;
+
+                const ballPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                
+                // グローバルのallHitboxesを参照
+                if (typeof allHitboxes !== 'undefined') {
+                    for (let i = 0; i < allHitboxes.length; i++) {
+                        const hitbox = allHitboxes[i];
+                        // hitboxの要素が見えている場合のみ判定
+                        if (hitbox.el.object3D.visible && hitbox.checkCollision(ballPos)) {
+                            // ヒット処理
+                            this.handleHit(hitbox);
+                            break;
+                        }
+                    }
+                }
+            },
+
+            handleHit: function(hitbox) {
+                const stampId = hitbox.data.stampId;
+                console.log('✓ Hit!', stampId);
+                
+                const hitModel = hitbox.el;
+                if (hitModel && hitModel.playHitAnimation) {
+                    hitModel.playHitAnimation();
+                }
+                
+                // 即時登録
+                try {
+                    if (typeof collectAndMarkWithRetry === 'function') {
+                        collectAndMarkWithRetry(stampId, null, 3, 2000);
+                    }
+                    if (hitModel && typeof hitModel.setCapturedState === 'function') {
+                        hitModel.setCapturedState(true);
+                    }
+                } catch (e) { console.warn('Hit registration failed', e); }
+                
+                if (typeof showHitEffect === 'function') {
+                    showHitEffect(this.el, hitbox);
+                }
+                
+                // 跳ね返り
+                this.velocity.multiplyScalar(-0.6);
+                this.velocity.y += 3;
+                
+                // 少し待ってから消滅
+                setTimeout(() => {
+                    this.el.emit('pokeball-gone');
+                    if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                }, 1000);
+                
+                // スクショ処理
+                const ballEl = this.el;
+                setTimeout(() => {
+                    ballEl.setAttribute('visible', 'false');
+                    setTimeout(() => {
+                        if (typeof captureModelScreenshot === 'function') {
+                            captureModelScreenshot(function(screenshot) {
+                                if (screenshot && typeof updateStampScreenshot === 'function') {
+                                    updateStampScreenshot(stampId, screenshot);
+                                }
+                                if (ballEl.object3D) ballEl.setAttribute('visible', 'true');
+                            });
+                        }
+                    }, 16);
+                }, 200);
+                
+                // ヒットしたので以降のtick処理を停止（簡易的）
+                this.isThrown = false; 
+                // ただし跳ね返りアニメーションのために少し動かしたい場合は別ロジックが必要だが
+                // ここではシンプルに物理挙動を止めて、setTimeoutで消す
             }
         });
         
@@ -224,6 +313,10 @@
                 // 可視状態でない場合は更新しない（パフォーマンス最適化）
                 // 親（マーカー）が見えていない場合もスキップ
                 if (!this.el.object3D.visible || (this.el.parentElement && this.el.parentElement.object3D && !this.el.parentElement.object3D.visible)) return;
+                
+                // ボールが飛んでいない時は当たり判定ボックスの更新をスキップ（超重要：CPU負荷軽減）
+                if (!window.activeBalls || window.activeBalls <= 0) return;
+
                 this.updateBox();
             },
             
@@ -1573,7 +1666,7 @@
     
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 30;"
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
@@ -6431,87 +6524,20 @@
                             });
                         }
                         
+                        // 投げる処理を実行（当たり判定はコンポーネント内で行うため、ここでのsetIntervalは削除）
                         newBall.components['pokeball-throwable'].throw(direction, speed);
-                        
-                        // 当たり判定チェック（既存ロジックを流用）
-                        let hasHit = false;
-                        // インターバルIDを要素に保存して管理
-                        newBall.checkInterval = setInterval(() => {
-                            if (hasHit) return;
-                            
-                            // ボールが削除されていたらインターバルを停止
-                            if (!newBall.parentNode || !newBall.object3D) {
-                                if (newBall.checkInterval) clearInterval(newBall.checkInterval);
-                                return;
-                            }
-                            
-                            const ballPos = newBall.object3D.getWorldPosition(new THREE.Vector3());
-                            
-                            for (let i = 0; i < allHitboxes.length; i++) {
-                                const hitbox = allHitboxes[i];
-                                if (hitbox.checkCollision(ballPos)) {
-                                    hasHit = true;
-                                    const stampId = hitbox.data.stampId;
-                                    console.log('✓ Hit!', stampId);
-                                    
-                                    const hitModel = hitbox.el;
-                                    if (hitModel && hitModel.playHitAnimation) {
-                                        hitModel.playHitAnimation();
-                                    }
-                                    
-                                    // 即時登録
-                                    try {
-                                        collectAndMarkWithRetry(stampId, null, 3, 2000);
-                                        if (hitModel && typeof hitModel.setCapturedState === 'function') {
-                                            hitModel.setCapturedState(true);
-                                        }
-                                    } catch (e) { console.warn('Hit registration failed', e); }
-                                    
-                                    showHitEffect(newBall, hitbox);
-                                    
-                                    // 跳ね返り
-                                    const throwable = newBall.components['pokeball-throwable'];
-                                    if (throwable) {
-                                        throwable.velocity.multiplyScalar(-0.6);
-                                        throwable.velocity.y += 3;
-                                    }
-                                    
-                                    // 消滅イベント発火して削除
-                                    setTimeout(() => {
-                                        if (newBall.checkInterval) clearInterval(newBall.checkInterval);
-                                        newBall.emit('pokeball-gone');
-                                        if (newBall.parentNode) newBall.parentNode.removeChild(newBall);
-                                    }, 1000);
-                                    
-                                    // スクショ処理
-                                    setTimeout(() => {
-                                        newBall.setAttribute('visible', 'false');
-                                        setTimeout(() => {
-                                            captureModelScreenshot(function(screenshot) {
-                                                if (screenshot) updateStampScreenshot(stampId, screenshot);
-                                                newBall.setAttribute('visible', 'true');
-                                            });
-                                        }, 16);
-                                    }, 200);
-                                    
-                                    break;
-                                }
-                            }
-                        }, 33); // 16ms -> 33ms (負荷軽減)
-                        
-                        // タイムアウト（pokeball-throwable側でも消えるが念のため）
-                        setTimeout(() => {
-                            if (newBall.checkInterval) clearInterval(newBall.checkInterval);
-                        }, 8000);
                     });
                     
                     // 削除イベント監視（寿命 or ヒットで消滅時）
                     newBall.addEventListener('pokeball-gone', () => {
-                        // インターバルを確実に停止
-                        if (newBall.checkInterval) {
-                            clearInterval(newBall.checkInterval);
-                            newBall.checkInterval = null;
-                        }
+                        console.log('Pokeball gone, reloading...');
+                        setTimeout(() => {
+                            if (ballEntity) {
+                                ballEntity.setAttribute('visible', 'true');
+                                canThrow = true;
+                            }
+                        }, 500); // 0.5秒後に再表示
+                    });
                         console.log('Pokeball gone, reloading...');
                         setTimeout(() => {
                             if (ballEntity) {
