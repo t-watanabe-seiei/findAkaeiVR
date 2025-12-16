@@ -210,8 +210,9 @@
                 if (typeof window.allHitboxes !== 'undefined') {
                     for (let i = 0; i < window.allHitboxes.length; i++) {
                         const hitbox = window.allHitboxes[i];
-                        // hitboxの要素が見えている場合のみ判定
+                        // hitboxの要素が見えている場合のみ判定（親要素の可視性もチェック）
                         if (!hitbox.el.object3D.visible) continue;
+                        if (hitbox.el.parentElement && hitbox.el.parentElement.object3D && !hitbox.el.parentElement.object3D.visible) continue;
 
                         let isHit = false;
 
@@ -2597,46 +2598,7 @@
             return captured[stampId] === true;
         }
         
-        // スタンプを登録
-        function collectStamp(stampId, screenshot = null) {
-            const collectedStamps = getCollectedStamps();
-            
-            if (!collectedStamps[stampId]) {
-                collectedStamps[stampId] = {
-                    collectedAt: new Date().toISOString(),
-                    name: STAMPS[stampId].name,
-                    screenshot: screenshot // スクリーンショットのBase64データ
-                };
-                saveCollectedStamps(collectedStamps);
-                updateStampBadge();
-                
-                // 動物をゲットした時だけマーカースキャンを記録
-                recordMarkerScan(stampId, STAMPS[stampId].name);
-                
-                // 新規取得の処理
-                const totalCollected = Object.keys(collectedStamps).length;
-                const isComplete = totalCollected === Object.keys(STAMPS).length;
-                
-                // 音声再生
-                if (isComplete) {
-                    // 全種類コンプリート！
-                    playSound(soundStamp02);
-                    showCompleteParticles();
-                } else {
-                    // 通常の取得
-                    playSound(soundStamp01);
-                    showNormalParticles();
-                }
-                
-                // 通知表示
-                showStampNotification(stampId, isComplete);
-                
-                console.log('✓ Stamp collected:', stampId, 'Total:', totalCollected);
-                return true;
-            } else {
-                console.log('Already collected:', stampId);
-                return false;
-            }
+        // collectStamp removed (duplicate)
 
         // 既存のスタンプにスクリーンショットを追加/上書きする（スクリーンショット取得後呼び出す）
         function updateStampScreenshot(stampId, screenshotDataUrl) {
@@ -3664,7 +3626,7 @@
                 try {
                     if (el.components && el.components.hitbox) {
                         const idx = allHitboxes.indexOf(el.components.hitbox);
-                        if (idx > -1) // allHitboxes.splice(idx, 1);
+//                         if (idx > -1) // allHitboxes.splice(idx, 1);
                     }
                 } catch (e) { /* ignore */ }
 
@@ -4447,7 +4409,7 @@
                         if (currentMarkerStampId === 't-rex') currentMarkerStampId = null;
                         if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
                             const index = allHitboxes.indexOf(tRexModel.components.hitbox);
-                            if (index > -1) // allHitboxes.splice(index, 1);
+//                             if (index > -1) // allHitboxes.splice(index, 1);
                         }
                     });
                     
@@ -4478,7 +4440,7 @@
                             if (currentMarkerStampId === 'burger') currentMarkerStampId = null;
                             if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(burgerModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             }
                         });
 
@@ -4539,7 +4501,7 @@
                                 if (currentMarkerStampId === 'hamstar') currentMarkerStampId = null;
                                 if (hamstarModel && hamstarModel.components && hamstarModel.components.hitbox) {
                                     const index = allHitboxes.indexOf(hamstarModel.components.hitbox);
-                                    if (index > -1) // allHitboxes.splice(index, 1);
+//                                     if (index > -1) // allHitboxes.splice(index, 1);
                                 } else if (hamstarModel) {
                                     // check for nested hitbox elements and remove
                                     const nested = hamstarModel.querySelectorAll ? hamstarModel.querySelectorAll('[hitbox]') : [];
@@ -4547,7 +4509,7 @@
                                         nested.forEach(n => {
                                             if (n.components && n.components.hitbox) {
                                                 const idx = allHitboxes.indexOf(n.components.hitbox);
-                                                if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                                 if (idx > -1) // allHitboxes.splice(idx, 1);
                                             }
                                         });
                                     }
@@ -4567,7 +4529,7 @@
                     if (currentMarkerStampId === 'gollira') currentMarkerStampId = null;
                     if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
                         const index = allHitboxes.indexOf(golliraModel.components.hitbox);
-                        if (index > -1) // allHitboxes.splice(index, 1);
+//                         if (index > -1) // allHitboxes.splice(index, 1);
                     }
                 });
             }
@@ -4599,7 +4561,7 @@
                     if (currentMarkerStampId === 'whiteDuck') currentMarkerStampId = null;
                     if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
                         const index = allHitboxes.indexOf(whiteDuckModel.components.hitbox);
-                        if (index > -1) // allHitboxes.splice(index, 1);
+//                         if (index > -1) // allHitboxes.splice(index, 1);
                     }
                 });
                 
@@ -4658,14 +4620,14 @@
                         if (currentMarkerStampId === 'araiguma') currentMarkerStampId = null;
                         if (araigumaModel && araigumaModel.components && araigumaModel.components.hitbox) {
                             const index = allHitboxes.indexOf(araigumaModel.components.hitbox);
-                            if (index > -1) // allHitboxes.splice(index, 1);
+//                             if (index > -1) // allHitboxes.splice(index, 1);
                         } else if (araigumaModel) {
                             const nested = araigumaModel.querySelectorAll ? araigumaModel.querySelectorAll('[hitbox]') : [];
                             if (nested && nested.length) {
                                 nested.forEach(n => {
                                     if (n.components && n.components.hitbox) {
                                         const idx = allHitboxes.indexOf(n.components.hitbox);
-                                        if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                         if (idx > -1) // allHitboxes.splice(idx, 1);
                                     }
                                 });
                             }
@@ -4726,14 +4688,14 @@
                             if (currentMarkerStampId === 'wolf') currentMarkerStampId = null;
                             if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(wolfModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (wolfModel) {
                                 const nested = wolfModel.querySelectorAll ? wolfModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4795,14 +4757,14 @@
                             if (currentMarkerStampId === 'namakemono') currentMarkerStampId = null;
                             if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(namakemonoModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (namakemonoModel) {
                                 const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4864,14 +4826,14 @@
                             if (currentMarkerStampId === 'duck') currentMarkerStampId = null;
                             if (duckModel && duckModel.components && duckModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(duckModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (duckModel) {
                                 const nested = duckModel.querySelectorAll ? duckModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -4933,14 +4895,14 @@
                             if (currentMarkerStampId === 'cat') currentMarkerStampId = null;
                             if (catModel && catModel.components && catModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(catModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (catModel) {
                                 const nested = catModel.querySelectorAll ? catModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5002,14 +4964,14 @@
                             if (currentMarkerStampId === 'bear') currentMarkerStampId = null;
                             if (bearModel && bearModel.components && bearModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(bearModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (bearModel) {
                                 const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5071,14 +5033,14 @@
                             if (currentMarkerStampId === 'harinezumi') currentMarkerStampId = null;
                             if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(harinezumiModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (harinezumiModel) {
                                 const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5140,14 +5102,14 @@
                             if (currentMarkerStampId === 'whiteTiger') currentMarkerStampId = null;
                             if (whiteTigerModel && whiteTigerModel.components && whiteTigerModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(whiteTigerModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (whiteTigerModel) {
                                 const nested = whiteTigerModel.querySelectorAll ? whiteTigerModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
@@ -5209,14 +5171,14 @@
                             if (currentMarkerStampId === 'santa') currentMarkerStampId = null;
                             if (santaModel && santaModel.components && santaModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(santaModel.components.hitbox);
-                                if (index > -1) // allHitboxes.splice(index, 1);
+//                                 if (index > -1) // allHitboxes.splice(index, 1);
                             } else if (santaModel) {
                                 const nested = santaModel.querySelectorAll ? santaModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
                                             const idx = allHitboxes.indexOf(n.components.hitbox);
-                                            if (idx > -1) // allHitboxes.splice(idx, 1);
+//                                             if (idx > -1) // allHitboxes.splice(idx, 1);
                                         }
                                     });
                                 }
