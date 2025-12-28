@@ -3673,10 +3673,21 @@
                 label.setAttribute('position', '0 2.5 0');
                 label.setAttribute('visible', false);
                 model.appendChild(label);
+                
+                // A-Frameの初期化を待ってから表示（nextTickで実行）
+                if (n) {
+                    setTimeout(() => {
+                        label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
+                        label.setAttribute('visible', true);
+                        if (label.object3D) label.object3D.visible = true;
+                        console.log('Showing number label for', stampId, 'with number', n, '(after recreation)');
+                    }, 50);
+                }
+                return;
             }
             
+            // 既存のラベルを表示
             if (n) {
-                // set text component
                 label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
                 label.setAttribute('visible', true);
                 // object3D.visibleも設定して確実に表示
