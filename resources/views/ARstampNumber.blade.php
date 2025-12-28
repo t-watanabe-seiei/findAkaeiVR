@@ -3664,6 +3664,8 @@
                 // set text component
                 label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
                 label.setAttribute('visible', true);
+                // object3D.visibleも設定して確実に表示
+                if (label.object3D) label.object3D.visible = true;
                 console.log('Showing number label for', stampId, 'with number', n);
             } else {
                 console.warn('Label or number not found for', stampId, 'label:', !!label, 'number:', n);
@@ -3676,6 +3678,8 @@
             const label = model.querySelector('.number-label');
             if (label) {
                 label.setAttribute('visible', false);
+                // object3D.visibleも設定して確実に非表示
+                if (label.object3D) label.object3D.visible = false;
                 console.log('Hiding number label for', stampId);
             }
         }
