@@ -2109,7 +2109,7 @@
                 id="sheep-model"
                 lazy-model="src: {{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
@@ -2122,7 +2122,7 @@
                 id="namakemono-model"
                 lazy-model="src: {{ asset('cg/3d_pro_namakemono_oda.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
@@ -2135,7 +2135,7 @@
                 id="hamstar-model"
                 lazy-model="src: {{ asset('cg/3d_pro_humstar_harada.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
@@ -2148,7 +2148,7 @@
                 id="burger-model"
                 lazy-model="src: {{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
@@ -2161,7 +2161,7 @@
                 id="duck-model"
                 lazy-model="src: {{ asset('cg/3d_pro_duck_oonomi.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: duck; width: 1.6; height: 3.2; depth: 1.6">
@@ -2174,7 +2174,7 @@
                 id="cat-model"
                 lazy-model="src: {{ asset('cg/3d_pro_cat_fukuda.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: cat; width: 1.6; height: 3.2; depth: 1.6">
@@ -2187,7 +2187,7 @@
                 id="bear-model"
                 lazy-model="src: {{ asset('cg/3d_pro_bear_tagashira.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
@@ -2200,7 +2200,7 @@
                 id="harinezumi-model"
                 lazy-model="src: {{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
@@ -2213,7 +2213,7 @@
                 id="whiteTiger-model"
                 lazy-model="src: {{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
@@ -2226,7 +2226,7 @@
                 id="santa-model"
                 lazy-model="src: {{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
@@ -2238,7 +2238,7 @@
                 id="fox-model"
                 lazy-model="src: {{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
@@ -2250,7 +2250,7 @@
                 id="pengin-model"
                 lazy-model="src: {{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
@@ -2262,7 +2262,7 @@
                 id="tonakai-model"
                 lazy-model="src: {{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
@@ -2274,7 +2274,7 @@
                 id="pig-model"
                 lazy-model="src: {{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
@@ -2287,7 +2287,7 @@
                 id="tora-model"
                 lazy-model="src: {{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
@@ -2300,7 +2300,7 @@
                 id="gollira-model"
                 lazy-model="src: {{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
@@ -2313,7 +2313,7 @@
                 id="whiteDuck-model"
                 lazy-model="src: {{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
@@ -2326,7 +2326,7 @@
                 id="araiguma-model"
                 lazy-model="src: {{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
@@ -2339,7 +2339,7 @@
                 id="wolf-model"
                 lazy-model="src: {{ asset('cg/3d_pro_wolf_morita.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
@@ -2352,7 +2352,7 @@
                 id="t-rex-model"
                 lazy-model="src: {{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
                 position="0 0 0.5"
-                scale="1.1 1.1 1.1"
+                scale="0.8 0.8 0.8"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
@@ -3645,13 +3645,19 @@
 
         function showNumberLabel(stampId) {
             const model = document.getElementById(stampId + '-model');
-            if (!model) return;
+            if (!model) {
+                console.warn('Model not found for stampId:', stampId);
+                return;
+            }
             const label = model.querySelector('.number-label');
             const n = assignedNumbers[stampId];
             if (label && n) {
                 // set text component
-                try { label.setAttribute('text', 'value', String(n)); } catch(e) { label.setAttribute('text', `value: ${n}`); }
+                label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
                 label.setAttribute('visible', 'true');
+                console.log('Showing number label for', stampId, 'with number', n);
+            } else {
+                console.warn('Label or number not found for', stampId, 'label:', !!label, 'number:', n);
             }
         }
 
@@ -3659,7 +3665,10 @@
             const model = document.getElementById(stampId + '-model');
             if (!model) return;
             const label = model.querySelector('.number-label');
-            if (label) label.setAttribute('visible', 'false');
+            if (label) {
+                label.setAttribute('visible', 'false');
+                console.log('Hiding number label for', stampId);
+            }
         }
 
         function startGame() {
@@ -3689,10 +3698,10 @@
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
                 label.setAttribute('text', 'value: ; align: center; color: #fff; width: 8');
-                label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
+                label.setAttribute('geometry', 'primitive: plane; width: 1.2; height: 0.6');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
-                label.setAttribute('position', '0 2.5 0');
+                label.setAttribute('position', '0 2.3 0');
                 label.setAttribute('visible', 'false');
                 model.appendChild(label);
             });
