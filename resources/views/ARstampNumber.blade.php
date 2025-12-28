@@ -3658,9 +3658,24 @@
                 console.warn('Model not found for stampId:', stampId);
                 return;
             }
-            const label = model.querySelector('.number-label');
+            
+            let label = model.querySelector('.number-label');
             const n = assignedNumbers[stampId];
-            if (label && n) {
+            
+            // ラベルが存在しない場合は再作成（モデルのアンロード後に削除された可能性）
+            if (!label) {
+                console.log('Label not found, recreating for', stampId);
+                label = document.createElement('a-entity');
+                label.className = 'number-label';
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 4');
+                label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
+                label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
+                label.setAttribute('position', '0 2.5 0');
+                label.setAttribute('visible', false);
+                model.appendChild(label);
+            }
+            
+            if (n) {
                 // set text component
                 label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
                 label.setAttribute('visible', true);
@@ -3668,7 +3683,7 @@
                 if (label.object3D) label.object3D.visible = true;
                 console.log('Showing number label for', stampId, 'with number', n);
             } else {
-                console.warn('Label or number not found for', stampId, 'label:', !!label, 'number:', n);
+                console.warn('Number not found for', stampId);
             }
         }
 
