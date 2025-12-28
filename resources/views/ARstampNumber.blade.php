@@ -458,8 +458,7 @@
                         } catch (e) { console.warn('Post-animation fallback handling failed', e); }
                     });
                 }
-            },
-            },
+            }
         });
 
         // 当たり判定ボックスコンポーネント
@@ -2111,7 +2110,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2124,7 +2123,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_namakemono_oda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2137,7 +2136,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_humstar_harada.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2150,7 +2149,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2163,7 +2162,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_duck_oonomi.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: duck; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2176,7 +2175,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_cat_fukuda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: cat; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2189,7 +2188,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_bear_tagashira.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2202,7 +2201,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2215,7 +2214,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2228,7 +2227,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2240,7 +2239,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2252,7 +2251,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2264,7 +2263,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2276,7 +2275,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2289,7 +2288,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2302,7 +2301,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2315,7 +2314,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2328,7 +2327,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2341,7 +2340,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_wolf_morita.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -2354,7 +2353,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
@@ -3681,25 +3680,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
 
-            // スタート時にルール（guide-modal）を表示
-            const guideModal = document.getElementById('guide-modal');
-            if (guideModal) {
-                guideModal.style.display = 'block';
-                guideModal.setAttribute('aria-hidden', 'false');
-            }
-
-            const closeGuideBtn = document.getElementById('close-guide');
-            if (closeGuideBtn) {
-                closeGuideBtn.addEventListener('click', function() {
-                    if (guideModal) {
-                        guideModal.style.display = 'none';
-                        guideModal.setAttribute('aria-hidden', 'true');
-                    }
-                    // ゲーム開始
-                    startGame();
-                });
-            }
-
             // 各モデルに番号ラベル（a-entity）を追加して非表示にしておく
             const stampKeysInit = Object.keys(STAMPS).slice(0, TOTAL_STAMP_SLOTS);
             stampKeysInit.forEach(id => {
@@ -3708,11 +3688,11 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 2');
-                label.setAttribute('geometry', 'primitive: plane; width: 0.7; height: 0.35');
-                label.setAttribute('material', 'color:#000;opacity:0.6;side:double');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 4');
+                label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
+                label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
-                label.setAttribute('position', '0 1.6 0');
+                label.setAttribute('position', '0 2.5 0');
                 label.setAttribute('visible', 'false');
                 model.appendChild(label);
             });
@@ -5992,6 +5972,9 @@
                     const modal = document.getElementById('guide-modal');
                     modal.style.display = 'none';
                     modal.setAttribute('aria-hidden', 'true');
+                    
+                    // ゲーム開始
+                    try { startGame(); } catch(err) { console.warn('startGame failed', err); }
                     
                     // カメラを再開（フリーズ防止）
                     setTimeout(() => {
