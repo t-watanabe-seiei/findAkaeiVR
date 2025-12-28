@@ -3706,12 +3706,12 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 8');
-                label.setAttribute('geometry', 'primitive: plane; width: 1.2; height: 0.6');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 4');
+                label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
-                label.setAttribute('position', '0 2.3 0');
-                label.setAttribute('visible', 'false');
+                label.setAttribute('position', '0 2.5 0');
+                label.setAttribute('visible', false);
                 model.appendChild(label);
             });
 
