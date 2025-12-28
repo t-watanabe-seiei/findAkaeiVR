@@ -3663,7 +3663,7 @@
             if (label && n) {
                 // set text component
                 label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
-                label.setAttribute('visible', 'true');
+                label.setAttribute('visible', true);
                 console.log('Showing number label for', stampId, 'with number', n);
             } else {
                 console.warn('Label or number not found for', stampId, 'label:', !!label, 'number:', n);
@@ -3675,7 +3675,7 @@
             if (!model) return;
             const label = model.querySelector('.number-label');
             if (label) {
-                label.setAttribute('visible', 'false');
+                label.setAttribute('visible', false);
                 console.log('Hiding number label for', stampId);
             }
         }
