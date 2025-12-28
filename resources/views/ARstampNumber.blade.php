@@ -3659,43 +3659,29 @@
                 return;
             }
             
-            let label = model.querySelector('.number-label');
             const n = assignedNumbers[stampId];
-            
-            // ラベルが存在しない場合は再作成（モデルのアンロード後に削除された可能性）
-            if (!label) {
-                console.log('Label not found, recreating for', stampId);
-                label = document.createElement('a-entity');
-                label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 4');
-                label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
-                label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
-                label.setAttribute('position', '0 2.5 0');
-                label.setAttribute('visible', false);
-                model.appendChild(label);
-                
-                // A-Frameの初期化を待ってから表示（nextTickで実行）
-                if (n) {
-                    setTimeout(() => {
-                        label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
-                        label.setAttribute('visible', true);
-                        if (label.object3D) label.object3D.visible = true;
-                        console.log('Showing number label for', stampId, 'with number', n, '(after recreation)');
-                    }, 50);
-                }
+            if (!n) {
+                console.warn('Number not found for', stampId);
                 return;
             }
             
-            // 既存のラベルを表示
-            if (n) {
-                label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
-                label.setAttribute('visible', true);
-                // object3D.visibleも設定して確実に表示
-                if (label.object3D) label.object3D.visible = true;
-                console.log('Showing number label for', stampId, 'with number', n);
-            } else {
-                console.warn('Number not found for', stampId);
+            // 既存のラベルがあれば削除（確実に再作成するため）
+            let oldLabel = model.querySelector('.number-label');
+            if (oldLabel) {
+                model.removeChild(oldLabel);
             }
+            
+            // 常に新しいラベルを作成
+            const label = document.createElement('a-entity');
+            label.className = 'number-label';
+            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 4`);
+            label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
+            label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
+            label.setAttribute('position', '0 2.5 0');
+            label.setAttribute('visible', true);
+            model.appendChild(label);
+            
+            console.log('Created and showing number label for', stampId, 'with number', n);
         }
 
         function hideNumberLabel(stampId) {
