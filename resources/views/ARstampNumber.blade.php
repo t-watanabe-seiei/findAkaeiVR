@@ -356,15 +356,16 @@
                     if (actualNumber !== currentNextNumber) {
                         // 間違った順序でヒット
                         console.warn('Wrong order hit:', actualNumber, 'expected', currentNextNumber);
-                        // ペナルティ
-                        remainingSeconds += 5;
-                        updateTimerUI();
+                        // ペナルティメッセージを表示（時間ペナルティはなし）
                         showPenaltyMessage();
                         // 画面上に失敗表示（短時間）
                         const failEl = document.getElementById('penalty-message');
                         if (failEl) {
-                            failEl.textContent = `ミス！ ${actualNumber} は現在の対象ではありません（＋5秒）`;
+                            failEl.textContent = `ミス！ ${actualNumber} は現在の対象ではありません。次は ${currentNextNumber} を探してください。`;
                         }
+                        // ボールを跳ね返す
+                        this.velocity.multiplyScalar(-0.6);
+                        this.velocity.y += 3;
                         // 再表示されるように何もしない（モデルは非表示にしない）
                         return;
                     }
@@ -377,6 +378,10 @@
                 if (gameActive && actualNumber === currentNextNumber) {
                     // プレイヤーが正しい順でヒット
                     currentNextNumber++;
+
+                    // 正しい順序の場合は跳ね返り効果を追加
+                    this.velocity.multiplyScalar(-0.5);
+                    this.velocity.y += 2.5;
 
                     // アニメ02を強制再生してから非表示にする
                     try {
@@ -1966,8 +1971,6 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
-                <button id="hint-button" type="button">ヒントを見る</button>
-                <button id="exchange-prize-button" type="button">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
         </div>
@@ -2035,7 +2038,7 @@
     <div id="game-timer" style="position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10005; font-size:18px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:8px; display:none;">00:00</div>
 
     <!-- ペナルティ表示（ミス時に3秒表示） -->
-    <div id="penalty-message" style="position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:10006; background:rgba(200,30,30,0.95); color:#fff; padding:8px 14px; border-radius:6px; display:none; font-weight:bold;">ミス！5秒のペナルティが課されました</div>
+    <div id="penalty-message" style="position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:10006; background:rgba(200,30,30,0.95); color:#fff; padding:8px 14px; border-radius:6px; display:none; font-weight:bold; max-width:80vw; text-align:center;">ミス！</div>
 
     <!-- 捕獲済みメッセージ -->
     <div id="captured-message" class="captured-message">
@@ -3424,6 +3427,12 @@
                         }
                         // シークレット動物でも収集後は実際の名前を表示
                         nameText = stamp.name;
+                        
+                        // 番号を取得して表示（割り当てられている場合）
+                        const assignedNum = collectedStamps[stampId].number;
+                        if (assignedNum) {
+                            nameText = `${assignedNum}. ${nameText}`;
+                        }
                     } else if (isSecret) {
                         // シークレット動物は未収集時にアイコンと名前を非表示
                         iconContent = '🐾'; // 足跡アイコン
@@ -3545,7 +3554,7 @@
         // ゲーム状態管理
         let gameActive = false; // ガイドを閉じてから true
         const GAME_DEFAULT_SECONDS = 180; // デフォルトは180秒（必要なら変更できます）
-        let remainingSeconds = GAME_DEFAULT_SECONDS;
+        let elapsedSeconds = 0; // カウントアップ方式に変更（経過時間）
         let timerIntervalHandle = null;
         let currentNextNumber = 1; // 次に取得すべき番号（1..20）
         let assignedNumbers = {}; // stampId -> number
@@ -3572,7 +3581,7 @@
         function updateTimerUI() {
             const el = document.getElementById('game-timer');
             if (!el) return;
-            el.textContent = formatTime(remainingSeconds);
+            el.textContent = formatTime(elapsedSeconds);
         }
 
         function startTimer() {
@@ -3581,13 +3590,9 @@
             updateTimerUI();
             if (timerIntervalHandle) clearInterval(timerIntervalHandle);
             timerIntervalHandle = setInterval(() => {
-                remainingSeconds = Math.max(0, remainingSeconds - 1);
+                elapsedSeconds++;
                 updateTimerUI();
-                if (remainingSeconds <= 0) {
-                    clearInterval(timerIntervalHandle);
-                    timerIntervalHandle = null;
-                    gameOver("タイムアップ");
-                }
+                // 時間制限なし（カウントアップのみ）
             }, 1000);
         }
 
@@ -3702,7 +3707,7 @@
             currentNextNumber = 1;
             // assign numbers fresh each game
             assignRandomNumbers();
-            remainingSeconds = GAME_DEFAULT_SECONDS;
+            elapsedSeconds = 0;
             startTimer();
             try { soundBgm.currentTime = 0; soundBgm.play().catch(e => console.warn('bgm play prevented', e)); } catch(e){}
             updateStampBadge();
