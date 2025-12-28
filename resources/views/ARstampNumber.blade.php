@@ -234,6 +234,8 @@
                 this.lifetime = 0;
                 this.maxLifetime = 8; // 8秒後に消滅（より長く）
                 this.prevPosition = new THREE.Vector3(); // 前フレームの位置（すり抜け防止用）
+                this.hasHit = false; // 既にヒット済みかどうかのフラグ
+                this.shouldDestroy = false; // 消滅予定フラグ
                 
                 // アクティブなボール数をカウントアップ
                 window.activeBalls = (window.activeBalls || 0) + 1;
@@ -338,8 +340,17 @@
             },
 
             handleHit: function(hitbox) {
+                // 既にヒット済みのボールは処理しない
+                if (this.hasHit) {
+                    console.log('Ball already hit, ignoring');
+                    return;
+                }
+                
                 const stampId = hitbox.data.stampId;
                 console.log('✓ Hit!', stampId);
+
+                // ヒット済みフラグを立てる（重複ヒット防止）
+                this.hasHit = true;
 
                 // 再生するヒット音
                 try { soundHit.currentTime = 0; soundHit.play().catch(e => console.warn('hit play prevented', e)); } catch(e){}
@@ -366,6 +377,20 @@
                         // ボールを跳ね返す
                         this.velocity.multiplyScalar(-0.6);
                         this.velocity.y += 3;
+                        
+                        // 0.5秒後にボールを消滅させる
+                        this.shouldDestroy = true;
+                        setTimeout(() => {
+                            try {
+                                console.log('Destroying ball after wrong hit');
+                                if (this.el && this.el.parentNode) {
+                                    destroyAndFreeEntity(this.el);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to destroy ball after timeout', e);
+                            }
+                        }, 500);
+                        
                         // 再表示されるように何もしない（モデルは非表示にしない）
                         return;
                     }
@@ -387,16 +412,32 @@
                     // 正しい順序の場合は跳ね返り効果を追加
                     this.velocity.multiplyScalar(-0.5);
                     this.velocity.y += 2.5;
-
-                    // アニメ02を強制再生してから非表示にする
-                    try {
-                        if (hitModel) {
-                            // animation-mixerが使われている想定でclipを切り替え
-                            hitModel.setAttribute('animation-mixer', 'clip: anime02; loop: once');
-                            // 充分な時間待ってから処理（1.2秒）
-                            animationPromise = new Promise((resolve) => setTimeout(resolve, 1200));
+                    
+                    // 0.5秒後にボールを消滅させる（正しいヒット後も）
+                    this.shouldDestroy = true;
+                    setTimeout(() => {
+                        try {
+                            console.log('Destroying ball after correct hit');
+                            if (this.el && this.el.parentNode) {
+                                destroyAndFreeEntity(this.el);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to destroy ball after timeout', e);
                         }
-                    } catch (e) { animationPromise = Promise.resolve(); }
+                    }, 500);
+
+                    // Anime02を再生する（playHitAnimationを使用）
+                    try {
+                        if (hitModel && typeof hitModel.playHitAnimation === 'function') {
+                            console.log('Playing anime02 for', stampId);
+                            animationPromise = hitModel.playHitAnimation();
+                        } else {
+                            console.warn('playHitAnimation not available for', stampId);
+                        }
+                    } catch (e) { 
+                        console.warn('Failed to play hit animation', e);
+                        animationPromise = Promise.resolve(); 
+                    }
 
                     // スタンプ登録（番号も付与）
                     animationPromise.then(() => {
@@ -3684,7 +3725,7 @@
             // 常に新しいラベルを作成
             const label = document.createElement('a-entity');
             label.className = 'number-label';
-            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 5.0`);
+            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 6.0`);
             label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
             label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
             label.setAttribute('position', '0 2.0 0');
@@ -3732,7 +3773,7 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 5.0');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 6.0');
                 label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
