@@ -3684,10 +3684,10 @@
             // 常に新しいラベルを作成
             const label = document.createElement('a-entity');
             label.className = 'number-label';
-            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 2.5`);
+            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 1.25`);
             label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
             label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
-            label.setAttribute('position', '0 1.8 0');
+            label.setAttribute('position', '0 2.0 0');
             label.setAttribute('visible', true);
             model.appendChild(label);
             
@@ -3732,11 +3732,11 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 2.5');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 1.25');
                 label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
-                label.setAttribute('position', '0 1.8 0');
+                label.setAttribute('position', '0 2.0 0');
                 label.setAttribute('visible', false);
                 model.appendChild(label);
             });
