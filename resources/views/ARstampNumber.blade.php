@@ -3644,6 +3644,15 @@
         }
 
         function showNumberLabel(stampId) {
+            // もし番号が未割り当ての場合、sessionStorageから読み込むか、新規割り当て
+            if (Object.keys(assignedNumbers).length === 0) {
+                loadAssignedNumbersIfPresent();
+                if (Object.keys(assignedNumbers).length === 0) {
+                    console.log('Numbers not assigned yet, assigning now...');
+                    assignRandomNumbers();
+                }
+            }
+            
             const model = document.getElementById(stampId + '-model');
             if (!model) {
                 console.warn('Model not found for stampId:', stampId);
@@ -5999,6 +6008,9 @@
                     if (e.target === guideModal) {
                         guideModal.style.display = 'none';
                         guideModal.setAttribute('aria-hidden', 'true');
+                        
+                        // ゲーム開始
+                        try { startGame(); } catch(err) { console.warn('startGame failed', err); }
                         
                         // カメラを再開（フリーズ防止）
                         setTimeout(() => {
