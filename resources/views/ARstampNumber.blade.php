@@ -3644,12 +3644,12 @@
         }
 
         function showNumberLabel(stampId) {
-            // もし番号が未割り当ての場合、sessionStorageから読み込むか、新規割り当て
+            // 番号が未割り当ての場合、sessionStorageから読み込むのみ（新規割り当てはしない）
             if (Object.keys(assignedNumbers).length === 0) {
                 loadAssignedNumbersIfPresent();
                 if (Object.keys(assignedNumbers).length === 0) {
-                    console.log('Numbers not assigned yet, assigning now...');
-                    assignRandomNumbers();
+                    console.warn('Numbers not assigned yet. Game not started?');
+                    return; // ゲーム開始前なので何もしない
                 }
             }
             
