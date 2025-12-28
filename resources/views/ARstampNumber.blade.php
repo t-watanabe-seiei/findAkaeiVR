@@ -3688,7 +3688,7 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 4');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 8');
                 label.setAttribute('geometry', 'primitive: plane; width: 1.4; height: 0.7');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
