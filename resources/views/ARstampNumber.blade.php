@@ -3623,6 +3623,7 @@
             // スコアをデータベースに保存
             let savedScoreId = null;
             try {
+                console.log('Attempting to save score:', clearTime);
                 const response = await fetch('/api/save-score', {
                     method: 'POST',
                     headers: {
@@ -3633,25 +3634,49 @@
                         time: clearTime
                     })
                 });
+                console.log('Save score response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Save score HTTP error:', response.status, errorText);
+                }
+                
                 const result = await response.json();
+                console.log('Save score result:', result);
                 if (result.success) {
                     savedScoreId = result.score_id;
-                    console.log('Score saved with ID:', savedScoreId);
+                    console.log('Score saved successfully with ID:', savedScoreId);
+                } else {
+                    console.warn('Failed to save score:', result);
                 }
             } catch (e) {
-                console.warn('Failed to save score:', e);
+                console.error('Failed to save score (exception):', e);
             }
             
             // ランキングを取得
             try {
+                console.log('Fetching ranking...');
                 const response = await fetch('/api/get-ranking');
+                console.log('Ranking response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Ranking HTTP error:', response.status, errorText);
+                }
+                
                 const result = await response.json();
-                if (result.success) {
+                console.log('Ranking result:', result);
+                if (result.success && result.ranking && result.ranking.length > 0) {
                     displayRanking(result.ranking, savedScoreId, clearTime);
+                } else {
+                    console.warn('No ranking data available');
+                    // ランキングデータがない場合でもモーダルを表示
+                    displayRanking([], savedScoreId, clearTime);
                 }
             } catch (e) {
-                console.warn('Failed to fetch ranking:', e);
-                alert('おめでとう！ クリアタイム: ' + formatTime(clearTime));
+                console.error('Failed to fetch ranking (exception):', e);
+                // エラー時もモーダルを表示（alertは表示しない）
+                displayRanking([], savedScoreId, clearTime);
             }
         }
         
@@ -3666,21 +3691,31 @@
             
             // ランキングテーブルを作成
             tbody.innerHTML = '';
-            ranking.forEach((score, index) => {
+            
+            if (ranking && ranking.length > 0) {
+                ranking.forEach((score, index) => {
+                    const tr = document.createElement('tr');
+                    const isMyScore = score.id === myScoreId;
+                    if (isMyScore) {
+                        tr.style.backgroundColor = '#fff3cd';
+                        tr.style.fontWeight = 'bold';
+                    }
+                    
+                    tr.innerHTML = `
+                        <td style="text-align: center;">${index + 1}</td>
+                        <td style="text-align: center;">${formatTime(score.time)}</td>
+                        <td style="text-align: center;">${new Date(score.created_at).toLocaleDateString('ja-JP')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                // ランキングデータがない場合
                 const tr = document.createElement('tr');
-                const isMyScore = score.id === myScoreId;
-                if (isMyScore) {
-                    tr.style.backgroundColor = '#fff3cd';
-                    tr.style.fontWeight = 'bold';
-                }
-                
                 tr.innerHTML = `
-                    <td style="text-align: center;">${index + 1}</td>
-                    <td style="text-align: center;">${formatTime(score.time)}</td>
-                    <td style="text-align: center;">${new Date(score.created_at).toLocaleDateString('ja-JP')}</td>
+                    <td colspan="3" style="text-align: center; padding: 20px; color: #999;">ランキングデータがまだありません</td>
                 `;
                 tbody.appendChild(tr);
-            });
+            }
             
             // モーダルを表示
             modal.style.display = 'block';
@@ -3747,7 +3782,7 @@
             // 常に新しいラベルを作成
             const label = document.createElement('a-entity');
             label.className = 'number-label';
-            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 6.0`);
+            label.setAttribute('text', `value: ${n}; align: center; color: #fff; width: 8.0`);
             label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
             label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
             label.setAttribute('position', '0 2.0 0');
@@ -3795,7 +3830,7 @@
                 if (model.querySelector('.number-label')) return;
                 const label = document.createElement('a-entity');
                 label.className = 'number-label';
-                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 6.0');
+                label.setAttribute('text', 'value: ; align: center; color: #fff; width: 8.0');
                 label.setAttribute('geometry', 'primitive: plane; width: 1.0; height: 0.5');
                 label.setAttribute('material', 'color:#000;opacity:0.7;side:double');
                 // 位置はモデルにより調整の余地あり
@@ -6354,6 +6389,10 @@
                 const modal = document.getElementById('stamp-book-modal');
                 modal.style.display = 'none';
                 
+                // ランキングモーダルも閉じる（クリア後の場合）
+                const rankingModal = document.getElementById('ranking-modal');
+                if (rankingModal) rankingModal.style.display = 'none';
+                
                 // LocalStorageをクリア（スタンプ + 捕獲状態）
                 localStorage.removeItem('ar-stamp-rally');
                 localStorage.removeItem('ar-captured-animals');
@@ -6419,7 +6458,7 @@
                     
                     console.log('Ranking restart triggered');
                     
-                    ランキングモーダルを閉じる
+                    // ランキングモーダルを閉じる
                     const rankingModal = document.getElementById('ranking-modal');
                     if (rankingModal) rankingModal.style.display = 'none';
                     
