@@ -38,4 +38,35 @@ class ScoreController extends Controller
     {
         Score::where('id', $id)->delete();
     }
-}
+    
+    // 番号ゲーム用: スコアを保存
+    public function saveNumberGameScore(Request $request)
+    {
+        $validated = $request->validate([
+            'time' => 'required|numeric|min:0'
+        ]);
+        
+        $score = Score::create([
+            'userid' => $request->ip(), // IPアドレスをユーザーIDとして使用
+            'time' => $validated['time']
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'score_id' => $score->id,
+            'message' => 'Score saved successfully'
+        ]);
+    }
+    
+    // 番号ゲーム用: TOP 10ランキングを取得
+    public function getNumberGameRanking()
+    {
+        $ranking = Score::orderBy('time', 'asc')
+                       ->take(10)
+                       ->get();
+        
+        return response()->json([
+            'success' => true,
+            'ranking' => $ranking
+        ]);
+    }

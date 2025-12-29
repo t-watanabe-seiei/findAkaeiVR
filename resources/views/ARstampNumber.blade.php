@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AR Stamp Rally</title>
     <script>
+        // マーカー上にモデル＆番号表示　→　ボールを番号順にぶつけるゲーム
+
+
         // グローバル変数：飛んでいるボールの数（パフォーマンス最適化用）
         window.activeBalls = 0;
         window.allHitboxes = []; // グローバルでヒットボックスを管理
@@ -352,21 +355,20 @@
                 // ヒット済みフラグを立てる（重複ヒット防止）
                 this.hasHit = true;
 
-                // 再生するヒット音
-                try { soundHit.currentTime = 0; soundHit.play().catch(e => console.warn('hit play prevented', e)); } catch(e){}
-
                 // ゲームがアクティブでなければ通常処理（または無視）
                 if (!gameActive) {
                     console.log('Game not active; ignoring sequential rules.');
                     // fallback default behavior
+                    try { soundHit.currentTime = 0; soundHit.play().catch(e => console.warn('hit play prevented', e)); } catch(e){}
                 }
 
                 // 順番チェック
                 const actualNumber = assignedNumbers[stampId];
                 if (gameActive && typeof actualNumber !== 'undefined') {
                     if (actualNumber !== currentNextNumber) {
-                        // 間違った順序でヒット
+                        // 間違った順序でヒット - 不正解音を再生
                         console.warn('Wrong order hit:', actualNumber, 'expected', currentNextNumber);
+                        try { soundAnswerX.currentTime = 0; soundAnswerX.play().catch(e => console.warn('answerX play prevented', e)); } catch(e){}
                         // ペナルティメッセージを表示（時間ペナルティはなし）
                         showPenaltyMessage();
                         // 画面上に失敗表示（短時間）
@@ -401,8 +403,9 @@
                 // 正しい順序でヒットした場合の処理
                 let animationPromise = Promise.resolve();
                 if (gameActive && actualNumber === currentNextNumber) {
-                    // プレイヤーが正しい順でヒット
+                    // プレイヤーが正しい順でヒット - 正解音を再生
                     console.log('✓ CORRECT HIT! Number', actualNumber, 'is correct!');
+                    try { soundAnswerO.currentTime = 0; soundAnswerO.play().catch(e => console.warn('answerO play prevented', e)); } catch(e){}
                     currentNextNumber++;
 
                     // ペナルティメッセージを確実に非表示にする
@@ -470,8 +473,8 @@
                                 // プレイヤーの勝利
                                 showCompleteParticles();
                                 try { soundBgm.pause(); } catch(e){}
-                                alert('おめでとう！ 全ての数字を正しい順に集めました！');
-                                gameOver('完了');
+                                // ランキングを表示
+                                showRankingModal();
                             }
                         } catch (err) {
                             console.warn('Sequential capture post-animation failed for', stampId, err);
@@ -1488,6 +1491,47 @@
             line-height: 1.6;
         }
         
+        /* ランキングモーダル */
+        #ranking-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #ranking-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        #ranking-table th,
+        #ranking-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        #ranking-restart-btn:hover {
+            background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        #ranking-restart-btn:active {
+            transform: scale(0.98) translateY(0);
+        }
+
         /* スタンプ帳モーダル */
         #stamp-book-modal {
             position: fixed;
@@ -2035,6 +2079,46 @@
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
                 <button id="clear-stamps" type="button">ゲームリスタート</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ランキングモーダル -->
+    <div id="ranking-modal" style="display: none;">
+        <div id="ranking-content">
+            <h2 style="text-align: center; color: #ff6b35; margin-bottom: 20px;">🎉 クリア！ 🎉</h2>
+            <div style="text-align: center; margin-bottom: 30px;">
+                <p style="font-size: 18px; margin-bottom: 10px;">あなたのクリアタイム</p>
+                <p id="my-clear-time" style="font-size: 32px; font-weight: bold; color: #ff6b35;">00:00</p>
+            </div>
+            <h3 style="text-align: center; margin-bottom: 15px;">🏆 ランキング TOP 10 🏆</h3>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table id="ranking-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px; text-align: center;">順位</th>
+                            <th style="padding: 12px; text-align: center;">タイム</th>
+                            <th style="padding: 12px; text-align: center;">日付</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-tbody">
+                        <!-- ランキングデータが挿入されます -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="ranking-restart-btn" style="
+                    padding: 16px 48px;
+                    font-size: 20px;
+                    font-weight: bold;
+                    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+                    transition: all 0.3s ease;
+                ">もう一度プレイ</button>
             </div>
         </div>
     </div>
@@ -2728,6 +2812,12 @@
         soundBgm.preload = 'auto';
         const soundHit = new Audio("{{ asset('cg/sound_hit01.mp3') }}");
         soundHit.preload = 'auto';
+        
+        // 正解/不正解音声
+        const soundAnswerO = new Audio("{{ asset('cg/sound_answerO.mp3') }}");
+        soundAnswerO.preload = 'auto';
+        const soundAnswerX = new Audio("{{ asset('cg/sound_answerX.mp3') }}");
+        soundAnswerX.preload = 'auto';
         
         // ========== 景品交換機能のヘルパー関数 ==========
         
@@ -3679,7 +3769,80 @@
             gameActive = false;
             stopTimer();
             try { soundBgm.pause(); } catch(e){}
-            alert(reason + "\nゲーム終了です");
+        }
+        
+        // ランキングモーダルを表示
+        async function showRankingModal() {
+            gameActive = false;
+            stopTimer();
+            
+            const clearTime = elapsedSeconds;
+            console.log('Clear time:', clearTime, 'seconds');
+            
+            // スコアをデータベースに保存
+            let savedScoreId = null;
+            try {
+                const response = await fetch('/api/save-score', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        time: clearTime
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    savedScoreId = result.score_id;
+                    console.log('Score saved with ID:', savedScoreId);
+                }
+            } catch (e) {
+                console.warn('Failed to save score:', e);
+            }
+            
+            // ランキングを取得
+            try {
+                const response = await fetch('/api/get-ranking');
+                const result = await response.json();
+                if (result.success) {
+                    displayRanking(result.ranking, savedScoreId, clearTime);
+                }
+            } catch (e) {
+                console.warn('Failed to fetch ranking:', e);
+                alert('おめでとう！ クリアタイム: ' + formatTime(clearTime));
+            }
+        }
+        
+        // ランキングを表示
+        function displayRanking(ranking, myScoreId, myClearTime) {
+            const modal = document.getElementById('ranking-modal');
+            const tbody = document.getElementById('ranking-tbody');
+            const myTimeEl = document.getElementById('my-clear-time');
+            
+            // 自分のクリアタイムを表示
+            myTimeEl.textContent = formatTime(myClearTime);
+            
+            // ランキングテーブルを作成
+            tbody.innerHTML = '';
+            ranking.forEach((score, index) => {
+                const tr = document.createElement('tr');
+                const isMyScore = score.id === myScoreId;
+                if (isMyScore) {
+                    tr.style.backgroundColor = '#fff3cd';
+                    tr.style.fontWeight = 'bold';
+                }
+                
+                tr.innerHTML = `
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td style="text-align: center;">${formatTime(score.time)}</td>
+                    <td style="text-align: center;">${new Date(score.created_at).toLocaleDateString('ja-JP')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // モーダルを表示
+            modal.style.display = 'block';
         }
 
         // Assign numbers 1..TOTAL_STAMP_SLOTS to stamp IDs randomly
@@ -6405,6 +6568,76 @@
                     }
                 }, 300);
             }, false);
+            
+            // ランキングモーダルのリスタートボタン
+            const rankingRestartBtn = document.getElementById('ranking-restart-btn');
+            if (rankingRestartBtn) {
+                rankingRestartBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Ranking restart triggered');
+                    
+                    // ランキングモーダルを閉じる
+                    const rankingModal = document.getElementById('ranking-modal');
+                    if (rankingModal) rankingModal.style.display = 'none';
+                    
+                    // LocalStorageをクリア（スタンプ + 捕獲状態）
+                    localStorage.removeItem('ar-stamp-rally');
+                    localStorage.removeItem('ar-captured-animals');
+                    
+                    // 全てのモデルの状態をリセット
+                    const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                    modelIds.forEach(modelId => {
+                        const model = document.getElementById(modelId);
+                        if (model && model.resetCaptureState) {
+                            model.resetCaptureState();
+                            console.log('Model state reset:', modelId);
+                        }
+                    });
+                    
+                    // gameActiveとnumberをリセット
+                    gameActive = false;
+                    currentNextNumber = 1;
+                    elapsedSeconds = 0;
+                    
+                    // 番号ラベルを全て非表示
+                    const stampKeys = Object.keys(STAMPS).slice(0, TOTAL_STAMP_SLOTS);
+                    stampKeys.forEach(id => {
+                        const model = document.getElementById(id + '-model');
+                        if (model) {
+                            const label = model.querySelector('.number-label');
+                            if (label && label.object3D) label.object3D.visible = false;
+                        }
+                    });
+                    
+                    // スタンプ帳UIをリセット
+                    updateStampBadge();
+                    
+                    // タイマー表示をリセット
+                    const timerEl = document.getElementById('game-timer');
+                    if (timerEl) {
+                        timerEl.textContent = '00:00';
+                        timerEl.style.display = 'none';
+                    }
+                    
+                    // タイマーをクリア
+                    if (window.gameTimerInterval) {
+                        clearInterval(window.gameTimerInterval);
+                        window.gameTimerInterval = null;
+                    }
+                    
+                    // ゲームを即座に開始（チュートリアルなし）
+                    setTimeout(() => {
+                        try { 
+                            startGame(); 
+                            console.log('Game restarted from ranking');
+                        } catch(err) { 
+                            console.warn('startGame failed', err); 
+                        }
+                    }, 300);
+                }, false);
+            }
             
             // カスタム確認ダイアログ
             function showConfirmDialog() {
