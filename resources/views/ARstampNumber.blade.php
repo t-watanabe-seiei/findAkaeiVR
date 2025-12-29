@@ -2070,7 +2070,7 @@
         <div id="stamp-book-content">
             <h2>🎯 コレクション 🎯</h2>
             <div class="progress">
-                <span id="collected-count">0</span> / <span id="total-slots">20</span> 種類
+                <span id="collected-count">0</span> / <span id="total-slots">10</span> 種類
             </div>
             <div id="complete-message-container"></div>
             <div class="stamps-grid" id="stamps-grid">
@@ -2267,7 +2267,7 @@
             </a-entity>
         </a-marker>
         
-        <!-- Namakemono (なまけもの) - 新しいマーカー -->
+        <!-- Namakemono (なまけもの) -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-namakemono.patt') }}" id="pattern-namakemono-marker">
             <a-entity
                 id="namakemono-model"
@@ -2280,7 +2280,7 @@
             </a-entity>
         </a-marker>
         
-        <!-- Hamstar (ハムスター) - 新しいマーカー -->
+        <!-- Hamstar (ハムスター) -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-hamstar.patt') }}" id="pattern-hamstar-marker">
             <a-entity
                 id="hamstar-model"
@@ -2293,7 +2293,7 @@
             </a-entity>
         </a-marker>
         
-        <!-- Burger (バーガー) - 新しいマーカー -->
+        <!-- Burger (バーガー) -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-burger.patt') }}" id="pattern-burger-marker">
             <a-entity
                 id="burger-model"
@@ -2303,84 +2303,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Duck (アヒル) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-duck.patt') }}" id="pattern-duck-marker">
-            <a-entity
-                id="duck-model"
-                lazy-model="src: {{ asset('cg/3d_pro_duck_oonomi.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: duck; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Cat (ねこ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-cat.patt') }}" id="pattern-cat-marker">
-            <a-entity
-                id="cat-model"
-                lazy-model="src: {{ asset('cg/3d_pro_cat_fukuda.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: cat; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Bear (くま) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-bear.patt') }}" id="pattern-bear-marker">
-            <a-entity
-                id="bear-model"
-                lazy-model="src: {{ asset('cg/3d_pro_bear_tagashira.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Harinezumi (はりねずみ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-harinezumi.patt') }}" id="pattern-harinezumi-marker">
-            <a-entity
-                id="harinezumi-model"
-                lazy-model="src: {{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- WhiteTiger (白いトラ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteTiger.patt') }}" id="pattern-whiteTiger-marker">
-            <a-entity
-                id="whiteTiger-model"
-                lazy-model="src: {{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Santa (サンタクロース) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-santa.patt') }}" id="pattern-santa-marker">
-            <a-entity
-                id="santa-model"
-                lazy-model="src: {{ asset('cg/3d_pro_santa_iwamoto.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2432,7 +2354,7 @@
             </a-entity>
         </a-marker>
 
-        <!-- Tora (とら) - 新しいマーカー -->
+        <!-- Tora (とら) -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-tora.patt') }}" id="pattern-tora-marker">
             <a-entity
                 id="tora-model"
@@ -2445,7 +2367,7 @@
             </a-entity>
         </a-marker>
 
-        <!-- Gollira (ごりら) - 新しいマーカー -->
+        <!-- Gollira (ごりら) -->
         <a-marker type="pattern" url="{{ asset('cg/pattern-gollira.patt') }}" id="pattern-gollira-marker">
             <a-entity
                 id="gollira-model"
@@ -2455,58 +2377,6 @@
                 rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-
-        <!-- White Duck (白アヒル) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteDuck.patt') }}" id="pattern-whiteDuck-marker">
-            <a-entity
-                id="whiteDuck-model"
-                lazy-model="src: {{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Araiguma (あらいぐま) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-araiguma.patt') }}" id="pattern-araiguma-marker">
-            <a-entity
-                id="araiguma-model"
-                lazy-model="src: {{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Wolf (おおかみ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-wolf.patt') }}" id="pattern-wolf-marker">
-            <a-entity
-                id="wolf-model"
-                lazy-model="src: {{ asset('cg/3d_pro_wolf_morita.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
-            <a-entity
-                id="t-rex-model"
-                lazy-model="src: {{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
-                position="0 0 0.5"
-                scale="0.56 0.56 0.56"
-                rotation="0 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2758,44 +2628,15 @@
             'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_pro_pengin_morita.glb' },
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' },
-            // tora (とら) - 新しいマーカー/モデル
             'tora': { name: 'とら', icon: '🐯', model: '3d_pro_tora_iwamoto.glb' },
-            // gollira (ごりら) - 新しいマーカー/モデル
             'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
-            // white duck - 新しいマーカー/モデル
-            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
-            // araiguma - 新しいマーカー/モデル（あらいぐま）
-            'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
-            // wolf / オオカミ
-            'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
-            // duck / アヒル
-            'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
-            // cat / ねこ
-            'cat': { name: 'ねこ', icon: '🐱', model: '3d_pro_cat_fukuda.glb' },
-            // bear / くま
-            'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
-            // harinezumi / はりねずみ
-            'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
-            // hamstar / ハムスター
+            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb' },
             'hamstar': { name: 'ハムスター', icon: '🐹', model: '3d_pro_humstar_harada.glb' },
-            // === シークレット動物（一番下の列に表示） ===
-            // burger / バーガー (シークレット)
-            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb', secret: true },
-            // santa / サンタクロース (シークレット)
-            'santa': { name: 'サンタクロース', icon: '🎅', model: '3d_pro_santa_iwamoto.glb', secret: true },
-            // namakemono / なまけもの (シークレット)
-            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb', secret: true },
-            // t-rex (ティラノサウルス) (シークレット)
-            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb', secret: true },
-            // whiteTiger / 白いトラ (シークレット)
-            'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb', secret: true }
+            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb' }
         };
 
-        // シークレット動物のID配列
-        const SECRET_STAMPS = ['burger', 'santa', 'namakemono', 't-rex', 'whiteTiger'];
-
-        // スタンプ帳に表示する総スロット数（最終的には20）
-        const TOTAL_STAMP_SLOTS = 20;
+        // スタンプ帳に表示する総スロット数（最終的には10）
+        const TOTAL_STAMP_SLOTS = 10;
 
         // Path to hint PDF asset
         const HINT_PDF_PATH = '{{ asset("cg/stampRallyHints.pdf") }}';
@@ -4046,14 +3887,14 @@
                                 // Stamp rally notice (Japanese) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>ゲームについて</strong><br>このゲームでは、1から20までの番号が動物にランダムに割り当てられます。番号順に動物を捕まえて、全てコンプリートしましょう！</p>`;
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>ゲームについて</strong><br>このゲームでは、1から10までの番号が動物にランダムに割り当てられます。番号順に動物を捕まえて、全てコンプリートしましょう！</p>`;
                                 } catch (e) { console.warn('Failed to set JP stamp-rally-note', e); }
 
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Others
                                 if (stepFind) stepFind.innerHTML = `
                                     <div class="step-text">
                                         <strong>ゲームの目的</strong>
-                                        <p>マーカーにカメラを向けると、番号が表示された20種類の動物が出現します。</p>
+                                        <p>マーカーにカメラを向けると、番号が表示された10種類の動物が出現します。</p>
                                         <p><strong>1番から順番に</strong>ボールを当てて捕まえていきましょう。タイマーが記録され、クリアタイムを競うことができます。</p>
                                     </div>`;
 
@@ -4110,13 +3951,13 @@
                                 // Stamp rally notice (English) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this sequential number game</strong><br>In this game, numbers from 1 to 20 are randomly assigned to animals. Catch them in order and complete the collection!</p>`;
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this sequential number game</strong><br>In this game, numbers from 1 to 10 are randomly assigned to animals. Catch them in order and complete the collection!</p>`;
                                 } catch (e) { console.warn('Failed to set EN stamp-rally-note', e); }
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Others
                                 if (stepFind) stepFind.innerHTML = `
                                     <div class="step-text">
                                         <strong>Game objective</strong>
-                                        <p>Point your camera at the marker to make 20 animals with numbers appear.</p>
+                                        <p>Point your camera at the marker to make 10 animals with numbers appear.</p>
                                         <p>Catch them <strong>in order from 1</strong> by throwing balls. Your clear time will be recorded and you can compete for the best time.</p>
                                     </div>`;
 
@@ -6518,7 +6359,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'namakemono-model', 'hamstar-model', 'burger-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
@@ -6578,7 +6419,7 @@
                     
                     console.log('Ranking restart triggered');
                     
-                    // ランキングモーダルを閉じる
+                    ランキングモーダルを閉じる
                     const rankingModal = document.getElementById('ranking-modal');
                     if (rankingModal) rankingModal.style.display = 'none';
                     
@@ -6587,7 +6428,7 @@
                     localStorage.removeItem('ar-captured-animals');
                     
                     // 全てのモデルの状態をリセット
-                    const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                    const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'namakemono-model', 'hamstar-model', 'burger-model'];
                     modelIds.forEach(modelId => {
                         const model = document.getElementById(modelId);
                         if (model && model.resetCaptureState) {
@@ -6675,7 +6516,7 @@
                 localStorage.removeItem('ar-captured-animals');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'namakemono-model', 'hamstar-model', 'burger-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
