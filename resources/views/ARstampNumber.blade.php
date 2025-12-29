@@ -1562,8 +1562,25 @@
         .guide-steps .step .step-text strong { display:block; margin-bottom:6px; font-size:15px; }
 
         .guide-close-row { text-align: right; margin-top: 12px; }
-        #close-guide { padding: 8px 12px; border-radius: 8px; background:#333; color:#fff; border:none; cursor:pointer; }
-        #close-guide:active { transform: scale(0.98); }
+        #close-guide { display: none; }
+        #start-game { 
+            padding: 16px 48px; 
+            border-radius: 12px; 
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            color: #fff; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+            transition: all 0.3s ease;
+        }
+        #start-game:hover { 
+            background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+            transform: translateY(-2px);
+        }
+        #start-game:active { transform: scale(0.98) translateY(0); }
         /* guide notes (privacy / cookies / photo) */
         .guide-notes { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; color: #333; font-size: 13px; }
         .guide-note { display:flex; gap: 12px; align-items:flex-start; margin-bottom: 14px; padding: 12px 14px; background: linear-gradient(135deg, #fffdf0 0%, #fff3d6 100%); border: 1px solid #ffd66b; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); color: #2b2b2b; font-weight: 500; }
@@ -2017,7 +2034,7 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
-                <button id="clear-stamps" type="button">動物たちを逃がす</button>
+                <button id="clear-stamps" type="button">ゲームリスタート</button>
             </div>
         </div>
     </div>
@@ -2072,8 +2089,9 @@
                     </div>
                 </div>
 
-                            <div class="guide-close-row">
-                <button id="close-guide" type="button">close</button>
+                            <div class="guide-close-row" style="display: flex; justify-content: center; padding: 20px 0;">
+                <button id="close-guide" type="button" style="display:none;">close</button>
+                <button id="start-game" type="button">ゲームスタート</button>
             </div>
 
             </div>
@@ -3865,14 +3883,15 @@
                                 // Stamp rally notice (Japanese) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>このスタンプラリーについて</strong><br>2025年12月21日(日)まで、イオンタウン防府にてマーカーを掲示しています。スタンプ帳下部にマーカー設置場所のヒントも掲載しておりますので、ぜひイオンタウン防府にて動物たちをGETしてみてください。</p>`;
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>ゲームについて</strong><br>このゲームでは、1から20までの番号が動物にランダムに割り当てられます。番号順に動物を捕まえて、全てコンプリートしましょう！</p>`;
                                 } catch (e) { console.warn('Failed to set JP stamp-rally-note', e); }
 
-                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
+                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Others
                                 if (stepFind) stepFind.innerHTML = `
                                     <div class="step-text">
-                                        <strong>マーカーを探す</strong>
-                                        <p>会場内のマーカーにカメラを向けると3Dの動物が出現します。</p>
+                                        <strong>ゲームの目的</strong>
+                                        <p>マーカーにカメラを向けると、番号が表示された20種類の動物が出現します。</p>
+                                        <p><strong>1番から順番に</strong>ボールを当てて捕まえていきましょう。タイマーが記録され、クリアタイムを競うことができます。</p>
                                     </div>`;
 
                                 if (stepZoom) stepZoom.innerHTML = `
@@ -3890,44 +3909,34 @@
                                 if (stepThrow) stepThrow.innerHTML = `
                                     <div class="step-text">
                                         <strong>ボールを投げる</strong>
-                                        <p>画面下部にあるモンスターボールをスワイプ（フリック）して投げます。</p>
-                                        <p>スワイプの速さと長さで、ボールの飛距離や速度が変わります。</p>
+                                        <p>画面下部のボールをタップすると、モンスターボールが投げられます。</p>
+                                        <p><strong>注意：</strong>番号順でない動物に当てると「ミス！」と表示されます。次に捕まえるべき番号が画面上部に表示されています。</p>
                                     </div>`;
 
-                                if (stepPrize) stepPrize.innerHTML = `
-                                    <div class="step-text">
-                                        <strong>景品交換</strong>
-                                        <p>会場で10種類以上のマーカーを集めると景品と交換できます。</p>
-                                        <p>場所：2階 エスカレーター横の特設エリア。</p>
-                                        <p>日時：2025年12月13日 — 14:00〜16:00</p>
-                                    </div>`;
+                                if (stepPrize) stepPrize.innerHTML = ``;
 
                                 if (stepOthers) stepOthers.innerHTML = `
                                     <div class="step-text">
                                         <hr class="guide-sep" style="border:none;border-top:1px solid #eee;margin:12px 0;">
+                                        <p><strong>タイマー</strong> — ゲーム開始から経過した時間が表示されます。制限時間はありませんので、じっくり探して全ての動物を捕まえましょう。</p>
                                         <p><strong>プライバシー</strong> — 写真・動画のデータは当方で収集しません。データは端末にのみ保存されます。</p>
                                         <p><strong>クッキー</strong> — 利用状況の集計や改善のためにクッキーを使用する場合があります。クッキーからはブラウザ情報が分かることがありますが、個人情報は含みません。</p>
                                         <p><strong>生徒制作</strong> — この作品は誠英高校（Seiei High School）の福祉クラスの生徒が授業の一環として制作したものです。誠英高校は2024年にDXハイスクールプログラムに採択され、多くのVR/ARプロジェクトを制作しています。
                                         生徒たちはプロトタイピングやPDCAサイクルを通じて作品を改善し、論理的思考力や問題解決能力を身に着けていきます。</p>
                                     </div>`;
 
-                                // Populate JP hint PDF in the hints section
+                                // Remove hint PDF section
                                 try {
                                     const stepHints = document.getElementById('guide-step-hints');
                                     if (stepHints) {
-                                        stepHints.innerHTML = `
-                                            <div class="step-text">
-                                                <strong>マーカー設置ヒント（PDF）</strong>
-                                                <p>館内のヒントをまとめたPDFです。開いて確認するかダウンロードしてご利用ください。</p>
-                                            </div>
-                                            <div class="hint-pdf">
-                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">開く</a></div>
-                                            </div>
-                                        `;
+                                        stepHints.innerHTML = ``;
                                     }
-                                } catch (e) { console.warn('Failed to populate JP hint PDF', e); }
+                                } catch (e) { console.warn('Failed to clear hint PDF', e); }
 
                                 if (closeGuideBtn) closeGuideBtn.textContent = '閉じる';
+                                
+                                const startGameBtn = document.getElementById('start-game');
+                                if (startGameBtn) startGameBtn.textContent = 'ゲームスタート';
 
                                 guideLangJPBtn.classList.add('active');
                                 guideLangENBtn.classList.remove('active');
@@ -3938,13 +3947,14 @@
                                 // Stamp rally notice (English) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this stamp rally</strong><br>Markers will be displayed at AEON TOWN Hofu until Sunday, December 21, 2025. Hints for marker locations are provided at the bottom of the stamp book, so please visit AEON TOWN Hofu and try to collect the animals.</p>`;
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this sequential number game</strong><br>In this game, numbers from 1 to 20 are randomly assigned to animals. Catch them in order and complete the collection!</p>`;
                                 } catch (e) { console.warn('Failed to set EN stamp-rally-note', e); }
-                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
+                                // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Others
                                 if (stepFind) stepFind.innerHTML = `
                                     <div class="step-text">
-                                        <strong>Find a marker</strong>
-                                        <p>Point your camera at markers placed in the venue to make a 3D animal appear.</p>
+                                        <strong>Game objective</strong>
+                                        <p>Point your camera at the marker to make 20 animals with numbers appear.</p>
+                                        <p>Catch them <strong>in order from 1</strong> by throwing balls. Your clear time will be recorded and you can compete for the best time.</p>
                                     </div>`;
 
                                 if (stepZoom) stepZoom.innerHTML = `
@@ -3962,44 +3972,34 @@
                                 if (stepThrow) stepThrow.innerHTML = `
                                     <div class="step-text">
                                         <strong>Throw the ball</strong>
-                                        <p>Swipe (flick) the Poké Ball at the bottom of the screen to throw it.</p>
-                                        <p>The speed and distance of the throw depend on how fast and far you swipe.</p>
+                                        <p>Tap the ball at the bottom of the screen to throw a Poké Ball.</p>
+                                        <p><strong>Note:</strong> If you hit an animal out of order, you'll see a "Miss!" message. The next number to catch is displayed at the top of the screen.</p>
                                     </div>`;
 
-                                if (stepPrize) stepPrize.innerHTML = `
-                                    <div class="step-text">
-                                        <strong>Prize exchange</strong>
-                                        <p>Collect 10 or more markers in the venue to exchange for a prize.</p>
-                                        <p>Where: Special area next to the escalator on the 2nd floor.</p>
-                                        <p>When: Dec 13, 2025 — 14:00 to 16:00</p>
-                                    </div>`;
+                                if (stepPrize) stepPrize.innerHTML = ``;
 
                                 if (stepOthers) stepOthers.innerHTML = `
                                     <div class="step-text">
                                         <hr class="guide-sep" style="border:none;border-top:1px solid #eee;margin:12px 0;">
+                                        <p><strong>Timer</strong> — The elapsed time since game start is displayed. There is no time limit, so take your time to find and catch all the animals.</p>
                                         <p><strong>Privacy</strong> — We do NOT collect data from your photos or videos. Captured files are saved to your device only.</p>
                                         <p><strong>Cookies</strong> — We may use cookies to aggregate usage statistics and improve the app. Cookies can tell us your browser details but do not include personal information.</p>
                                         <p><strong>Made by students</strong> — This project was created by students in the Welfare class at Seiei High School as part of their coursework. Seiei High School was chosen for the DX High School program in 2024 and has produced many VR/AR projects.</p>
                                         <p><strong>Learning & prototyping</strong> — Students receive feedback and improve their works through prototyping and the PDCA cycle. This helps them develop logical thinking and problem-solving skills.</p>
                                     </div>`;
 
-                                // Populate EN hint PDF in the hints section
+                                // Remove hint PDF section
                                 try {
                                     const stepHints = document.getElementById('guide-step-hints');
                                     if (stepHints) {
-                                        stepHints.innerHTML = `
-                                            <div class="step-text">
-                                                <strong>Marker location hints (PDF)</strong>
-                                                <p>This PDF summarizes hints for marker locations. Open it or download to use offline.</p>
-                                            </div>
-                                            <div class="hint-pdf">
-                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">Open PDF</a></div>
-                                            </div>
-                                        `;
+                                        stepHints.innerHTML = ``;
                                     }
-                                } catch (e) { console.warn('Failed to populate EN hint PDF', e); }
+                                } catch (e) { console.warn('Failed to clear hint PDF', e); }
 
                                 if (closeGuideBtn) closeGuideBtn.textContent = 'Close';
+                                
+                                const startGameBtn = document.getElementById('start-game');
+                                if (startGameBtn) startGameBtn.textContent = 'START GAME';
 
                                 guideLangENBtn.classList.add('active');
                                 guideLangJPBtn.classList.remove('active');
@@ -6068,6 +6068,26 @@
                 });
             }
 
+            // ゲームスタートボタン
+            const startGameButton = document.getElementById('start-game');
+            if (startGameButton) {
+                startGameButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = document.getElementById('guide-modal');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                    
+                    // ゲーム開始
+                    try { startGame(); } catch(err) { console.warn('startGame failed', err); }
+                    
+                    // カメラを再開（フリーズ防止）
+                    setTimeout(() => {
+                        resumeCamera();
+                    }, 100);
+                });
+            }
+
             // クリック（背景領域）でモーダルを閉じる
             const guideModal = document.getElementById('guide-modal');
             if (guideModal) {
@@ -6318,14 +6338,72 @@
             
             // ========== 景品交換機能ここまで ==========
             
-            // スタンプリセットボタン
+            // ゲームリスタートボタン
             const clearStampsButton = document.getElementById('clear-stamps');
             clearStampsButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // カスタム確認ダイアログを表示
-                showConfirmDialog();
+                console.log('Game restart triggered');
+                
+                // スタンプ帳モーダルを閉じる
+                const modal = document.getElementById('stamp-book-modal');
+                modal.style.display = 'none';
+                
+                // LocalStorageをクリア（スタンプ + 捕獲状態）
+                localStorage.removeItem('ar-stamp-rally');
+                localStorage.removeItem('ar-captured-animals');
+                
+                // 全てのモデルの状態をリセット
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                modelIds.forEach(modelId => {
+                    const model = document.getElementById(modelId);
+                    if (model && model.resetCaptureState) {
+                        model.resetCaptureState();
+                        console.log('Model state reset:', modelId);
+                    }
+                });
+                
+                // gameActiveとnumberをリセット
+                gameActive = false;
+                currentNextNumber = 1;
+                elapsedSeconds = 0;
+                
+                // 番号ラベルを全て非表示
+                const stampKeys = Object.keys(STAMPS).slice(0, TOTAL_STAMP_SLOTS);
+                stampKeys.forEach(id => {
+                    const model = document.getElementById(id + '-model');
+                    if (model) {
+                        const label = model.querySelector('.number-label');
+                        if (label && label.object3D) label.object3D.visible = false;
+                    }
+                });
+                
+                // スタンプ帳UIをリセット
+                updateStampBadge();
+                
+                // タイマー表示をリセット
+                const timerEl = document.getElementById('game-timer');
+                if (timerEl) {
+                    timerEl.textContent = '00:00';
+                    timerEl.style.display = 'none';
+                }
+                
+                // タイマーをクリア
+                if (window.gameTimerInterval) {
+                    clearInterval(window.gameTimerInterval);
+                    window.gameTimerInterval = null;
+                }
+                
+                // ゲームを即座に開始（チュートリアルなし）
+                setTimeout(() => {
+                    try { 
+                        startGame(); 
+                        console.log('Game restarted without tutorial');
+                    } catch(err) { 
+                        console.warn('startGame failed', err); 
+                    }
+                }, 300);
             }, false);
             
             // カスタム確認ダイアログ
