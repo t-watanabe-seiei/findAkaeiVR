@@ -744,35 +744,65 @@
                     
                     canvas.addEventListener('touchstart', (evt) => {
                         if (evt.touches && evt.touches.length === 2) {
-                            // レイキャストで対象を検出
-                            const touch = evt.touches[0];
-                            const raycaster = new THREE.Raycaster();
-                            const mouse = new THREE.Vector2();
-                            const rect = canvas.getBoundingClientRect();
+                            evt.preventDefault();
                             
-                            mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-                            mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-                            
-                            const camera = sceneEl.camera;
-                            raycaster.setFromCamera(mouse, camera);
-                            
-                            // すべてのpinch-zoom対応エンティティをチェック
+                            // 表示されているマーカーの中から、visible=trueのモデルを探す
                             const entities = sceneEl.querySelectorAll('[pinch-zoom]');
+                            let foundEntity = null;
+                            
+                            // まず、親マーカーがvisibleなエンティティを優先的に探す
                             for (let i = 0; i < entities.length; i++) {
                                 const entity = entities[i];
-                                const obj = entity.object3D;
-                                if (obj && obj.visible) {
-                                    const intersects = raycaster.intersectObject(obj, true);
-                                    if (intersects.length > 0) {
-                                        sceneEl.pinchZoomHandler.activeEntity = entity;
-                                        sceneEl.pinchZoomHandler.isPinching = true;
-                                        sceneEl.pinchZoomHandler.lastDistance = Math.hypot(
-                                            evt.touches[0].clientX - evt.touches[1].clientX,
-                                            evt.touches[0].clientY - evt.touches[1].clientY
-                                        );
+                                const marker = entity.parentElement;
+                                
+                                // マーカーが表示されているかチェック
+                                if (marker && marker.object3D && marker.object3D.visible) {
+                                    const obj = entity.object3D;
+                                    if (obj && obj.visible) {
+                                        // このエンティティが有効な候補
+                                        foundEntity = entity;
+                                        console.log('Pinch zoom target found:', entity.id);
                                         break;
                                     }
                                 }
+                            }
+                            
+                            // 見つからない場合は、レイキャストで探す
+                            if (!foundEntity) {
+                                const touch = evt.touches[0];
+                                const raycaster = new THREE.Raycaster();
+                                raycaster.far = 1000; // 検出範囲を広げる
+                                const mouse = new THREE.Vector2();
+                                const rect = canvas.getBoundingClientRect();
+                                
+                                mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+                                mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+                                
+                                const camera = sceneEl.camera;
+                                raycaster.setFromCamera(mouse, camera);
+                                
+                                for (let i = 0; i < entities.length; i++) {
+                                    const entity = entities[i];
+                                    const obj = entity.object3D;
+                                    if (obj && obj.visible) {
+                                        const intersects = raycaster.intersectObject(obj, true);
+                                        if (intersects.length > 0) {
+                                            foundEntity = entity;
+                                            console.log('Pinch zoom target found via raycast:', entity.id);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (foundEntity) {
+                                sceneEl.pinchZoomHandler.activeEntity = foundEntity;
+                                sceneEl.pinchZoomHandler.isPinching = true;
+                                sceneEl.pinchZoomHandler.lastDistance = Math.hypot(
+                                    evt.touches[0].clientX - evt.touches[1].clientX,
+                                    evt.touches[0].clientY - evt.touches[1].clientY
+                                );
+                                console.log('Pinch zoom started on:', foundEntity.id);
                             }
                         }
                     });
@@ -809,6 +839,9 @@
                     canvas.addEventListener('touchend', (evt) => {
                         const handler = sceneEl.pinchZoomHandler;
                         if (evt.touches && evt.touches.length < 2) {
+                            if (handler.isPinching && handler.activeEntity) {
+                                console.log('Pinch zoom ended on:', handler.activeEntity.id);
+                            }
                             handler.isPinching = false;
                             handler.activeEntity = null;
                         }
