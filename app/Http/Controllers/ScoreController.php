@@ -70,3 +70,4 @@ class ScoreController extends Controller
             'ranking' => $ranking
         ]);
     }
+}

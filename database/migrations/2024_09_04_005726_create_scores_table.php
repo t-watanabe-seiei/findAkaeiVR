@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('scores', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('userid');
+            $table->string('userid', 255); // IPアドレスやユーザーIDの文字列を保存
             $table->double('time', 8, 3);
             $table->timestamps();
         });

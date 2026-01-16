@@ -475,12 +475,17 @@
 
                             // 全制覇チェック
                             if (currentNextNumber > TOTAL_STAMP_SLOTS) {
+                                console.log('=== GAME CLEARED! ===');
+                                console.log('currentNextNumber:', currentNextNumber, 'TOTAL_STAMP_SLOTS:', TOTAL_STAMP_SLOTS);
+                                
                                 // プレイヤーの勝利
                                 showCompleteParticles();
                                 try { 
                                     soundBgm.loop = false; // ループを停止して最後まで再生
                                 } catch(e){}
+                                
                                 // ランキングを表示
+                                console.log('Calling showRankingModal...');
                                 showRankingModal();
                             }
                         } catch (err) {
@@ -3766,13 +3771,17 @@
         
         // ランキングモーダルを表示
         async function showRankingModal() {
+            console.log('=== showRankingModal called ===');
             gameActive = false;
             stopTimer();
             
             // BGMのループを停止（最後まで再生）
             try { 
                 soundBgm.loop = false;
-            } catch(e){}
+                console.log('BGM loop stopped');
+            } catch(e){
+                console.error('BGM loop stop failed:', e);
+            }
             
             const clearTime = elapsedSeconds;
             console.log('Clear time:', clearTime, 'seconds');
@@ -3793,18 +3802,24 @@
                 });
                 console.log('Save score response status:', response.status);
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Save score HTTP error:', response.status, errorText);
-                }
+                // Read the response body once
+                const responseText = await response.text();
                 
-                const result = await response.json();
-                console.log('Save score result:', result);
-                if (result.success) {
-                    savedScoreId = result.score_id;
-                    console.log('Score saved successfully with ID:', savedScoreId);
+                if (!response.ok) {
+                    console.error('Save score HTTP error:', response.status, responseText);
                 } else {
-                    console.warn('Failed to save score:', result);
+                    try {
+                        const result = JSON.parse(responseText);
+                        console.log('Save score result:', result);
+                        if (result.success) {
+                            savedScoreId = result.score_id;
+                            console.log('Score saved successfully with ID:', savedScoreId);
+                        } else {
+                            console.warn('Failed to save score:', result);
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse save score response:', parseError);
+                    }
                 }
             } catch (e) {
                 console.error('Failed to save score (exception):', e);
@@ -3816,46 +3831,79 @@
                 const response = await fetch('/api/get-ranking');
                 console.log('Ranking response status:', response.status);
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Ranking HTTP error:', response.status, errorText);
-                }
+                // Read the response body once
+                const responseText = await response.text();
                 
-                const result = await response.json();
-                console.log('Ranking result:', result);
-                if (result.success && result.ranking && result.ranking.length > 0) {
-                    displayRanking(result.ranking, savedScoreId, clearTime);
-                } else {
-                    console.warn('No ranking data available');
-                    // ランキングデータがない場合でもモーダルを表示
+                if (!response.ok) {
+                    console.error('Ranking HTTP error:', response.status, responseText);
+                    // エラー時もモーダルを表示
                     displayRanking([], savedScoreId, clearTime);
+                } else {
+                    try {
+                        const result = JSON.parse(responseText);
+                        console.log('Ranking result:', result);
+                        if (result.success && result.ranking && result.ranking.length > 0) {
+                            console.log('Calling displayRanking with data');
+                            displayRanking(result.ranking, savedScoreId, clearTime);
+                        } else {
+                            console.warn('No ranking data available, showing empty ranking');
+                            // ランキングデータがない場合でもモーダルを表示
+                            displayRanking([], savedScoreId, clearTime);
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse ranking response:', parseError);
+                        displayRanking([], savedScoreId, clearTime);
+                    }
                 }
             } catch (e) {
                 console.error('Failed to fetch ranking (exception):', e);
                 // エラー時もモーダルを表示（alertは表示しない）
+                console.log('Showing ranking modal despite error');
                 displayRanking([], savedScoreId, clearTime);
             }
+            
+            console.log('=== showRankingModal completed ===');
         }
         
         // ランキングを表示
         function displayRanking(ranking, myScoreId, myClearTime) {
+            console.log('displayRanking called with:', { ranking, myScoreId, myClearTime });
+            
             const modal = document.getElementById('ranking-modal');
             const tbody = document.getElementById('ranking-tbody');
             const myTimeEl = document.getElementById('my-clear-time');
             
+            if (!modal) {
+                console.error('Ranking modal not found!');
+                return;
+            }
+            
+            if (!tbody) {
+                console.error('Ranking tbody not found!');
+                return;
+            }
+            
+            if (!myTimeEl) {
+                console.error('My clear time element not found!');
+                return;
+            }
+            
             // 自分のクリアタイムを表示
             myTimeEl.textContent = formatTime(myClearTime);
+            console.log('My clear time set to:', myTimeEl.textContent);
             
             // ランキングテーブルを作成
             tbody.innerHTML = '';
             
             if (ranking && ranking.length > 0) {
+                console.log('Displaying', ranking.length, 'ranking entries');
                 ranking.forEach((score, index) => {
                     const tr = document.createElement('tr');
                     const isMyScore = score.id === myScoreId;
                     if (isMyScore) {
                         tr.style.backgroundColor = '#fff3cd';
                         tr.style.fontWeight = 'bold';
+                        console.log('Found my score at rank', index + 1);
                     }
                     
                     tr.innerHTML = `
@@ -3866,6 +3914,7 @@
                     tbody.appendChild(tr);
                 });
             } else {
+                console.log('No ranking data, showing placeholder');
                 // ランキングデータがない場合
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -3875,7 +3924,18 @@
             }
             
             // モーダルを表示
-            modal.style.display = 'block';
+            modal.style.display = 'flex';
+            console.log('Ranking modal display set to flex');
+            
+            // 確実に表示されるように、z-indexも設定
+            modal.style.zIndex = '20000';
+            
+            // スクロールを一番上に
+            requestAnimationFrame(() => {
+                if (modal) {
+                    modal.scrollTop = 0;
+                }
+            });
         }
 
         // Assign numbers 1..TOTAL_STAMP_SLOTS to stamp IDs randomly
