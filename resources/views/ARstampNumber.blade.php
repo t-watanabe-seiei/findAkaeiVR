@@ -209,11 +209,16 @@
             lastTouchEnd = now;
         }, { passive: false });
 
-        // ピンチズームをdocumentレベルでブロック
+        // ピンチズームをdocumentレベルでブロック（ただし、a-scene内は許可）
         document.addEventListener('touchmove', function(e) {
             if (e.touches && e.touches.length > 1) {
-                // 2本指以上のタッチはピンチズームの可能性
-                // ブラウザのデフォルト動作をキャンセル
+                // a-scene内（canvas要素）でのピンチは許可
+                const target = e.target;
+                if (target && target.tagName === 'CANVAS' && target.closest('a-scene')) {
+                    // モデルのズームを許可
+                    return;
+                }
+                // それ以外はブラウザのデフォルト動作をキャンセル
                 e.preventDefault();
             }
         }, { passive: false });
@@ -472,7 +477,9 @@
                             if (currentNextNumber > TOTAL_STAMP_SLOTS) {
                                 // プレイヤーの勝利
                                 showCompleteParticles();
-                                try { soundBgm.pause(); } catch(e){}
+                                try { 
+                                    soundBgm.loop = false; // ループを停止して最後まで再生
+                                } catch(e){}
                                 // ランキングを表示
                                 showRankingModal();
                             }
@@ -709,6 +716,108 @@
                         });
                     }
                 }, this.data.timeout);
+            }
+        });
+        
+        // ピンチイン/ピンチアウトでモデルをズームするコンポーネント
+        AFRAME.registerComponent('pinch-zoom', {
+            schema: {
+                minScale: {type: 'number', default: 0.3},
+                maxScale: {type: 'number', default: 2.0}
+            },
+            init: function() {
+                this.initialScale = this.el.object3D.scale.clone();
+                this.currentScale = 1.0;
+                this.lastDistance = 0;
+                this.isPinching = false;
+                
+                const sceneEl = this.el.sceneEl;
+                if (!sceneEl.pinchZoomHandler) {
+                    // グローバルなピンチハンドラを1回だけ設定
+                    sceneEl.pinchZoomHandler = {
+                        activeEntity: null,
+                        lastDistance: 0,
+                        isPinching: false
+                    };
+                    
+                    const canvas = sceneEl.canvas;
+                    
+                    canvas.addEventListener('touchstart', (evt) => {
+                        if (evt.touches && evt.touches.length === 2) {
+                            // レイキャストで対象を検出
+                            const touch = evt.touches[0];
+                            const raycaster = new THREE.Raycaster();
+                            const mouse = new THREE.Vector2();
+                            const rect = canvas.getBoundingClientRect();
+                            
+                            mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+                            mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+                            
+                            const camera = sceneEl.camera;
+                            raycaster.setFromCamera(mouse, camera);
+                            
+                            // すべてのpinch-zoom対応エンティティをチェック
+                            const entities = sceneEl.querySelectorAll('[pinch-zoom]');
+                            for (let i = 0; i < entities.length; i++) {
+                                const entity = entities[i];
+                                const obj = entity.object3D;
+                                if (obj && obj.visible) {
+                                    const intersects = raycaster.intersectObject(obj, true);
+                                    if (intersects.length > 0) {
+                                        sceneEl.pinchZoomHandler.activeEntity = entity;
+                                        sceneEl.pinchZoomHandler.isPinching = true;
+                                        sceneEl.pinchZoomHandler.lastDistance = Math.hypot(
+                                            evt.touches[0].clientX - evt.touches[1].clientX,
+                                            evt.touches[0].clientY - evt.touches[1].clientY
+                                        );
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    canvas.addEventListener('touchmove', (evt) => {
+                        const handler = sceneEl.pinchZoomHandler;
+                        if (handler.isPinching && handler.activeEntity && evt.touches && evt.touches.length === 2) {
+                            const currentDistance = Math.hypot(
+                                evt.touches[0].clientX - evt.touches[1].clientX,
+                                evt.touches[0].clientY - evt.touches[1].clientY
+                            );
+                            const delta = currentDistance - handler.lastDistance;
+                            
+                            const component = handler.activeEntity.components['pinch-zoom'];
+                            if (component) {
+                                const scaleDelta = delta * 0.005;
+                                component.currentScale = Math.max(
+                                    component.data.minScale,
+                                    Math.min(component.data.maxScale, component.currentScale + scaleDelta)
+                                );
+                                
+                                handler.activeEntity.object3D.scale.set(
+                                    component.initialScale.x * component.currentScale,
+                                    component.initialScale.y * component.currentScale,
+                                    component.initialScale.z * component.currentScale
+                                );
+                            }
+                            
+                            handler.lastDistance = currentDistance;
+                            evt.preventDefault();
+                        }
+                    });
+                    
+                    canvas.addEventListener('touchend', (evt) => {
+                        const handler = sceneEl.pinchZoomHandler;
+                        if (evt.touches && evt.touches.length < 2) {
+                            handler.isPinching = false;
+                            handler.activeEntity = null;
+                        }
+                    });
+                }
+            },
+            
+            remove: function() {
+                // グローバルハンドラなので個別には削除しない
             }
         });
         
@@ -2263,6 +2372,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2276,6 +2386,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2289,6 +2400,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2302,6 +2414,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2314,6 +2427,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2326,6 +2440,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2338,6 +2453,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2350,6 +2466,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2363,6 +2480,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -2376,6 +2494,7 @@
                 scale="0.56 0.56 0.56"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
+                pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
@@ -3616,6 +3735,11 @@
         async function showRankingModal() {
             gameActive = false;
             stopTimer();
+            
+            // BGMのループを停止（最後まで再生）
+            try { 
+                soundBgm.loop = false;
+            } catch(e){}
             
             const clearTime = elapsedSeconds;
             console.log('Clear time:', clearTime, 'seconds');
