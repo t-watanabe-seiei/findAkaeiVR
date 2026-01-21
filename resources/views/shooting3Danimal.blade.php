@@ -809,17 +809,17 @@
                 // ランダムパターン設定（初期スポーン用：近距離パターン）🚀 30%遅く調整
                 const movementPatterns = [
                     // パターン1: 左前方からカメラへ - 距離: 約4m
-                    { startPos: { x: -3, y: 0, z: -4 }, speed: 0.21, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: -3, y: 0, z: -4 }, speed: 0.168, useCamera: true, waitTime: 3000 },
                     // パターン2: 右前方からカメラへ - 距離: 約4m
-                    { startPos: { x: 3, y: 0, z: -4 }, speed: 0.175, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: 3, y: 0, z: -4 }, speed: 0.14, useCamera: true, waitTime: 3000 },
                     // パターン3: 正面からカメラへ - 距離: 約5m
-                    { startPos: { x: 0, y: 0, z: -5 }, speed: 0.14, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: 0, y: 0, z: -5 }, speed: 0.112, useCamera: true, waitTime: 3000 },
                     // パターン4: 左から右へ横移動（固定終点）- 距離: 6m
-                    { startPos: { x: -3, y: 0, z: -4 }, endPos: { x: 3, y: 0, z: -4 }, speed: 0.21, useCamera: false, waitTime: 3000 },
+                    { startPos: { x: -3, y: 0, z: -4 }, endPos: { x: 3, y: 0, z: -4 }, speed: 0.168, useCamera: false, waitTime: 3000 },
                     // パターン5: 右から左へ横移動（固定終点）- 距離: 6m
-                    { startPos: { x: 3, y: 0, z: -4 }, endPos: { x: -3, y: 0, z: -4 }, speed: 0.21, useCamera: false, waitTime: 3000 },
+                    { startPos: { x: 3, y: 0, z: -4 }, endPos: { x: -3, y: 0, z: -4 }, speed: 0.168, useCamera: false, waitTime: 3000 },
                     // パターン6: 左斜めからカメラへ - 距離: 約4.2m
-                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.25, useCamera: true, waitTime: 3000 }
+                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.2, useCamera: true, waitTime: 3000 }
                 ];
                 
                 // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
@@ -2680,43 +2680,40 @@
                             window.debugLog('Hit box removed immediately');
                         }
                         
-                        // 🎯 ボールマッチング判定（+10/-3スコア計算 + 連続正解ボーナス）
+                        // 🎯 ボールマッチング判定（+10/+3スコア計算 + 連続正解ボーナス）
                         const thrownBallIndex = event.detail && event.detail.ballIndex !== undefined 
                             ? event.detail.ballIndex 
                             : window.currentBallIndex;
                         const requiredBallIndex = parseInt(modelGroup.getAttribute('data-required-ball') || '0');
                         const isCorrectBall = thrownBallIndex === requiredBallIndex;
                         
-                        // 連続正解のカウント管理
+                        // 連続正解のカウント管理（不正解でもコンボは続く）
                         if (isCorrectBall) {
                             window.comboCount++; // 連続正解カウントを増やす
                             window.lastBallHit = true;
                         } else {
-                            window.comboCount = 0; // 不正解でコンボリセット
+                            // 不正解でもコンボはリセットしない
                             window.lastBallHit = false;
                         }
                         
-                        // 連続正解ボーナス計算（3連続以上で追加ボーナス）
+                        // 連続正解ボーナス計算（5連続以上で控えめな追加ボーナス）
                         let comboBonus = 0;
                         let comboBonusText = '';
-                        if (isCorrectBall && window.comboCount >= 3) {
-                            if (window.comboCount >= 10) {
-                                comboBonus = 15; // 10連続以上: +15ボーナス
-                                comboBonusText = ' +COMBO BONUS +15';
-                            } else if (window.comboCount >= 7) {
-                                comboBonus = 10; // 7-9連続: +10ボーナス
-                                comboBonusText = ' +COMBO BONUS +10';
+                        if (isCorrectBall && window.comboCount >= 5) {
+                            if (window.comboCount >= 15) {
+                                comboBonus = 10; // 15連続以上: +10ボーナス
+                                comboBonusText = '+10';
+                            } else if (window.comboCount >= 10) {
+                                comboBonus = 7; // 10-14連続: +7ボーナス
+                                comboBonusText = '+7';
                             } else if (window.comboCount >= 5) {
-                                comboBonus = 7; // 5-6連続: +7ボーナス
-                                comboBonusText = ' +COMBO BONUS +7';
-                            } else if (window.comboCount >= 3) {
-                                comboBonus = 5; // 3-4連続: +5ボーナス
-                                comboBonusText = ' +COMBO BONUS +5';
+                                comboBonus = 5; // 5-9連続: +5ボーナス
+                                comboBonusText = '+5';
                             }
                         }
                         
-                        // スコア計算（正しいボール: +10 + ボーナス, 間違ったボール: -3）
-                        const baseScore = isCorrectBall ? 10 : -3;
+                        // スコア計算（正しいボール: +10 + ボーナス, 間違ったボール: +3）
+                        const baseScore = isCorrectBall ? 10 : 3;
                         const scoreChange = baseScore + comboBonus;
                         window.totalScore += scoreChange;
                         
@@ -2729,7 +2726,7 @@
                             window.debugLog('New Max Combo:', window.maxComboCount);
                         }
                         
-                        window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (-3)', 
+                        window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (+3)', 
                                        '| Thrown:', thrownBallIndex, '| Required:', requiredBallIndex,
                                        '| Combo:', window.comboCount, '| Total Score:', window.totalScore);
                         
@@ -2779,21 +2776,21 @@
                         
                         window.debugLog('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
                         
-                        // 🎯 スコアテキストをモデルの上に表示（正解は緑/金、不正解は赤、コンボはオレンジ）
+                        // 🎯 スコアテキストをモデルの上に表示（正解は緑、不正解も青、コンボは金色）
                         const scoreText = document.createElement('a-text');
                         let scoreDisplay;
                         let scoreColor;
                         if (isCorrectBall) {
                             if (comboBonus > 0) {
-                                scoreDisplay = `COMBO ${window.comboCount}!\n+${scoreChange}pt ✓${comboBonusText}`;
-                                scoreColor = '#FF6600'; // コンボ時はオレンジ
+                                scoreDisplay = `+${scoreChange}pt ✓ (${window.comboCount})`;
+                                scoreColor = '#FFD700'; // コンボ時は金色
                             } else {
                                 scoreDisplay = `+${scoreChange}pt ✓`;
                                 scoreColor = '#00FF00'; // 正解は緑
                             }
                         } else {
-                            scoreDisplay = `${scoreChange}pt ✗`;
-                            scoreColor = '#FF0000'; // 不正解は赤
+                            scoreDisplay = `+${scoreChange}pt`;
+                            scoreColor = '#87CEEB'; // 不正解は青
                         }
                         scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('align', 'center');
@@ -3028,56 +3025,56 @@
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: -3, y: 0, z: -3 },
-                        speed: 0.245,
+                        speed: 0.196,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
-                        speed: 0.21,
+                        speed: 0.168,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -3 },
-                        speed: 0.175,
+                        speed: 0.14,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
                         startPos: { x: 5, y: 0, z: 0 },
-                        speed: 0.21,
+                        speed: 0.168,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
                         startPos: { x: 6, y: 0, z: 6 },
-                        speed: 0.14,
+                        speed: 0.112,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
                         startPos: { x: -6, y: 0, z: 2 },
-                        speed: 0.14,
+                        speed: 0.112,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: 1, y: 0, z: 7 },
-                        speed: 0.14,
+                        speed: 0.112,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -3, y: 0, z: 5 },
-                        speed: 0.14,
+                        speed: 0.112,
                         useCamera: true,
                         waitTime: 2000
                     }
@@ -3251,12 +3248,11 @@
             init: function () {
                 window.debugLog("vr-controller initialized for", this.el.id);
                 
-                // AボタンまたはBボタンでボール切り替え（Pico4対応）
+                // Aボタン、Bボタン、グリップボタンでボール切り替え（Pico4対応）
                 this.onButtonDown = this.onButtonDown.bind(this);
                 this.el.addEventListener("abuttondown", this.onButtonDown); // Aボタン
                 this.el.addEventListener("bbuttondown", this.onButtonDown); // Bボタン
-                this.el.addEventListener("xbuttondown", this.onButtonDown); // Xボタン（左手用）
-                this.el.addEventListener("ybuttondown", this.onButtonDown); // Yボタン（左手用）
+                this.el.addEventListener("gripdown", this.onButtonDown); // グリップボタン
                 
                 // コントローラー先端にボールプレビューを追加
                 this.createBallPreview();
@@ -3266,7 +3262,7 @@
             },
             
             onButtonDown: function(e) {
-                window.debugLog("A/B/X/Y button pressed on", this.el.id);
+                window.debugLog("A/B/Grip button pressed on", this.el.id);
                 
                 // ゲームが開始されていない場合は無視
                 if (!window.gameStarted || window.gameEnded) {
@@ -3332,8 +3328,7 @@
             remove: function() {
                 this.el.removeEventListener("abuttondown", this.onButtonDown);
                 this.el.removeEventListener("bbuttondown", this.onButtonDown);
-                this.el.removeEventListener("xbuttondown", this.onButtonDown);
-                this.el.removeEventListener("ybuttondown", this.onButtonDown);
+                this.el.removeEventListener("gripdown", this.onButtonDown);
                 if (this.ballPreview && this.ballPreview.parentNode) {
                     this.ballPreview.parentNode.removeChild(this.ballPreview);
                 }
