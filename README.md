@@ -1,4 +1,99 @@
 # 変更点
+
+### VRシューティングゲーム - バグ修正とUI改善 20260121
+**shooting3Danimal.blade.php の修正履歴:**
+
+#### 修正内容
+1. **ゲームスタートボタン クリック不具合修正**
+   - 問題: Level 1 / Level 2 ボタンがクリックできない
+   - 原因: setupListeners が DOM 読み込み前に呼ばれていた
+   - 解決: 複数のタイミング戦略と重複防止フラグを実装
+
+2. **コンソールデバッグ有効化**
+   - 問題: console.clear() が1秒ごとに実行され、デバッグ情報が消える
+   - 解決: 開発者ツール検出コード（175-193行目）をコメントアウト
+
+3. **JavaScript構文エラー修正**
+   - 問題: 2115行目で構文エラー（if文の不適切な構造）
+   - 解決: if (!window.gameStarted || !this.isMoving) のブロック構造を修正
+
+4. **3Dモデル配置・サイズ調整**
+   - 問題: モデルがカメラ位置に出現、サイズが25-26倍に拡大
+   - 原因: approach-camera が動的カメラ位置を使用、fit-to-hitbox の計算ミス
+   - 解決1: カメラ WASD 移動を無効化（3290行目）
+   - 解決2: 全モデルを遠方位置 (0, 0, -50) に初期配置（3186-3265行目）
+   - 解決3: fit-to-hitbox を固定スケール 0.5 に変更（300-330行目）
+   - 解決4: スポーン距離を 10-12m → 4-5m に短縮（740-756行目）
+
+5. **投げるボールの視認性改善**
+   - 問題: ボールが小さすぎて見えない、暗い
+   - 解決1: スケールを 0.1 → 0.5 に拡大（その後ユーザーが 0.2 に調整）
+   - 問題2: ボールが白く見える（リンゴなのに赤色が失われる）
+   - 原因: 発光（emissive）による色の上書き
+   - 解決2: 発光を完全に削除し、元のモデル色を保持（1873-1886行目）
+   
+#### 技術的な変更詳細
+- **Line 175-193**: Developer tools detection → コメントアウト
+- **Line 300-330**: fit-to-hitbox component → 固定 scale: 0.5
+- **Line 438-531**: start-menu setupListeners → タイミング改善
+- **Line 740-756**: Movement patterns → 距離 4-5m に調整
+- **Line 1869**: Ball scale → 0.5（ユーザーが後に 0.2 に変更）
+- **Line 1873-1886**: Ball material → 発光なし、元の色のみ使用
+- **Line 2100-2130**: approach-camera tick → 構文エラー修正、target position を原点に固定
+- **Line 3186-3265**: modelGroup entities → position "0 0 -50", active: false
+- **Line 3290**: Camera → wasd-controls disabled
+
+---
+
+### VRシューティングゲーム - 2種類のボール切り替え機能実装 20260120
+**shooting3Danimal.blade.php の新機能:**
+
+#### 実装内容
+1. **2種類のポケボール対応**
+   - `poke_ball_07apple.glb` (リンゴ型ポケボール)
+   - `poke_ball_09cabbage.glb` (キャベツ型ポケボール)
+   - トリガーを引いて投げるボールが2種類から選択可能
+
+2. **VRコントローラーのグリップボタンでボール切り替え**
+   - 左右どちらのコントローラーでもグリップボタンでボールタイプを切り替え可能
+   - ゲーム中のみ有効（ゲーム開始前・終了後は無効）
+
+3. **PC用キーボード操作の追加**
+   - **Spaceキー**: ボールを投げる（トリガーボタン代替）
+   - **Gキー**: ボールを切り替える（グリップボタン代替）
+   - **マウスクリック**: ボールを投げる
+
+4. **コントローラー先端にボールプレビュー表示**
+   - 現在選択されているボールがVRコントローラーの先端に小さく表示
+   - 回転アニメーション付き
+   - ボール切り替え時に即座に更新
+
+5. **UI改善**
+   - スタートメニューにPC操作説明を追加（緑色テキスト）
+   - ゲーム開始時にコンソールへPC操作ガイドを表示
+
+#### 技術実装詳細
+- **グローバル変数追加:**
+  ```javascript
+  window.ballTypes = ['cg/poke_ball_07apple.glb', 'cg/poke_ball_09cabbage.glb'];
+  window.currentBallIndex = 0; // 現在選択中のボール
+  ```
+
+- **vr-controllerコンポーネント拡張:**
+  - `onGripDown()`: グリップボタンイベントハンドラ
+  - `createBallPreview()`: コントローラー先端にプレビュー作成
+  - `updatePreview()`: ボール切り替え時にプレビュー更新
+
+- **ball-shooter (shoot)コンポーネント修正:**
+  - `onKeyDown()`にGキーの処理を追加
+  - `shoot()`で`window.ballTypes[window.currentBallIndex]`を使用
+
+#### ファイル構成
+- 元ファイル: `shooting3Dcute.blade.php`をコピー
+- 新ファイル: `shooting3Danimal.blade.php`
+- 使用モデル: 同じ動物モデル（whiteTiger, pengin, namakemono等）
+- 使用ボール: 新規に2種類のポケボール
+
 ### ダッシュボードについて　20251121
     /admin/login - ログインページ
     /admin/dashboard - ダッシュボード（認証必要）

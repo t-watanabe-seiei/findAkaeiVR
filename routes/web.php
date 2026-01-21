@@ -31,6 +31,10 @@ Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');
 
+Route::match(['get', 'head'], '/animal', function () {
+    return view('shooting3Danimal');
+})->name('terrer.index');
+
 Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer2');
 })->name('terrer.index');
