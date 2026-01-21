@@ -288,8 +288,17 @@
         AFRAME.registerComponent('face-camera', {
             init: function() {
                 this.cameraEl = null;
+                // 🚀 最適化: Vector3を事前生成（毎フレームのnew回避）
+                this._cameraPos = new THREE.Vector3();
+                this._textPos = new THREE.Vector3();
+                this._lastUpdate = 0;
+                this._updateInterval = 50; // 50ms間隔（20fps）で更新
             },
-            tick: function () {
+            tick: function (time) {
+                // 🚀 最適化: スロットリング（毎フレーム実行を回避）
+                if (time - this._lastUpdate < this._updateInterval) return;
+                this._lastUpdate = time;
+                
                 // カメラ要素をキャッシュ
                 if (!this.cameraEl) {
                     const sceneEl = this.el.sceneEl;
@@ -299,11 +308,14 @@
                     if (!this.cameraEl) return;
                 }
 
-                const cameraPos = new THREE.Vector3();
-                const textPos = new THREE.Vector3();
+                // 🚀 修正: Vector3が未初期化の場合は再初期化
+                if (!this._cameraPos || !this._cameraPos.isVector3) {
+                    this._cameraPos = new THREE.Vector3();
+                    this._textPos = new THREE.Vector3();
+                }
                 
-                this.cameraEl.object3D.getWorldPosition(cameraPos);
-                this.el.object3D.getWorldPosition(textPos);
+                this.cameraEl.object3D.getWorldPosition(this._cameraPos);
+                this.el.object3D.getWorldPosition(this._textPos);
 
                 // カメラ方向を向く（lookAt使用）
                 this.el.object3D.lookAt(this._cameraPos);
