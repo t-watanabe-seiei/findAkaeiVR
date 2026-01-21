@@ -1968,9 +1968,9 @@
                 
                 console.log('Ball created at:', startPos);
                 
-                // 物理演算で放物線を描く
+                // 物理演算で放物線を描く（餌やり体験なのでゆっくり）
                 const gravity = -4.9; // 重力加速度 (m/s^2)
-                const initialSpeed = 10; // 初速度 (m/s)
+                const initialSpeed = 5; // 初速度 (m/s) - 餌やり体験用にゆっくり（10→5）
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 console.log('Initial velocity:', velocity);
