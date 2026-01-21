@@ -2269,7 +2269,7 @@
                 const ball = document.createElement('a-entity');
                 const currentBallModel = window.ballTypes[window.currentBallIndex];
                 ball.setAttribute('gltf-model', currentBallModel);
-                ball.setAttribute('scale', '0.2 0.2 0.2'); // サイズを大きく調整（0.1→0.5）
+                ball.setAttribute('scale', '0.14 0.14 0.14'); // サイズ調整Ｈ30%縮小: 0.2→0.14Ｉ
                 ball.setAttribute('rotation', '0 0 0');
                 
                 window.debugLog('Creating ball with model:', currentBallModel);
@@ -3193,9 +3193,12 @@
             init: function () {
                 window.debugLog("vr-controller initialized for", this.el.id);
                 
-                // グリップボタンでボール切り替え
-                this.onGripDown = this.onGripDown.bind(this);
-                this.el.addEventListener("gripdown", this.onGripDown);
+                // AボタンまたはBボタンでボール切り替え（Pico4対応）
+                this.onButtonDown = this.onButtonDown.bind(this);
+                this.el.addEventListener("abuttondown", this.onButtonDown); // Aボタン
+                this.el.addEventListener("bbuttondown", this.onButtonDown); // Bボタン
+                this.el.addEventListener("xbuttondown", this.onButtonDown); // Xボタン（左手用）
+                this.el.addEventListener("ybuttondown", this.onButtonDown); // Yボタン（左手用）
                 
                 // コントローラー先端にボールプレビューを追加
                 this.createBallPreview();
@@ -3204,12 +3207,12 @@
                 this.updatePreview = this.updatePreview.bind(this);
             },
             
-            onGripDown: function(e) {
-                window.debugLog("Grip button pressed on", this.el.id);
+            onButtonDown: function(e) {
+                window.debugLog("A/B/X/Y button pressed on", this.el.id);
                 
                 // ゲームが開始されていない場合は無視
                 if (!window.gameStarted || window.gameEnded) {
-                    window.debugLog('Game not active, ignoring grip button');
+                    window.debugLog('Game not active, ignoring button');
                     return;
                 }
                 
@@ -3269,7 +3272,10 @@
             },
             
             remove: function() {
-                this.el.removeEventListener("gripdown", this.onGripDown);
+                this.el.removeEventListener("abuttondown", this.onButtonDown);
+                this.el.removeEventListener("bbuttondown", this.onButtonDown);
+                this.el.removeEventListener("xbuttondown", this.onButtonDown);
+                this.el.removeEventListener("ybuttondown", this.onButtonDown);
                 if (this.ballPreview && this.ballPreview.parentNode) {
                     this.ballPreview.parentNode.removeChild(this.ballPreview);
                 }
