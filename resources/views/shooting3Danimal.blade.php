@@ -195,6 +195,16 @@
     </script>
 
     <script>  
+        // 🚀 パフォーマンス改善: デバッグモードの制御
+        window.DEBUG_MODE = false; // 本番環境では false に設定
+        
+        // デバッグログ関数（DEBUG_MODE が true の時のみ出力）
+        window.debugLog = function(...args) {
+            if (window.DEBUG_MODE) {
+                console.log(...args);
+            }
+        };
+        
         // ゲーム状態管理
         window.gameStarted = false;
         window.gameEnded = false;
@@ -214,6 +224,11 @@
             'cg/poke_ball_09cabbage.glb'
         ];
         window.currentBallIndex = 0; // 現在選択されているボールのインデックス（0 or 1）
+        
+        // 🚀 最適化: THREE.Vector3のグローバルキャッシュ
+        window._cachedVector3 = new THREE.Vector3();
+        window._cachedVector3_2 = new THREE.Vector3();
+        window._cachedVector3_3 = new THREE.Vector3();
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -269,6 +284,7 @@
         });
 
         // テキストを常にカメラの方向へ向けるコンポーネント（Y軸のみ回転: ビルボード）
+        // 🚀 最適化: Vector3を事前生成、tickをスロットリング
         AFRAME.registerComponent('face-camera', {
             init: function() {
                 this.cameraEl = null;
@@ -290,7 +306,7 @@
                 this.el.object3D.getWorldPosition(textPos);
 
                 // カメラ方向を向く（lookAt使用）
-                this.el.object3D.lookAt(cameraPos);
+                this.el.object3D.lookAt(this._cameraPos);
                 
                 // X軸とZ軸の回転をリセット（Y軸のみ保持）
                 const currentRotation = this.el.object3D.rotation;
@@ -490,17 +506,20 @@
                 this.startGame({ type: 'level-select' });
             },
             
-            tick: function() {
-                // ゲーム中はメニューを完全に非表示・無効化
+            tick: function(time) {
+                // 🚀 最適化: スロットリング（100ms間隔で状態チェック）
+                if (!this._lastTickTime) this._lastTickTime = 0;
+                if (time - this._lastTickTime < 100) return;
+                this._lastTickTime = time;
+                
+                // 🚀 改善: 状態フラグで制御（毎フレームのDOM操作を削減）
                 if (window.gameStarted && !window.gameEnded) {
-                    const isVisible = this.el.getAttribute('visible');
-                    
-                    // メニューが表示されている場合のみ非表示にする（無限ループ防止）
-                    // visible属性はブーリアンまたは文字列で返される可能性があるため厳密にチェック
-                    if (isVisible === true || isVisible === 'true') {
-                        console.log('WARNING: Menu visible during game! Force hiding...');
+                    // 初回のみ実行
+                    if (!this.menuHidden) {
                         this.el.setAttribute('visible', false);
                         this.el.setAttribute('scale', '0 0 0');
+                        this.menuHidden = true;
+                        window.debugLog('Menu hidden (one-time)');
                     }
                     
                     // マウスカーソルとVRコントローラーのraycasterターゲットから.clickableを除外（初回のみ）
@@ -1627,11 +1646,12 @@
                 );
                 
                 // ボールの位置を更新
-                ball.setAttribute('position', `${currentPos.x} ${currentPos.y} ${currentPos.z}`);
+                // 🚀 最適化: setAttributeではなくobject3Dを直接操作（高速化）
+                ball.object3D.position.copy(currentPos);
                 
                 ballData.frameCount++;
-                if (ballData.frameCount <= 3) {
-                    console.log(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
+                if (ballData.frameCount <= 3 && window.DEBUG_MODE) {
+                    window.debugLog(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
                 // 各モデルの位置を取得して衝突判定
