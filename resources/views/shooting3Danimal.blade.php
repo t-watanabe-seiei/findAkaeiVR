@@ -983,6 +983,39 @@
             showResult: function(resultMenu) {
                 window.debugLog('=== showResult function called ===');
                 window.updateDebug(`Result: Score ${window.totalScore.toFixed(1)}`);
+                
+                // 🚀 メモリ解放: 残っているアクティブなボールを全て削除
+                if (window.activeBalls && window.activeBalls.length > 0) {
+                    window.debugLog('Cleaning up', window.activeBalls.length, 'remaining balls at game end');
+                    window.activeBalls.forEach(ballData => {
+                        if (ballData && ballData.ball) {
+                            const ball = ballData.ball;
+                            // THREE.jsオブジェクトを破棄
+                            if (ball.object3D) {
+                                ball.object3D.traverse((node) => {
+                                    if (node.geometry) node.geometry.dispose();
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => {
+                                                if (mat.map) mat.map.dispose();
+                                                mat.dispose();
+                                            });
+                                        } else {
+                                            if (node.material.map) node.material.map.dispose();
+                                            node.material.dispose();
+                                        }
+                                    }
+                                });
+                            }
+                            // DOMから削除
+                            if (ball.parentNode) {
+                                ball.parentNode.removeChild(ball);
+                            }
+                        }
+                    });
+                    window.activeBalls = [];
+                }
+                
                 window.debugLog('resultMenu parameter:', resultMenu);
                 window.debugLog('resultMenu is null?', resultMenu === null);
                 window.debugLog('resultMenu is undefined?', resultMenu === undefined);
@@ -1432,6 +1465,37 @@
                 window.lastBallHit = false;
                 window.currentLevel = 1; // デフォルトに戻す
                 window.gameLevel = 1;
+                
+                // 🚀 メモリ解放: 全てのアクティブなボールを削除
+                if (window.activeBalls && window.activeBalls.length > 0) {
+                    window.debugLog('Cleaning up', window.activeBalls.length, 'active balls');
+                    window.activeBalls.forEach(ballData => {
+                        if (ballData && ballData.ball) {
+                            const ball = ballData.ball;
+                            // THREE.jsオブジェクトを破棄
+                            if (ball.object3D) {
+                                ball.object3D.traverse((node) => {
+                                    if (node.geometry) node.geometry.dispose();
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => {
+                                                if (mat.map) mat.map.dispose();
+                                                mat.dispose();
+                                            });
+                                        } else {
+                                            if (node.material.map) node.material.map.dispose();
+                                            node.material.dispose();
+                                        }
+                                    }
+                                });
+                            }
+                            // DOMから削除
+                            if (ball.parentNode) {
+                                ball.parentNode.removeChild(ball);
+                            }
+                        }
+                    });
+                }
                 window.activeBalls = [];
                 window.usedPatterns = {}; // パターン使用状況をリセット
                 
@@ -2186,6 +2250,12 @@
                     return;
                 }
                 
+                // 🚀 パフォーマンス改善: ボールの同時描画数を制限（3個まで）
+                if (window.activeBalls.length >= 3) {
+                    window.debugLog('Ball limit reached (3), ignoring shoot');
+                    return;
+                }
+                
                 // 最後のshoot時刻を更新
                 this.lastShootTime = Date.now();
                 
@@ -2204,8 +2274,9 @@
                 
                 window.debugLog('Creating ball with model:', currentBallModel);
                 
-                // モデルが読み込まれたら適切なライティングを設定
-                ball.addEventListener('model-loaded', () => {
+                // 🚀 パフォーマンス改善: モデルが読み込まれたら適切なライティングを設定
+                // {once: true} でリスナーを自動削除（メモリリーク防止）
+                ball.addEventListener('model-loaded', function onBallModelLoaded() {
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) {
                         mesh.traverse((node) => {
@@ -2215,11 +2286,10 @@
                                 node.material.emissiveIntensity = 0;
                                 // 元のマテリアル色はそのまま保持
                                 node.material.needsUpdate = true;
-                                window.debugLog('Ball material set (no emissive, original color only)');
                             }
                         });
                     }
-                });
+                }, { once: true }); // 🚀 1回だけ実行してリスナーを自動削除
                 
                 // 回転アニメーションを追加（飛んでいる間に回転）
                 ball.setAttribute('animation__spin', {
