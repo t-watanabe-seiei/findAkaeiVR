@@ -858,6 +858,26 @@
                             window.debugLog(`Setting ${modelId} rotation to: 0, ${rotation}, 0`);
                             model.setAttribute('rotation', `0 ${rotation} 0`);
                             
+                            // 🎯 動物の頭上にランダムなボールインジケーターを追加（初期スポーン時）
+                            const requiredBallIndex = Math.floor(Math.random() * 2); // 0 or 1
+                            model.setAttribute('data-required-ball', requiredBallIndex.toString());
+                            
+                            // 既存のボールインジケーターを削除
+                            const existingIndicator = model.querySelector(`#ball-indicator-${modelId}`);
+                            if (existingIndicator) {
+                                existingIndicator.parentNode.removeChild(existingIndicator);
+                            }
+                            
+                            // 新しいボールインジケーターを追加
+                            const ballIndicator = document.createElement('a-entity');
+                            ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
+                            ballIndicator.setAttribute('gltf-model', window.ballTypes[requiredBallIndex]);
+                            ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
+                            ballIndicator.setAttribute('scale', '0.15 0.15 0.15'); // 小さめに表示
+                            ballIndicator.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear');
+                            model.appendChild(ballIndicator);
+                            window.debugLog('Ball indicator added for', modelId, ':', requiredBallIndex === 0 ? 'Apple' : 'Cabbage');
+                            
                             // まずvisibleをtrueにする
                             model.setAttribute('visible', true);
                             window.debugLog(`${modelId} visible set to true`);
@@ -1196,12 +1216,28 @@
                         particleSystem.startParticles();
                     }
                     
-                    // 5秒後にパーティクルを停止
+                    // 🎯 パーティクルクリーンアップ: 5秒後にパーティクルを停止＆リセット
                     window.registerTimeout(() => {
+                        // 子要素のパーティクルシステムもすべてリセット
+                        const childParticles = celebrationParticle.querySelectorAll('[particle-system]');
+                        childParticles.forEach(child => {
+                            const childComponent = child.components['particle-system'];
+                            if (childComponent) {
+                                childComponent.stopParticles();
+                                // パーティクルグループをリセット（ゴミ残り防止）
+                                if (childComponent.particleGroup) {
+                                    childComponent.particleGroup.emitters.forEach(emitter => {
+                                        emitter.reset(true);
+                                    });
+                                }
+                            }
+                        });
+                        
                         if (particleSystem) {
                             particleSystem.stopParticles();
                         }
                         celebrationParticle.setAttribute('visible', 'false');
+                        window.debugLog('Celebration particles cleaned up');
                     }, 5000);
                 }
                 
@@ -1554,17 +1590,39 @@
                     bgm.currentTime = 0;
                 }
                 
-                // 全パーティクルシステムを強制停止（パフォーマンス向上）
+                // 全パーティクルシステムを強制停止（パフォーマンス向上）＆ゴミクリア
                 const particleIds = ['particle-normal', 'particle-tier1', 'particle-tier2', 'particle-tier3', 'particle-celebration'];
                 particleIds.forEach(particleId => {
                     const particle = document.getElementById(particleId);
                     if (particle) {
+                        // 🎯 パーティクルシステムの完全リセット
                         const particleSystem = particle.components['particle-system'];
                         if (particleSystem) {
                             particleSystem.stopParticles();
+                            // パーティクルグループをリセット（ゴミ残り防止）
+                            if (particleSystem.particleGroup) {
+                                particleSystem.particleGroup.emitters.forEach(emitter => {
+                                    emitter.reset(true);
+                                });
+                            }
                         }
+                        
+                        // 子要素のパーティクルシステムも処理（particle-celebration用）
+                        const childParticles = particle.querySelectorAll('[particle-system]');
+                        childParticles.forEach(child => {
+                            const childComponent = child.components['particle-system'];
+                            if (childComponent) {
+                                childComponent.stopParticles();
+                                if (childComponent.particleGroup) {
+                                    childComponent.particleGroup.emitters.forEach(emitter => {
+                                        emitter.reset(true);
+                                    });
+                                }
+                            }
+                        });
+                        
                         particle.setAttribute('visible', 'false');
-                        window.debugLog('Stopped particle system:', particleId);
+                        window.debugLog('Stopped and cleaned particle system:', particleId);
                     }
                 });
                 
@@ -2029,8 +2087,9 @@
                         ballData.hasHit = true;
                         window.debugLog(`Ball hit ${modelInfo.id}!`);
                         // 🚀 最適化: 既にキャッシュ済みのhitBoxを再利用
+                        // 🎯 投げたボールの種類を渡す
                         if (hitBox) {
-                            hitBox.emit('ball-hit');
+                            hitBox.emit('ball-hit', { ballIndex: ballData.ballIndex });
                         }
                         
                         // 🚀 最適化: clone()を避けてスカラー計算でバウンス位置を算出
@@ -2387,7 +2446,8 @@
                     direction: direction,
                     startTime: Date.now(),
                     hasHit: false,
-                    frameCount: 0
+                    frameCount: 0,
+                    ballIndex: window.currentBallIndex // 🎯 投げたボールの種類を記録
                 });
             }
         });
@@ -2601,7 +2661,7 @@
                 }
 
                 // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
-                this.el.addEventListener('ball-hit', () => {
+                this.el.addEventListener('ball-hit', (event) => {
                     if(!hitFlag) {
                         hitFlag = true;
                         window.debugLog('Model hit!', modelEntity);
@@ -2617,6 +2677,24 @@
                             window.debugLog('Hit box removed immediately');
                         }
                         
+                        // 🎯 ボールマッチング判定（+5/-5スコア計算）
+                        const thrownBallIndex = event.detail && event.detail.ballIndex !== undefined 
+                            ? event.detail.ballIndex 
+                            : window.currentBallIndex;
+                        const requiredBallIndex = parseInt(modelGroup.getAttribute('data-required-ball') || '0');
+                        const isCorrectBall = thrownBallIndex === requiredBallIndex;
+                        
+                        // スコア計算（正しいボール: +5, 間違ったボール: -5）
+                        const scoreChange = isCorrectBall ? 5 : -5;
+                        window.totalScore += scoreChange;
+                        
+                        // スコアが0未満にならないように制限
+                        if (window.totalScore < 0) window.totalScore = 0;
+                        
+                        window.debugLog('Ball Match:', isCorrectBall ? 'CORRECT (+5)' : 'WRONG (-5)', 
+                                       '| Thrown:', thrownBallIndex, '| Required:', requiredBallIndex,
+                                       '| Total Score:', window.totalScore);
+                        
                         // ヒット音を再生
                         const hitSound = document.getElementById('sound_hit');
                         if (hitSound) {
@@ -2628,7 +2706,7 @@
                             });
                         }
                         
-                        // カメラとモデルの距離を計算してスコア化
+                        // カメラとモデルの距離を計算（スコアテキストサイズ用）
                         const sceneEl = document.querySelector('a-scene');
                         const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
                         
@@ -2646,52 +2724,6 @@
                             window.debugLog('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
-                        // 基本スコアを計算（距離を10倍して小数第一位まで）
-                        let baseScore = Math.round(distance * 100) / 10; // 小数第一位まで
-                        
-                        // コンボカウントを増やす（スコア計算前に）
-                        window.comboCount++;
-                        window.lastBallHit = true;
-                        window.debugLog('Combo Count:', window.comboCount);
-                        
-                        // コンボ倍率を計算
-                        let comboMultiplier = 1.0;
-                        let comboBonus = '';
-                        let bonusTier = 0; // ボーナスレベル（0=なし, 1=1.1x, 2=1.2x, 3=1.3x）
-                        if (window.comboCount >= 6) {
-                            comboMultiplier = 1.3;
-                            comboBonus = 'x1.3';
-                            bonusTier = 3;
-                        } else if (window.comboCount >= 4) {
-                            comboMultiplier = 1.2;
-                            comboBonus = 'x1.2';
-                            bonusTier = 2;
-                        } else if (window.comboCount >= 2) {
-                            comboMultiplier = 1.1;
-                            comboBonus = 'x1.1';
-                            bonusTier = 1;
-                        }
-                        
-                        // 最終スコアを計算
-                        const finalScore = baseScore * comboMultiplier;
-                        window.debugLog('Base Score:', baseScore, 'Multiplier:', comboMultiplier, 'Final Score:', finalScore);
-                        
-                        // 合計スコアに加算
-                        window.totalScore += finalScore;
-                        window.debugLog('Total Score:', window.totalScore.toFixed(1));
-                        
-                        // 最大コンボ数を更新
-                        if (window.comboCount > window.maxComboCount) {
-                            window.maxComboCount = window.comboCount;
-                            window.debugLog('New Max Combo:', window.maxComboCount);
-                        }
-                        
-                        // コンボ表示を更新（2連続以上の場合）
-                        // ※ showCombo関数は使用しない（スコアテキストに統合済み）
-                        // if (window.comboCount >= 2) {
-                        //     this.showCombo(window.comboCount, modelGroup);
-                        // }
-                        
                         // リアルタイムスコア表示を更新
                         const currentScoreText = document.getElementById('currentScore');
                         if (currentScoreText) {
@@ -2707,21 +2739,18 @@
                         }
                         // 4m以内は基準サイズ（6 = 1倍）
                         
-                        // ボーナス時はさらに1.1倍
-                        if (comboBonus) {
-                            scoreWidth = scoreWidth * 1.1;
-                        }
-                        
                         window.debugLog('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
                         
-                        // スコアテキストをモデルの上に表示
+                        // 🎯 スコアテキストをモデルの上に表示（正解は緑/金、不正解は赤）
                         const scoreText = document.createElement('a-text');
-                        const scoreDisplay = comboBonus ? `Combo ${window.comboCount} ${comboBonus}\n${finalScore.toFixed(1)}pt` : `${finalScore.toFixed(1)}pt`;
+                        const scoreDisplay = isCorrectBall 
+                            ? `+${scoreChange}pt ✓` 
+                            : `${scoreChange}pt ✗`;
                         scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('align', 'center');
-                        scoreText.setAttribute('color', comboBonus ? '#FF6600' : '#FFD700'); // ボーナス時はオレンジ、通常は金色
+                        scoreText.setAttribute('color', isCorrectBall ? '#00FF00' : '#FF0000'); // 正解は緑、不正解は赤
                         scoreText.setAttribute('width', scoreWidth); // 距離に応じたサイズ
-                        scoreText.setAttribute('font', 'mozillavr'); // コンボ時も通常時もmozillavr
+                        scoreText.setAttribute('font', 'mozillavr');
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
                         
@@ -2739,8 +2768,8 @@
                         sceneEl.appendChild(scoreText);
                         window.debugLog('Score text added to scene at world position');
                         
-                        // 通常ヒット時（コンボなし）のパーティクル表示
-                        if (!comboBonus) {
+                        // 🎯 パーティクル表示（正解時のみシンプルに表示）
+                        if (isCorrectBall) {
                             const normalParticle = document.getElementById('particle-normal');
                             if (normalParticle) {
                                 // 🚀 最適化: グローバルキャッシュを使用
@@ -2749,55 +2778,18 @@
                                 normalParticle.setAttribute('position', `${normalParticlePos.x} ${normalParticlePos.y + 0.5} ${normalParticlePos.z}`);
                                 normalParticle.setAttribute('visible', true);
                                 
-                                // 1秒後に非表示
+                                // 🎯 パーティクルクリーンアップ: 1秒後に確実に非表示＆リセット
                                 window.registerTimeout(() => {
                                     normalParticle.setAttribute('visible', false);
+                                    // パーティクルシステムをリスタート（ゴミ残り防止）
+                                    const particleComponent = normalParticle.components['particle-system'];
+                                    if (particleComponent && particleComponent.particleGroup) {
+                                        particleComponent.particleGroup.emitters.forEach(emitter => {
+                                            emitter.reset(true);
+                                        });
+                                    }
                                 }, 1000);
                             }
-                        }
-                        
-                        // ボーナス時のエフェクト
-                        if (comboBonus) {
-                            // ボーナスレベルに応じて使用するパーティクルを選択
-                            let particleId = 'particle-tier1'; // デフォルト
-                            
-                            if (bonusTier === 1) {
-                                // 1.1倍: Tier1パーティクル（シアン、サイズ0.1、20個）
-                                particleId = 'particle-tier1';
-                            } else if (bonusTier === 2) {
-                                // 1.2倍: Tier2パーティクル（オレンジ、サイズ0.15、30個）
-                                particleId = 'particle-tier2';
-                            } else if (bonusTier === 3) {
-                                // 1.3倍: Tier3パーティクル（マゼンタ、サイズ0.2、40個）
-                                particleId = 'particle-tier3';
-                            }
-                            
-                            // パーティクルエフェクトを表示
-                            const particle = document.getElementById(particleId);
-                            if (particle) {
-                                // 🚀 最適化: グローバルキャッシュを使用
-                                const modelPos = window._cachedParticlePos;
-                                modelGroup.object3D.getWorldPosition(modelPos);
-                                particle.setAttribute('position', `${modelPos.x} ${modelPos.y + 0.5} ${modelPos.z}`);
-                                particle.setAttribute('visible', true);
-                                
-                                // 1.5秒後に非表示
-                                window.registerTimeout(() => {
-                                    particle.setAttribute('visible', false);
-                                }, 1500);
-                            }
-                            
-                            // スコアテキストを拡大縮小アニメーション（ボーナスレベルに応じて拡大率を変更）
-                            const scaleMultiplier = 1.1 + (bonusTier * 0.2); // 1.3, 1.5, 1.7
-                            scoreText.setAttribute('scale', `${scaleMultiplier} ${scaleMultiplier} ${scaleMultiplier}`);
-                            scoreText.setAttribute('animation__scale', {
-                                property: 'scale',
-                                to: '1 1 1',
-                                dur: 400,
-                                easing: 'easeOutElastic'
-                            });
-                            
-                            // 注意: animation__rotateは削除（face-cameraと競合するため）
                         }
                         
                         // スコアテキストをフェードアウトさせる（ワールド座標で上に移動）
@@ -3111,6 +3103,19 @@
                 newModelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
                 newModelEntity.setAttribute('enhance-materials', ''); // マテリアル品質向上
                 newModelGroup.appendChild(newModelEntity);
+                
+                // 🎯 動物の頭上にランダムなボールインジケーターを追加
+                const requiredBallIndex = Math.floor(Math.random() * 2); // 0 or 1
+                newModelGroup.setAttribute('data-required-ball', requiredBallIndex.toString());
+                
+                const ballIndicator = document.createElement('a-entity');
+                ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
+                ballIndicator.setAttribute('gltf-model', window.ballTypes[requiredBallIndex]);
+                ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
+                ballIndicator.setAttribute('scale', '0.15 0.15 0.15'); // 小さめに表示
+                ballIndicator.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear');
+                newModelGroup.appendChild(ballIndicator);
+                window.debugLog('Ball indicator added:', requiredBallIndex === 0 ? 'Apple' : 'Cabbage');
                 
                 // 当たり判定オブジェクトを作成
                 const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
@@ -3639,36 +3644,33 @@
         <!-- 360度画像を表示 -->
         <a-sky id="aSky" src="#sky02"></a-sky>
 
-        <!-- Particle Effects - 3 Tiers -->
-        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 10 particles -->
+        <!-- Particle Effects - 🚀 軽量化版 -->
+        <!-- 通常ヒット用（正解時）: 緑色、5 particles -->
         <a-entity id="particle-normal" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FFFFFF; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+                  particle-system="preset: default; color: #00FF00; particleCount: 5; size: 0.08; maxAge: 0.8; velocityValue: 1 1 1; velocitySpread: 1.5 1.5 1.5; accelerationValue: 0 -2 0; accelerationSpread: 0.3 0.3 0.3"></a-entity>
         
-        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 20 particles -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, 8 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #00FFFF; particleCount: 20; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #00FFFF; particleCount: 8; size: 0.08; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 30 particles -->
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, 10 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier2" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF6600; particleCount: 30; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF6600; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 40 particles -->
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, 12 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF00FF; particleCount: 40; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF00FF; particleCount: 12; size: 0.12; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Top 5 Celebration Particle - 豪華なゴールドパーティクル -->
+        <!-- Top 5 Celebration Particle - 🚀 軽量化版ゴールドパーティクル -->
         <a-entity id="particle-celebration" visible="false" position="0 2 -3">
-            <!-- メインゴールドパーティクル：大量の金色パーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 100; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            <!-- メインゴールドパーティクル：30個に削減 -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 30; size: 0.25; maxAge: 2; velocityValue: 0 4 0; velocitySpread: 3 2 3; accelerationValue: 0 -1 0; accelerationSpread: 1 0 1; blending: 1"></a-entity>
             
-            <!-- 輝く星パーティクル：キラキラ効果 -->
-            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 50; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            <!-- 輝く星パーティクル：15個に削減 -->
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 15; size: 0.12; maxAge: 1.8; velocityValue: 0 2 0; velocitySpread: 3 2 3; accelerationValue: 0 -0.5 0; accelerationSpread: 0.5 0 0.5; blending: 1" position="0 0.5 0"></a-entity>
             
-            <!-- 紙吹雪効果：カラフルな紙吹雪 -->
-            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 80; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
-            
-            <!-- 輪っか状に広がるパーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 60; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+            <!-- 紙吹雪効果：20個に削減 -->
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 20; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 1 4; accelerationValue: 0 -2 0; accelerationSpread: 2 0 2; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
         </a-entity>
         
 
