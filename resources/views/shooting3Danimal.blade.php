@@ -868,15 +868,18 @@
                                 existingIndicator.parentNode.removeChild(existingIndicator);
                             }
                             
-                            // 新しいボールインジケーターを追加
-                            const ballIndicator = document.createElement('a-entity');
+                            // 🚀 最適化: GLBの代わりにシンプルな球体を使用（メモリ節約）
+                            const ballIndicator = document.createElement('a-sphere');
                             ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
-                            ballIndicator.setAttribute('gltf-model', window.ballTypes[requiredBallIndex]);
+                            ballIndicator.setAttribute('radius', '0.12');
                             ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
-                            ballIndicator.setAttribute('scale', '0.15 0.15 0.15'); // 小さめに表示
-                            ballIndicator.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear');
+                            // リンゴ=赤、キャベツ=緑
+                            const indicatorColor = requiredBallIndex === 0 ? '#FF0000' : '#00FF00';
+                            ballIndicator.setAttribute('color', indicatorColor);
+                            ballIndicator.setAttribute('material', `color: ${indicatorColor}; emissive: ${indicatorColor}; emissiveIntensity: 0.3; shader: flat`);
+                            // 🚀 最適化: 回転アニメーションを削除（負荷軽減）
                             model.appendChild(ballIndicator);
-                            window.debugLog('Ball indicator added for', modelId, ':', requiredBallIndex === 0 ? 'Apple' : 'Cabbage');
+                            window.debugLog('Ball indicator added for', modelId, ':', requiredBallIndex === 0 ? 'Apple (Red)' : 'Cabbage (Green)');
                             
                             // まずvisibleをtrueにする
                             model.setAttribute('visible', true);
@@ -3108,14 +3111,18 @@
                 const requiredBallIndex = Math.floor(Math.random() * 2); // 0 or 1
                 newModelGroup.setAttribute('data-required-ball', requiredBallIndex.toString());
                 
-                const ballIndicator = document.createElement('a-entity');
+                // 🚀 最適化: GLBの代わりにシンプルな球体を使用（メモリ節約）
+                const ballIndicator = document.createElement('a-sphere');
                 ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
-                ballIndicator.setAttribute('gltf-model', window.ballTypes[requiredBallIndex]);
+                ballIndicator.setAttribute('radius', '0.12');
                 ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
-                ballIndicator.setAttribute('scale', '0.15 0.15 0.15'); // 小さめに表示
-                ballIndicator.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear');
+                // リンゴ=赤、キャベツ=緑
+                const indicatorColor = requiredBallIndex === 0 ? '#FF0000' : '#00FF00';
+                ballIndicator.setAttribute('color', indicatorColor);
+                ballIndicator.setAttribute('material', `color: ${indicatorColor}; emissive: ${indicatorColor}; emissiveIntensity: 0.3; shader: flat`);
+                // 🚀 最適化: 回転アニメーションを削除（負荷軽減）
                 newModelGroup.appendChild(ballIndicator);
-                window.debugLog('Ball indicator added:', requiredBallIndex === 0 ? 'Apple' : 'Cabbage');
+                window.debugLog('Ball indicator added:', requiredBallIndex === 0 ? 'Apple (Red)' : 'Cabbage (Green)');
                 
                 // 当たり判定オブジェクトを作成
                 const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
