@@ -9,12 +9,16 @@
     <!-- Set DRACO decoder path to CDN to ensure Draco-compressed GLBs can be decoded -->
     <script>
         (function() {
+            // 🚀 パフォーマンス最適化: 初期化ログは本番では非表示
+            const DEBUG_INIT = false; // 本番では false に設定
+            const initLog = DEBUG_INIT ? console.log.bind(console) : function(){};
+            
             // Wait for A-Frame/THREE to become available
             function setDracoPath() {
                 try {
                     if (typeof THREE !== 'undefined' && THREE.DRACOLoader && typeof THREE.DRACOLoader.setDecoderPath === 'function') {
                         THREE.DRACOLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-                        console.log('DRACOLoader decoder path set to CDN');
+                        initLog('DRACOLoader decoder path set to CDN');
                     } else {
                         // Retry if THREE.DRACOLoader is not yet available
                         setTimeout(setDracoPath, 200);
@@ -34,14 +38,14 @@
                             const sys = scene.systems['gltf-model'];
                             if (sys && sys.dracoLoader && typeof sys.dracoLoader.setDecoderPath === 'function') {
                                 sys.dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-                                console.log('gltf-model system dracoLoader decoder path set to CDN');
+                                initLog('gltf-model system dracoLoader decoder path set to CDN');
                                 return;
                             }
                         }
                         // Fallback: set scene attribute if system not initialized yet
                         try {
                             scene.setAttribute('gltf-model', 'dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-                            console.log('Set scene attribute gltf-model.dracoDecoderPath to CDN');
+                            initLog('Set scene attribute gltf-model.dracoDecoderPath to CDN');
                         } catch (e) {}
                     }
                 } catch (e) {
@@ -50,37 +54,39 @@
                 setTimeout(setSceneDracoPath, 200);
             })();
 
-            // Debug: watch a-assets events
-            (function watchAssets() {
-                try {
-                    const assets = document.querySelector('a-assets');
-                    if (assets) {
-                        assets.addEventListener('timeout', (e) => console.warn('a-assets timeout event:', e));
-                        assets.addEventListener('loaded', (e) => console.log('a-assets loaded event:', e));
-                        assets.addEventListener('error', (e) => console.warn('a-assets error event:', e));
-                        console.log('a-assets debug listeners attached');
-                        return;
-                    }
-                } catch (e) {}
-                setTimeout(watchAssets, 200);
-            })();
+            // Debug: watch a-assets events (only in DEBUG_INIT mode)
+            if (DEBUG_INIT) {
+                (function watchAssets() {
+                    try {
+                        const assets = document.querySelector('a-assets');
+                        if (assets) {
+                            assets.addEventListener('timeout', (e) => console.warn('a-assets timeout event:', e));
+                            assets.addEventListener('loaded', (e) => initLog('a-assets loaded event:', e));
+                            assets.addEventListener('error', (e) => console.warn('a-assets error event:', e));
+                            initLog('a-assets debug listeners attached');
+                            return;
+                        }
+                    } catch (e) {}
+                    setTimeout(watchAssets, 200);
+                })();
 
-            // Attach asset item listeners to show which assets succeeded/failed
-            (function watchAssetItems() {
-                try {
-                    const items = document.querySelectorAll('a-asset-item');
-                    if (items && items.length > 0) {
-                        items.forEach(item => {
-                            const src = item.getAttribute('src') || item.src || '(unknown)';
-                            item.addEventListener('loaded', () => console.log('Asset loaded:', src));
-                            item.addEventListener('error', (e) => console.warn('Asset ERROR:', src, e));
-                        });
-                        console.log('a-asset-item debug listeners attached');
-                        return;
-                    }
-                } catch (e) {}
-                setTimeout(watchAssetItems, 200);
-            })();
+                // Attach asset item listeners to show which assets succeeded/failed
+                (function watchAssetItems() {
+                    try {
+                        const items = document.querySelectorAll('a-asset-item');
+                        if (items && items.length > 0) {
+                            items.forEach(item => {
+                                const src = item.getAttribute('src') || item.src || '(unknown)';
+                                item.addEventListener('loaded', () => initLog('Asset loaded:', src));
+                                item.addEventListener('error', (e) => console.warn('Asset ERROR:', src, e));
+                            });
+                            initLog('a-asset-item debug listeners attached');
+                            return;
+                        }
+                    } catch (e) {}
+                    setTimeout(watchAssetItems, 200);
+                })();
+            }
         })();
     </script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
@@ -277,7 +283,7 @@
                                 }
                             }
                         });
-                        console.log('Model materials enhanced' + (isMattsun ? ' (mattsun2: brightness increased)' : ''));
+                        window.debugLog('Model materials enhanced' + (isMattsun ? ' (mattsun2: brightness increased)' : ''));
                     }
                 });
             }
@@ -349,7 +355,7 @@
             },
             onModelLoaded: function() {
                 if (this.fitted) {
-                    console.log('fit-to-hitbox: already applied, skipping');
+                    window.debugLog('fit-to-hitbox: already applied, skipping');
                     return;
                 }
                 
@@ -362,7 +368,7 @@
                     this.el.setAttribute('scale', `${targetScale} ${targetScale} ${targetScale}`);
 
                     this.fitted = true;
-                    console.log('fit-to-hitbox: applied fixed scale', targetScale);
+                    window.debugLog('fit-to-hitbox: applied fixed scale', targetScale);
                 } catch (err) {
                     console.warn('fit-to-hitbox error:', err);
                 }
@@ -422,7 +428,7 @@
             const selectedIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
             window.usedPatterns[modelId] = selectedIndex;
             
-            console.log(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
+            window.debugLog(`📍 Model ${modelId}: Selected pattern ${selectedIndex}, Available: [${availableIndices.join(', ')}], Used by others: [${usedIndices.join(', ')}]`);
             
             return { pattern: patterns[selectedIndex], index: selectedIndex };
         };
@@ -479,22 +485,22 @@
             setupListeners: function() {
                 // 重複防止
                 if (this.listenersSetup) {
-                    console.log('Listeners already setup, skipping...');
+                    window.debugLog('Listeners already setup, skipping...');
                     return;
                 }
                 
-                console.log('Setting up start menu listeners...');
+                window.debugLog('Setting up start menu listeners...');
                 
                 // レベル選択ボタンのイベントリスナーを追加
                 const level1Button = document.getElementById('level1Button');
                 const level2Button = document.getElementById('level2Button');
                 
-                console.log('- level1Button:', level1Button ? 'FOUND' : 'NOT FOUND');
-                console.log('- level2Button:', level2Button ? 'FOUND' : 'NOT FOUND');
+                window.debugLog('- level1Button:', level1Button ? 'FOUND' : 'NOT FOUND');
+                window.debugLog('- level2Button:', level2Button ? 'FOUND' : 'NOT FOUND');
                 
                 // ボタンが見つからない場合は再試行
                 if (!level1Button || !level2Button) {
-                    console.log('Buttons not found, will retry...');
+                    window.debugLog('Buttons not found, will retry...');
                     return;
                 }
                 
@@ -504,34 +510,34 @@
                 // 直接ボタンにイベントリスナーを設定する
                 if (level1Button) {
                     level1Button.addEventListener('click', function(e) {
-                        console.log('=== Level 1 button CLICKED! ===');
+                        window.debugLog('=== Level 1 button CLICKED! ===');
                         if (window.gameStarted && !window.gameEnded) {
-                            console.log('Blocked - game in progress');
+                            window.debugLog('Blocked - game in progress');
                             return;
                         }
                         self.selectLevel(1);
                     });
-                    console.log('Level 1 button click listener attached');
+                    window.debugLog('Level 1 button click listener attached');
                 }
                 
                 if (level2Button) {
                     level2Button.addEventListener('click', function(e) {
-                        console.log('=== Level 2 button CLICKED! ===');
+                        window.debugLog('=== Level 2 button CLICKED! ===');
                         if (window.gameStarted && !window.gameEnded) {
-                            console.log('Blocked - game in progress');
+                            window.debugLog('Blocked - game in progress');
                             return;
                         }
                         self.selectLevel(2);
                     });
-                    console.log('Level 2 button click listener attached');
+                    window.debugLog('Level 2 button click listener attached');
                 }
                 
                 this.listenersSetup = true;
-                console.log('Start menu listeners setup complete');
+                window.debugLog('Start menu listeners setup complete');
             },
             
             selectLevel: function(level) {
-                console.log('Level selected:', level);
+                window.debugLog('Level selected:', level);
                 window.gameLevel = level;
                 
                 // レベルを保存してゲーム開始
@@ -562,15 +568,15 @@
                         
                         if (mouseCursor) {
                             mouseCursor.setAttribute('raycaster', 'objects: .collidable');
-                            console.log('Removed .clickable from mouse cursor raycaster');
+                            window.debugLog('Removed .clickable from mouse cursor raycaster');
                         }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                            console.log('Removed .clickable from left controller raycaster');
+                            window.debugLog('Removed .clickable from left controller raycaster');
                         }
                         if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                            console.log('Removed .clickable from right controller raycaster');
+                            window.debugLog('Removed .clickable from right controller raycaster');
                         }
                         
                         this.controllersUpdated = true;
@@ -586,15 +592,15 @@
                         
                         if (mouseCursor) {
                             mouseCursor.setAttribute('raycaster', 'objects: .clickable, .collidable');
-                            console.log('Restored .clickable to mouse cursor raycaster');
+                            window.debugLog('Restored .clickable to mouse cursor raycaster');
                         }
                         if (leftController) {
                             leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                            console.log('Restored .clickable to left controller raycaster');
+                            window.debugLog('Restored .clickable to left controller raycaster');
                         }
                         if (rightController) {
                             rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
-                            console.log('Restored .clickable to right controller raycaster');
+                            window.debugLog('Restored .clickable to right controller raycaster');
                         }
                         
                         this.controllersUpdated = false;
@@ -610,15 +616,15 @@
             },
             
             handleClick: function(event) {
-                console.log('=== Menu Click Detected ===');
-                console.log('Menu visible:', this.el.getAttribute('visible'));
-                console.log('Game started:', window.gameStarted);
-                console.log('Game ended:', window.gameEnded);
-                console.log('Click blocked:', this.clickBlocked);
+                window.debugLog('=== Menu Click Detected ===');
+                window.debugLog('Menu visible:', this.el.getAttribute('visible'));
+                window.debugLog('Game started:', window.gameStarted);
+                window.debugLog('Game ended:', window.gameEnded);
+                window.debugLog('Click blocked:', this.clickBlocked);
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
-                    console.log('Click BLOCKED - Game in progress');
+                    window.debugLog('Click BLOCKED - Game in progress');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -626,7 +632,7 @@
                 
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
-                    console.log('Click BLOCKED by flag');
+                    window.debugLog('Click BLOCKED by flag');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -635,7 +641,7 @@
                 // メニューが非表示の場合は無視
                 const isVisible = this.el.getAttribute('visible');
                 if (isVisible === false || isVisible === 'false') {
-                    console.log('Click BLOCKED - Menu not visible');
+                    window.debugLog('Click BLOCKED - Menu not visible');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -643,7 +649,7 @@
                 
                 // ゲーム終了時は無視
                 if (window.gameEnded) {
-                    console.log('Click BLOCKED - Game ended');
+                    window.debugLog('Click BLOCKED - Game ended');
                     event.stopPropagation();
                     event.preventDefault();
                     return false;
@@ -653,15 +659,15 @@
             },
             
             handleTouch: function(event) {
-                console.log('=== Menu Touch Detected ===');
-                console.log('Menu visible:', this.el.getAttribute('visible'));
-                console.log('Game started:', window.gameStarted);
-                console.log('Game ended:', window.gameEnded);
-                console.log('Click blocked:', this.clickBlocked);
+                window.debugLog('=== Menu Touch Detected ===');
+                window.debugLog('Menu visible:', this.el.getAttribute('visible'));
+                window.debugLog('Game started:', window.gameStarted);
+                window.debugLog('Game ended:', window.gameEnded);
+                window.debugLog('Click blocked:', this.clickBlocked);
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
-                    console.log('Touch BLOCKED - Game in progress');
+                    window.debugLog('Touch BLOCKED - Game in progress');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -669,7 +675,7 @@
                 
                 // クリックがブロックされている場合は即座に拒否
                 if (this.clickBlocked) {
-                    console.log('Touch BLOCKED by flag');
+                    window.debugLog('Touch BLOCKED by flag');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -678,7 +684,7 @@
                 // メニューが非表示の場合は無視
                 const isVisible = this.el.getAttribute('visible');
                 if (isVisible === false || isVisible === 'false') {
-                    console.log('Touch BLOCKED - Menu not visible');
+                    window.debugLog('Touch BLOCKED - Menu not visible');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
@@ -686,14 +692,14 @@
                 
                 // ゲーム終了時は無視
                 if (window.gameEnded) {
-                    console.log('Touch BLOCKED - Game ended');
+                    window.debugLog('Touch BLOCKED - Game ended');
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
                 }
                 
                 // 有効なタッチの場合はイベントを停止してゲーム開始
-                console.log('Valid touch - starting game!');
+                window.debugLog('Valid touch - starting game!');
                 event.preventDefault();
                 event.stopPropagation();
                 this.startGame(event);
@@ -705,9 +711,8 @@
                 
                 // 🚀 メモリリーク対策: プレイ回数をインクリメント
                 window.playCount++;
-                console.log('=== GAME START ===');
-                console.log('🎮 Play count incremented:', window.playCount, '/', window.MAX_PLAY_COUNT);
-                window.debugLog('Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
+                window.debugLog('=== GAME START ===');
+                window.debugLog('🎮 Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
                 
                 // === デバッグ: startGame開始時のモデル状態確認 ===
                 if (window.DEBUG_MODE) {
@@ -760,15 +765,15 @@
                 
                 if (mouseCursor) {
                     mouseCursor.setAttribute('raycaster', 'objects: .collidable');
-                    console.log('Removed .clickable from mouse cursor');
+                    window.debugLog('Removed .clickable from mouse cursor');
                 }
                 if (leftController) {
                     leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                    console.log('Removed .clickable from left controller');
+                    window.debugLog('Removed .clickable from left controller');
                 }
                 if (rightController) {
                     rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
-                    console.log('Removed .clickable from right controller');
+                    window.debugLog('Removed .clickable from right controller');
                 }
                 this.controllersUpdated = true;
                 
@@ -778,9 +783,9 @@
                     bgmSound.volume = 0.7; // 音量を70%に設定
                     bgmSound.currentTime = 0; // 最初から再生
                     bgmSound.play().then(() => {
-                        console.log('BGM started playing at 70% volume');
+                        window.debugLog('BGM started playing at 70% volume');
                     }).catch(err => {
-                        console.log('BGM play failed:', err);
+                        window.debugLog('BGM play failed:', err);
                     });
                 }
                 
@@ -788,7 +793,7 @@
                 if (window.gameTimer) {
                     clearInterval(window.gameTimer);
                     window.gameTimer = null;
-                    console.log('Cleared existing timer');
+                    window.debugLog('Cleared existing timer');
                 }
                 
                 window.gameStarted = true;
@@ -821,24 +826,24 @@
                 const initialModelIds = window.currentLevel === 1 
                     ? ['modelGroup_01', 'modelGroup_02', 'modelGroup_03']
                     : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
-                console.log('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
+                window.debugLog('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
-                // モデルを1秒ずつずらして出現させる
+                // 🚀 最適化: モデルを1秒ずつずらして出現させる（registerTimeoutで管理）
                 initialModelIds.forEach((modelId, index) => {
-                    setTimeout(() => {
-                        console.log(`=== Spawning model ${modelId} (delay: ${index}s) ===`);
+                    window.registerTimeout(() => {
+                        window.debugLog(`=== Spawning model ${modelId} (delay: ${index}s) ===`);
                         const model = document.getElementById(modelId);
                         if (model) {
                             // 使用可能なパターンを取得（他のモデルと重複しない）
                             const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                             
-                            console.log(`Pattern for ${modelId}:`, randomPattern);
+                            window.debugLog(`Pattern for ${modelId}:`, randomPattern);
                             
                             // 始点位置を設定
                             const startX = randomPattern.startPos.x;
                             const startY = randomPattern.startPos.y;
                             const startZ = randomPattern.startPos.z;
-                            console.log(`Setting ${modelId} position to: ${startX}, ${startY}, ${startZ}`);
+                            window.debugLog(`Setting ${modelId} position to: ${startX}, ${startY}, ${startZ}`);
                             model.setAttribute('position', `${startX} ${startY} ${startZ}`);
                             
                             // 角度を計算
@@ -850,12 +855,12 @@
                                 const dz = randomPattern.endPos.z - startZ;
                                 rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
                             }
-                            console.log(`Setting ${modelId} rotation to: 0, ${rotation}, 0`);
+                            window.debugLog(`Setting ${modelId} rotation to: 0, ${rotation}, 0`);
                             model.setAttribute('rotation', `0 ${rotation} 0`);
                             
                             // まずvisibleをtrueにする
                             model.setAttribute('visible', true);
-                            console.log(`${modelId} visible set to true`);
+                            window.debugLog(`${modelId} visible set to true`);
                             
                             // approach-cameraコンポーネントの設定
                             // A-Frameのvec3は文字列 "x y z" または オブジェクト {x, y, z} で設定
@@ -865,13 +870,13 @@
                                 const endPosStr = `${randomPattern.endPos.x} ${randomPattern.endPos.y} ${randomPattern.endPos.z}`;
                                 configStr += `; endPos: ${endPosStr}`;
                             }
-                            console.log(`Setting ${modelId} approach-camera string:`, configStr);
+                            window.debugLog(`Setting ${modelId} approach-camera string:`, configStr);
                             model.setAttribute('approach-camera', configStr);
                             
                             // 位置を確認
                             const finalPos = model.getAttribute('position');
                             const finalVisible = model.getAttribute('visible');
-                            console.log(`${modelId} FINAL state - position:`, finalPos, 'visible:', finalVisible);
+                            window.debugLog(`${modelId} FINAL state - position:`, finalPos, 'visible:', finalVisible);
                         } else {
                             console.error('Model not found:', modelId);
                         }
@@ -899,15 +904,15 @@
                 const resultMenu = document.getElementById('resultMenu');
                 const self = this; // thisのコンテキストを保存
                 
-                console.log('=== Starting timer ===');
-                console.log('ResultMenu element:', resultMenu);
-                console.log('ResultMenu exists:', resultMenu ? 'YES' : 'NO');
-                console.log('Current gameEnded:', window.gameEnded);
-                console.log('Current gameStarted:', window.gameStarted);
+                window.debugLog('=== Starting timer ===');
+                window.debugLog('ResultMenu element:', resultMenu);
+                window.debugLog('ResultMenu exists:', resultMenu ? 'YES' : 'NO');
+                window.debugLog('Current gameEnded:', window.gameEnded);
+                window.debugLog('Current gameStarted:', window.gameStarted);
                 
                 // 既存のタイマーがあればクリア
                 if (window.gameTimer) {
-                    console.log('Clearing existing timer before start');
+                    window.debugLog('Clearing existing timer before start');
                     clearInterval(window.gameTimer);
                     window.gameTimer = null;
                 }
@@ -922,8 +927,8 @@
                     
                     // 時間切れ
                     if (window.gameTimeLeft <= 0) {
-                        console.log('=== Timer reached 0 ===');
-                        console.log('gameEnded before set:', window.gameEnded);
+                        window.debugLog('=== Timer reached 0 ===');
+                        window.debugLog('gameEnded before set:', window.gameEnded);
                         window.updateDebug('Timer ended!');
                         
                         clearInterval(window.gameTimer);
@@ -931,15 +936,18 @@
                         window.gameEnded = true;
                         window.gameStarted = false;
                         
-                        console.log('gameEnded after set:', window.gameEnded);
-                        console.log('Total Score:', window.totalScore);
+                        window.debugLog('gameEnded after set:', window.gameEnded);
+                        window.debugLog('Total Score:', window.totalScore);
                         
-                        // すべてのモデルを非表示
-                        const models = document.querySelectorAll('[id^="modelGroup_"]');
-                        console.log('Hiding models, count:', models.length);
-                        models.forEach(model => {
-                            model.setAttribute('visible', false);
+                        // 🚀 最適化: IDで直接取得（querySelectorAllを避ける）
+                        const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
+                        modelIds.forEach(modelId => {
+                            const model = document.getElementById(modelId);
+                            if (model) {
+                                model.setAttribute('visible', false);
+                            }
                         });
+                        window.debugLog('All models hidden');
                         
                         // タイマー非表示
                         const timerDisplay = document.getElementById('timerDisplay');
@@ -949,12 +957,12 @@
                         
                         // リザルト画面を表示（再度取得して確実に存在することを確認）
                         const currentResultMenu = document.getElementById('resultMenu');
-                        console.log('=== Looking for result menu ===');
-                        console.log('Result menu element:', currentResultMenu);
-                        console.log('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
+                        window.debugLog('=== Looking for result menu ===');
+                        window.debugLog('Result menu element:', currentResultMenu);
+                        window.debugLog('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
                         
                         if (currentResultMenu) {
-                            console.log('Calling showResult...');
+                            window.debugLog('Calling showResult...');
                             window.updateDebug('Showing result...');
                             self.showResult(currentResultMenu);
                         } else {
@@ -962,41 +970,38 @@
                             window.updateDebug('ERROR: Result menu NOT FOUND!');
                             // デバッグ: DOM内のすべての要素を確認
                             const allEntities = document.querySelectorAll('a-entity');
-                            console.log('Total a-entity count:', allEntities.length);
+                            window.debugLog('Total a-entity count:', allEntities.length);
                             const menuEntities = document.querySelectorAll('[result-menu]');
-                            console.log('Entities with result-menu attribute:', menuEntities.length);
+                            window.debugLog('Entities with result-menu attribute:', menuEntities.length);
                         }
                     }
                 }, 1000);
                 
-                console.log('Timer started, interval ID:', window.gameTimer);
+                window.debugLog('Timer started, interval ID:', window.gameTimer);
             },
             
             showResult: function(resultMenu) {
-                console.log('=== showResult function called ===');
+                window.debugLog('=== showResult function called ===');
                 window.updateDebug(`Result: Score ${window.totalScore.toFixed(1)}`);
-                console.log('resultMenu parameter:', resultMenu);
-                console.log('resultMenu is null?', resultMenu === null);
-                console.log('resultMenu is undefined?', resultMenu === undefined);
+                window.debugLog('resultMenu parameter:', resultMenu);
+                window.debugLog('resultMenu is null?', resultMenu === null);
+                window.debugLog('resultMenu is undefined?', resultMenu === undefined);
                 
                 if (!resultMenu) {
                     console.error('ERROR: resultMenu is null or undefined!');
                     return;
                 }
                 
-                console.log('Result menu visible attribute before:', resultMenu.getAttribute('visible'));
-                console.log('Result menu position:', resultMenu.getAttribute('position'));
+                window.debugLog('Result menu visible attribute before:', resultMenu.getAttribute('visible'));
+                window.debugLog('Result menu position:', resultMenu.getAttribute('position'));
                 
                 const scoreText = document.getElementById('resultScore');
                 const commentText = document.getElementById('resultComment');
                 const maxComboText = document.getElementById('maxComboText');
                 const levelText = document.getElementById('resultLevel');
                 
-                console.log('Score text element:', scoreText ? 'found' : 'NOT FOUND');
-                console.log('Comment text element:', commentText ? 'found' : 'NOT FOUND');
-                
-                console.log('Score text:', scoreText ? 'found' : 'NOT FOUND');
-                console.log('Comment text:', commentText ? 'found' : 'NOT FOUND');
+                window.debugLog('Score text element:', scoreText ? 'found' : 'NOT FOUND');
+                window.debugLog('Comment text element:', commentText ? 'found' : 'NOT FOUND');
                 
                 // レベルを表示
                 if (levelText) {
@@ -1004,19 +1009,19 @@
                     const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
                     levelText.setAttribute('value', levelName);
                     levelText.setAttribute('color', levelColor);
-                    console.log('Level updated:', levelName);
+                    window.debugLog('Level updated:', levelName);
                 }
                 
                 // スコアを表示（小数第一位まで）
                 if (scoreText) {
                     scoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
-                    console.log('Score updated:', window.totalScore.toFixed(1));
+                    window.debugLog('Score updated:', window.totalScore.toFixed(1));
                 }
                 
                 // 最大コンボ数を表示
                 if (maxComboText) {
                     maxComboText.setAttribute('value', `MAX COMBO: ${window.maxComboCount}`);
-                    console.log('Max Combo updated:', window.maxComboCount);
+                    window.debugLog('Max Combo updated:', window.maxComboCount);
                 }
                 
                 // スコアに応じたコメント
@@ -1037,18 +1042,18 @@
                 
                 if (commentText) {
                     commentText.setAttribute('value', comment);
-                    console.log('Comment updated:', comment);
+                    window.debugLog('Comment updated:', comment);
                 }
                 
                 // スタートメニューを確実に非表示
                 const startMenu = document.getElementById('startMenu');
                 if (startMenu) {
                     startMenu.setAttribute('visible', false);
-                    console.log('Start menu hidden in showResult');
+                    window.debugLog('Start menu hidden in showResult');
                 }
                 
                 // リザルトメニューを表示
-                console.log('Setting result menu visible and animating...');
+                window.debugLog('Setting result menu visible and animating...');
                 resultMenu.setAttribute('visible', true);
                 resultMenu.setAttribute('scale', '0 0 0');
                 
@@ -1057,24 +1062,24 @@
                 resultMenu.removeAttribute('animation__scale');
                 
                 // 少し待ってからアニメーション開始（確実に反映させる）
-                setTimeout(() => {
+                window.registerTimeout(() => {
                     resultMenu.setAttribute('animation', {
                         property: 'scale',
                         to: '1 1 1',
                         dur: 500,
                         easing: 'easeOutBack'
                     });
-                    console.log('Result menu animation started');
+                    window.debugLog('Result menu animation started');
                 }, 50);
                 
-                console.log('Result menu should be visible now');
+                window.debugLog('Result menu should be visible now');
                 
                 // スコアをデータベースに保存
                 this.saveScoreToDatabase(window.totalScore);
             },
             
             saveScoreToDatabase: function(score) {
-                console.log('Saving score to database:', score, 'Level:', window.currentLevel);
+                window.debugLog('Saving score to database:', score, 'Level:', window.currentLevel);
                 
                 fetch('api/shooting-scores', {
                     method: 'POST',
@@ -1093,7 +1098,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Score saved successfully:', data);
+                    window.debugLog('Score saved successfully:', data);
                     if (data && data.data && data.data.id) {
                         window.lastSavedScoreId = data.data.id;
                     } else {
@@ -1110,12 +1115,12 @@
             },
             
             fetchAndDisplayRankings: function() {
-                console.log('Fetching top 5 rankings for Level:', window.currentLevel);
+                window.debugLog('Fetching top 5 rankings for Level:', window.currentLevel);
                 
                 fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}&game_mode=model`)
                     .then(response => response.json())
                     .then(data => {
-                        console.log('Rankings fetched:', data);
+                        window.debugLog('Rankings fetched:', data);
                         if (data.success && data.data) {
                             this.displayRankings(data.data);
                             
@@ -1128,7 +1133,7 @@
                             );
                             
                             if (isInTop5) {
-                                console.log('🎉 Congratulations! You made it to Top 5!');
+                                window.debugLog('🎉 Congratulations! You made it to Top 5!');
                                 this.celebrateTop5();
                             }
                         }
@@ -1159,7 +1164,7 @@
                     }
                     
                     // 5秒後にパーティクルを停止
-                    setTimeout(() => {
+                    window.registerTimeout(() => {
                         if (particleSystem) {
                             particleSystem.stopParticles();
                         }
@@ -1167,7 +1172,7 @@
                     }, 5000);
                 }
                 
-                console.log('Top 5 celebration particles activated!');
+                window.debugLog('Top 5 celebration particles activated!');
             },
             
             displayRankings: function(rankings) {
@@ -1231,11 +1236,11 @@
                     rankingDisplay.appendChild(textEntity);
                 });
                 
-                console.log('Rankings displayed:', rankings.length, 'entries');
+                window.debugLog('Rankings displayed:', rankings.length, 'entries');
             },
             
             recreateInitialModels: function(sceneEl) {
-                console.log('Recreating initial models...');
+                window.debugLog('Recreating initial models...');
                 
                 // モデル01を再作成
                 const model01 = document.createElement('a-entity');
@@ -1411,7 +1416,7 @@
                 model06.appendChild(hitBox06);
                 sceneEl.appendChild(model06);
                 
-                console.log('Initial models recreated');
+                window.debugLog('Initial models recreated');
             },
             
             restartGame: function() {
@@ -1701,26 +1706,26 @@
                 window.debugLog('Restart button clicked');
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
-                console.log('=== RESTART CHECK ===');
-                console.log('Current playCount:', window.playCount);
-                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
-                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                window.debugLog('=== RESTART CHECK ===');
+                window.debugLog('Current playCount:', window.playCount);
+                window.debugLog('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                window.debugLog('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
+                    window.debugLog('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
                     
                     // 🎯 VRゴーグル対応: VRモードを終了してからリフレッシュ
                     const sceneEl = document.querySelector('a-scene');
                     const isVRMode = sceneEl && sceneEl.is('vr-mode');
                     
-                    console.log('🥽 VR Mode:', isVRMode);
+                    window.debugLog('🥽 VR Mode:', isVRMode);
                     
                     if (isVRMode) {
-                        console.log('🚪 Exiting VR mode before reload...');
+                        window.debugLog('🚪 Exiting VR mode before reload...');
                         
                         // VRモード終了後にリロード
                         sceneEl.exitVR().then(() => {
-                            console.log('✅ VR mode exited, reloading page...');
+                            window.debugLog('✅ VR mode exited, reloading page...');
                             window.registerTimeout(() => {
                                 this.performReload();
                             }, 500);
@@ -1731,13 +1736,13 @@
                         });
                     } else {
                         // 通常モードならすぐにリロード
-                        console.log('💻 Normal mode, reloading immediately...');
+                        window.debugLog('💻 Normal mode, reloading immediately...');
                         this.performReload();
                     }
                     return;
                 }
                 
-                console.log('➡️ 通常リスタート処理を実行');
+                window.debugLog('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1747,13 +1752,13 @@
             },
             
             performReload: function() {
-                console.log('🔄 Attempting page reload...');
+                window.debugLog('🔄 Attempting page reload...');
                 
                 // 複数の方法を試行（VRゴーグルのブラウザ互換性対応）
                 try {
                     // 方法1: 標準的なリロード
                     if (window.location && window.location.reload) {
-                        console.log('Method 1: location.reload()');
+                        window.debugLog('Method 1: location.reload()');
                         window.location.reload(true); // キャッシュ無視
                         return;
                     }
@@ -1763,14 +1768,14 @@
                 
                 try {
                     // 方法2: location.href再設定
-                    console.log('Method 2: location.href reassignment');
+                    window.debugLog('Method 2: location.href reassignment');
                     window.location.href = window.location.href;
                 } catch (e) {
                     console.error('Method 2 failed:', e);
                     
                     try {
                         // 方法3: location.replace（履歴残さない）
-                        console.log('Method 3: location.replace()');
+                        window.debugLog('Method 3: location.replace()');
                         window.location.replace(window.location.href);
                     } catch (e2) {
                         console.error('All reload methods failed:', e2);
@@ -1786,19 +1791,19 @@
                 event.stopPropagation();
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
-                console.log('=== RESTART TOUCH CHECK ===');
-                console.log('Current playCount:', window.playCount);
-                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
-                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                window.debugLog('=== RESTART TOUCH CHECK ===');
+                window.debugLog('Current playCount:', window.playCount);
+                window.debugLog('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                window.debugLog('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
+                    window.debugLog('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
                     alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
                     location.reload();
                     return;
                 }
                 
-                console.log('➡️ 通常リスタート処理を実行');
+                window.debugLog('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -2092,7 +2097,7 @@
                 if (rightController) {
                     rightController.removeEventListener('triggerdown', this.shoot);
                     rightController.addEventListener('triggerdown', this.shoot);
-                    console.log('Right controller listener set up');
+                    window.debugLog('Right controller listener set up');
                 }
             },
             
@@ -2101,20 +2106,20 @@
                 if (event.code === 'Space') {
                     event.preventDefault(); // デフォルトのスペースキー動作を防ぐ
                     this.shoot(event);
-                    console.log('space key pressed');
+                    window.debugLog('space key pressed');
                 }
                 // Gキーが押された場合（グリップボタン代替）
                 if (event.code === 'KeyG') {
                     event.preventDefault();
                     // ゲームが開始されていない場合は無視
                     if (!window.gameStarted || window.gameEnded) {
-                        console.log('Game not active, ignoring G key');
+                        window.debugLog('Game not active, ignoring G key');
                         return;
                     }
                     // ボールタイプを切り替え
                     window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
                     const newBall = window.ballTypes[window.currentBallIndex];
-                    console.log('G key pressed - Switched to ball:', newBall);
+                    window.debugLog('G key pressed - Switched to ball:', newBall);
                     
                     // 両方のコントローラーのプレビューを更新
                     const leftController = document.getElementById('leftController');
@@ -2132,7 +2137,7 @@
                 // 重複発火を防ぐ（touchstartとclickの両方が発火する場合に対応）
                 const currentTime = Date.now();
                 if (currentTime - this.lastShootTime < this.shootCooldown) {
-                    console.log('Click ignored (too soon after last shoot)');
+                    window.debugLog('Click ignored (too soon after last shoot)');
                     event.stopPropagation();
                     event.preventDefault();
                     return;
@@ -2140,14 +2145,14 @@
                 
                 // マウスクリックの場合（A-Frameのcanvas上でのみ）
                 this.shoot(event);
-                console.log('mouse clicked on canvas');
+                window.debugLog('mouse clicked on canvas');
             },
             
             onTouchStart: function (event) {
                 // 重複発火を防ぐ
                 const currentTime = Date.now();
                 if (currentTime - this.lastShootTime < this.shootCooldown) {
-                    console.log('Touch ignored (too soon after last shoot)');
+                    window.debugLog('Touch ignored (too soon after last shoot)');
                     event.stopPropagation();
                     event.preventDefault();
                     return;
@@ -2157,7 +2162,7 @@
                 event.preventDefault(); // デフォルトのタッチ動作を防ぐ
                 event.stopPropagation(); // イベントの伝播を防ぐ
                 this.shoot(event);
-                console.log('screen tapped on canvas');
+                window.debugLog('screen tapped on canvas');
             },
             
             shoot: function (event) {
@@ -2171,21 +2176,21 @@
                 
                 // ゲームが開始されていない場合は撃てない
                 if (!window.gameStarted) {
-                    console.log('Game not started, ignoring shoot');
+                    window.debugLog('Game not started, ignoring shoot');
                     return;
                 }
                 
                 // ゲーム終了後は撃てない
                 if (window.gameEnded) {
-                    console.log('Game ended, ignoring shoot');
+                    window.debugLog('Game ended, ignoring shoot');
                     return;
                 }
                 
                 // 最後のshoot時刻を更新
                 this.lastShootTime = Date.now();
                 
-                console.log('=== Shoot function called ===');
-                console.log('Event type:', event.type);
+                window.debugLog('=== Shoot function called ===');
+                window.debugLog('Event type:', event.type);
                 
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
@@ -2197,7 +2202,7 @@
                 ball.setAttribute('scale', '0.2 0.2 0.2'); // サイズを大きく調整（0.1→0.5）
                 ball.setAttribute('rotation', '0 0 0');
                 
-                console.log('Creating ball with model:', currentBallModel);
+                window.debugLog('Creating ball with model:', currentBallModel);
                 
                 // モデルが読み込まれたら適切なライティングを設定
                 ball.addEventListener('model-loaded', () => {
@@ -2210,7 +2215,7 @@
                                 node.material.emissiveIntensity = 0;
                                 // 元のマテリアル色はそのまま保持
                                 node.material.needsUpdate = true;
-                                console.log('Ball material set (no emissive, original color only)');
+                                window.debugLog('Ball material set (no emissive, original color only)');
                             }
                         });
                     }
@@ -2231,33 +2236,33 @@
                 
                 if (event.type === 'triggerdown') {
                     // VRコントローラーからの発射
-                    console.log('Shooting from VR controller');
+                    window.debugLog('Shooting from VR controller');
                     const controller = event.target;
                     
                     // コントローラーの位置を取得
                     controller.object3D.getWorldPosition(position);
-                    console.log('Controller position:', position);
+                    window.debugLog('Controller position:', position);
                     
                     // raycasterコンポーネントから方向を取得
                     const raycasterComponent = controller.components.raycaster;
                     if (raycasterComponent && raycasterComponent.raycaster) {
                         // raycasterの方向をコピー
                         direction.copy(raycasterComponent.raycaster.ray.direction).normalize();
-                        console.log('Using raycaster direction:', direction);
+                        window.debugLog('Using raycaster direction:', direction);
                     } else {
                         // raycasterがない場合はコントローラーのローカル前方向を使用
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(controller.object3D.quaternion);
                         direction.normalize();
-                        console.log('Using controller quaternion direction:', direction);
+                        window.debugLog('Using controller quaternion direction:', direction);
                     }
                 } else {
                     // スペースキー、マウスクリック、スマホタップからの発射
-                    console.log('Shooting from camera/input');
+                    window.debugLog('Shooting from camera/input');
                     
                     // VRモードかどうかを確認
                     const isVRMode = sceneEl.is('vr-mode');
-                    console.log('Is VR Mode:', isVRMode);
+                    window.debugLog('Is VR Mode:', isVRMode);
                     
                     if (isVRMode) {
                         // VRモード時
@@ -2267,14 +2272,14 @@
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(sceneEl.camera.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using scene.camera');
+                            window.debugLog('VR Mode - Using scene.camera');
                         } else {
                             // フォールバック
                             camera.object3D.getWorldPosition(position);
                             direction.set(0, 0, -1);
                             direction.applyQuaternion(camera.object3D.quaternion);
                             direction.normalize();
-                            console.log('VR Mode - Using camera.object3D');
+                            window.debugLog('VR Mode - Using camera.object3D');
                         }
                     } else {
                         // 通常モード時
@@ -2282,11 +2287,11 @@
                         direction.set(0, 0, -1);
                         direction.applyQuaternion(camera.object3D.quaternion);
                         direction.normalize();
-                        console.log('Normal Mode - Using camera.object3D');
+                        window.debugLog('Normal Mode - Using camera.object3D');
                     }
                     
-                    console.log('Camera position:', position);
-                    console.log('Camera direction:', direction);
+                    window.debugLog('Camera position:', position);
+                    window.debugLog('Camera direction:', direction);
                 }
                 
                 // コントローラー/カメラの少し前にボールを配置
@@ -2294,15 +2299,15 @@
                 ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
                 sceneEl.appendChild(ball);
                 
-                console.log('Ball created at:', startPos);
+                window.debugLog('Ball created at:', startPos);
                 
                 // 物理演算で放物線を描く（餌やり体験なのでゆっくり）
                 const gravity = -4.9; // 重力加速度 (m/s^2)
                 const initialSpeed = 5; // 初速度 (m/s) - 餌やり体験用にゆっくり（10→5）
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
-                console.log('Initial velocity:', velocity);
-                console.log('=== Ball added to activeBalls array ===');
+                window.debugLog('Initial velocity:', velocity);
+                window.debugLog('=== Ball added to activeBalls array ===');
                 
                 // ボールデータを配列に追加（A-Frameのtickで更新される）
                 window.activeBalls.push({
@@ -3130,18 +3135,18 @@
             },
             
             onGripDown: function(e) {
-                console.log("Grip button pressed on", this.el.id);
+                window.debugLog("Grip button pressed on", this.el.id);
                 
                 // ゲームが開始されていない場合は無視
                 if (!window.gameStarted || window.gameEnded) {
-                    console.log('Game not active, ignoring grip button');
+                    window.debugLog('Game not active, ignoring grip button');
                     return;
                 }
                 
                 // ボールタイプを切り替え（0 <-> 1）
                 window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
                 const newBall = window.ballTypes[window.currentBallIndex];
-                console.log("Switched to ball:", newBall);
+                window.debugLog("Switched to ball:", newBall);
                 
                 // プレビューを更新
                 this.updatePreview();
@@ -3167,7 +3172,7 @@
                                 node.material.needsUpdate = true;
                             }
                         });
-                        console.log('Ball preview material enhanced');
+                        window.debugLog('Ball preview material enhanced');
                     }
                 });
                 
@@ -3181,7 +3186,7 @@
                 });
                 
                 this.el.appendChild(this.ballPreview);
-                console.log('Ball preview created on', this.el.id);
+                window.debugLog('Ball preview created on', this.el.id);
             },
             
             updatePreview: function() {
@@ -3189,7 +3194,7 @@
                 if (this.ballPreview) {
                     const newModel = window.ballTypes[window.currentBallIndex];
                     this.ballPreview.setAttribute('gltf-model', newModel);
-                    console.log('Ball preview updated to:', newModel);
+                    window.debugLog('Ball preview updated to:', newModel);
                 }
             },
             
