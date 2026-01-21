@@ -806,18 +806,18 @@
                 window.lastBallHit = false; // ヒット状態をリセット
                 window.usedPatterns = {}; // パターン使用状況をリセット
                 
-                // ランダムパターン設定（初期スポーン用：近距離パターン）
+                // ランダムパターン設定（初期スポーン用：近距離パターン）🚀 30%遅く調整
                 const movementPatterns = [
                     // パターン1: 左前方からカメラへ - 距離: 約4m
-                    { startPos: { x: -3, y: 0, z: -4 }, speed: 0.3, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: -3, y: 0, z: -4 }, speed: 0.21, useCamera: true, waitTime: 3000 },
                     // パターン2: 右前方からカメラへ - 距離: 約4m
-                    { startPos: { x: 3, y: 0, z: -4 }, speed: 0.25, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: 3, y: 0, z: -4 }, speed: 0.175, useCamera: true, waitTime: 3000 },
                     // パターン3: 正面からカメラへ - 距離: 約5m
-                    { startPos: { x: 0, y: 0, z: -5 }, speed: 0.2, useCamera: true, waitTime: 3000 },
+                    { startPos: { x: 0, y: 0, z: -5 }, speed: 0.14, useCamera: true, waitTime: 3000 },
                     // パターン4: 左から右へ横移動（固定終点）- 距離: 6m
-                    { startPos: { x: -3, y: 0, z: -4 }, endPos: { x: 3, y: 0, z: -4 }, speed: 0.3, useCamera: false, waitTime: 3000 },
+                    { startPos: { x: -3, y: 0, z: -4 }, endPos: { x: 3, y: 0, z: -4 }, speed: 0.21, useCamera: false, waitTime: 3000 },
                     // パターン5: 右から左へ横移動（固定終点）- 距離: 6m
-                    { startPos: { x: 3, y: 0, z: -4 }, endPos: { x: -3, y: 0, z: -4 }, speed: 0.3, useCamera: false, waitTime: 3000 },
+                    { startPos: { x: 3, y: 0, z: -4 }, endPos: { x: -3, y: 0, z: -4 }, speed: 0.21, useCamera: false, waitTime: 3000 },
                     // パターン6: 左斜めからカメラへ - 距離: 約4.2m
                     { startPos: { x: -3, y: 0, z: -3 }, speed: 0.25, useCamera: true, waitTime: 3000 }
                 ];
@@ -874,7 +874,7 @@
                             ballIndicator.setAttribute('radius', '0.12');
                             ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
                             // リンゴ=赤、キャベツ=緑
-                            const indicatorColor = requiredBallIndex === 0 ? '#FF0000' : '#00FF00';
+                            const indicatorColor = requiredBallIndex === 0 ? '#ff3e3e' : '#5ce35c';
                             ballIndicator.setAttribute('color', indicatorColor);
                             ballIndicator.setAttribute('material', `color: ${indicatorColor}; emissive: ${indicatorColor}; emissiveIntensity: 0.3; shader: flat`);
                             // 🚀 最適化: 回転アニメーションを削除（負荷軽減）
@@ -2680,23 +2680,58 @@
                             window.debugLog('Hit box removed immediately');
                         }
                         
-                        // 🎯 ボールマッチング判定（+5/-5スコア計算）
+                        // 🎯 ボールマッチング判定（+10/-3スコア計算 + 連続正解ボーナス）
                         const thrownBallIndex = event.detail && event.detail.ballIndex !== undefined 
                             ? event.detail.ballIndex 
                             : window.currentBallIndex;
                         const requiredBallIndex = parseInt(modelGroup.getAttribute('data-required-ball') || '0');
                         const isCorrectBall = thrownBallIndex === requiredBallIndex;
                         
-                        // スコア計算（正しいボール: +5, 間違ったボール: -5）
-                        const scoreChange = isCorrectBall ? 5 : -5;
+                        // 連続正解のカウント管理
+                        if (isCorrectBall) {
+                            window.comboCount++; // 連続正解カウントを増やす
+                            window.lastBallHit = true;
+                        } else {
+                            window.comboCount = 0; // 不正解でコンボリセット
+                            window.lastBallHit = false;
+                        }
+                        
+                        // 連続正解ボーナス計算（3連続以上で追加ボーナス）
+                        let comboBonus = 0;
+                        let comboBonusText = '';
+                        if (isCorrectBall && window.comboCount >= 3) {
+                            if (window.comboCount >= 10) {
+                                comboBonus = 15; // 10連続以上: +15ボーナス
+                                comboBonusText = ' +COMBO BONUS +15';
+                            } else if (window.comboCount >= 7) {
+                                comboBonus = 10; // 7-9連続: +10ボーナス
+                                comboBonusText = ' +COMBO BONUS +10';
+                            } else if (window.comboCount >= 5) {
+                                comboBonus = 7; // 5-6連続: +7ボーナス
+                                comboBonusText = ' +COMBO BONUS +7';
+                            } else if (window.comboCount >= 3) {
+                                comboBonus = 5; // 3-4連続: +5ボーナス
+                                comboBonusText = ' +COMBO BONUS +5';
+                            }
+                        }
+                        
+                        // スコア計算（正しいボール: +10 + ボーナス, 間違ったボール: -3）
+                        const baseScore = isCorrectBall ? 10 : -3;
+                        const scoreChange = baseScore + comboBonus;
                         window.totalScore += scoreChange;
                         
                         // スコアが0未満にならないように制限
                         if (window.totalScore < 0) window.totalScore = 0;
                         
-                        window.debugLog('Ball Match:', isCorrectBall ? 'CORRECT (+5)' : 'WRONG (-5)', 
+                        // 最大コンボ数を更新
+                        if (window.comboCount > window.maxComboCount) {
+                            window.maxComboCount = window.comboCount;
+                            window.debugLog('New Max Combo:', window.maxComboCount);
+                        }
+                        
+                        window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (-3)', 
                                        '| Thrown:', thrownBallIndex, '| Required:', requiredBallIndex,
-                                       '| Total Score:', window.totalScore);
+                                       '| Combo:', window.comboCount, '| Total Score:', window.totalScore);
                         
                         // ヒット音を再生
                         const hitSound = document.getElementById('sound_hit');
@@ -2744,14 +2779,25 @@
                         
                         window.debugLog('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
                         
-                        // 🎯 スコアテキストをモデルの上に表示（正解は緑/金、不正解は赤）
+                        // 🎯 スコアテキストをモデルの上に表示（正解は緑/金、不正解は赤、コンボはオレンジ）
                         const scoreText = document.createElement('a-text');
-                        const scoreDisplay = isCorrectBall 
-                            ? `+${scoreChange}pt ✓` 
-                            : `${scoreChange}pt ✗`;
+                        let scoreDisplay;
+                        let scoreColor;
+                        if (isCorrectBall) {
+                            if (comboBonus > 0) {
+                                scoreDisplay = `COMBO ${window.comboCount}!\n+${scoreChange}pt ✓${comboBonusText}`;
+                                scoreColor = '#FF6600'; // コンボ時はオレンジ
+                            } else {
+                                scoreDisplay = `+${scoreChange}pt ✓`;
+                                scoreColor = '#00FF00'; // 正解は緑
+                            }
+                        } else {
+                            scoreDisplay = `${scoreChange}pt ✗`;
+                            scoreColor = '#FF0000'; // 不正解は赤
+                        }
                         scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('align', 'center');
-                        scoreText.setAttribute('color', isCorrectBall ? '#00FF00' : '#FF0000'); // 正解は緑、不正解は赤
+                        scoreText.setAttribute('color', scoreColor);
                         scoreText.setAttribute('width', scoreWidth); // 距離に応じたサイズ
                         scoreText.setAttribute('font', 'mozillavr');
                         scoreText.setAttribute('shader', 'msdf');
@@ -2977,61 +3023,61 @@
                 window.debugLog('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // ランダムパターン設定（8パターン）- ヒット後2秒で再描画
+                // ランダムパターン設定（8パターン）- ヒット後2秒で再描画 🚀 30%遅く調整
                 const allMovementPatterns = [
                     // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: -3, y: 0, z: -3 },
-                        speed: 0.35,
+                        speed: 0.245,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
-                        speed: 0.3,
+                        speed: 0.21,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -3 },
-                        speed: 0.25,
+                        speed: 0.175,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
                         startPos: { x: 5, y: 0, z: 0 },
-                        speed: 0.3,
+                        speed: 0.21,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
                         startPos: { x: 6, y: 0, z: 6 },
-                        speed: 0.2,
+                        speed: 0.14,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
                         startPos: { x: -6, y: 0, z: 2 },
-                        speed: 0.2,
+                        speed: 0.14,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: 1, y: 0, z: 7 },
-                        speed: 0.2,
+                        speed: 0.14,
                         useCamera: true,
                         waitTime: 2000
                     },
                     // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
                         startPos: { x: -3, y: 0, z: 5 },
-                        speed: 0.2,
+                        speed: 0.14,
                         useCamera: true,
                         waitTime: 2000
                     }
