@@ -47,6 +47,10 @@ Route::match(['get', 'head'], '/insect', function () {
     return view('shooting3DInsect');
 })->name('insect.index');
 
+Route::match(['get', 'head'], '/t-watanabe', function () {
+    return view('ARmeishi');
+})->name('insect.index');
+
 Route::get('/minion', function () {
     return view('findminion');
 });
