@@ -199,7 +199,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0.5"
-                scale="1 0.88 1"
+                scale="1 1 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
@@ -224,6 +224,74 @@
         }, 3000);
         
         // ========== A-Frameカスタムコンポーネント ==========
+        
+        // ar-aspect-fixコンポーネント: ARレンダラーとカメラのアスペクト比を補正して縦伸びを防ぐ
+        AFRAME.registerComponent('ar-aspect-fix', {
+            init: function() {
+                this.correctAspect = this.correctAspect.bind(this);
+                
+                // シーンが読み込まれるまで待つ
+                this.el.addEventListener('loaded', () => {
+                    this.correctAspect();
+                });
+                
+                // ビデオが読み込まれたときにも補正
+                window.addEventListener('arjs-video-loaded', () => {
+                    setTimeout(() => this.correctAspect(), 100);
+                });
+                
+                // リサイズ時にも補正
+                window.addEventListener('resize', this.correctAspect);
+                
+                // 初期化時にも実行
+                setTimeout(() => this.correctAspect(), 500);
+            },
+            
+            correctAspect: function() {
+                const sceneEl = this.el;
+                const renderer = sceneEl.renderer;
+                const camera = sceneEl.camera;
+                
+                if (!renderer || !camera) {
+                    console.log('Renderer or camera not ready yet');
+                    return;
+                }
+                
+                // ビデオ要素を取得
+                const video = document.querySelector('video');
+                if (!video) {
+                    console.log('Video element not found');
+                    return;
+                }
+                
+                // 実際のビデオのアスペクト比を取得
+                const videoWidth = video.videoWidth || video.width;
+                const videoHeight = video.videoHeight || video.height;
+                
+                if (videoWidth && videoHeight) {
+                    const videoAspect = videoWidth / videoHeight;
+                    const windowAspect = window.innerWidth / window.innerHeight;
+                    
+                    console.log('Video aspect:', videoAspect, 'Window aspect:', windowAspect);
+                    
+                    // カメラのアスペクト比を補正
+                    if (camera.aspect) {
+                        camera.aspect = videoAspect;
+                        camera.updateProjectionMatrix();
+                        console.log('Camera aspect corrected to:', videoAspect);
+                    }
+                    
+                    // レンダラーのピクセル比を調整（縦伸びを補正）
+                    const correctionFactor = 0.85; // 1.1～1.2倍の伸びを補正するため
+                    renderer.setPixelRatio(window.devicePixelRatio * correctionFactor);
+                    console.log('Pixel ratio corrected with factor:', correctionFactor);
+                }
+            },
+            
+            remove: function() {
+                window.removeEventListener('resize', this.correctAspect);
+            }
+        });
         
         // pokeball-aspect-fixコンポーネント: ポケボールを正円に保つ
         AFRAME.registerComponent('pokeball-aspect-fix', {
