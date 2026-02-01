@@ -6,6 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>AR名刺</title>
+    <!-- Polyfill for older devices (iPhone 7, Android 7) -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=Promise%2CObject.assign%2CArray.from%2CArray.prototype.find%2CArray.prototype.includes%2CString.prototype.includes%2CNumber.isNaN"></script>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -19,7 +21,12 @@
             height: 100%;
             overflow: hidden;
             touch-action: none;
+            -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         
         body {
@@ -30,7 +37,10 @@
             height: 100%;
             background: #000;
             touch-action: none;
+            -webkit-touch-callout: none;
             -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
             user-select: none;
         }
         
@@ -62,6 +72,9 @@
             opacity: 0;
             pointer-events: none;
             z-index: 9998;
+            -webkit-transition: opacity 0.1s ease-out;
+            -moz-transition: opacity 0.1s ease-out;
+            -o-transition: opacity 0.1s ease-out;
             transition: opacity 0.1s ease-out;
         }
         
@@ -70,12 +83,26 @@
         }
         
         /* ヒットパーティクル */
-        @keyframes hitParticle {
+        @-webkit-keyframes hitParticle {
             0% {
+                -webkit-transform: translate(0, 0) scale(1);
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
             }
             100% {
+                -webkit-transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
+                transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
+                opacity: 0;
+            }
+        }
+        @keyframes hitParticle {
+            0% {
+                -webkit-transform: translate(0, 0) scale(1);
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                -webkit-transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
                 transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
                 opacity: 0;
             }
@@ -86,6 +113,7 @@
             font-size: 30px;
             pointer-events: none;
             z-index: 10000;
+            -webkit-animation: hitParticle 0.8s ease-out forwards;
             animation: hitParticle 0.8s ease-out forwards;
         }
         
@@ -145,18 +173,19 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
+        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: lowp; powerPreference: low-power; colorManagement: false;">
         
-        <a-entity camera="near: 0.2; far: 800;">
+        <a-entity camera="near: 0.2; far: 800; fov: 80;">
             <!-- 手持ちのポケボール (HUD) - クリック可能 -->
             <a-entity 
                 id="holding-pokeball"
                 gltf-model="{{ asset('cg/poke_ball_05.glb') }}"
                 position="0 -0.24 -0.5"
-                scale="0.075 0.075 0.075"
+                scale="0.095 0.075 0.075"
                 rotation="0 0 0"
                 visible="true"
-                class="clickable">
+                class="clickable"
+                pokeball-aspect-fix>
             </a-entity>
         </a-entity>
         
@@ -195,6 +224,43 @@
         }, 3000);
         
         // ========== A-Frameカスタムコンポーネント ==========
+        
+        // pokeball-aspect-fixコンポーネント: ポケボールを正円に保つ
+        AFRAME.registerComponent('pokeball-aspect-fix', {
+            init: function() {
+                this.updateAspect = this.updateAspect.bind(this);
+                this.updateAspect();
+                window.addEventListener('resize', this.updateAspect);
+            },
+            
+            updateAspect: function() {
+                // 画面のアスペクト比を取得
+                const aspect = window.innerWidth / window.innerHeight;
+                
+                // 基本スケール
+                const baseScale = 0.075;
+                
+                // アスペクト比が1より小さい（縦長画面）場合、横方向を補正
+                let scaleX, scaleY, scaleZ;
+                if (aspect < 1) {
+                    // 縦長画面の場合、横方向を拡大して正円に
+                    scaleX = baseScale / aspect;
+                    scaleY = baseScale;
+                    scaleZ = baseScale;
+                } else {
+                    // 横長画面の場合、そのまま
+                    scaleX = baseScale;
+                    scaleY = baseScale;
+                    scaleZ = baseScale;
+                }
+                
+                this.el.setAttribute('scale', `${scaleX} ${scaleY} ${scaleZ}`);
+            },
+            
+            remove: function() {
+                window.removeEventListener('resize', this.updateAspect);
+            }
+        });
         
         // meishi-animationコンポーネント: anime01ループ再生、ヒット時にanime02再生→2秒停止→anime01に戻る
         AFRAME.registerComponent('meishi-animation', {
