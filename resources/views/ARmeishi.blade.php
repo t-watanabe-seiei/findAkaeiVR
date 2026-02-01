@@ -295,14 +295,25 @@
                         console.log('Animation clip found:', clip.name);
                     });
                     
-                    // anime01をループ再生
+                    // anime01をループ再生（180度回転）
                     if (this.actions['anime01']) {
                         this.actions['anime01'].setLoop(THREE.LoopRepeat);
                         this.actions['anime01'].play();
                         this.currentAction = this.actions['anime01'];
-                        console.log('Playing anime01 in loop');
+                        this.setRotationForAnime01();
+                        console.log('Playing anime01 in loop with 180° rotation');
                     }
                 }
+            },
+            
+            setRotationForAnime01: function() {
+                // anime01用の回転: Y軸180度
+                this.el.setAttribute('rotation', '0 180 0');
+            },
+            
+            setRotationForAnime02: function() {
+                // anime02用の回転: 元の向き
+                this.el.setAttribute('rotation', '0 0 0');
             },
             
             playHitAnimation: function() {
@@ -317,7 +328,8 @@
                         this.actions['anime01'].stop();
                     }
                     
-                    // anime02を1回だけ再生
+                    // anime02を1回だけ再生（元の向きに回転）
+                    this.setRotationForAnime02();
                     const anime02 = this.actions['anime02'];
                     anime02.setLoop(THREE.LoopOnce);
                     anime02.clampWhenFinished = true; // 最終フレームで停止
@@ -325,7 +337,7 @@
                     anime02.play();
                     this.currentAction = anime02;
                     
-                    console.log('Playing anime02 (hit animation)');
+                    console.log('Playing anime02 (hit animation) with 0° rotation');
                     
                     // anime02の長さを取得
                     const duration = anime02.getClip().duration;
@@ -335,13 +347,14 @@
                         console.log('anime02 finished, waiting 1 seconds...');
                         
                         setTimeout(() => {
-                            console.log('Returning to anime01 loop');
+                            console.log('Returning to anime01 loop with 180° rotation');
                             
                             // anime02を停止
                             anime02.stop();
                             
-                            // anime01を再開
+                            // anime01を再開（180度回転に戻す）
                             if (this.actions['anime01']) {
+                                this.setRotationForAnime01();
                                 this.actions['anime01'].reset();
                                 this.actions['anime01'].play();
                                 this.currentAction = this.actions['anime01'];
