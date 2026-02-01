@@ -169,7 +169,7 @@
             <a-entity
                 id="cat-model"
                 gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
-                position="0 0 0"
+                position="0 0 0.5"
                 scale="1 1 1"
                 rotation="-90 0 0"
                 meishi-animation="clip: anime01"
