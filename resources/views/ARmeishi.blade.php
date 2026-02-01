@@ -165,10 +165,10 @@
         <a-light type="directional" intensity="0.8" position="1 1 1"></a-light>
         
         <!-- ARマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi01.patt') }}" id="pattern-meishi-marker">
+        <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi03.patt') }}" id="pattern-meishi-marker">
             <a-entity
                 id="cat-model"
-                gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
+                gltf-model="{{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
                 scale="1 1 1"
                 rotation="0 0 0"
@@ -264,9 +264,9 @@
                     // anime02の長さを取得
                     const duration = anime02.getClip().duration;
                     
-                    // anime02再生完了後、2秒停止してからanime01に戻る
+                    // anime02再生完了後、1秒停止してからanime01に戻る
                     setTimeout(() => {
-                        console.log('anime02 finished, waiting 2 seconds...');
+                        console.log('anime02 finished, waiting 1 seconds...');
                         
                         setTimeout(() => {
                             console.log('Returning to anime01 loop');
@@ -283,7 +283,7 @@
                             
                             this.isPlayingHitAnimation = false;
                             resolve();
-                        }, 2000); // 2秒停止
+                        }, 1000); // 1秒停止
                     }, duration * 1000);
                 });
             },
