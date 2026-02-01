@@ -171,7 +171,7 @@
                 gltf-model="{{ asset('cg/3d_pro_cat_fukuda.glb') }}"
                 position="0 0 0.5"
                 scale="1 1 1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
