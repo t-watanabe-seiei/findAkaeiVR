@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>AR名刺</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -13,6 +15,13 @@
             box-sizing: border-box;
         }
         
+        html {
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             overflow: hidden;
@@ -20,6 +29,9 @@
             width: 100%;
             height: 100%;
             background: #000;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         /* ローディング画面 */
@@ -84,6 +96,22 @@
             left: 0;
             width: 100%;
             height: 100%;
+            display: block;
+            touch-action: none;
+        }
+        
+        a-scene canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        /* Pokeball HUD element styling */
+        #holding-pokeball {
+            cursor: pointer;
+            touch-action: none;
         }
     </style>
 </head>
@@ -404,15 +432,51 @@
                 if (e.cancelable) e.preventDefault();
             }, { passive: false });
             
-            // Pokeballクリック時の処理
-            holdingPokeball.addEventListener('click', function() {
+            // Pokeballクリック時の処理（タッチとクリック両方対応）
+            function handlePokeballThrow(e) {
                 if (!isMarkerVisible || !catModel) {
                     console.log('Cannot throw: marker not visible or model not found');
                     return;
                 }
                 
+                if (e.cancelable) e.preventDefault();
+                if (e.type === 'touchstart') e.stopPropagation();
+                
                 throwPokeballToModel();
-            });
+            }
+            
+            // タッチイベントを優先的に追加（モバイル対応）
+            holdingPokeball.addEventListener('touchstart', handlePokeballThrow, { passive: false });
+            holdingPokeball.addEventListener('click', handlePokeballThrow);
+            
+            // タッチ処理を確実にするためにシーンレベルでもハンドル
+            let lastTapTime = 0;
+            scene.addEventListener('touchstart', function(e) {
+                if (isPinching) return;
+                if (!e.touches || e.touches.length !== 1) return;
+                
+                const now = Date.now();
+                // ダブルタップ防止（300ms以内の連続タップは無視）
+                if (now - lastTapTime < 300) return;
+                lastTapTime = now;
+                
+                // タッチ位置がPokeball HUD付近かチェック
+                const touch = e.touches[0];
+                const screenX = touch.clientX / window.innerWidth;
+                const screenY = touch.clientY / window.innerHeight;
+                
+                // 画面下部中央付近（Pokeball HUDの位置）
+                if (screenX > 0.3 && screenX < 0.7 && screenY > 0.6 && screenY < 0.95) {
+                    if (!isMarkerVisible || !catModel) {
+                        console.log('Cannot throw: marker not visible');
+                        return;
+                    }
+                    
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation();
+                    throwPokeballToModel();
+                }
+            }, { passive: false });
             
             // モデル方向にPokeballを投げる
             function throwPokeballToModel() {
