@@ -168,7 +168,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi03.patt') }}" id="pattern-meishi-marker">
             <a-entity
                 id="cat-model"
-                gltf-model="{{ asset('cg/3d_pro_burger_fujii.glb') }}"
+                gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0.5"
                 scale="1 1 1"
                 rotation="0 0 0"
