@@ -108,6 +108,24 @@
             height: 100% !important;
         }
         
+        /* AR.js video element - スマホの黒画面を防ぐ */
+        .a-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+        
         /* Pokeball HUD element styling */
         #holding-pokeball {
             cursor: pointer;
@@ -320,12 +338,15 @@
         AFRAME.registerComponent('pokeball-throwable', {
             init: function() {
                 this.velocity = new THREE.Vector3();
-                this.gravity = -9.8;
+                this.gravity = -3.5; // 重力を弱く（元: -9.8）でふわっとした放物線に
                 this.isThrown = false;
             },
             
             throw: function(direction, speed) {
-                this.velocity.copy(direction).multiplyScalar(speed);
+                // 上向きの成分を増やして放物線を描くように
+                const upwardBoost = new THREE.Vector3(0, 0.4, 0); // 上向きのブースト
+                const adjustedDirection = direction.clone().add(upwardBoost).normalize();
+                this.velocity.copy(adjustedDirection).multiplyScalar(speed);
                 this.isThrown = true;
             },
             
@@ -334,7 +355,7 @@
                 
                 const dt = deltaTime / 1000;
                 
-                // 重力を適用
+                // 重力を適用（ふわっとした動き）
                 this.velocity.y += this.gravity * dt;
                 
                 // 位置を更新
@@ -521,7 +542,7 @@
                         });
                     }
                     
-                    const speed = 15;
+                    const speed = 8; // スピードを遅く（元: 15）でふわっとした軌道に
                     pokeball.components['pokeball-throwable'].throw(direction, speed);
                     
                     // 当たり判定チェック
