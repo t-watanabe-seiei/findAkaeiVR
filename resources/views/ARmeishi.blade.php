@@ -198,7 +198,7 @@
             <a-entity
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
-                position="0 0 0.5"
+                position="0 0 0"
                 scale="1 1 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
@@ -258,7 +258,7 @@
                 
                 // カメラのプロジェクションマトリックスを直接操作してY軸を圧縮
                 // 1.1～1.2倍の縦伸びを補正するため、Y軸を0.85倍に圧縮
-                const yCompressionFactor = 0.85;
+                const yCompressionFactor = 0.7;
                 
                 // プロジェクションマトリックスのY軸スケールを変更
                 camera.updateProjectionMatrix();
