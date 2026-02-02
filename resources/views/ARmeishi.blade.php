@@ -249,43 +249,22 @@
             
             correctAspect: function() {
                 const sceneEl = this.el;
-                const renderer = sceneEl.renderer;
                 const camera = sceneEl.camera;
                 
-                if (!renderer || !camera) {
-                    console.log('Renderer or camera not ready yet');
+                if (!camera) {
+                    console.log('Camera not ready yet');
                     return;
                 }
                 
-                // ビデオ要素を取得
-                const video = document.querySelector('video');
-                if (!video) {
-                    console.log('Video element not found');
-                    return;
-                }
+                // カメラのプロジェクションマトリックスを直接操作してY軸を圧縮
+                // 1.1～1.2倍の縦伸びを補正するため、Y軸を0.85倍に圧縮
+                const yCompressionFactor = 0.85;
                 
-                // 実際のビデオのアスペクト比を取得
-                const videoWidth = video.videoWidth || video.width;
-                const videoHeight = video.videoHeight || video.height;
+                // プロジェクションマトリックスのY軸スケールを変更
+                camera.updateProjectionMatrix();
+                camera.projectionMatrix.elements[5] *= yCompressionFactor;
                 
-                if (videoWidth && videoHeight) {
-                    const videoAspect = videoWidth / videoHeight;
-                    const windowAspect = window.innerWidth / window.innerHeight;
-                    
-                    console.log('Video aspect:', videoAspect, 'Window aspect:', windowAspect);
-                    
-                    // カメラのアスペクト比を補正
-                    if (camera.aspect) {
-                        camera.aspect = videoAspect;
-                        camera.updateProjectionMatrix();
-                        console.log('Camera aspect corrected to:', videoAspect);
-                    }
-                    
-                    // レンダラーのピクセル比を調整（縦伸びを補正）
-                    const correctionFactor = 0.85; // 1.1～1.2倍の伸びを補正するため
-                    renderer.setPixelRatio(window.devicePixelRatio * correctionFactor);
-                    console.log('Pixel ratio corrected with factor:', correctionFactor);
-                }
+                console.log('Camera projection matrix Y-axis compressed by factor:', yCompressionFactor);
             },
             
             remove: function() {
