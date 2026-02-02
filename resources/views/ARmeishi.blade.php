@@ -171,11 +171,12 @@
     
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: lowp; powerPreference: low-power; colorManagement: false;">
+        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: lowp; powerPreference: low-power; colorManagement: false;"
+        ar-aspect-fix>
         
-        <a-entity camera="near: 0.2; far: 800; fov: 80;">
+        <a-entity camera="near: 0.2; far: 800; fov: 65;">
             <!-- 手持ちのポケボール (HUD) - クリック可能 -->
             <a-entity 
                 id="holding-pokeball"
@@ -199,7 +200,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0"
-                scale="1 0.7 1"
+                scale="1 1 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
@@ -229,22 +230,25 @@
         AFRAME.registerComponent('ar-aspect-fix', {
             init: function() {
                 this.correctAspect = this.correctAspect.bind(this);
+                this.appliedCorrection = false;
                 
-                // シーンが読み込まれるまで待つ
-                this.el.addEventListener('loaded', () => {
-                    this.correctAspect();
-                });
-                
-                // ビデオが読み込まれたときにも補正
+                // ビデオが読み込まれたときに補正
                 window.addEventListener('arjs-video-loaded', () => {
-                    setTimeout(() => this.correctAspect(), 100);
+                    setTimeout(() => this.correctAspect(), 200);
+                    setTimeout(() => this.correctAspect(), 500);
+                    setTimeout(() => this.correctAspect(), 1000);
                 });
                 
                 // リサイズ時にも補正
-                window.addEventListener('resize', this.correctAspect);
+                window.addEventListener('resize', () => {
+                    this.appliedCorrection = false;
+                    this.correctAspect();
+                });
                 
                 // 初期化時にも実行
+                setTimeout(() => this.correctAspect(), 100);
                 setTimeout(() => this.correctAspect(), 500);
+                setTimeout(() => this.correctAspect(), 1000);
             },
             
             correctAspect: function() {
@@ -252,19 +256,20 @@
                 const camera = sceneEl.camera;
                 
                 if (!camera) {
-                    console.log('Camera not ready yet');
+                    setTimeout(() => this.correctAspect(), 200);
                     return;
                 }
                 
-                // カメラのプロジェクションマトリックスを直接操作してY軸を圧縮
-                // 1.1～1.2倍の縦伸びを補正するため、Y軸を0.85倍に圧縮
-                const yCompressionFactor = 0.7;
+                // カメラのFOVを取得して縦方向を圧縮
+                const originalFov = camera.fov;
+                const compressionFactor = 0.75; // 1.2倍の伸びを補正
+                const newFov = originalFov * compressionFactor;
                 
-                // プロジェクションマトリックスのY軸スケールを変更
+                camera.fov = newFov;
                 camera.updateProjectionMatrix();
-                camera.projectionMatrix.elements[5] *= yCompressionFactor;
                 
-                console.log('Camera projection matrix Y-axis compressed by factor:', yCompressionFactor);
+                console.log('Camera FOV adjusted from', originalFov, 'to', newFov, 'for vertical compression');
+                this.appliedCorrection = true;
             },
             
             remove: function() {
