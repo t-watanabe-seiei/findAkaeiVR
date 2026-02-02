@@ -199,7 +199,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="1 0.7 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
