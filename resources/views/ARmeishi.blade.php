@@ -151,7 +151,7 @@
             left: 0;
             width: 100% !important;
             height: 100% !important;
-            object-fit: cover;
+            object-fit: contain;
         }
         
         /* Pokeball HUD element styling */
@@ -200,7 +200,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0"
-                scale="1 1 1"
+                scale="1 0.85 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
@@ -552,10 +552,11 @@
                 const factor = d / pinchStartDistance;
                 currentScale = Math.max(1, Math.min(3, pinchInitialScale * factor));
                 
-                // catModelにスケールを適用
+                // catModelにスケールを適用（Y軸は0.85倍を維持）
                 if (catModel) {
-                    const baseScale = 1;
-                    catModel.setAttribute('scale', `${baseScale * currentScale} ${baseScale * currentScale} ${baseScale * currentScale}`);
+                    const baseScaleXZ = 1;
+                    const baseScaleY = 0.85; // Y軸の縦伸び補正
+                    catModel.setAttribute('scale', `${baseScaleXZ * currentScale} ${baseScaleY * currentScale} ${baseScaleXZ * currentScale}`);
                 }
                 
                 if (event.cancelable) event.preventDefault();
@@ -575,10 +576,11 @@
                 const step = delta * 0.0018;
                 currentScale = Math.max(1, Math.min(3, currentScale + step));
                 
-                // catModelにスケールを適用
+                // catModelにスケールを適用（Y軸は0.85倍を維持）
                 if (catModel) {
-                    const baseScale = 1;
-                    catModel.setAttribute('scale', `${baseScale * currentScale} ${baseScale * currentScale} ${baseScale * currentScale}`);
+                    const baseScaleXZ = 1;
+                    const baseScaleY = 0.85; // Y軸の縦伸び補正
+                    catModel.setAttribute('scale', `${baseScaleXZ * currentScale} ${baseScaleY * currentScale} ${baseScaleXZ * currentScale}`);
                 }
                 
                 if (e.cancelable) e.preventDefault();
