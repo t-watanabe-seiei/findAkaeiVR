@@ -200,7 +200,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/3D_bio_cat.glb') }}"
                 position="0 0 0"
-                scale="1 0.85 1"
+                scale="1 0.7 1"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
@@ -510,10 +510,6 @@
             const marker = document.querySelector('#pattern-meishi-marker');
             
             let isMarkerVisible = false;
-            let currentScale = 1;
-            let isPinching = false;
-            let pinchStartDistance = 0;
-            let pinchInitialScale = 1;
             
             // マーカー検出イベント
             marker.addEventListener('markerFound', function() {
@@ -525,66 +521,6 @@
                 console.log('Marker lost');
                 isMarkerVisible = false;
             });
-            
-            // ピンチズーム機能
-            function getTouchesDistance(t0, t1) {
-                const dx = t0.clientX - t1.clientX;
-                const dy = t0.clientY - t1.clientY;
-                return Math.hypot(dx, dy);
-            }
-            
-            scene.addEventListener('touchstart', function(event) {
-                if (event.touches && event.touches.length >= 2) {
-                    isPinching = true;
-                    pinchStartDistance = getTouchesDistance(event.touches[0], event.touches[1]);
-                    pinchInitialScale = currentScale;
-                    if (event.cancelable) event.preventDefault();
-                }
-            }, { passive: false });
-            
-            scene.addEventListener('touchmove', function(event) {
-                if (!isPinching) return;
-                if (!(event.touches && event.touches.length >= 2)) return;
-                
-                const d = getTouchesDistance(event.touches[0], event.touches[1]);
-                if (pinchStartDistance <= 0) return;
-                
-                const factor = d / pinchStartDistance;
-                currentScale = Math.max(1, Math.min(3, pinchInitialScale * factor));
-                
-                // catModelにスケールを適用（Y軸は0.85倍を維持）
-                if (catModel) {
-                    const baseScaleXZ = 1;
-                    const baseScaleY = 0.85; // Y軸の縦伸び補正
-                    catModel.setAttribute('scale', `${baseScaleXZ * currentScale} ${baseScaleY * currentScale} ${baseScaleXZ * currentScale}`);
-                }
-                
-                if (event.cancelable) event.preventDefault();
-            }, { passive: false });
-            
-            scene.addEventListener('touchend', function(event) {
-                if (isPinching) {
-                    if (!event.touches || event.touches.length < 2) {
-                        isPinching = false;
-                    }
-                }
-            }, { passive: true });
-            
-            // ホイールでズーム（PC）
-            scene.addEventListener('wheel', function(e) {
-                const delta = -e.deltaY;
-                const step = delta * 0.0018;
-                currentScale = Math.max(1, Math.min(3, currentScale + step));
-                
-                // catModelにスケールを適用（Y軸は0.85倍を維持）
-                if (catModel) {
-                    const baseScaleXZ = 1;
-                    const baseScaleY = 0.85; // Y軸の縦伸び補正
-                    catModel.setAttribute('scale', `${baseScaleXZ * currentScale} ${baseScaleY * currentScale} ${baseScaleXZ * currentScale}`);
-                }
-                
-                if (e.cancelable) e.preventDefault();
-            }, { passive: false });
             
             // Pokeballクリック時の処理（タッチとクリック両方対応）
             function handlePokeballThrow(e) {
@@ -606,7 +542,6 @@
             // タッチ処理を確実にするためにシーンレベルでもハンドル
             let lastTapTime = 0;
             scene.addEventListener('touchstart', function(e) {
-                if (isPinching) return;
                 if (!e.touches || e.touches.length !== 1) return;
                 
                 const now = Date.now();
