@@ -1,5 +1,58 @@
 # 変更点
 
+### WebVR視野狭窄体験アプリ - 新規実装 20260203
+**A-Frameを使用したVR視野狭窄（トンネルビジョン）シミュレーション:**
+
+#### 実装内容
+1. **360度パノラマVR環境**
+   - `R0010034.JPG`を使用した没入型360度画像表示
+   - Pico4 Enterprise対応のWebXRアプリケーション
+   - アクセスURL: `/vr-tunnel`
+
+2. **視野狭窄エフェクト（トンネルビジョン）**
+   - 視線中心部（視野角約30度）のみ明瞭に表示
+   - 周辺部は滑らかに暗転（視野角50度以降で完全な黒）
+   - リアルタイムで視線に追従するエフェクト
+   - カスタムGLSLシェーダーによる高品質なグラデーション
+
+3. **技術実装**
+   - **フレームワーク**: A-Frame 1.4.0（WebXR対応）
+   - **カスタムコンポーネント**: `tunnel-vision-overlay`
+   - **シェーダー**: 
+     - Vertex Shader: 頂点位置の計算
+     - Fragment Shader: 視線中心からの角度に基づく透明度制御
+   - **最適化**: 
+     - 球体セグメント数48（パフォーマンスと品質のバランス）
+     - 球体半径0.4m（最適な視覚効果）
+     - 深度テストオフ（常に最前面表示）
+
+#### ファイル構成
+- `routes/web.php`: `/vr-tunnel`ルート追加
+- `resources/views/vr-tunnel.blade.php`: メインVRシーン
+- `public/js/vr-tunnel/tunnel-vision.js`: カスタムコンポーネント＋シェーダー
+- `public/cg/R0010034.JPG`: 360度パノラマ画像
+
+#### パラメータ（固定値）
+```javascript
+innerRadius: 0.15    // 完全に透明な中心領域（視野角約30度）
+outerRadius: 0.35    // 完全に黒くなる外側（視野角約50度）
+sphereRadius: 0.4    // 球体の半径（メートル）
+opacity: 0.95        // 暗転部の不透明度
+segments: 48         // 球体セグメント数
+```
+
+#### 使用方法
+1. **デスクトップ**: `http://localhost:8000/vr-tunnel`にアクセス、マウスドラッグで視点変更
+2. **VRデバイス**: 同URLにアクセスし、VRボタンでVRモード起動
+3. Pico4 Enterpriseで頭を動かして視野狭窄体験
+
+#### 設計ドキュメント
+- `.claude_workflow/requirements.md`: 要件定義
+- `.claude_workflow/design.md`: 設計書
+- `.claude_workflow/tasks.md`: タスク一覧
+
+---
+
 ### VRシューティングゲーム - バグ修正とUI改善 20260121
 **shooting3Danimal.blade.php の修正履歴:**
 

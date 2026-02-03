@@ -59,6 +59,10 @@ Route::get('/movie', function () {
     return view('movieTest');
 });
 
+Route::get('/vr-tunnel', function () {
+    return view('vr-tunnel');
+})->name('vr.tunnel');
+
 // Auth::routes(); // Commented out - laravel/ui not installed
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
