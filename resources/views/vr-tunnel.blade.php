@@ -23,7 +23,8 @@
 <body>
     <a-scene>
         <!-- 360度画像 -->
-        <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky>
+        <!-- <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky> -->
+        <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky>
         
         <!-- カメラリグ -->
         <a-entity id="camera-rig">
