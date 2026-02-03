@@ -138,7 +138,7 @@ AFRAME.registerComponent('tunnel-vision-overlay', {
     // タイマー関連の状態
     this.startTime = null;
     this.isVRMode = false;
-    this.cycleDuration = 50000; // 50秒サイクル
+    this.cycleDuration = 40000; // 40秒サイクル
     
     // 球体ジオメトリの作成
     const geometry = new THREE.SphereGeometry(
@@ -212,32 +212,36 @@ AFRAME.registerComponent('tunnel-vision-overlay', {
    * 経過時間からinnerRadiusを計算
    */
   getInnerRadiusForTime: function (elapsedMs) {
-    const elapsed = elapsedMs % this.cycleDuration; // 50秒でループ
+    const elapsed = elapsedMs % this.cycleDuration; // 40秒でループ
     const sec = elapsed / 1000;
     
     if (sec < 5) {
       // 0-5秒: 1.0を維持（視野狭窄なし）
       return 1.0;
-    } else if (sec < 15) {
-      // 5-15秒: 1.0から0.175へ線形補間
-      const t = (sec - 5) / 10;
+    } else if (sec < 10) {
+      // 5-10秒: 1.0から0.175へ線形補間（視野角30-40度）
+      const t = (sec - 5) / 5;
       return this.lerp(1.0, 0.175, t);
-    } else if (sec < 25) {
-      // 15-25秒: 0.175から0.125へ線形補間
-      const t = (sec - 15) / 10;
+    } else if (sec < 15) {
+      // 10-15秒: 0.175から0.125へ線形補間（視野角20-30度）
+      const t = (sec - 10) / 5;
       return this.lerp(0.175, 0.125, t);
-    } else if (sec < 35) {
-      // 25-35秒: 0.125から0.075へ線形補間
-      const t = (sec - 25) / 10;
+    } else if (sec < 20) {
+      // 15-20秒: 0.125から0.075へ線形補間（視野角10-20度）
+      const t = (sec - 15) / 5;
       return this.lerp(0.125, 0.075, t);
-    } else if (sec < 45) {
-      // 35-45秒: 0.075から0.025へ線形補間
-      const t = (sec - 35) / 10;
+    } else if (sec < 25) {
+      // 20-25秒: 0.075から0.025へ線形補間（視野角0-10度）
+      const t = (sec - 20) / 5;
       return this.lerp(0.075, 0.025, t);
+    } else if (sec < 35) {
+      // 25-35秒: 0.025から0.002へ線形補間（視野角0.2度程度）
+      const t = (sec - 25) / 10;
+      return this.lerp(0.025, 0.002, t);
     } else {
-      // 45-50秒: 0.025から0.01へ線形補間
-      const t = (sec - 45) / 5;
-      return this.lerp(0.025, 0.01, t);
+      // 35-40秒: 0.002から0.0005へ線形補間（視野角0.05度程度）
+      const t = (sec - 35) / 5;
+      return this.lerp(0.002, 0.0005, t);
     }
   },
 
@@ -259,12 +263,25 @@ AFRAME.registerComponent('tunnel-vision-overlay', {
     
     // 経過時間を計算
     const elapsedMs = Date.now() - this.startTime;
+    const elapsed = elapsedMs % this.cycleDuration;
+    const sec = elapsed / 1000;
     
     // innerRadiusを計算
     const newInnerRadius = this.getInnerRadiusForTime(elapsedMs);
     
-    // outerRadiusはinnerRadius + 0.20の固定オフセット
-    const newOuterRadius = newInnerRadius + 0.20;
+    // outerRadiusオフセットを時間帯によって計算
+    // 0-20秒: 0.20を維持
+    // 20-40秒: 0.20から0.05へ線形補間（段階的に減少）
+    let offset;
+    if (sec < 20) {
+      offset = 0.20;
+    } else {
+      // 20-40秒: 0.20から0.05へ線形補間
+      const t = (sec - 20) / 20;
+      offset = this.lerp(0.20, 0.05, t);
+    }
+    
+    const newOuterRadius = newInnerRadius + offset;
     
     // シェーダーのuniformsを更新
     if (this.material && this.material.uniforms) {

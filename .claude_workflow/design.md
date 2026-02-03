@@ -236,43 +236,50 @@ AFRAME.registerComponent('auto-enter-vr', {
 **メソッド**:
 - `init()`: 初期化、球体ジオメトリとシェーダー作成、VRイベントリスナー登録
 - `update()`: パラメータ更新時の再描画
-- `tick()`: 毎フレーム実行、経過時間に応じてinnerRadiusを更新
+- `tick()`: 毎フレーム実行、経過時間に応じてinnerRadiusとouterRadiusを更新
 - `getInnerRadiusForTime(elapsedMs)`: 経過時間からinnerRadiusを計算
+- `getOuterRadiusOffset(elapsedMs)`: 経過時間からouterRadiusオフセットを計算
+  - 0-20秒: 0.20を返す
+  - 20-40秒: 0.20から0.05へ線形補間（lerp）
 - `onEnterVR()`: VRモード開始時にタイマースタート
 - `onExitVR()`: VRモード終了時にタイマー停止
 
 **innerRadius計算ロジック**:
 ```javascript
 // 時間帯ごとの目標値
-// 0-5s: 1.0, 5-15s: 1.0→0.175, 15-25s: 0.175→0.125, 
-// 25-35s: 0.125→0.075, 35-45s: 0.075→0.025, 45-50s: 0.025→0.01
+// 0-5s: 1.0, 5-10s: 1.0→0.175, 10-15s: 0.175→0.125, 
+// 15-20s: 0.125→0.075, 20-25s: 0.075→0.025, 25-35s: 0.025→0.002, 35-40s: 0.002→0.0005
 function getInnerRadiusForTime(elapsedMs) {
-  const elapsed = elapsedMs % 50000; // 50秒でループ
+  const elapsed = elapsedMs % 40000; // 40秒でループ
   const sec = elapsed / 1000;
   
   if (sec < 5) {
     // 0-5秒: 1.0を維持（視野狭窄なし）
     return 1.0;
-  } else if (sec < 15) {
-    // 5-15秒: 1.0から0.175へ線形補間
-    const t = (sec - 5) / 10;
+  } else if (sec < 10) {
+    // 5-10秒: 1.0から0.175へ線形補間
+    const t = (sec - 5) / 5;
     return lerp(1.0, 0.175, t);
-  } else if (sec < 25) {
-    // 15-25秒: 0.175から0.125へ線形補間
-    const t = (sec - 15) / 10;
+  } else if (sec < 15) {
+    // 10-15秒: 0.175から0.125へ線形補間
+    const t = (sec - 10) / 5;
     return lerp(0.175, 0.125, t);
-  } else if (sec < 35) {
-    // 25-35秒: 0.125から0.075へ線形補間
-    const t = (sec - 25) / 10;
+  } else if (sec < 20) {
+    // 15-20秒: 0.125から0.075へ線形補間
+    const t = (sec - 15) / 5;
     return lerp(0.125, 0.075, t);
-  } else if (sec < 45) {
-    // 35-45秒: 0.075から0.025へ線形補間
-    const t = (sec - 35) / 10;
+  } else if (sec < 25) {
+    // 20-25秒: 0.075から0.025へ線形補間
+    const t = (sec - 20) / 5;
     return lerp(0.075, 0.025, t);
+  } else if (sec < 35) {
+    // 25-35秒: 0.025から0.002へ線形補間（視野角0.2度程度）
+    const t = (sec - 25) / 10;
+    return lerp(0.025, 0.002, t);
   } else {
-    // 45-50秒: 0.025から0.01へ線形補間
-    const t = (sec - 45) / 5;
-    return lerp(0.025, 0.01, t);
+    // 35-40秒: 0.002から0.0005へ線形補間（視野角0.05度程度）
+    const t = (sec - 35) / 5;
+    return lerp(0.002, 0.0005, t);
   }
 }
 
