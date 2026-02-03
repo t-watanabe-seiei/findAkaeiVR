@@ -118,7 +118,7 @@ Route::get('/vr-center-dark', function () {
     <script src="/js/vr-center-dark/center-dark.js"></script>
 </head>
 <body>
-    <a-scene>
+    <a-scene auto-enter-vr>
         <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky>
         <a-entity id="camera-rig">
             <a-camera>
@@ -129,6 +129,8 @@ Route::get('/vr-center-dark', function () {
 </body>
 </html>
 ```
+
+**重要な追加**: `<a-scene auto-enter-vr>` で自動VRモード切り替え機能を有効化
 
 ### 3. カスタムコンポーネント設計
 
@@ -145,21 +147,29 @@ Route::get('/vr-center-dark', function () {
 ```
 1. ページロード
    ↓
-2. VRモード開始を待機（enter-vrイベントリッスン）
+2. シーン読み込み完了（loadedイベント）
    ↓
-3. VRモード開始時にタイマースタート（startTime記録）
+3. auto-enter-vrコンポーネントが起動
    ↓
-4. tick()で毎フレーム経過時間を計算
+4. WebXR APIでVRデバイス対応を確認
    ↓
-5. 経過時間を50秒で割った余りを取得（ループ処理）
+5. 対応デバイスがあれば自動的にenterVR()実行
    ↓
-6. 現在のステージと次のステージを特定
+6. VRモード開始（enter-vrイベント発火）
    ↓
-7. ステージ間で線形補間（lerp）
+7. center-dark-overlayがタイマースタート（startTime記録）
    ↓
-8. シェーダーパラメータ（innerRadius, outerRadius）を更新
+8. tick()で毎フレーム経過時間を計算
    ↓
-9. 4に戻る（無限ループ）
+9. 経過時間を50秒で割った余りを取得（ループ処理）
+   ↓
+10. 現在のステージと次のステージを特定
+   ↓
+11. ステージ間で線形補間（lerp）
+   ↓
+12. シェーダーパラメータ（innerRadius, outerRadius）を更新
+   ↓
+13. 8に戻る（無限ループ）
 ```
 
 #### パラメータ補間計算
@@ -218,6 +228,39 @@ const stages = [
 - `onEnterVR()`: VRモード開始時にタイマースタート
 - `updateParameters(elapsedTime)`: 経過時間から現在の暗転範囲を計算
 - `lerp(a, b, t)`: 線形補間関数
+
+### 3-2. 自動VRモード切り替えコンポーネント
+
+#### コンポーネント名: `auto-enter-vr`
+
+**責務**:
+- ページロード後、シーン読み込み完了を検知
+- WebXR APIでVRデバイスの対応状況を確認
+- 対応デバイスが検出された場合、自動的にVRモードに切り替え
+
+**動作フロー**:
+```javascript
+init: function () {
+    const sceneEl = this.el;
+    
+    // シーン読み込み完了を待つ
+    sceneEl.addEventListener('loaded', () => {
+        // WebXR APIでVRデバイス対応確認
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    // 1秒待機してからVRモード開始（アセット読み込み完了を待つ）
+                    setTimeout(() => {
+                        sceneEl.enterVR();
+                    }, 1000);
+                }
+            });
+        }
+    });
+}
+```
+
+**参考元**: `shooting3Danimal.blade.php`の`auto-enter-vr`コンポーネント
 
 ### 4. シェーダー設計
 

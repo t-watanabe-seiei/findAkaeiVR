@@ -20,7 +20,7 @@
     </style>
 </head>
 <body>
-    <a-scene>
+    <a-scene auto-enter-vr>
         <!-- 360度画像 -->
         <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky>
         

@@ -198,4 +198,37 @@ AFRAME.registerComponent('center-dark-overlay', {
   }
 });
 
+// 自動VRモード切り替えコンポーネント（shooting3Danimal.blade.phpから流用）
+AFRAME.registerComponent('auto-enter-vr', {
+  init: function () {
+    const sceneEl = this.el;
+    
+    // シーンが読み込まれたら実行
+    sceneEl.addEventListener('loaded', () => {
+      console.log('center-dark: Scene loaded, checking for VR device...');
+      
+      // VRデバイスが利用可能かチェック
+      if (navigator.xr) {
+        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+          if (supported) {
+            console.log('center-dark: VR device detected! Auto-entering VR mode...');
+            
+            // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
+            setTimeout(() => {
+              sceneEl.enterVR();
+              console.log('center-dark: VR mode activated');
+            }, 1000);
+          } else {
+            console.log('center-dark: VR not supported on this device');
+          }
+        }).catch((err) => {
+          console.log('center-dark: Error checking VR support:', err);
+        });
+      } else {
+        console.log('center-dark: WebXR not available');
+      }
+    });
+  }
+});
+
 console.log('center-dark.js: スクリプト読み込み完了');
