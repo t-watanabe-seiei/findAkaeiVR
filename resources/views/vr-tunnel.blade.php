@@ -18,10 +18,36 @@
             margin: 0;
             overflow: hidden;
         }
+        #vr-start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: pointer;
+        }
+        #vr-start-overlay.hidden {
+            display: none;
+        }
+        #vr-start-overlay p {
+            color: white;
+            font-size: 24px;
+            font-family: sans-serif;
+        }
     </style>
 </head>
 <body>
-    <a-scene>
+    <div id="vr-start-overlay">
+        <p>クリックしてVR体験を開始</p>
+    </div>
+    
+    <!-- 重要: vr-mode-ui設定がPicoブラウザでの自動VRモード起動に不可欠 -->
+    <a-scene vr-mode-ui="enabled: true" auto-enter-vr>
         <!-- 360度画像 -->
         <!-- <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky> -->
         <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky>

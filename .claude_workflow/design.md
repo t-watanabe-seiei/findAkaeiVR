@@ -107,9 +107,38 @@ Route::get('/vr-tunnel', function () {
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <!-- カスタムコンポーネント -->
     <script src="/js/vr-tunnel/tunnel-vision.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #vr-start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: pointer;
+        }
+        #vr-start-overlay.hidden {
+            display: none;
+        }
+        #vr-start-overlay p {
+            color: white;
+            font-size: 24px;
+            font-family: sans-serif;
+        }
+    </style>
 </head>
 <body>
-    <a-scene>
+    <div id="vr-start-overlay">
+        <p>クリックしてVR体験を開始</p>
+    </div>
+    
+    <!-- 重要: vr-mode-ui設定がPicoブラウザでの自動VRモード起動に不可欠 -->
+    <a-scene vr-mode-ui="enabled: true" auto-enter-vr>
         <!-- 360度画像 -->
         <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky>
         
@@ -125,28 +154,132 @@ Route::get('/vr-tunnel', function () {
 </html>
 ```
 
+**vr-mode-ui設定の重要性**:
+- `vr-mode-ui="enabled: true"`がないと、Picoブラウザで自動VRモードが起動しない
+- この設定により、WebXR APIが正しく初期化される
+- shooting3Danimal.blade.phpの実装から発見された重要な設定
+
 ### 3. カスタムコンポーネント設計
 
-#### コンポーネント名: `tunnel-vision-overlay`
+#### コンポーネント1: `auto-enter-vr`
+
+**責務**:
+- ページロード時にVRデバイスを検出
+- VRデバイスの場合、自動的にVRモードに切り替え
+- デスクトップの場合、オーバーレイクリックでフルスクリーン表示
+
+**実装ロジック**:
+```javascript
+AFRAME.registerComponent('auto-enter-vr', {
+  init: function () {
+    const sceneEl = this.el;
+    const overlay = document.getElementById('vr-start-overlay');
+    
+    // WebXR APIでVRデバイスをチェック
+    if (navigator.xr && navigator.xr.isSessionSupported) {
+      navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+        if (supported) {
+          console.log('[tunnel-vision] VRデバイス検出 - 自動VRモード起動');
+          overlay.classList.add('hidden');
+          setTimeout(() => {
+            sceneEl.enterVR();
+          }, 1000);
+        } else {
+          console.log('[tunnel-vision] デスクトップ環境 - オーバーレイ表示');
+          setupDesktopMode();
+        }
+      });
+    } else {
+      console.log('[tunnel-vision] WebXR非対応 - オーバーレイ表示');
+      setupDesktopMode();
+    }
+    
+    function setupDesktopMode() {
+      overlay.addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen();
+        }
+      });
+    }
+  }
+});
+```
+
+#### コンポーネント2: `tunnel-vision-overlay`
 
 **責務**:
 - カメラに追従する球体メッシュの生成
 - カスタムシェーダーの適用
 - 視野狭窄パラメータの管理
+- **時間ベースの動的パラメータ変化**
 
-**プロパティ（固定値）**:
+**プロパティ（初期値）**:
 ```javascript
 {
-  innerRadius: 0.25,    // 完全に透明な中心領域（視野角約30度）
-  outerRadius: 0.60,    // 完全に黒くなる外側領域（視野角約70度）
-  sphereRadius: 0.5,    // 球体の半径（カメラに近い位置）
+  innerRadius: 1.0,     // 初期状態は透明（視野狭窄なし）
+  outerRadius: 1.2,     // innerRadius + 0.20（固定オフセット）
+  sphereRadius: 0.4,    // 球体の半径（カメラに近い位置）
   opacity: 1.0          // 黒い部分の不透明度
 }
 ```
 
+**タイマー関連プロパティ**:
+```javascript
+{
+  startTime: null,      // VRモード開始時刻（ミリ秒）
+  cycleDuration: 50000, // 1サイクルの長さ（50秒 = 50000ms）
+  isVRMode: false       // VRモード状態フラグ
+}
+```
+
 **メソッド**:
-- `init()`: 初期化、球体ジオメトリとシェーダー作成
+- `init()`: 初期化、球体ジオメトリとシェーダー作成、VRイベントリスナー登録
 - `update()`: パラメータ更新時の再描画
+- `tick()`: 毎フレーム実行、経過時間に応じてinnerRadiusを更新
+- `getInnerRadiusForTime(elapsedMs)`: 経過時間からinnerRadiusを計算
+- `onEnterVR()`: VRモード開始時にタイマースタート
+- `onExitVR()`: VRモード終了時にタイマー停止
+
+**innerRadius計算ロジック**:
+```javascript
+// 時間帯ごとの目標値
+// 0-5s: 1.0, 5-15s: 1.0→0.175, 15-25s: 0.175→0.125, 
+// 25-35s: 0.125→0.075, 35-45s: 0.075→0.025, 45-50s: 0.025→0.01
+function getInnerRadiusForTime(elapsedMs) {
+  const elapsed = elapsedMs % 50000; // 50秒でループ
+  const sec = elapsed / 1000;
+  
+  if (sec < 5) {
+    // 0-5秒: 1.0を維持（視野狭窄なし）
+    return 1.0;
+  } else if (sec < 15) {
+    // 5-15秒: 1.0から0.175へ線形補間
+    const t = (sec - 5) / 10;
+    return lerp(1.0, 0.175, t);
+  } else if (sec < 25) {
+    // 15-25秒: 0.175から0.125へ線形補間
+    const t = (sec - 15) / 10;
+    return lerp(0.175, 0.125, t);
+  } else if (sec < 35) {
+    // 25-35秒: 0.125から0.075へ線形補間
+    const t = (sec - 25) / 10;
+    return lerp(0.125, 0.075, t);
+  } else if (sec < 45) {
+    // 35-45秒: 0.075から0.025へ線形補間
+    const t = (sec - 35) / 10;
+    return lerp(0.075, 0.025, t);
+  } else {
+    // 45-50秒: 0.025から0.01へ線形補間
+    const t = (sec - 45) / 5;
+    return lerp(0.025, 0.01, t);
+  }
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+```
 
 ### 4. シェーダー設計
 

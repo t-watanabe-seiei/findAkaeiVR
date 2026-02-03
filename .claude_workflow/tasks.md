@@ -42,12 +42,33 @@
 **作業内容**:
 - HTML基本構造
 - A-Frame CDN読み込み（1.4.0）
-- 空の`<a-scene>`タグ
+- `<a-scene vr-mode-ui="enabled: true" auto-enter-vr>`タグ（vr-mode-ui設定が重要）
+- オーバーレイUI（`#vr-start-overlay`）の追加
+- オーバーレイ用CSS（hidden状態の定義含む）
 - メタタグ（viewport等）
 **依存関係**: Task 1（ルーティング）
-**所要時間**: 10分
-**完了条件**: ページが表示され、A-Frameが読み込まれる
+**所要時間**: 15分
+**完了条件**: ページが表示され、A-Frameが読み込まれ、オーバーレイが表示される
 **ステータス**: ⬜ 未着手
+
+---
+
+#### ✅ Task 3-2: 自動VRモード切り替えコンポーネントの実装
+**目的**: `auto-enter-vr` コンポーネントの実装
+**ファイル**: `public/js/vr-tunnel/tunnel-vision.js`
+**作業内容**:
+- `AFRAME.registerComponent('auto-enter-vr')`を実装
+- WebXR API（`navigator.xr.isSessionSupported('immersive-vr')`）でVRデバイス検出
+- VRデバイス検出時: オーバーレイを非表示にして、1秒後に`sceneEl.enterVR()`を呼び出し
+- デスクトップ環境: オーバーレイクリックで`requestFullscreen()`
+- コンソールログで動作状態を出力
+**依存関係**: Task 2（ディレクトリ作成）、Task 3（Bladeビュー）
+**所要時間**: 20分
+**完了条件**: 
+- Pico4 Enterpriseで自動的にVRモードに切り替わる
+- デスクトップでオーバーレイクリックでフルスクリーン表示される
+**ステータス**: ⬜ 未着手
+**重要**: vr-mode-ui="enabled: true"設定がないと、Picoブラウザで自動VRモードが起動しない
 
 ---
 
@@ -155,6 +176,67 @@
 **依存関係**: Task 4（カメラ追加）、Task 9（シェーダー適用）
 **所要時間**: 5分
 **完了条件**: カメラに視野狭窄エフェクトが追従する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### ✅ Task 10-2: タイマー機能の実装（VRイベントリスナー）
+**目的**: VRモード開始/終了時のイベント処理
+**ファイル**: `public/js/vr-tunnel/tunnel-vision.js`
+**作業内容**:
+- `init()`メソッドに`enter-vr`イベントリスナーを追加
+- `enter-vr`時に`startTime`を記録（`Date.now()`）
+- `exit-vr`イベントリスナーを追加（タイマー停止）
+- `isVRMode`フラグを管理
+**依存関係**: Task 9（ShaderMaterial作成）
+**所要時間**: 15分
+**完了条件**: VRモード開始時にタイマーが開始される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### ✅ Task 10-3: tick()メソッドの実装
+**目的**: 毎フレーム時間を計算してinnerRadiusを更新
+**ファイル**: `public/js/vr-tunnel/tunnel-vision.js`
+**作業内容**:
+- `tick()`メソッドを実装
+- VRモード中のみ動作するようチェック
+- 経過時間（`Date.now() - startTime`）を計算
+- 50秒でループ（`elapsedMs % 50000`）
+- `getInnerRadiusForTime()`を呼び出して値を取得
+- シェーダーのuniformsを更新（`innerRadius`, `outerRadius`）
+**依存関係**: Task 10-2（イベントリスナー）
+**所要時間**: 20分
+**完了条件**: 時間経過でinnerRadiusが更新される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### ✅ Task 10-4: innerRadius計算関数の実装
+**目的**: 経過時間からinnerRadiusを計算
+**ファイル**: `public/js/vr-tunnel/tunnel-vision.js`
+**作業内容**:
+- `getInnerRadiusForTime(elapsedMs)`関数を実装
+- 5つの時間帯（0-10s, 10-20s, 20-30s, 30-40s, 40-50s）で分岐
+- 線形補間（lerp）で値を計算
+- lerp関数を実装（`lerp(a, b, t) = a + (b - a) * t`）
+- 目標値: 1.0 → 0.175 → 0.125 → 0.075 → 0.025
+**依存関係**: Task 10-3（tick実装）
+**所要時間**: 15分
+**完了条件**: 正しいinnerRadius値が返される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### ✅ Task 10-5: outerRadius自動計算の実装
+**目的**: innerRadiusに連動してouterRadiusを更新
+**ファイル**: `public/js/vr-tunnel/tunnel-vision.js`
+**作業内容**:
+- `tick()`内でouterRadiusを計算（`innerRadius + 0.20`）
+- シェーダーuniformsのouterRadiusを更新
+**依存関係**: Task 10-4（innerRadius計算）
+**所要時間**: 5分
+**完了条件**: outerRadiusがinnerRadiusに追従する
 **ステータス**: ⬜ 未着手
 
 ---
