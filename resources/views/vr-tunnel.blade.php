@@ -10,7 +10,8 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
     <!-- カスタムコンポーネント -->
-    <script src="/js/vr-tunnel/tunnel-vision.js"></script>
+    <!-- <script src="/js/vr-tunnel/tunnel-vision.js"></script> -->
+    <script src="{{ asset('js/vr-tunnel/tunnel-vision.js') }}"></script>
     
     <style>
         body {
