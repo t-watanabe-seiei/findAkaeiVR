@@ -118,7 +118,9 @@ Route::get('/vr-center-dark', function () {
     <script src="/js/vr-center-dark/center-dark.js"></script>
 </head>
 <body>
-    <a-scene auto-enter-vr>
+    <a-scene 
+        vr-mode-ui="enabled: true"
+        auto-enter-vr>
         <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky>
         <a-entity id="camera-rig">
             <a-camera>
@@ -130,7 +132,9 @@ Route::get('/vr-center-dark', function () {
 </html>
 ```
 
-**重要な追加**: `<a-scene auto-enter-vr>` で自動VRモード切り替え機能を有効化
+**重要な追加**: 
+- `<a-scene auto-enter-vr>` で自動VRモード切り替え機能を有効化
+- **`vr-mode-ui="enabled: true"`** がPicoブラウザでの自動VRモード起動に不可欠（shooting3Danimal.blade.phpから発見）
 
 ### 3. カスタムコンポーネント設計
 
@@ -245,14 +249,24 @@ init: function () {
     
     // シーン読み込み完了を待つ
     sceneEl.addEventListener('loaded', () => {
+        // オーバーレイ要素を取得
+        const overlay = document.getElementById('vr-start-overlay');
+        
         // WebXR APIでVRデバイス対応確認
         if (navigator.xr) {
             navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                 if (supported) {
-                    // 1秒待機してからVRモード開始（アセット読み込み完了を待つ）
-                    setTimeout(() => {
-                        sceneEl.enterVR();
-                    }, 1000);
+                    // VRデバイスがある場合
+                    overlay.addEventListener('click', () => {
+                        sceneEl.enterVR();  // ユーザークリック後にVRモード開始
+                        overlay.classList.add('hidden');
+                    });
+                } else {
+                    // VRデバイスがない場合はフルスクリーン
+                    overlay.addEventListener('click', () => {
+                        document.body.requestFullscreen();
+                        overlay.classList.add('hidden');
+                    });
                 }
             });
         }
@@ -260,7 +274,10 @@ init: function () {
 }
 ```
 
-**参考元**: `shooting3Danimal.blade.php`の`auto-enter-vr`コンポーネント
+**重要な変更点**:
+- WebXRセキュリティ要件により、**ユーザージェスチャー（クリック）が必須**
+- 完全自動ではなく、「1クリックで開始」の設計に変更
+- デスクトップではフルスクリーンモードにフォールバック
 
 ### 4. シェーダー設計
 

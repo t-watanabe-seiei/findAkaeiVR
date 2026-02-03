@@ -198,34 +198,88 @@ AFRAME.registerComponent('center-dark-overlay', {
   }
 });
 
-// 自動VRモード切り替えコンポーネント（shooting3Danimal.blade.phpから流用）
+// 自動VRモード切り替えコンポーネント（Picoブラウザ対応）
 AFRAME.registerComponent('auto-enter-vr', {
   init: function () {
     const sceneEl = this.el;
     
     // シーンが読み込まれたら実行
     sceneEl.addEventListener('loaded', () => {
-      console.log('center-dark: Scene loaded, checking for VR device...');
+      console.log('[center-dark] Scene loaded, checking for VR device...');
+      
+      // オーバーレイ要素を取得
+      const overlay = document.getElementById('vr-start-overlay');
       
       // VRデバイスが利用可能かチェック
       if (navigator.xr) {
         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
           if (supported) {
-            console.log('center-dark: VR device detected! Auto-entering VR mode...');
+            console.log('[center-dark] VR device detected! (Pico Browser)');
             
-            // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
+            // Picoブラウザなど実機VRデバイスの場合、オーバーレイを即座に非表示
+            if (overlay) {
+              overlay.classList.add('hidden');
+              console.log('[center-dark] Overlay hidden for VR device');
+            }
+            
+            // 1秒待機してから自動的にVRモードに入る（Picoブラウザでは動作する）
             setTimeout(() => {
+              console.log('[center-dark] Auto-entering VR mode...');
               sceneEl.enterVR();
-              console.log('center-dark: VR mode activated');
+              console.log('[center-dark] Entered VR mode automatically');
             }, 1000);
           } else {
-            console.log('center-dark: VR not supported on this device');
+            console.log('[center-dark] VR not supported, trying fullscreen mode');
+            
+            // デスクトップなどVR非対応の場合はクリックでフルスクリーン
+            if (overlay) {
+              overlay.addEventListener('click', () => {
+                console.log('[center-dark] User clicked, entering fullscreen...');
+                
+                // フルスクリーンリクエスト
+                const body = document.body;
+                if (body.requestFullscreen) {
+                  body.requestFullscreen();
+                } else if (body.webkitRequestFullscreen) {
+                  body.webkitRequestFullscreen();
+                } else if (body.mozRequestFullScreen) {
+                  body.mozRequestFullScreen();
+                } else if (body.msRequestFullscreen) {
+                  body.msRequestFullscreen();
+                }
+                
+                overlay.classList.add('hidden');
+              });
+            }
           }
         }).catch((err) => {
-          console.log('center-dark: Error checking VR support:', err);
+          console.log('[center-dark] Error checking VR support:', err);
+          
+          // エラーの場合もクリックでフルスクリーン
+          if (overlay) {
+            overlay.addEventListener('click', () => {
+              const body = document.body;
+              if (body.requestFullscreen) {
+                body.requestFullscreen();
+              }
+              overlay.classList.add('hidden');
+            });
+          }
         });
       } else {
-        console.log('center-dark: WebXR not available');
+        console.log('[center-dark] WebXR not available, using fullscreen fallback');
+        
+        // WebXR非対応の場合はクリックでフルスクリーンのみ
+        if (overlay) {
+          overlay.addEventListener('click', () => {
+            console.log('[center-dark] User clicked, entering fullscreen...');
+            const body = document.body;
+            if (body.requestFullscreen) {
+              body.requestFullscreen();
+            }
+            overlay.classList.add('hidden');
+          });
+        }
       }
     });
   }
