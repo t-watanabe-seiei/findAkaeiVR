@@ -54,16 +54,7 @@ const fragmentShader = `
 
 AFRAME.registerComponent('center-dark-overlay', {
   schema: {
-    // 完全に黒い中心領域の半径（0.0～1.0の正規化値）
-    // 視野角約40度に相当
-    innerRadius: { type: 'number', default: 0.22 },
-    
-    // 完全に透明になる外側領域の半径（0.0～1.0の正規化値）
-    // 視野角約55度に相当
-    outerRadius: { type: 'number', default: 0.30 },
-    
     // 球体の物理的な半径（メートル単位）
-    // カメラに近い位置に配置（0.4mで最適）
     sphereRadius: { type: 'number', default: 0.4 },
     
     // 黒い部分の不透明度（0.0～1.0）
@@ -79,6 +70,19 @@ AFRAME.registerComponent('center-dark-overlay', {
   init: function () {
     console.log('center-dark-overlay: 初期化開始');
     
+    // VRモード開始時刻（null: VRモード未開始）
+    this.startTime = null;
+    
+    // 暗転範囲の時間変化ステージ定義
+    this.stages = [
+      { time: 0,  innerRadius: 0.00, outerRadius: 0.00 },  // 0～10秒: 暗転なし
+      { time: 10, innerRadius: 0.00, outerRadius: 0.00 },  // ステージ境界
+      { time: 20, innerRadius: 0.11, outerRadius: 0.15 },  // 10～20秒: 視野角20度
+      { time: 30, innerRadius: 0.17, outerRadius: 0.23 },  // 20～30秒: 視野角30度
+      { time: 40, innerRadius: 0.22, outerRadius: 0.30 },  // 30～40秒: 視野角40度
+      { time: 50, innerRadius: 0.28, outerRadius: 0.36 }   // 40～50秒: 視野角50度
+    ];
+    
     // データの取得
     const data = this.data;
     
@@ -92,11 +96,11 @@ AFRAME.registerComponent('center-dark-overlay', {
       data.segments       // 垂直方向のセグメント数
     );
     
-    // カスタムシェーダーマテリアルの作成
+    // カスタムシェーダーマテリアルの作成（初期値: 暗転なし）
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        innerRadius: { value: data.innerRadius },
-        outerRadius: { value: data.outerRadius },
+        innerRadius: { value: 0.0 },
+        outerRadius: { value: 0.0 },
         opacity: { value: data.opacity }
       },
       vertexShader: vertexShader,
@@ -118,33 +122,71 @@ AFRAME.registerComponent('center-dark-overlay', {
     this.geometry = geometry;
     this.material = material;
     
-    console.log('center-dark-overlay: シェーダー適用完了', {
-      radius: data.sphereRadius,
-      segments: data.segments,
-      innerRadius: data.innerRadius,
-      outerRadius: data.outerRadius
-    });
+    // VRモード開始イベントをリッスン
+    this.el.sceneEl.addEventListener('enter-vr', this.onEnterVR.bind(this));
+    
+    console.log('center-dark-overlay: シェーダー適用完了（動的モード）');
   },
 
   /**
-   * コンポーネントの更新（プロパティ変更時）
+   * VRモード開始時の処理
    */
-  update: function (oldData) {
-    // マテリアルが存在しない場合は何もしない（初期化前）
-    if (!this.material) return;
+  onEnterVR: function () {
+    console.log('center-dark-overlay: VRモード開始 - タイマースタート');
+    this.startTime = Date.now();
+  },
+
+  /**
+   * 線形補間（lerp）関数
+   */
+  lerp: function(a, b, t) {
+    return a + (b - a) * t;
+  },
+
+  /**
+   * 毎フレームの更新処理
+   */
+  tick: function (time, deltaTime) {
+    // VRモード未開始の場合は何もしない
+    if (this.startTime === null) return;
     
-    const data = this.data;
+    // 経過時間を秒単位で計算
+    const elapsedTime = (Date.now() - this.startTime) / 1000;
     
-    // Uniformsの更新
-    this.material.uniforms.innerRadius.value = data.innerRadius;
-    this.material.uniforms.outerRadius.value = data.outerRadius;
-    this.material.uniforms.opacity.value = data.opacity;
+    // 50秒でループ
+    const loopTime = elapsedTime % 50;
     
-    console.log('center-dark-overlay: パラメータ更新', {
-      innerRadius: data.innerRadius,
-      outerRadius: data.outerRadius,
-      opacity: data.opacity
-    });
+    // 現在のステージと次のステージを特定
+    let currentStage = null;
+    let nextStage = null;
+    
+    for (let i = 0; i < this.stages.length - 1; i++) {
+      if (loopTime >= this.stages[i].time && loopTime < this.stages[i + 1].time) {
+        currentStage = this.stages[i];
+        nextStage = this.stages[i + 1];
+        break;
+      }
+    }
+    
+    // ステージが見つからない場合（50秒ちょうど）は最初に戻る
+    if (!currentStage) {
+      currentStage = this.stages[this.stages.length - 1];
+      nextStage = this.stages[0];
+    }
+    
+    // ステージ内の進行度を計算（0.0～1.0）
+    const stageDuration = nextStage.time - currentStage.time;
+    const stageProgress = stageDuration > 0 
+      ? (loopTime - currentStage.time) / stageDuration 
+      : 0;
+    
+    // 線形補間でパラメータを計算
+    const innerRadius = this.lerp(currentStage.innerRadius, nextStage.innerRadius, stageProgress);
+    const outerRadius = this.lerp(currentStage.outerRadius, nextStage.outerRadius, stageProgress);
+    
+    // シェーダーのUniformsを更新
+    this.material.uniforms.innerRadius.value = innerRadius;
+    this.material.uniforms.outerRadius.value = outerRadius;
   },
 
   /**

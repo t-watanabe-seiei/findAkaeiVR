@@ -137,13 +137,75 @@ Route::get('/vr-center-dark', function () {
 **責務**:
 - カメラに追従する球体メッシュの生成
 - カスタムシェーダーの適用
-- 中心暗転パラメータの管理
+- 時間経過による暗転範囲の動的変化
+- VRモード開始時のタイマー開始
+- 50秒ループでの連続再生
 
-**プロパティ（固定値）**:
+#### 時間制御フロー
+```
+1. ページロード
+   ↓
+2. VRモード開始を待機（enter-vrイベントリッスン）
+   ↓
+3. VRモード開始時にタイマースタート（startTime記録）
+   ↓
+4. tick()で毎フレーム経過時間を計算
+   ↓
+5. 経過時間を50秒で割った余りを取得（ループ処理）
+   ↓
+6. 現在のステージと次のステージを特定
+   ↓
+7. ステージ間で線形補間（lerp）
+   ↓
+8. シェーダーパラメータ（innerRadius, outerRadius）を更新
+   ↓
+9. 4に戻る（無限ループ）
+```
+
+#### パラメータ補間計算
+```javascript
+// 例: 15秒経過時（10～20秒の段階）
+elapsedTime = 15
+loopTime = 15 % 50 = 15
+
+// 現在のステージを特定
+currentStage = 1 (time: 10, innerRadius: 0.00)
+nextStage = 2 (time: 20, innerRadius: 0.11)
+
+// ステージ内の進行度を計算
+progress = (15 - 10) / (20 - 10) = 0.5
+
+// 線形補間
+innerRadius = lerp(0.00, 0.11, 0.5) = 0.055
+outerRadius = lerp(0.00, 0.15, 0.5) = 0.075
+```
+
+#### ステージ定義
+```javascript
+const stages = [
+  { time: 0,  innerRadius: 0.00, outerRadius: 0.00 },  // 0～10秒: 暗転なし
+  { time: 10, innerRadius: 0.00, outerRadius: 0.00 },  // ステージ境界
+  { time: 20, innerRadius: 0.11, outerRadius: 0.15 },  // 10～20秒: 視野角20度
+  { time: 30, innerRadius: 0.17, outerRadius: 0.23 },  // 20～30秒: 視野角30度
+  { time: 40, innerRadius: 0.22, outerRadius: 0.30 },  // 30～40秒: 視野角40度
+  { time: 50, innerRadius: 0.28, outerRadius: 0.36 }   // 40～50秒: 視野角50度
+];
+```
+
+**プロパティ（動的変化）**:
 ```javascript
 {
-  innerRadius: 0.22,    // 完全に黒い中心領域（視野角約40度）
-  outerRadius: 0.30,    // 完全に透明になる外側（視野角約55度）
+  // 時間経過で動的に変化するパラメータ
+  // 各時間帯のパラメータ定義
+  stages: [
+    { time: 0,  innerRadius: 0.00, outerRadius: 0.00 },  // 暗転なし
+    { time: 10, innerRadius: 0.00, outerRadius: 0.00 },  // 暗転なし
+    { time: 20, innerRadius: 0.11, outerRadius: 0.15 },  // 視野角20度
+    { time: 30, innerRadius: 0.17, outerRadius: 0.23 },  // 視野角30度
+    { time: 40, innerRadius: 0.22, outerRadius: 0.30 },  // 視野角40度
+    { time: 50, innerRadius: 0.28, outerRadius: 0.36 }   // 視野角50度
+  ],
+  loopDuration: 50,     // 50秒でループ
   sphereRadius: 0.4,    // 球体の半径（カメラに近い位置）
   opacity: 1.0,         // 黒い部分の不透明度（完全な黒）
   segments: 48          // 球体のセグメント数
@@ -151,8 +213,11 @@ Route::get('/vr-center-dark', function () {
 ```
 
 **メソッド**:
-- `init()`: 初期化、球体ジオメトリとシェーダー作成
-- `update()`: パラメータ更新時の再描画（固定値なので実質不要）
+- `init()`: 初期化、球体ジオメトリとシェーダー作成、VRイベントリスナー登録
+- `tick(time, deltaTime)`: 毎フレーム呼ばれる更新処理、時間経過で暗転範囲を変化
+- `onEnterVR()`: VRモード開始時にタイマースタート
+- `updateParameters(elapsedTime)`: 経過時間から現在の暗転範囲を計算
+- `lerp(a, b, t)`: 線形補間関数
 
 ### 4. シェーダー設計
 
