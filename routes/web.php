@@ -63,6 +63,10 @@ Route::get('/vr-tunnel', function () {
     return view('vr-tunnel');
 })->name('vr.tunnel');
 
+Route::get('/vr-center-dark', function () {
+    return view('vr-center-dark');
+})->name('vr.center.dark');
+
 // Auth::routes(); // Commented out - laravel/ui not installed
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
