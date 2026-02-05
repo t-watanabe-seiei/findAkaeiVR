@@ -67,7 +67,8 @@
         vr-mode-ui="enabled: true"
         auto-enter-vr>
         <!-- 360度画像 -->
-        <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky>
+        <!-- <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky> -->
+        <a-sky src="{{ asset('cg/IMG_20260204_172548_00_151.jpg') }}"></a-sky>
         
         <!-- カメラリグ -->
         <a-entity id="camera-rig">
