@@ -2133,10 +2133,10 @@
         </a-marker>
         
         <!-- WhiteTiger (白いトラ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteTiger.patt') }}" id="pattern-whiteTiger-marker">
+        <a-marker type="pattern" url="{{ asset('cg/pattern-Maker_202603_panda.patt') }}" id="pattern-whiteTiger-marker">
             <a-entity
                 id="whiteTiger-model"
-                lazy-model="src: {{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}"
+                lazy-model="src: {{ asset('cg/3d_202603_panda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
