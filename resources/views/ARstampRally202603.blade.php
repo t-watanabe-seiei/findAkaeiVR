@@ -2141,7 +2141,7 @@
                 scale="1.1 1.1 1.1"
                 rotation="0 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: panda; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2154,7 +2154,7 @@
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: santa; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: kirin; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
