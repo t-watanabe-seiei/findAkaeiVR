@@ -2555,18 +2555,18 @@
             // === シークレット動物（一番下の列に表示） ===
             // burger / バーガー (シークレット)
             'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb', secret: true },
-            // santa / サンタクロース (シークレット)
-            'santa': { name: 'サンタクロース', icon: '🎅', model: '3d_pro_santa_iwamoto.glb', secret: true },
+            // kirin / きりん (シークレット)
+            'kirin': { name: 'きりん', icon: '🦒', model: '3d_202603_kirin.glb', secret: true },
             // namakemono / なまけもの (シークレット)
             'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb', secret: true },
             // t-rex (ティラノサウルス) (シークレット)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb', secret: true },
-            // whiteTiger / 白いトラ (シークレット)
-            'whiteTiger': { name: '白いトラ', icon: '🐅', model: '3d_pro_whiteTiger_isobe.glb', secret: true }
+            // panda / パンダ (シークレット)
+            'panda': { name: 'パンダ', icon: '🐼', model: '3d_202603_panda.glb', secret: true }
         };
 
         // シークレット動物のID配列
-        const SECRET_STAMPS = ['burger', 'santa', 'namakemono', 't-rex', 'whiteTiger'];
+        const SECRET_STAMPS = ['burger', 'kirin', 'namakemono', 't-rex', 'panda'];
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
@@ -5367,7 +5367,7 @@
                             activeModel = whiteTigerModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'whiteTiger';
+                            currentMarkerStampId = 'panda';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
@@ -5411,7 +5411,7 @@
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'whiteTiger') currentMarkerStampId = null;
+                            if (currentMarkerStampId === 'panda') currentMarkerStampId = null;
                             if (whiteTigerModel && whiteTigerModel.components && whiteTigerModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(whiteTigerModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
@@ -5436,7 +5436,7 @@
                             activeModel = santaModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'santa';
+                            currentMarkerStampId = 'kirin';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
@@ -5480,7 +5480,7 @@
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'santa') currentMarkerStampId = null;
+                            if (currentMarkerStampId === 'kirin') currentMarkerStampId = null;
                             if (santaModel && santaModel.components && santaModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(santaModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
