@@ -2139,7 +2139,7 @@
                 lazy-model="src: {{ asset('cg/3d_202603_panda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
+                rotation="0 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: whiteTiger; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
