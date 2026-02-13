@@ -51,7 +51,9 @@
         <!-- 360度画像 -->
         <!-- <a-sky src="/cg/R0010034.JPG" rotation="0 -90 0"></a-sky> -->
         <!-- <a-sky src="{{ asset('cg/R0010034.JPG') }}"></a-sky> -->
-        <a-sky src="{{ asset('cg/IMG_20260204_172656_00_153.jpg') }}"></a-sky>
+        <!-- <a-sky src="{{ asset('cg/IMG_20260204_172656_00_153.jpg') }}"></a-sky> -->
+        <a-sky src="{{ asset('cg/IMG_20260204_172656_00_153(1).jpg') }}"></a-sky>
+        
         
         <!-- カメラリグ -->
         <a-entity id="camera-rig">
