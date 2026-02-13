@@ -2237,9 +2237,9 @@
                 // Gキーが押された場合（グリップボタン代替）
                 if (event.code === 'KeyG') {
                     event.preventDefault();
-                    // ゲームが開始されていない場合は無視
-                    if (!window.gameStarted || window.gameEnded) {
-                        window.debugLog('Game not active, ignoring G key');
+                    // 【変更】ゲーム前でもボール切り替えを許可（ゲーム終了後のみ無視）
+                    if (window.gameEnded) {
+                        window.debugLog('Game ended, ignoring G key');
                         return;
                     }
                     // ボールタイプを切り替え
@@ -2300,13 +2300,7 @@
                     event.preventDefault();
                 }
                 
-                // ゲームが開始されていない場合は撃てない
-                if (!window.gameStarted) {
-                    window.debugLog('Game not started, ignoring shoot');
-                    return;
-                }
-                
-                // ゲーム終了後は撃てない
+                // 【変更】ゲーム前でも発射を許可（ゲーム終了後のみ無視）
                 if (window.gameEnded) {
                     window.debugLog('Game ended, ignoring shoot');
                     return;
@@ -2669,9 +2663,11 @@
                         hitFlag = true;
                         window.debugLog('Model hit!', modelEntity);
                         
-                        // 捕獲した動物の数をインクリメント
-                        window.enemiesDefeated++;
-                        window.debugLog('Animals Captured:', window.enemiesDefeated);
+                        // 【変更】ゲーム中のみ、捕獲した動物の数をインクリメント
+                        if (window.gameStarted && !window.gameEnded) {
+                            window.enemiesDefeated++;
+                            window.debugLog('Animals Captured:', window.enemiesDefeated);
+                        }
                         
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
@@ -2712,18 +2708,21 @@
                             }
                         }
                         
-                        // スコア計算（正しいボール: +10 + ボーナス, 間違ったボール: +3）
-                        const baseScore = isCorrectBall ? 10 : 3;
-                        const scoreChange = baseScore + comboBonus;
-                        window.totalScore += scoreChange;
-                        
-                        // スコアが0未満にならないように制限
-                        if (window.totalScore < 0) window.totalScore = 0;
-                        
-                        // 最大コンボ数を更新
-                        if (window.comboCount > window.maxComboCount) {
-                            window.maxComboCount = window.comboCount;
-                            window.debugLog('New Max Combo:', window.maxComboCount);
+                        // 【変更】ゲーム中のみ、スコア加算とコンボ管理
+                        let scoreChange = 0;
+                        if (window.gameStarted && !window.gameEnded) {
+                            const baseScore = isCorrectBall ? 10 : 3;
+                            scoreChange = baseScore + comboBonus;
+                            window.totalScore += scoreChange;
+                            
+                            // スコアが0未満にならないように制限
+                            if (window.totalScore < 0) window.totalScore = 0;
+                            
+                            // 最大コンボ数を更新
+                            if (window.comboCount > window.maxComboCount) {
+                                window.maxComboCount = window.comboCount;
+                                window.debugLog('New Max Combo:', window.maxComboCount);
+                            }
                         }
                         
                         window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (+3)', 
@@ -2759,10 +2758,12 @@
                             window.debugLog('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
-                        // リアルタイムスコア表示を更新
-                        const currentScoreText = document.getElementById('currentScore');
-                        if (currentScoreText) {
-                            currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                        // 【変更】ゲーム中のみ、リアルタイムスコア表示を更新
+                        if (window.gameStarted && !window.gameEnded) {
+                            const currentScoreText = document.getElementById('currentScore');
+                            if (currentScoreText) {
+                                currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                            }
                         }
                         
                         // 距離に応じたスコアテキストのサイズを決定（3段階）
@@ -3264,9 +3265,9 @@
             onButtonDown: function(e) {
                 window.debugLog("A/B/Grip button pressed on", this.el.id);
                 
-                // ゲームが開始されていない場合は無視
-                if (!window.gameStarted || window.gameEnded) {
-                    window.debugLog('Game not active, ignoring button');
+                // 【変更】ゲーム前でもボール切り替えを許可（ゲーム終了後のみ無視）
+                if (window.gameEnded) {
+                    window.debugLog('Game ended, ignoring button');
                     return;
                 }
                 
@@ -3362,10 +3363,10 @@
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm07.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm05.mp3') }} preload="auto"></audio>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010186.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010191.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 

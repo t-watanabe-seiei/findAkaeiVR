@@ -373,3 +373,367 @@ Task 14, 15 (オプション改善)
 ---
 
 **タスク化フェーズが完了しました。実行フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化: VRシューティングゲーム - ゲーム前の弾丸切り替え・発射機能
+
+## 作成日時
+2026年2月13日
+
+## 前提
+`.claude_workflow/design.md`の「VRシューティングゲーム - ゲーム前の弾丸切り替え・発射機能」セクションを読み込み済み
+
+## タスク一覧
+
+### Phase 1: 核心機能の実装
+
+#### Task 1: vr-controllerコンポーネントの条件変更
+**目的**: ゲーム前でもA/B/グリップボタンでボール切り替えを可能にする
+**ファイル**: `resources/views/shooting3Danimal.blade.php`
+**対象行**: 3266-3269行（onButtonDownメソッド内）
+**作業内容**:
+```javascript
+// 【変更前】
+if (!window.gameStarted || window.gameEnded) {
+    window.debugLog('Game not active, ignoring button');
+    return;
+}
+
+// 【変更後】
+if (window.gameEnded) {
+    window.debugLog('Game ended, ignoring button');
+    return;
+}
+```
+- `if (!window.gameStarted || window.gameEnded)`を`if (window.gameEnded)`に変更
+- ゲーム前（`!window.gameStarted`）でも切り替えを許可
+- ゲーム終了後は無視（リザルト画面表示中の誤操作防止）
+**依存関係**: なし
+**所要時間**: 3分
+**完了条件**: 
+- コードが変更される
+- デバッグログが適切に出力される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2: handle-shootコンポーネントの条件変更
+**目的**: ゲーム前でもトリガーでボール発射を可能にする
+**ファイル**: `resources/views/shooting3Danimal.blade.php`
+**対象行**: 2299-2307行（shootメソッド内）
+**作業内容**:
+```javascript
+// 【変更前】
+if (!window.gameStarted) {
+    window.debugLog('Game not started, ignoring shoot');
+    return;
+}
+
+if (window.gameEnded) {
+    window.debugLog('Game ended, ignoring shoot');
+    return;
+}
+
+// 【変更後】
+if (window.gameEnded) {
+    window.debugLog('Game ended, ignoring shoot');
+    return;
+}
+```
+- `if (!window.gameStarted)`のブロックを削除
+- ゲーム前（`!window.gameStarted`）でも発射を許可
+- ゲーム終了後は無視（既存の条件を維持）
+**依存関係**: なし
+**所要時間**: 3分
+**完了条件**:
+- コードが変更される
+- ゲーム前にトリガーを引くとボールが発射される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3: hit-boxコンポーネントのスコア加算条件追加
+**目的**: スコア加算とenemies defeatedカウントをゲーム中のみに制限
+**ファイル**: `resources/views/shooting3Danimal.blade.php`
+**対象行**: 2667-2730行（ball-hitイベントリスナー内）
+**作業内容**:
+**変更箇所1: enemies defeatedカウント（2671-2673行）**:
+```javascript
+// 【変更前】
+window.enemiesDefeated++;
+window.debugLog('Animals Captured:', window.enemiesDefeated);
+
+// 【変更後】
+if (window.gameStarted && !window.gameEnded) {
+    window.enemiesDefeated++;
+    window.debugLog('Animals Captured:', window.enemiesDefeated);
+}
+```
+
+**変更箇所2: スコア加算処理（2693-2725行）**:
+```javascript
+// 【変更前（一部抜粋）】
+const baseScore = isCorrectBall ? 10 : 3;
+const scoreChange = baseScore + comboBonus;
+window.totalScore += scoreChange;
+
+if (window.totalScore < 0) window.totalScore = 0;
+
+if (window.comboCount > window.maxComboCount) {
+    window.maxComboCount = window.comboCount;
+    window.debugLog('New Max Combo:', window.maxComboCount);
+}
+
+// 【変更後】
+let scoreChange = 0;
+if (window.gameStarted && !window.gameEnded) {
+    const baseScore = isCorrectBall ? 10 : 3;
+    scoreChange = baseScore + comboBonus;
+    window.totalScore += scoreChange;
+    
+    if (window.totalScore < 0) window.totalScore = 0;
+    
+    if (window.comboCount > window.maxComboCount) {
+        window.maxComboCount = window.comboCount;
+        window.debugLog('New Max Combo:', window.maxComboCount);
+    }
+}
+```
+- enemies defeatedのインクリメントを条件分岐内に移動
+- スコア加算処理全体を`if (window.gameStarted && !window.gameEnded)`で囲む
+- ゲーム前のヒットではスコアを加算しない
+- ヒット音とエフェクトは実行（練習時のフィードバック用）
+**依存関係**: Task 2（発射可能にする必要がある）
+**所要時間**: 10分
+**完了条件**:
+- コードが正しく変更される
+- ゲーム前のヒットではスコアが加算されない
+- ゲーム中のヒットではスコアが加算される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4: スコア表示更新の条件追加
+**目的**: リアルタイムスコア表示の更新をゲーム中のみに制限
+**ファイル**: `resources/views/shooting3Danimal.blade.php`
+**対象行**: 2757行付近（hit-box内のリアルタイムスコア表示更新）
+**作業内容**:
+```javascript
+// 【変更前】
+const currentScoreText = document.getElementById('currentScore');
+if (currentScoreText) {
+    currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+}
+
+// 【変更後】
+if (window.gameStarted && !window.gameEnded) {
+    const currentScoreText = document.getElementById('currentScore');
+    if (currentScoreText) {
+        currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+    }
+}
+```
+- スコア表示更新処理を`if (window.gameStarted && !window.gameEnded)`で囲む
+- ゲーム開始前は`SCORE: 0.0`のまま維持
+**依存関係**: Task 3（スコア加算条件追加）
+**所要時間**: 3分
+**完了条件**:
+- コードが変更される
+- ゲーム前のスコア表示が変わらない
+- ゲーム中のスコア表示が正しく更新される
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: テストと検証
+
+#### Task 5: 単体テスト実施
+**目的**: 実装した機能が正しく動作することを確認
+**テスト項目**:
+
+**テスト5-1: ゲーム前のボール切り替え**
+- アクセス方法: `/shooting3Danimal`にアクセス
+- 操作: メニュー表示中にグリップ/A/Bボタンを押す（または、Gキーを押す）
+- 期待結果:
+  - ✅ プレビューモデルがリンゴ⇔キャベツに切り替わる
+  - ✅ デバッグログに"Switched to ball: ..."が表示される
+  - ✅ メニュー選択が影響を受けない
+- ステータス: ⬜ 未実施
+
+**テスト5-2: ゲーム前のボール発射**
+- アクセス方法: `/shooting3Danimal`にアクセス
+- 操作: メニュー表示中にトリガーを引く（または、スペースキーを押す）
+- 期待結果:
+  - ✅ ボールが発射される（物理演算で飛んでいく）
+  - ✅ 3個まで同時発射可能（4個目は無視される）
+  - ✅ スコアは加算されない（`SCORE: 0.0`のまま）
+  - ✅ デバッグログに"Shoot function called"が表示される
+  - ✅ メニュー選択が影響を受けない
+- ステータス: ⬜ 未実施
+
+**テスト5-3: メニュー選択の動作確認**
+- アクセス方法: `/shooting3Danimal`にアクセス
+- 操作: ボール発射・切り替えを行った後、Level1 Easyボタンをクリック
+- 期待結果:
+  - ✅ ゲームが正常に開始される
+  - ✅ メニューが非表示になる
+  - ✅ タイマーとスコア表示が表示される
+  - ✅ 的（動物）が出現する
+- ステータス: ⬜ 未実施
+
+**テスト5-4: ゲーム中の動作確認**
+- アクセス方法: `/shooting3Danimal`にアクセスしてゲーム開始
+- 操作: ゲーム中にボール切り替え・発射を行う
+- 期待結果:
+  - ✅ ボール切り替えが機能する
+  - ✅ ボール発射が機能する
+  - ✅ 的に当たるとスコアが加算される
+  - ✅ 正しいボールで当てると+10pt、間違ったボールで+3pt
+  - ✅ コンボ機能が動作する
+  - ✅ 従来通りの動作
+- ステータス: ⬜ 未実施
+
+**テスト5-5: ゲーム終了後の動作確認**
+- アクセス方法: `/shooting3Danimal`にアクセスしてゲーム終了まで待つ
+- 操作: ゲーム終了（タイムアップ）後、グリップ/A/Bボタンを押し、トリガーを引く
+- 期待結果:
+  - ✅ ボタンが無視される（リザルト画面表示中）
+  - ✅ トリガーが無視される
+  - ✅ デバッグログに"Game ended, ignoring ..."が表示される
+  - ✅ リザルト画面が正常に表示される
+- ステータス: ⬜ 未実施
+
+**依存関係**: Task 1-4（全ての実装完了）
+**所要時間**: 20分
+**完了条件**: すべてのテスト項目が✅になる
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6: デバッグモードでの動作確認
+**目的**: DEBUG_MODE=trueでログ出力を確認
+**ファイル**: `resources/views/shooting3Danimal.blade.php`
+**対象行**: 206行（`window.DEBUG_MODE = false;`）
+**作業内容**:
+- 一時的に`window.DEBUG_MODE = true;`に変更
+- ブラウザのコンソールでログを確認
+- 各操作時のログが正しく出力されるか確認
+- テスト後、`window.DEBUG_MODE = false;`に戻す
+**依存関係**: Task 5（単体テスト）
+**所要時間**: 10分
+**完了条件**:
+- ログが適切に出力される
+- デバッグモードをfalseに戻す
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: 最終確認とドキュメント更新
+
+#### Task 7: VRデバイス（Pico4）での動作確認
+**目的**: 実機での動作テスト
+**テスト内容**:
+- Pico4でページにアクセス（`/shooting3Danimal`）
+- ゲーム前にグリップボタンでボール切り替え
+- ゲーム前にトリガーでボール発射
+- ゲームを開始し、プレイ
+- 期待結果:
+  - ✅ 全ての機能が正常に動作
+  - ✅ フレームレートが安定（60fps以上）
+  - ✅ コントローラーのボタンが正しく反応
+  - ✅ プレビュー表示が正しく切り替わる
+**依存関係**: Task 5（単体テスト完了）
+**所要時間**: 15分（デバイス接続とセットアップ含む）
+**完了条件**: Pico4で正常動作
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 8: デスクトップブラウザでの動作確認
+**目的**: PC環境での動作テスト
+**テスト内容**:
+- Chrome/Edgeでページにアクセス（`/shooting3Danimal`）
+- ゲーム前にGキーでボール切り替え
+- ゲーム前にスペースキーでボール発射
+- ゲームを開始し、プレイ
+- 期待結果:
+  - ✅ 全ての機能が正常に動作
+  - ✅ キーボード操作が正しく反応
+  - ✅ マウスでメニュー選択ができる
+**依存関係**: Task 5（単体テスト完了）
+**所要時間**: 10分
+**完了条件**: Chrome/Edgeで正常動作
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 9: README.md更新
+**目的**: 新機能の説明を追加
+**ファイル**: `README.md`
+**作業内容**:
+- VRシューティングゲームのセクションに新機能を追記
+- **ゲーム前の操作**セクションを追加:
+  - ボール切り替え（グリップ/A/B/Gキー）
+  - ボール発射（トリガー/スペースキー）
+  - 練習可能であることを明記
+- **注意事項**:
+  - ゲーム前のヒットではスコアが加算されない
+  - 的（動物）はゲーム開始後に表示される
+- コードブロックやスクリーンショットを追加（オプション）
+**依存関係**: Task 7, 8（動作確認完了）
+**所要時間**: 10分
+**完了条件**: 
+- README.mdに新機能の説明が追加される
+- 説明が明確で分かりやすい
+**ステータス**: ⬜ 未着手
+
+---
+
+## タスク実行順序
+
+```
+Task 1 (vr-controller修正) ──┐
+                              ├→ Task 5 (単体テスト) → Task 6 (デバッグ確認)
+Task 2 (handle-shoot修正) ────┤                              ↓
+                              │                        Task 7 (Pico4確認)
+Task 3 (hit-box修正) ─────────┤                              ↓
+                              │                        Task 8 (デスクトップ確認)
+Task 4 (スコア表示修正) ──────┘                              ↓
+                                                        Task 9 (README更新)
+```
+
+## 進捗管理
+
+### 現在の状況
+- **完了**: 0/9 タスク
+- **進行中**: 0タスク
+- **未着手**: 9タスク
+
+### 重要なマイルストーン
+1. **実装完了**: Task 1-4まで完了（コード変更完了）
+2. **テスト完了**: Task 5-6まで完了（動作検証完了）
+3. **最終完成**: Task 9まで完了（ドキュメント更新完了）
+
+## リスクとブロッカー
+
+### 潜在的な問題
+1. **メニュー選択との競合**: Task 2実装時
+   - 対策: 既存のイベント伝播停止処理により対策済み（設計で確認済み）
+2. **スコア加算の漏れ**: Task 3実装時
+   - 対策: 全てのスコア加算箇所を確認（2718行付近、2757行付近）
+3. **デバッグログの見落とし**: Task 6実施時
+   - 対策: DEBUG_MODE=trueで全ログを確認
+
+### 前提条件の確認
+- [x] `resources/views/shooting3Danimal.blade.php`が存在する
+- [x] ボール切り替え機能が既に存在する（ゲーム中のみ）
+- [x] トリガー発射機能が既に存在する（ゲーム中のみ）
+- [x] スコア加算処理が既に存在する
+
+## 次のステップ
+実行フェーズへの移行
+
+---
+
+**VRシューティングゲームのタスク化フェーズが完了しました。実行フェーズに進んでよろしいですか？**

@@ -451,3 +451,447 @@ material.depthTest = false;      // 深度テストをスキップ
 ---
 
 **設計フェーズが完了しました。タスク化フェーズに進んでよろしいですか？**
+
+---
+
+# 設計: VRシューティングゲーム - ゲーム前の弾丸切り替え・発射機能
+
+## 作成日時
+2026年2月13日
+
+## 前提
+`.claude_workflow/requirements.md`の「VRシューティングゲーム - ゲーム前の弾丸切り替え・発射機能」セクションを読み込み済み
+
+## コード構造の現状分析
+
+### ファイル概要
+- **ファイルパス**: `resources/views/shooting3Danimal.blade.php`
+- **行数**: 3730行
+- **構成**: Bladeテンプレート内にHTML、JavaScript、A-Frame コンポーネントが混在
+
+### 主要コンポーネント
+
+#### 1. グローバル変数（215-232行）
+```javascript
+window.gameStarted = false;      // ゲーム開始フラグ
+window.gameEnded = false;        // ゲーム終了フラグ
+window.ballTypes = [             // ボールのGLBモデルパス
+    'cg/poke_ball_07apple.glb',
+    'cg/poke_ball_09cabbage.glb'
+];
+window.currentBallIndex = 0;     // 現在選択されているボールのインデックス
+```
+
+#### 2. start-menuコンポーネント（440-1800行）
+- **責務**: スタートメニューの表示・非表示、ゲーム開始処理
+- **startGameメソッド（707行）**: 
+  - `window.gameStarted = true`を設定（799行）
+  - BGM再生、タイマー開始、モデルのスポーン
+- **メニュー選択**: Level1 EasyとLevel2 Hardボタンの`click`イベント（512-532行）
+
+#### 3. handle-shootコンポーネント（2150-2600行）
+- **責務**: トリガーボタンでのボール発射処理
+- **shootメソッド（2298行～）**:
+  - **問題箇所（2299-2302行）**:
+    ```javascript
+    if (!window.gameStarted) {
+        window.debugLog('Game not started, ignoring shoot');
+        return;
+    }
+    ```
+  - ゲーム前の発射を防止している
+  - 発射後、ボールの物理演算と衝突判定を処理
+- **onKeyDownメソッド（2232行～）**: 
+  - スペースキーでトリガー代替
+  - Gキーでボール切り替え（ゲーム中のみ: 2240-2260行）
+
+#### 4. vr-controllerコンポーネント（3244-3337行）
+- **責務**: VRコントローラーのボタン処理、ボールプレビュー表示
+- **onButtonDownメソッド（3261-3277行）**:
+  - **問題箇所（3266-3269行）**:
+    ```javascript
+    if (!window.gameStarted || window.gameEnded) {
+        window.debugLog('Game not active, ignoring button');
+        return;
+    }
+    ```
+  - ゲーム前のボタン切り替えを防止している
+  - A/B/グリップボタンでボール切り替え
+  - プレビューモデルを更新
+- **createBallPreviewメソッド（3280-3316行）**: コントローラー先端にプレビュー表示
+- **updatePreviewメソッド（3318-3324行）**: プレビューモデルの切り替え
+
+#### 5. hit-boxコンポーネント（2650-3000行）
+- **責務**: ボールと動物（的）の衝突判定、スコア計算
+- **ball-hitイベントリスナー（2667行～）**:
+  - ボールマッチング判定（正しいボールか？）
+  - **問題箇所（2718行）**:
+    ```javascript
+    window.totalScore += scoreChange;  // ゲーム前チェックなし
+    ```
+  - スコア加算処理にゲーム状態チェックがない
+  - ヒット音再生、パーティクルエフェクト、スコア表示更新
+
+### レイアウト（HTMLパート: 3340-3730行）
+- スタートメニュー（3370-3480行）: Level1/Level2ボタン
+- タイマーとスコア表示（3483-3510行）
+- リザルト画面（3528-3630行）
+- モデルエンティティ（3633-3715行）: 6体の動物モデル
+- カメラとコントローラー（3368-3369行）
+
+## 設計方針
+
+### 基本原則
+1. **最小限の変更**: CLAUDE.mdの指示に従い、既存コードの変更を最小限に抑える
+2. **既存動作の維持**: ゲーム中の動作は一切変更しない
+3. **条件分岐で制御**: 新機能はゲーム状態（`window.gameStarted`）で条件分岐
+
+### 変更箇所の特定
+
+#### 変更1: vr-controllerコンポーネント（3261-3277行）
+**現在**:
+```javascript
+onButtonDown: function(e) {
+    window.debugLog("A/B/Grip button pressed on", this.el.id);
+    
+    // ゲームが開始されていない場合は無視
+    if (!window.gameStarted || window.gameEnded) {
+        window.debugLog('Game not active, ignoring button');
+        return;
+    }
+    
+    // ボールタイプを切り替え（0 <-> 1）
+    window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
+    const newBall = window.ballTypes[window.currentBallIndex];
+    window.debugLog("Switched to ball:", newBall);
+    
+    // プレビューを更新
+    this.updatePreview();
+},
+```
+
+**変更後**:
+```javascript
+onButtonDown: function(e) {
+    window.debugLog("A/B/Grip button pressed on", this.el.id);
+    
+    // 【変更】ゲーム前でもボール切り替えを許可
+    // ゲーム終了後のみ無視
+    if (window.gameEnded) {
+        window.debugLog('Game ended, ignoring button');
+        return;
+    }
+    
+    // ボールタイプを切り替え（0 <-> 1）
+    window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
+    const newBall = window.ballTypes[window.currentBallIndex];
+    window.debugLog("Switched to ball:", newBall);
+    
+    // プレビューを更新
+    this.updatePreview();
+},
+```
+
+**変更理由**:
+- `if (!window.gameStarted || window.gameEnded)`を`if (window.gameEnded)`に変更
+- ゲーム前（`!window.gameStarted`）でも切り替えを許可
+- ゲーム終了後は無視（リザルト画面表示中の誤操作防止）
+
+#### 変更2: handle-shootコンポーネント（2298-2305行）
+**現在**:
+```javascript
+shoot: function (event) {
+    // イベントの伝播を完全に停止（メニューへの影響を防ぐ）
+    if (event && event.stopPropagation) {
+        event.stopPropagation();
+    }
+    if (event && event.preventDefault) {
+        event.preventDefault();
+    }
+    
+    // ゲームが開始されていない場合は撃てない
+    if (!window.gameStarted) {
+        window.debugLog('Game not started, ignoring shoot');
+        return;
+    }
+    
+    // ゲーム終了後は撃てない
+    if (window.gameEnded) {
+        window.debugLog('Game ended, ignoring shoot');
+        return;
+    }
+    
+    // ... 以下、ボール発射処理
+}
+```
+
+**変更後**:
+```javascript
+shoot: function (event) {
+    // イベントの伝播を完全に停止（メニューへの影響を防ぐ）
+    if (event && event.stopPropagation) {
+        event.stopPropagation();
+    }
+    if (event && event.preventDefault) {
+        event.preventDefault();
+    }
+    
+    // 【変更】ゲーム前でも発射を許可
+    // ゲーム終了後のみ無視
+    if (window.gameEnded) {
+        window.debugLog('Game ended, ignoring shoot');
+        return;
+    }
+    
+    // ... 以下、ボール発射処理（変更なし）
+}
+```
+
+**変更理由**:
+- `if (!window.gameStarted)`の条件削除
+- ゲーム前（`!window.gameStarted`）でも発射を許可
+- ゲーム終了後は無視（既存の条件を維持）
+
+#### 変更3: hit-boxコンポーネント（2667-2730行）
+**現在**:
+```javascript
+this.el.addEventListener('ball-hit', (event) => {
+    if(!hitFlag) {
+        hitFlag = true;
+        window.debugLog('Model hit!', modelEntity);
+        
+        // 捕獲した動物の数をインクリメント
+        window.enemiesDefeated++;
+        window.debugLog('Animals Captured:', window.enemiesDefeated);
+        
+        // ... 中略 ...
+        
+        // スコア計算（正しいボール: +10 + ボーナス, 間違ったボール: +3）
+        const baseScore = isCorrectBall ? 10 : 3;
+        const scoreChange = baseScore + comboBonus;
+        window.totalScore += scoreChange;  // 【問題】ゲーム前でもスコア加算される
+        
+        // ... 以下、スコア表示の更新など
+```
+
+**変更後**:
+```javascript
+this.el.addEventListener('ball-hit', (event) => {
+    if(!hitFlag) {
+        hitFlag = true;
+        window.debugLog('Model hit!', modelEntity);
+        
+        // 【追加】ゲーム中のみ、捕獲数をカウント
+        if (window.gameStarted && !window.gameEnded) {
+            window.enemiesDefeated++;
+            window.debugLog('Animals Captured:', window.enemiesDefeated);
+        }
+        
+        // ... 中略 ...
+        
+        // 【追加】ゲーム中のみ、スコア加算とコンボ管理
+        let scoreChange = 0;
+        if (window.gameStarted && !window.gameEnded) {
+            const baseScore = isCorrectBall ? 10 : 3;
+            scoreChange = baseScore + comboBonus;
+            window.totalScore += scoreChange;
+            
+            // スコアが0未満にならないように制限
+            if (window.totalScore < 0) window.totalScore = 0;
+            
+            // 最大コンボ数を更新
+            if (window.comboCount > window.maxComboCount) {
+                window.maxComboCount = window.comboCount;
+                window.debugLog('New Max Combo:', window.maxComboCount);
+            }
+        }
+        
+        window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (+3)', 
+                       '| Thrown:', thrownBallIndex, '| Required:', requiredBallIndex,
+                       '| Combo:', window.comboCount, '| Total Score:', window.totalScore);
+        
+        // ... 以下、ヒット音再生とエフェクト（ゲーム前でも実行）
+```
+
+**変更理由**:
+- スコア加算処理に`if (window.gameStarted && !window.gameEnded)`を追加
+- ゲーム前のヒットではスコアを加算しない
+- ヒット音とエフェクトは実行（練習時のフィードバック用）
+
+#### 変更4: handle-shootコンポーネント - リアルタイムスコア表示更新（2757行付近）
+**現在**:
+```javascript
+// リアルタイムスコア表示を更新
+const currentScoreText = document.getElementById('currentScore');
+if (currentScoreText) {
+    currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+}
+```
+
+**変更後**:
+```javascript
+// 【追加】ゲーム中のみ、リアルタイムスコア表示を更新
+if (window.gameStarted && !window.gameEnded) {
+    const currentScoreText = document.getElementById('currentScore');
+    if (currentScoreText) {
+        currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+    }
+}
+```
+
+**変更理由**:
+- スコア表示がゲーム前に変化しないようにする
+- ゲーム開始前は`SCORE: 0.0`のまま維持
+
+## リスク分析と対策
+
+### リスク1: メニュー選択との競合
+**問題**: ゲーム前のトリガー発射が、メニュー選択と競合する可能性
+
+**分析**:
+- メニューボタンは`.clickable`クラスを持つ（3416, 3436行）
+- handle-shootの`shoot`メソッドは`event.stopPropagation()`と`event.preventDefault()`を実行（2301-2305行）
+- メニュークリック判定は`start-menu`コンポーネントの`handleClick`（621行～）で処理
+- `handleClick`は`if (window.gameStarted && !window.gameEnded)`でゲーム中をブロック（626-629行）
+
+**結論**: 
+- イベント伝播の停止により、メニュー選択は影響を受けない
+- メニュー表示中（`visible: true`）はメニューが優先される
+
+**追加対策（不要）**:
+- 既存の実装で十分に対策されている
+- メニュー非表示後はraycasterから`.clickable`が除外される（769-776行）
+
+### リスク2: 的（動物）の表示
+**問題**: ゲーム前に的が表示されていない可能性
+
+**分析**:
+- モデルは初期状態で`visible="false"`（3633-3715行）
+- ゲーム開始時に`startGame`メソッド内で`visible: true`に設定（874行）
+- ゲーム前は的が非表示のため、ボールを当てることができない
+
+**結論**:
+- ゲーム前に的が表示されていないため、発射練習は「空撃ち」のみ
+- 要件には「的への当たり判定は行わない」と明記されているため、問題なし
+
+**追加対策（不要）**:
+- 的を常時表示する必要はない（要件外）
+- ゲーム前の発射は、トリガー操作の練習とボール切り替えの確認が目的
+
+### リスク3: パフォーマンス
+**問題**: ゲーム前のボール発射が多すぎると、メモリリークや描画負荷の問題
+
+**分析**:
+- ボール同時発射制限: 既存の`window.activeBalls.length >= 3`チェック（2312-2315行）
+- ボール削除処理: 地面に落ちたら自動削除（2121-2175行）
+- THREE.jsオブジェクトのメモリ解放: `dispose()`で適切に破棄（2130-2144, 2155-2168行）
+
+**結論**:
+- 既存の制限と削除処理により、パフォーマンス問題は発生しない
+- ゲーム前でも同じ制限が適用される
+
+**追加対策（不要）**:
+- 既存の実装で十分
+
+## テスト計画
+
+### 単体テスト（手動）
+
+#### テスト1: ゲーム前のボール切り替え
+1. ページロード直後（メニュー表示中）
+2. グリップ/A/Bボタンを押す
+3. **期待結果**: 
+   - プレビューモデルがリンゴ⇔キャベツに切り替わる
+   - デバッグログに"Switched to ball: ..."が表示される
+
+#### テスト2: ゲーム前のボール発射
+1. ページロード直後（メニュー表示中）
+2. トリガーを引く
+3. **期待結果**:
+   - ボールが発射される（物理演算で飛んでいく）
+   - 3個まで同時発射可能
+   - スコアは加算されない（`SCORE: 0.0`のまま）
+   - デバッグログに"Shoot function called"が表示される
+
+#### テスト3: メニュー選択の動作確認
+1. ページロード直後（メニュー表示中）
+2. ボール発射・切り替えを行う
+3. Level1 Easyボタンをクリック
+4. **期待結果**:
+   - ゲームが正常に開始される
+   - メニューが非表示になる
+   - タイマーとスコア表示が表示される
+
+#### テスト4: ゲーム中の動作確認
+1. ゲーム開始後
+2. ボール切り替え・発射を行う
+3. **期待結果**:
+   - ボール切り替えが機能する
+   - ボール発射が機能する
+   - 的に当たるとスコアが加算される
+   - 従来通りの動作
+
+#### テスト5: ゲーム終了後の動作確認
+1. ゲーム終了（タイムアップ）
+2. グリップ/A/Bボタンを押す
+3. トリガーを引く
+4. **期待結果**:
+   - ボタンが無視される（リザルト画面表示中）
+   - トリガーが無視される
+   - デバッグログに"Game ended, ignoring..."が表示される
+
+### 統合テスト
+
+#### テスト6: VRデバイス（Pico4）での動作確認
+1. Pico4でページにアクセス
+2. ゲーム前にグリップボタンとトリガーをテスト
+3. ゲームを開始し、プレイ
+4. **期待結果**:
+   - 全ての機能が正常に動作
+   - フレームレートが安定（60fps以上）
+
+#### テスト7: デスクトップブラウザでの動作確認
+1. Chrome/Edgeでページにアクセス
+2. ゲーム前にGキーとスペースキーをテスト
+3. ゲームを開始し、プレイ
+4. **期待結果**:
+   - 全ての機能が正常に動作
+   - メニュー選択がマウスでできる
+
+## 実装優先順位
+
+### Phase 1: 核心機能の実装
+1. **変更1**: vr-controllerのonButtonDown修正（3266-3269行）
+2. **変更2**: handle-shootのshoot修正（2299-2302行）
+3. **変更3**: hit-boxのball-hitイベント修正（2670-2730行）
+4. **変更4**: スコア表示更新の条件追加（2757行付近）
+
+### Phase 2: テストと検証
+1. 単体テスト実施（テスト1～5）
+2. デバッグログの確認
+3. 問題があれば修正
+
+### Phase 3: 最終確認
+1. 統合テスト実施（テスト6～7）
+2. README.md更新（機能説明の追加）
+
+## 予想される問題と解決策
+
+### 問題1: ゲーム前にヒット音が鳴らない
+**原因**: `ball-hit`イベントが発火しない（的が非表示のため）
+**解決策**: 問題なし。ゲーム前は的が非表示なので当たらない（要件通り）
+
+### 問題2: プレビュー表示が更新されない
+**原因**: `updatePreview`メソッドの呼び出し漏れ
+**解決策**: コード確認済み。`updatePreview()`は正しく呼び出される（3276行）
+
+### 問題3: メニュー選択ができなくなる
+**原因**: イベント伝播の問題
+**解決策**: `event.stopPropagation()`と`event.preventDefault()`が既に実装済み（2301-2305行）
+
+## 次のステップ
+タスク化フェーズへの移行
+
+---
+
+**VRシューティングゲームの設計フェーズが完了しました。タスク化フェーズに進んでよろしいですか？**
