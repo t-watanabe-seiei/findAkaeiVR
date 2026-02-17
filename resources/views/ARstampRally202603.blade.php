@@ -1442,8 +1442,39 @@
         .guide-steps .step .step-text strong { display:block; margin-bottom:6px; font-size:15px; }
 
         .guide-close-row { text-align: right; margin-top: 12px; }
-        #close-guide { padding: 8px 12px; border-radius: 8px; background:#333; color:#fff; border:none; cursor:pointer; }
+        #close-guide { padding: 8px 12px; border-radius: 8px; background:#333; color:#fff; border:none; cursor:pointer; margin-bottom: 5px; margin-right: 5px; }
         #close-guide:active { transform: scale(0.98); }
+        
+        /* 右上の×ボタン */
+        .close-guide-x {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            line-height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s ease;
+        }
+        .close-guide-x:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .close-guide-x:active {
+            transform: scale(0.95);
+        }
+        
+        #guide-content {
+            position: relative;
+        }
         /* guide notes (privacy / cookies / photo) */
         .guide-notes { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; color: #333; font-size: 13px; }
         .guide-note { display:flex; gap: 12px; align-items:flex-start; margin-bottom: 14px; padding: 12px 14px; background: linear-gradient(135deg, #fffdf0 0%, #fff3d6 100%); border: 1px solid #ffd66b; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); color: #2b2b2b; font-weight: 500; }
@@ -1907,6 +1938,7 @@
     <!-- 操作説明モーダル -->
     <div id="guide-modal" aria-hidden="true">
         <div id="guide-content">
+            <button id="close-guide-top" class="close-guide-x" type="button" aria-label="Close">×</button>
             <div id="stamp-rally-note" class="guide-note" aria-hidden="false" style="margin-bottom:10px;">
                 <!-- Localized notice about the stamp rally will be injected here by JS -->
             </div>
@@ -3556,8 +3588,8 @@
                                 // Stamp rally notice (Japanese) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>このスタンプラリーについて</strong><br>イオンタウン防府にてマーカーを掲示しています。スタンプ帳下部にマーカー設置場所のヒントも掲載しておりますので、ぜひイオンタウン防府にて動物たちをGETしてみてください。</p>`;
-                                } catch (e) { console.warn('Failed to set JP stamp-rally-note', e); }
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>このスタンプラリーについて</strong></p>`;
+                               } catch (e) { console.warn('Failed to set JP stamp-rally-note', e); }
 
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
                                 if (stepFind) stepFind.innerHTML = `
@@ -3589,7 +3621,7 @@
                                     <div class="step-text">
                                         <strong>景品交換</strong>
                                         <p>会場で10種類以上のマーカーを集めると景品と交換できます。</p>
-                                        <p>場所：2階 エスカレーター横の特設エリア。</p>
+                                        <p>場所：2階 ヴィレッジヴァンガード横の特設エリア。</p>
                                         <p>日時：2026年3月20日 — 14:00〜16:00</p>
                                     </div>`;
 
@@ -3602,21 +3634,18 @@
                                         生徒たちはプロトタイピングやPDCAサイクルを通じて作品を改善し、論理的思考力や問題解決能力を身に着けていきます。</p>
                                     </div>`;
 
-                                // Populate JP hint PDF in the hints section
+                                // Populate JP hint information in the hints section
                                 try {
                                     const stepHints = document.getElementById('guide-step-hints');
                                     if (stepHints) {
                                         stepHints.innerHTML = `
                                             <div class="step-text">
-                                                <strong>マーカー設置ヒント（PDF）</strong>
-                                                <p>館内のヒントをまとめたPDFです。開いて確認するかダウンロードしてご利用ください。</p>
-                                            </div>
-                                            <div class="hint-pdf">
-                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">開く</a></div>
+                                                <strong>マーカー設置場所のヒント</strong>
+                                                <p>景品交換所にて、ヒントマップを配布予定です。</p>
                                             </div>
                                         `;
                                     }
-                                } catch (e) { console.warn('Failed to populate JP hint PDF', e); }
+                                } catch (e) { console.warn('Failed to populate JP hint info', e); }
 
                                 if (closeGuideBtn) closeGuideBtn.textContent = '閉じる';
 
@@ -3629,7 +3658,7 @@
                                 // Stamp rally notice (English) - show above the guide title
                                 try {
                                     const noteEl = document.getElementById('stamp-rally-note');
-                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this stamp rally</strong><br>Markers are displayed at AEON TOWN Hofu. Hints for marker locations are provided at the bottom of the stamp book, so please visit AEON TOWN Hofu and try to collect the animals.</p>`;
+                                    if (noteEl) noteEl.innerHTML = `<p style="margin:0;"><strong>About this stamp rally</strong></p>`;
                                 } catch (e) { console.warn('Failed to set EN stamp-rally-note', e); }
                                 // populate sections in the requested order: Find -> Zoom -> Photo -> Throw -> Prize -> Others
                                 if (stepFind) stepFind.innerHTML = `
@@ -3661,7 +3690,7 @@
                                     <div class="step-text">
                                         <strong>Prize exchange</strong>
                                         <p>Collect 10 or more markers in the venue to exchange for a prize.</p>
-                                        <p>Where: Special area next to the escalator on the 2nd floor.</p>
+                                        <p>Where: Special area next to Village Vanguard on the 2nd floor.</p>
                                         <p>When: Mar 20, 2026 — 14:00 to 16:00</p>
                                     </div>`;
 
@@ -3674,21 +3703,18 @@
                                         <p><strong>Learning & prototyping</strong> — Students receive feedback and improve their works through prototyping and the PDCA cycle. This helps them develop logical thinking and problem-solving skills.</p>
                                     </div>`;
 
-                                // Populate EN hint PDF in the hints section
+                                // Populate EN hint information in the hints section
                                 try {
                                     const stepHints = document.getElementById('guide-step-hints');
                                     if (stepHints) {
                                         stepHints.innerHTML = `
                                             <div class="step-text">
-                                                <strong>Marker location hints (PDF)</strong>
-                                                <p>This PDF summarizes hints for marker locations. Open it or download to use offline.</p>
-                                            </div>
-                                            <div class="hint-pdf">
-                                                <div class="pdf-actions"><a class="btn btn-open" href="${HINT_PDF_PATH}" target="_blank" rel="noopener" style="background:#ff8c00;color:#fff;">Open PDF</a></div>
+                                                <strong>Marker location hints</strong>
+                                                <p>Hint maps will be available at the prize exchange area.</p>
                                             </div>
                                         `;
                                     }
-                                } catch (e) { console.warn('Failed to populate EN hint PDF', e); }
+                                } catch (e) { console.warn('Failed to populate EN hint info', e); }
 
                                 if (closeGuideBtn) closeGuideBtn.textContent = 'Close';
 
@@ -5743,6 +5769,23 @@
             const closeGuideButton = document.getElementById('close-guide');
             if (closeGuideButton) {
                 closeGuideButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = document.getElementById('guide-modal');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                    
+                    // カメラを再開（フリーズ防止）
+                    setTimeout(() => {
+                        resumeCamera();
+                    }, 100);
+                });
+            }
+
+            // 右上の×ボタン
+            const closeGuideTopButton = document.getElementById('close-guide-top');
+            if (closeGuideTopButton) {
+                closeGuideTopButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     const modal = document.getElementById('guide-modal');
