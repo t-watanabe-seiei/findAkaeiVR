@@ -895,3 +895,150 @@ if (window.gameStarted && !window.gameEnded) {
 ---
 
 **VRシューティングゲームの設計フェーズが完了しました。タスク化フェーズに進んでよろしいですか？**
+---
+
+# 設計: ARスタンプラリー202603版のlocalStorage分離
+
+## 作成日時
+2026年2月17日
+
+## 前提
+`.claude_workflow/requirements.md`の「ARスタンプラリー202603版のlocalStorage分離」を読み込み、要件を確認済み
+
+## 問題分析
+
+### 根本原因
+ARstampRally202603.blade.phpがARstampRally.blade.phpからコピーされた際、以下のストレージキーが全く同じ値のまま使用されている：
+
+**LocalStorageキー（5種類）:**
+1. `'ar-stamp-rally'` - スタンプデータ（捕獲した動物の記録）
+2. `'ar-captured-animals'` - 捕獲済みフラグ（3D表示制御用）
+3. `'ar-prize-exchanged'` - 景品交換済みフラグ
+4. `'ar-prize-code'` - 景品コード
+5. `'ar-user-id'` - ユーザー識別子
+
+**Cookie名（1種類）:**
+6. `'ar_user_id'` - ユーザーID（Cookie版）
+
+**IndexedDB名（1種類）:**
+7. `'ARStampRallyDB'` - ユーザーIDの永続化用データベース
+
+### 影響範囲
+ARstampRally202603.blade.php（6908行）内の以下の箇所：
+- localStorage操作: 15箇所
+- Cookie操作: 2箇所（getUserId関数内）
+- IndexedDB操作: 1箇所（データベース名定義）
+- 関数定義: 6個（getCollectedStamps, saveCollectedStamps, getCapturedAnimals, saveCapturedAnimals, markAnimalCaptured, isAnimalCaptured）
+
+## 解決アプローチ
+
+### 基本方針
+**全てのストレージキーに `-202603` サフィックスを追加**することで完全にデータを分離する。
+
+### 変更対象の詳細
+
+#### 1. LocalStorageキーの変更
+| 変更前 | 変更後 | 使用箇所 |
+|--------|--------|----------|
+| `'ar-stamp-rally'` | `'ar-stamp-rally-202603'` | 行180, 2798, 2804, 2811, 6048 |
+| `'ar-captured-animals'` | `'ar-captured-animals-202603'` | 行2816, 2822, 2828, 6049 |
+| `'ar-prize-exchanged'` | `'ar-prize-exchanged-202603'` | 行5863 |
+| `'ar-prize-code'` | `'ar-prize-code-202603'` | 行5864 |
+| `'ar-user-id'` | `'ar-user-id-202603'` | 行2676 (storageKey変数) |
+
+#### 2. Cookie名の変更
+| 変更前 | 変更後 | 使用箇所 |
+|--------|--------|----------|
+| `'ar_user_id'` | `'ar_user_id_202603'` | 行2677 (cookieName変数) |
+
+#### 3. IndexedDB名の変更
+| 変更前 | 変更後 | 使用箇所 |
+|--------|--------|----------|
+| `'ARStampRallyDB'` | `'ARStampRallyDB202603'` | 行2587 (dbName変数) |
+
+### 実装戦略
+
+#### フェーズ1: 定数・変数定義の変更（優先度：高）
+getUserId関数内の定数を変更：
+- 行2676: `const storageKey = 'ar-user-id-202603';`
+- 行2677: `const cookieName = 'ar_user_id_202603';`
+
+UserIdDBオブジェクトの定義を変更：
+- 行2587: `dbName: 'ARStampRallyDB202603',`
+
+#### フェーズ2: LocalStorage操作の一括変更（優先度：中）
+文字列リテラルを直接変更：
+- `'ar-stamp-rally'` → `'ar-stamp-rally-202603'` (5箇所)
+- `'ar-captured-animals'` → `'ar-captured-animals-202603'` (4箇所)
+- `'ar-prize-exchanged'` → `'ar-prize-exchanged-202603'` (1箇所)
+- `'ar-prize-code'` → `'ar-prize-code-202603'` (1箇所)
+
+### リスク分析
+
+#### リスク1: 見落としによる不完全な修正
+**対策**: 
+- grep検索で全てのlocalStorage/Cookie/IndexedDB操作を網羅的に確認
+- 変更前後の行数をトラッキング
+- テスト実施（手動確認）
+
+#### リスク2: 既存データの喪失
+**影響**: なし
+**理由**: 新しいキーを使用するため、既存の /stamp のデータには一切影響しない
+
+#### リスク3: 関数の依存関係
+**対策**: 
+- 関数定義（getCollectedStamps等）は変更不要
+- 内部で使用するキー文字列のみを変更
+
+## 技術的詳細
+
+### 変更対象の関数
+以下の関数は内部でlocalStorageキーを使用しているが、関数自体は変更不要：
+1. `getUserId()` - storageKey変数を使用
+2. `getCollectedStamps()` - 'ar-stamp-rally'を直接使用
+3. `saveCollectedStamps()` - 'ar-stamp-rally'を直接使用
+4. `getCapturedAnimals()` - 'ar-captured-animals'を直接使用
+5. `saveCapturedAnimals()` - 'ar-captured-animals'を直接使用
+6. `markAnimalCaptured()` - getCapturedAnimals/saveCapturedAnimalsを呼び出し
+7. `isAnimalCaptured()` - getCapturedAnimalsを呼び出し
+
+### 変更不要な領域
+- APIエンドポイント（/api/marker-scans等）
+- サーバー側のセッション管理
+- データベーステーブル構造
+- ルーティング設定（既に/stamp202603で設定済み）
+
+## テスト計画
+
+### 確認項目
+1. ✅ /stamp202603 で新規に動物を捕獲
+2. ✅ /stamp202603 のスタンプ帳に捕獲した動物が表示される
+3. ✅ /stamp のスタンプ帳には /stamp202603 で捕獲した動物が表示されない
+4. ✅ /stamp で以前捕獲した動物が /stamp202603 に表示されない
+5. ✅ 景品交換が /stamp202603 で独立して機能する
+6. ✅ IndexedDB、Cookie、LocalStorageすべてで独立したデータが保存される
+
+### テスト手順
+1. ブラウザの開発者ツールでApplicationタブを開く
+2. LocalStorage、Cookie、IndexedDBを確認
+3. /stamp202603 にアクセスして動物を捕獲
+4. ストレージに `-202603` サフィックス付きのキーが作成されることを確認
+5. /stamp にアクセスして、データが混在していないことを確認
+
+## 実装の優先順位
+
+### 高優先度（即座に実装）
+1. getUserId関数内の定数変更（storageKey, cookieName）
+2. UserIdDB.dbName の変更
+
+### 中優先度（一括変更）
+3. 'ar-stamp-rally' の全箇所変更
+4. 'ar-captured-animals' の全箇所変更
+5. 'ar-prize-exchanged' と 'ar-prize-code' の変更
+
+## 次のステップ
+タスク化フェーズへの移行（tasks.mdへの追記）
+
+---
+
+**ARスタンプラリー202603版のlocalStorage分離の設計フェーズが完了しました。タスク化フェーズに進んでよろしいですか？**

@@ -737,3 +737,171 @@ Task 4 (スコア表示修正) ──────┘                            
 ---
 
 **VRシューティングゲームのタスク化フェーズが完了しました。実行フェーズに進んでよろしいですか？**
+---
+
+# タスク化: ARスタンプラリー202603版のlocalStorage分離
+
+## 作成日時
+2026年2月17日
+
+## 前提
+`.claude_workflow/design.md`の「ARスタンプラリー202603版のlocalStorage分離」セクションを読み込み、設計内容を確認済み
+
+## 変更箇所の完全リスト
+
+### ファイル: resources/views/ARstampRally202603.blade.php (6908行)
+
+#### 変更対象（合計14箇所）
+
+**変数定義（3箇所）:**
+1. 行2587: `dbName: 'ARStampRallyDB'` → `dbName: 'ARStampRallyDB202603'`
+2. 行2676: `const storageKey = 'ar-user-id'` → `const storageKey = 'ar-user-id-202603'`
+3. 行2677: `const cookieName = 'ar_user_id'` → `const cookieName = 'ar_user_id_202603'`
+
+**'ar-stamp-rally' キー（5箇所）:**
+4. 行180: `localStorage.removeItem('ar-stamp-rally')` → `localStorage.removeItem('ar-stamp-rally-202603')`
+5. 行2798: `localStorage.getItem('ar-stamp-rally')` → `localStorage.getItem('ar-stamp-rally-202603')`
+6. 行2804: `localStorage.removeItem('ar-stamp-rally')` → `localStorage.removeItem('ar-stamp-rally-202603')`
+7. 行2811: `localStorage.setItem('ar-stamp-rally', ...)` → `localStorage.setItem('ar-stamp-rally-202603', ...)`
+8. 行6048: `localStorage.removeItem('ar-stamp-rally')` → `localStorage.removeItem('ar-stamp-rally-202603')`
+
+**'ar-captured-animals' キー（4箇所）:**
+9. 行2816: `localStorage.getItem('ar-captured-animals')` → `localStorage.getItem('ar-captured-animals-202603')`
+10. 行2822: `localStorage.removeItem('ar-captured-animals')` → `localStorage.removeItem('ar-captured-animals-202603')`
+11. 行2828: `localStorage.setItem('ar-captured-animals', ...)` → `localStorage.setItem('ar-captured-animals-202603', ...)`
+12. 行6049: `localStorage.removeItem('ar-captured-animals')` → `localStorage.removeItem('ar-captured-animals-202603')`
+
+**'ar-prize-*' キー（2箇所）:**
+13. 行5863: `localStorage.setItem('ar-prize-exchanged', 'true')` → `localStorage.setItem('ar-prize-exchanged-202603', 'true')`
+14. 行5864: `localStorage.setItem('ar-prize-code', data.prizeCode)` → `localStorage.setItem('ar-prize-code-202603', data.prizeCode)`
+
+**自動的に対応される箇所（storageKey変数を使用）:**
+- 行2680: `localStorage.getItem(storageKey)` ← storageKey変数が変われば自動対応
+- 行2687: `localStorage.setItem(storageKey, userId)` ← 同上
+- 行2696: `localStorage.setItem(storageKey, userId)` ← 同上
+- 行2708: `localStorage.setItem(storageKey, userId)` ← 同上
+
+## タスク一覧
+
+### ⬜ Task 1: 変数定義の変更（最優先）
+**目的**: IndexedDB名、LocalStorageキー名、Cookie名の変数定義を変更
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業内容**:
+1. 行2587: `dbName: 'ARStampRallyDB'` → `dbName: 'ARStampRallyDB202603'`
+2. 行2676: `const storageKey = 'ar-user-id'` → `const storageKey = 'ar-user-id-202603'`
+3. 行2677: `const cookieName = 'ar_user_id'` → `const cookieName = 'ar_user_id_202603'`
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 3箇所の変数定義が正しく変更されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### ⬜ Task 2: 'ar-stamp-rally' キーの一括変更
+**目的**: スタンプデータ用LocalStorageキーをすべて変更
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業内容**:
+1. 行180: `'ar-stamp-rally'` → `'ar-stamp-rally-202603'`
+2. 行2798: `'ar-stamp-rally'` → `'ar-stamp-rally-202603'`
+3. 行2804: `'ar-stamp-rally'` → `'ar-stamp-rally-202603'`
+4. 行2811: `'ar-stamp-rally'` → `'ar-stamp-rally-202603'`
+5. 行6048: `'ar-stamp-rally'` → `'ar-stamp-rally-202603'`
+**依存関係**: なし（Task 1と並行可能）
+**所要時間**: 5分
+**完了条件**: 5箇所すべてで `'ar-stamp-rally-202603'` が使用されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### ⬜ Task 3: 'ar-captured-animals' キーの一括変更
+**目的**: 捕獲済み動物データ用LocalStorageキーをすべて変更
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業内容**:
+1. 行2816: `'ar-captured-animals'` → `'ar-captured-animals-202603'`
+2. 行2822: `'ar-captured-animals'` → `'ar-captured-animals-202603'`
+3. 行2828: `'ar-captured-animals'` → `'ar-captured-animals-202603'`
+4. 行6049: `'ar-captured-animals'` → `'ar-captured-animals-202603'`
+**依存関係**: なし（Task 1, 2と並行可能）
+**所要時間**: 5分
+**完了条件**: 4箇所すべてで `'ar-captured-animals-202603'` が使用されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### ⬜ Task 4: 景品関連キーの変更
+**目的**: 景品交換用LocalStorageキーを変更
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業内容**:
+1. 行5863: `'ar-prize-exchanged'` → `'ar-prize-exchanged-202603'`
+2. 行5864: `'ar-prize-code'` → `'ar-prize-code-202603'`
+**依存関係**: なし（Task 1-3と並行可能）
+**所要時間**: 3分
+**完了条件**: 2箇所すべてで `-202603` サフィックスが追加されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### ⬜ Task 5: 動作確認テスト（必須）
+**目的**: データ分離が正しく機能することを確認
+**作業内容**:
+1. ブラウザの開発者ツールを開く（F12）
+2. Application タブを選択
+3. LocalStorage、Cookie、IndexedDBをクリア
+4. /stamp202603 にアクセス
+5. ARマーカーをスキャンして動物を捕獲
+6. LocalStorageに `ar-stamp-rally-202603` キーが作成されることを確認
+7. LocalStorageに `ar-captured-animals-202603` キーが作成されることを確認
+8. IndexedDBに `ARStampRallyDB202603` が作成されることを確認
+9. Cookieに `ar_user_id_202603` が作成されることを確認
+10. /stamp にアクセス
+11. スタンプ帳が空であることを確認（/stamp202603のデータが表示されない）
+12. 逆に /stamp で動物を捕獲
+13. /stamp202603 のスタンプ帳に反映されないことを確認
+**依存関係**: Task 1-4 すべて完了後
+**所要時間**: 15分
+**完了条件**: 
+- ✅ /stamp と /stamp202603 のデータが完全に分離されている
+- ✅ それぞれのページで独立したストレージキーが使用されている
+- ✅ 既存の /stamp の動作に影響がない
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] 変更前に該当行の周辺コードを確認（3-5行前後）
+- [ ] 文字列リテラルの完全一致を確認（スペース、引用符含む）
+- [ ] 変更後にPHPの構文エラーがないか確認（php -l コマンド）
+- [ ] 変更箇所の行番号と内容を記録
+
+### 実装順序
+1. **Task 1（変数定義）を最初に実施** - 最も影響が大きい
+2. **Task 2-4を一度に実施** - multi_replace_string_in_fileで効率化
+3. **Task 5（テスト）で検証** - 問題があれば即座に修正
+
+### リスク管理
+- **バックアップ**: Git commitまたはファイルコピーを事前に実施（任意）
+- ** rollback**: 問題があれば元のARstampRally.blade.phpから再コピー可能
+- **影響範囲**: ARstampRally202603.blade.phpのみ（元のファイルは変更しない）
+
+## 成功基準（再確認）
+
+### 必須条件
+- [x] ARstampRally.blade.php（元ファイル）は一切変更されていない
+- [ ] ARstampRally202603.blade.phpの全14箇所が正しく変更されている
+- [ ] /stamp202603 で動物を捕獲したデータが /stamp に表示されない
+- [ ] /stamp で捕獲したデータが /stamp202603 に表示されない
+- [ ] 各ページで独立したストレージが使用されている
+
+### 検証方法
+1. ブラウザの開発者ツールでストレージを目視確認
+2. 両ページを交互にアクセスしてデータの混在がないことを確認
+3. 景品交換機能が/stamp202603で独立して動作することを確認
+
+## 次のステップ
+実行フェーズへの移行
+
+---
+
+**ARスタンプラリー202603版のlocalStorage分離のタスク化フェーズが完了しました。実行フェーズに進んでよろしいですか？**

@@ -7,6 +7,49 @@
 
 # 変更点
 
+### ARスタンプラリー202603版 - LocalStorage分離実装 20260217
+**ARstampRally.blade.phpをコピーして作成したARstampRally202603.blade.phpにおいて、LocalStorageキーの重複問題を解決:**
+
+#### 実装内容
+1. **問題の特定と解決**
+   - `/stamp` と `/stamp202603` が同じLocalStorageキーを使用していたため、データが混在
+   - 全てのストレージキーに `-202603` サフィックスを追加することで完全にデータを分離
+
+2. **変更箇所（14箇所）**
+   - **IndexedDB名**: `'ARStampRallyDB'` → `'ARStampRallyDB202603'`
+   - **LocalStorageキー**: 
+     - `'ar-user-id'` → `'ar-user-id-202603'`
+     - `'ar-stamp-rally'` → `'ar-stamp-rally-202603'` (5箇所)
+     - `'ar-captured-animals'` → `'ar-captured-animals-202603'` (4箇所)
+     - `'ar-prize-exchanged'` → `'ar-prize-exchanged-202603'`
+     - `'ar-prize-code'` → `'ar-prize-code-202603'`
+   - **Cookie名**: `'ar_user_id'` → `'ar_user_id_202603'`
+
+3. **技術的詳細**
+   - ファイル: `resources/views/ARstampRally202603.blade.php` (6908行)
+   - 変更対象: 変数定義3箇所 + localStorage文字列リテラル11箇所
+   - 元ファイル (`ARstampRally.blade.php`) は一切変更なし
+   - PHP構文エラーなし（`php -l` で検証済み）
+
+4. **データ分離の効果**
+   - `/stamp` と `/stamp202603` で完全に独立したスタンプラリー進行状況を保持
+   - それぞれのページで捕獲した動物が他方に表示されない
+   - 景品交換機能も独立して動作
+   - ユーザーIDもページごとに別管理
+
+#### 検証方法（Task 5）
+1. ブラウザ開発者ツール（F12）→ Application タブ
+2. LocalStorage、Cookie、IndexedDB を確認
+3. `/stamp202603` で動物を捕獲 → `-202603` サフィックス付きキーが作成される
+4. `/stamp` にアクセス → スタンプ帳が空（データ混在なし）
+
+#### 設計ドキュメント
+- 要件定義: `.claude_workflow/requirements.md` (ARスタンプラリー202603版セクション)
+- 設計: `.claude_workflow/design.md` (ARスタンプラリー202603版セクション)
+- タスク化: `.claude_workflow/tasks.md` (ARスタンプラリー202603版セクション)
+
+---
+
 ### WebVR中心暗転体験アプリ - 動的版実装 20260203
 **A-Frameを使用したVR中心暗転（逆トンネルビジョン）シミュレーション - 時間経過で変化:**
 

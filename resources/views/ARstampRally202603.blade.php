@@ -177,7 +177,7 @@
                         console.error('collectStamp failed for', stampId, err);
                         try {
                             // 可能であればローカルストレージを初期化して再試行
-                            localStorage.removeItem('ar-stamp-rally');
+                            localStorage.removeItem('ar-stamp-rally-202603');
                         } catch (e) { /* ignore */ }
                         return false;
                     }
@@ -2584,7 +2584,7 @@
         
         // IndexedDB操作のヘルパー関数
         const UserIdDB = {
-            dbName: 'ARStampRallyDB',
+            dbName: 'ARStampRallyDB202603',
             storeName: 'userIdStore',
             version: 1,
             
@@ -2673,8 +2673,8 @@
         
         // ユニークなユーザーIDを取得または生成（localStorage + IndexedDB + Cookie）
         async function getUserId() {
-            const storageKey = 'ar-user-id';
-            const cookieName = 'ar_user_id';
+            const storageKey = 'ar-user-id-202603';
+            const cookieName = 'ar_user_id_202603';
             
             // 1. localStorageから取得を試みる
             let userId = localStorage.getItem(storageKey);
@@ -2795,37 +2795,37 @@
         
         // LocalStorageからスタンプデータを取得（パースエラーを保護）
         function getCollectedStamps() {
-            const stored = localStorage.getItem('ar-stamp-rally');
+            const stored = localStorage.getItem('ar-stamp-rally-202603');
             if (!stored) return {};
             try {
                 return JSON.parse(stored);
             } catch (err) {
                 console.warn('getCollectedStamps: JSON parse error, resetting storage', err);
-                localStorage.removeItem('ar-stamp-rally');
+                localStorage.removeItem('ar-stamp-rally-202603');
                 return {};
             }
         }
         
         // LocalStorageにスタンプデータを保存
         function saveCollectedStamps(stamps) {
-            localStorage.setItem('ar-stamp-rally', JSON.stringify(stamps));
+            localStorage.setItem('ar-stamp-rally-202603', JSON.stringify(stamps));
         }
         
         // 捕獲済み動物の管理（モデル非表示用）
         function getCapturedAnimals() {
-            const stored = localStorage.getItem('ar-captured-animals');
+            const stored = localStorage.getItem('ar-captured-animals-202603');
             if (!stored) return {};
             try {
                 return JSON.parse(stored);
             } catch (err) {
                 console.warn('getCapturedAnimals: JSON parse error, resetting storage', err);
-                localStorage.removeItem('ar-captured-animals');
+                localStorage.removeItem('ar-captured-animals-202603');
                 return {};
             }
         }
         
         function saveCapturedAnimals(captured) {
-            localStorage.setItem('ar-captured-animals', JSON.stringify(captured));
+            localStorage.setItem('ar-captured-animals-202603', JSON.stringify(captured));
         }
         
         function markAnimalCaptured(stampId) {
@@ -5860,8 +5860,8 @@
                     
                     if (data.success) {
                         // LocalStorageに交換済みフラグを保存
-                        localStorage.setItem('ar-prize-exchanged', 'true');
-                        localStorage.setItem('ar-prize-code', data.prizeCode);
+                        localStorage.setItem('ar-prize-exchanged-202603', 'true');
+                        localStorage.setItem('ar-prize-code-202603', data.prizeCode);
                         
                         // ボタンを更新
                         updatePrizeButton();
@@ -6045,8 +6045,8 @@
                 modal.style.display = 'none';
                 
                 // LocalStorageをクリア（スタンプ + 捕獲状態）
-                localStorage.removeItem('ar-stamp-rally');
-                localStorage.removeItem('ar-captured-animals');
+                localStorage.removeItem('ar-stamp-rally-202603');
+                localStorage.removeItem('ar-captured-animals-202603');
                 
                 // 全てのモデルの状態をリセット
                 const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];

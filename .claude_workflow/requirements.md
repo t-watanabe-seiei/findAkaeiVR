@@ -282,3 +282,57 @@ VRシューティングゲーム（shooting3Danimal.blade.php）において、�
 1. 設計フェーズへの移行（design.mdへの追記）
 2. タスク化フェーズ（tasks.mdへの追記）
 3. 実装フェーズ
+---
+
+# 要件定義: ARスタンプラリー202603版のlocalStorage分離
+
+## 作成日時
+2026年2月17日
+
+## プロジェクト概要
+ARstampRally.blade.phpをコピーして作成されたARstampRally202603.blade.phpにおいて、LocalStorageキーが重複しているため、/stamp と /stamp202603 の間でデータが共有されてしまう問題を解決する。
+
+## 問題の現状
+### 発生している問題
+- ARstampRally202603.blade.php（/stamp202603）を開くと、元のARstampRally.blade.php（/stamp）で捕まえた動物がスタンプ帳に表示される
+- 両ページで同じLocalStorageキーを使用しているため、データが混在している
+
+### 共有されているLocalStorageキー
+以下のキーが両ファイルで共通して使用されている：
+1. `'ar-stamp-rally'` - スタンプデータの保存
+2. `'ar-captured-animals'` - 捕獲済み動物の記録
+3. `'ar-prize-exchanged'` - 景品交換済みフラグ
+4. `'ar-prize-code'` - 景品交換コード
+5. `'ar-user-id'` - ユーザーIDの保存（storageKey変数として使用）
+
+## 目的
+- /stamp と /stamp202603 のデータを完全に分離する
+- それぞれ独立したスタンプラリーとして機能させる
+- 既存の /stamp 側の動作には一切影響を与えない
+
+## 成功基準
+1. /stamp202603 で新しい動物を捕獲したとき、/stamp のスタンプ帳には反映されない
+2. /stamp で捕獲した動物が /stamp202603 のスタンプ帳に表示されない
+3. それぞれのページで独立したスタンプラリー進行状況が保持される
+4. 既存の /stamp の動作が変更されていない（ARstampRally.blade.phpは変更しない）
+
+## 技術的制約
+- ARstampRally.blade.php（元のファイル）は一切変更しない
+- ARstampRally202603.blade.phpのみを修正する
+- 6908行の大規模ファイルのため、全てのlocalStorageキー使用箇所を漏れなく修正する必要がある
+- 既存の機能やロジックを損なわない
+
+## スコープ
+### 対象範囲
+- ARstampRally202603.blade.phpファイル内の全てのLocalStorageキーの変更
+- 関連する全ての関数やイベントハンドラーの確認と修正
+
+### 対象外
+- ARstampRally.blade.phpの変更
+- routes/web.phpの変更（既に適切にルーティング設定済み）
+- データベースやAPIエンドポイントの変更
+
+## 次のステップ
+1. 設計フェーズ（design.mdへの追記）
+2. タスク化フェーズ（tasks.mdへの追記）
+3. 実装フェーズ
