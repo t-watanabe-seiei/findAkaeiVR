@@ -2539,3 +2539,764 @@ new Chart(ctx, {
 1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
 2. 実装フェーズ - コードの変更と追加
 3. マイグレーション実行とテスト
+
+---
+
+# 設計7: ARstampRally202603 - dashboard202603のUI改善と日別個別ユーザー数統計追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md`の要件定義7を読み込み、要件を確認済み
+
+## 設計概要
+
+本設計では、admin/dashboard202603の管理画面において、以下の2つの改善を実施する：
+1. **ページネーションのUI修正**: SVGアイコンのサイズ崩れを修正
+2. **日別個別ユーザー数統計の追加**: マーカー検出とボールヒット別の日別ユニークユーザー数をグラフ化
+
+## アーキテクチャ概要
+
+### システム構成
+```
+┌─────────────────────────────────────────────────────────┐
+│  Laravel Routing (/admin/dashboard202603)               │
+└──────────────┬──────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────┐
+│  AdminController::dashboard202603()                     │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  既存データ取得                                   │   │
+│  │  - 動物別統計 ($animalStats)                     │   │
+│  │  - 最近のスキャン履歴 ($recentScans)             │   │
+│  │  - 日別スキャン統計 ($dailyStats)                │   │
+│  ├─────────────────────────────────────────────────┤   │
+│  │  【新規】日別個別ユーザー数統計                   │   │
+│  │  - $dailyUniqueUsers                            │   │
+│  │    {                                            │   │
+│  │      'date' => 'YYYY-MM-DD',                    │   │
+│  │      'capture_type' => 'marker_scan|ball_hit',  │   │
+│  │      'unique_users' => COUNT(DISTINCT)          │   │
+│  │    }                                            │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────┐
+│  Blade View (dashboard202603.blade.php)                 │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  既存セクション                                   │   │
+│  │  - 動物別統計テーブル                             │   │
+│  │  - 最近のスキャン履歴【CSS修正対象】              │   │
+│  │  - 日別スキャン統計グラフ                         │   │
+│  ├─────────────────────────────────────────────────┤   │
+│  │  【新規】日別個別ユーザー数グラフ                 │   │
+│  │  - Chart.js Line Chart                          │   │
+│  │  - 2つのライン（マーカー検出/ボールヒット）       │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────┐
+│  Chart.js (CDN)                                         │
+│  - Line Chart描画                                        │
+│  - インタラクティブ機能（ホバー、凡例）                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 詳細設計
+
+### 1. ページネーションUI修正
+
+#### 問題分析
+現状のCSS:
+```css
+.pagination a,
+.pagination span {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #667eea;
+    transition: all 0.3s;
+}
+```
+
+**問題点**:
+- LaravelのデフォルトページネーションはSVGアイコンを使用
+- SVGのサイズが親要素に依存し、制御されていない
+- 結果として、アイコンが想定以上に大きく表示される
+
+#### 解決策
+CSSに以下のルールを追加:
+```css
+/* ページネーションのSVGアイコンサイズ制御 */
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+/* ページネーションアイテムの中央揃え */
+.pagination a,
+.pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #667eea;
+    transition: all 0.3s;
+}
+
+/* Laravelページネーションの構造に対応 */
+.pagination nav {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+```
+
+#### 変更箇所
+- **ファイル**: `resources/views/admin/dashboard202603.blade.php`
+- **場所**: `<style>`タグ内（114行目付近の`.pagination`セクション）
+- **変更内容**: 既存のCSSルールを拡張
+
+#### Before/After比較
+
+**Before**:
+```css
+.pagination a,
+.pagination span {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #667eea;
+    transition: all 0.3s;
+}
+```
+
+**After**:
+```css
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+.pagination a,
+.pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #667eea;
+    transition: all 0.3s;
+}
+
+.pagination nav {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+```
+
+### 2. 日別個別ユーザー数統計の追加
+
+#### データフロー設計
+
+```
+┌─────────────────────────────────────┐
+│  marker_scans テーブル               │
+│  ┌─────────────────────────────┐   │
+│  │ scanned_at (datetime)       │   │
+│  │ fingerprint (string)        │   │
+│  │ capture_type (string)       │   │
+│  └─────────────────────────────┘   │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  SQL クエリ                          │
+│  SELECT DATE(scanned_at) as date,   │
+│         capture_type,               │
+│         COUNT(DISTINCT fingerprint) │
+│         as unique_users             │
+│  FROM marker_scans                  │
+│  WHERE scanned_at >= NOW() - 30 DAY │
+│  GROUP BY date, capture_type        │
+│  ORDER BY date DESC                 │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  結果をグループ化                     │
+│  $dailyUniqueUsers = [              │
+│    'date' => [                      │
+│      { capture_type, unique_users } │
+│    ]                                │
+│  ]                                  │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Blade View に渡す                   │
+│  compact('dailyUniqueUsers')        │
+└─────────────────────────────────────┘
+```
+
+#### AdminController の変更
+
+**ファイル**: `app/Http/Controllers/AdminController.php`  
+**メソッド**: `dashboard202603()`  
+**変更箇所**: 既存のreturn文の前に追加
+
+**追加コード**:
+```php
+// 【新規】日別個別ユーザー数統計（タイプ別、直近30日間）
+$dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+    ->selectRaw('capture_type')
+    ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+    ->where('scanned_at', '>=', now()->subDays(30))
+    ->groupBy('date', 'capture_type')
+    ->orderBy('date', 'desc')
+    ->get();
+
+// 日付でグループ化
+$dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+```
+
+**変更後のreturn文**:
+```php
+return view('admin.dashboard202603', compact(
+    'animalStats',
+    'recentScans',
+    'dailyStats',
+    'dailyUniqueUsers'  // 【追加】
+));
+```
+
+#### Before/After比較
+
+**Before (既存のコード)**:
+```php
+// 日別統計（タイプ別、直近30日間）
+$dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+    ->selectRaw('capture_type')
+    ->selectRaw('COUNT(*) as count')
+    ->where('scanned_at', '>=', now()->subDays(30))
+    ->groupBy('date', 'capture_type')
+    ->orderBy('date', 'desc')
+    ->get();
+
+// 日付でグループ化
+$dailyStats = $dailyStatsRaw->groupBy('date');
+
+return view('admin.dashboard202603', compact(
+    'animalStats',
+    'recentScans',
+    'dailyStats'
+));
+```
+
+**After（追加後）**:
+```php
+// 日別統計（タイプ別、直近30日間）
+$dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+    ->selectRaw('capture_type')
+    ->selectRaw('COUNT(*) as count')
+    ->where('scanned_at', '>=', now()->subDays(30))
+    ->groupBy('date', 'capture_type')
+    ->orderBy('date', 'desc')
+    ->get();
+
+// 日付でグループ化
+$dailyStats = $dailyStatsRaw->groupBy('date');
+
+// 【新規】日別個別ユーザー数統計（タイプ別、直近30日間）
+$dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+    ->selectRaw('capture_type')
+    ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+    ->where('scanned_at', '>=', now()->subDays(30))
+    ->groupBy('date', 'capture_type')
+    ->orderBy('date', 'desc')
+    ->get();
+
+// 日付でグループ化
+$dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+
+return view('admin.dashboard202603', compact(
+    'animalStats',
+    'recentScans',
+    'dailyStats',
+    'dailyUniqueUsers'  // 【追加】
+));
+```
+
+### 3. Bladeテンプレートの変更
+
+#### 新規セクションの追加
+
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`  
+**挿入場所**: 「日別スキャン統計」のグラフセクションの後（閉じタグ`</div>`の後）
+
+**追加HTML**:
+```html
+<div class="card">
+    <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+    <div class="chart-container">
+        <canvas id="uniqueUsersChart"></canvas>
+    </div>
+</div>
+```
+
+#### JavaScriptグラフコードの追加
+
+**挿入場所**: 既存の`dailyChart`のChart.js設定の後、`setTimeout`の前
+
+**追加JavaScript**:
+```javascript
+// 【新規】日別個別ユーザー数グラフ（折れ線グラフ）
+const uniqueUsersData = @json($dailyUniqueUsers);
+const uniqueDates = Object.keys(uniqueUsersData).reverse();
+
+const markerScanUniqueData = uniqueDates.map(date => {
+    const dayData = uniqueUsersData[date].find(d => d.capture_type === 'marker_scan');
+    return dayData ? dayData.unique_users : 0;
+});
+
+const ballHitUniqueData = uniqueDates.map(date => {
+    const dayData = uniqueUsersData[date].find(d => d.capture_type === 'ball_hit');
+    return dayData ? dayData.unique_users : 0;
+});
+
+const ctxUnique = document.getElementById('uniqueUsersChart').getContext('2d');
+new Chart(ctxUnique, {
+    type: 'line',
+    data: {
+        labels: uniqueDates.map(date => {
+            const d = new Date(date);
+            return (d.getMonth() + 1) + '/' + d.getDate();
+        }),
+        datasets: [
+            {
+                label: 'マーカー検出（個別ユーザー）',
+                data: markerScanUniqueData,
+                borderColor: 'rgba(52, 152, 219, 1)',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            },
+            {
+                label: 'ボールヒット（個別ユーザー）',
+                data: ballHitUniqueData,
+                borderColor: 'rgba(231, 76, 60, 1)',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: '日付'
+                }
+            },
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: '個別ユーザー数'
+                },
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: '日別個別ユーザー数推移'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y + '人';
+                    }
+                }
+            }
+        }
+    }
+});
+```
+
+#### Before/After比較（Blade全体構造）
+
+**Before**:
+```html
+<div class="card">
+    <h2>📅 日別スキャン統計（直近30日間）</h2>
+    <div class="chart-container">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // 日別統計グラフ（積み上げ棒グラフ）
+    const dailyData = @json($dailyStats);
+    // ... existing chart code ...
+
+    // 30秒ごとに自動更新
+    setTimeout(() => {
+        location.reload();
+    }, 30000);
+</script>
+```
+
+**After**:
+```html
+<div class="card">
+    <h2>📅 日別スキャン統計（直近30日間）</h2>
+    <div class="chart-container">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<!-- 【新規】日別個別ユーザー数セクション -->
+<div class="card">
+    <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+    <div class="chart-container">
+        <canvas id="uniqueUsersChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // 日別統計グラフ（積み上げ棒グラフ）
+    const dailyData = @json($dailyStats);
+    // ... existing chart code ...
+
+    // 【新規】日別個別ユーザー数グラフ（折れ線グラフ）
+    const uniqueUsersData = @json($dailyUniqueUsers);
+    // ... new chart code ...
+
+    // 30秒ごとに自動更新
+    setTimeout(() => {
+        location.reload();
+    }, 30000);
+</script>
+```
+
+## データ構造設計
+
+### $dailyUniqueUsers のデータ構造
+
+```php
+[
+    '2026-02-19' => [
+        0 => {
+            "date": "2026-02-19",
+            "capture_type": "marker_scan",
+            "unique_users": 5
+        },
+        1 => {
+            "date": "2026-02-19",
+            "capture_type": "ball_hit",
+            "unique_users": 3
+        }
+    ],
+    '2026-02-18' => [
+        0 => {
+            "date": "2026-02-18",
+            "capture_type": "marker_scan",
+            "unique_users": 4
+        },
+        1 => {
+            "date": "2026-02-18",
+            "capture_type": "ball_hit",
+            "unique_users": 2
+        }
+    ],
+    // ... 30日分
+]
+```
+
+### JavaScriptでの処理フロー
+
+```javascript
+// 1. データを取得
+const uniqueUsersData = {"2026-02-19": [...], "2026-02-18": [...]};
+
+// 2. 日付の配列を作成（逆順にしてグラフ左から古い日付）
+const uniqueDates = Object.keys(uniqueUsersData).reverse();
+// → ['2026-01-20', '2026-01-21', ..., '2026-02-19']
+
+// 3. マーカー検出の個別ユーザー数配列を作成
+const markerScanUniqueData = uniqueDates.map(date => {
+    const dayData = uniqueUsersData[date].find(d => d.capture_type === 'marker_scan');
+    return dayData ? dayData.unique_users : 0;  // データがない日は0
+});
+// → [0, 5, 3, 4, ...]
+
+// 4. ボールヒットの個別ユーザー数配列を作成
+const ballHitUniqueData = uniqueDates.map(date => {
+    const dayData = uniqueUsersData[date].find(d => d.capture_type === 'ball_hit');
+    return dayData ? dayData.unique_users : 0;
+});
+// → [0, 3, 2, 1, ...]
+
+// 5. Chart.jsでグラフ描画
+```
+
+## パフォーマンス設計
+
+### クエリ最適化
+
+#### 1. インデックスの活用
+既存のインデックス:
+- `capture_type` (単独インデックス)
+- `(marker_id, capture_type)` (複合インデックス)
+- `(fingerprint, marker_id, capture_type)` (複合インデックス)
+
+新規クエリ:
+```sql
+SELECT DATE(scanned_at) as date,
+       capture_type,
+       COUNT(DISTINCT fingerprint) as unique_users
+FROM marker_scans
+WHERE scanned_at >= NOW() - INTERVAL 30 DAY
+GROUP BY DATE(scanned_at), capture_type
+ORDER BY date DESC
+```
+
+**インデックスの利用状況**:
+- `capture_type`インデックスが利用される
+- `scanned_at`のWHERE条件により、30日分のレコードに絞り込まれる
+- GROUP BYとORDER BYは結果セットが小さいため影響は限定的
+
+#### 2. クエリ実行時間の見積もり
+- **想定レコード数**: 30日間で最大10,000レコード（1日平均333レコード）
+- **DISTINCT fingerprint**: 最大1,000ユニークユーザー
+- **GROUP BY**: 30日 × 2タイプ = 60グループ
+- **期待実行時間**: 50-200ms
+
+#### 3. ページ読み込み時間
+- **既存クエリ**: 3つ（動物別統計、最近のスキャン、日別統計）
+- **新規クエリ**: 1つ（日別個別ユーザー数）
+- **合計**: 4つのクエリ
+- **期待合計時間**: 500ms以内
+
+### フロントエンド最適化
+
+#### Chart.jsのパフォーマンス
+- **データポイント数**: 30日 × 2ライン = 60ポイント
+- **描画時間**: 50-100ms（Chart.jsの最新版で高速化済み）
+- **メモリ使用量**: 最小限（データ量が少ない）
+
+## エラーハンドリング設計
+
+### バックエンドエラー
+
+#### 1. データベースクエリエラー
+```php
+try {
+    $dailyUniqueUsersRaw = MarkerScan::select(...)
+        ->get();
+    $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+} catch (\Exception $e) {
+    // ログ出力
+    \Log::error('Failed to fetch daily unique users: ' . $e->getMessage());
+    // 空の配列を返す（グラフは表示されないが、ページはエラーにならない）
+    $dailyUniqueUsers = collect([]);
+}
+```
+
+#### 2. データが存在しない場合
+- `$dailyUniqueUsers`が空の場合、JavaScriptで空のグラフが表示される
+- グラフは表示されるが、データポイントがない状態
+
+### フロントエンドエラー
+
+#### 1. データが不正な形式の場合
+```javascript
+const uniqueUsersData = @json($dailyUniqueUsers ?? []);
+if (!uniqueUsersData || Object.keys(uniqueUsersData).length === 0) {
+    console.warn('No unique users data available');
+    // 空のグラフが表示される
+}
+```
+
+#### 2. Chart.jsの初期化エラー
+- Chart.jsがCDNから読み込めない場合、グラフは表示されない
+- 既存のグラフも同様の挙動なので、一貫性がある
+
+## テスト設計
+
+### 単体テスト
+
+#### AdminControllerのテスト
+```php
+public function test_dashboard202603_includes_daily_unique_users()
+{
+    // テストデータ作成
+    MarkerScan::factory()->create([
+        'marker_id' => 'panda',
+        'fingerprint' => 'test-fingerprint-1',
+        'capture_type' => 'marker_scan',
+        'scanned_at' => now()
+    ]);
+    
+    // リクエスト実行
+    $response = $this->actingAs($this->admin)->get('/admin/dashboard202603');
+    
+    // アサーション
+    $response->assertViewHas('dailyUniqueUsers');
+    $dailyUniqueUsers = $response->viewData('dailyUniqueUsers');
+    $this->assertNotEmpty($dailyUniqueUsers);
+}
+```
+
+### 結合テスト
+
+#### 1. ページネーションUI表示テスト
+- **テストケース**: 31件以上のスキャン履歴が存在する場合
+- **期待結果**: ページネーションが表示され、SVGアイコンが18pxで表示される
+- **確認方法**: ブラウザの開発者ツールでSVGのサイズを確認
+
+#### 2. 日別個別ユーザー数グラフ表示テスト
+- **テストケース**: 複数日にわたるスキャンデータが存在する場合
+- **期待結果**: 
+  - グラフが表示される
+  - 2つのライン（マーカー検出、ボールヒット）が表示される
+  - ホバーで数値が表示される
+- **確認方法**: ブラウザで実際にページを開き、グラフを確認
+
+#### 3. データがない日の処理テスト
+- **テストケース**: 一部の日にデータが存在しない
+- **期待結果**: データがない日は0として表示される
+- **確認方法**: グラフ上で0の日が正しく表示されることを確認
+
+### 回帰テスト
+
+#### 既存機能への影響確認
+- [ ] 動物別統計テーブルが正しく表示される
+- [ ] 最近のスキャン履歴が正しく表示される
+- [ ] 日別スキャン統計グラフが正しく表示される
+- [ ] ページネーションが機能する
+- [ ] 30秒ごとの自動更新が機能する
+
+## セキュリティ考慮
+
+### 1. 認証・認可
+- **要件**: admin/dashboard202603は認証済み管理者のみアクセス可能
+- **実装**: Laravelの既存のミドルウェアで保護されている（変更なし）
+
+### 2. SQLインジェクション対策
+- **要件**: ユーザー入力を含むクエリは存在しない
+- **実装**: Eloquent ORMを使用（パラメータバインディング自動）
+
+### 3. XSS対策
+- **要件**: ユーザー入力を含む表示は存在しない
+- **実装**: Bladeテンプレートの`{{ }}`によるエスケープ（既存機能）
+
+## デプロイ設計
+
+### デプロイ手順
+1. コードの変更をコミット
+2. `app/Http/Controllers/AdminController.php`の変更をデプロイ
+3. `resources/views/admin/dashboard202603.blade.php`の変更をデプロイ
+4. キャッシュクリア: `php artisan view:clear`
+5. 動作確認
+
+### ロールバック計画
+- **変更内容**: コードの追加のみ（既存機能の削除なし）
+- **ロールバック方法**: Gitで前のコミットに戻す
+- **影響**: 新機能が表示されなくなるだけ（既存機能は維持）
+
+## リスク分析と対策
+
+### リスク1: パフォーマンス劣化
+**影響度**: 中  
+**発生確率**: 低  
+**対策**:
+- クエリは30日分に限定
+- COUNT(DISTINCT)は既存のインデックスを活用
+- 結果のキャッシュは不要（30秒ごとに自動更新するため）
+
+### リスク2: データがない日の表示
+**影響度**: 低  
+**発生確率**: 中  
+**対策**:
+- JavaScriptでデータがない日は0として補完
+- Chart.jsは0を正しく表示できる
+
+### リスク3: CSSの競合
+**影響度**: 低  
+**発生確率**: 低  
+**対策**:
+- `!important`を使用してスタイルを確実に適用
+- 既存のCSSとの競合を避けるため、セレクタを具体的に指定
+
+### リスク4: グラフ描画の遅延
+**影響度**: 低  
+**発生確率**: 低  
+**対策**:
+- Chart.jsの最新版を使用（既存のグラフと同じCDN）
+- データ量を30日分に限定
+
+## 成功基準
+
+### 必須条件
+- [ ] ページネーションのSVGアイコンが18px × 18pxで表示される
+- [ ] ページネーションのボタンが統一されたサイズで表示される
+- [ ] 日別個別ユーザー数のグラフが追加される
+- [ ] グラフがマーカー検出とボールヒットの2つのラインで表示される
+- [ ] グラフがホバー時に具体的な数値を表示する
+- [ ] AdminControllerで日別個別ユーザー数のデータが取得される
+- [ ] 既存のグラフや統計表示に影響がない
+- [ ] ページ読み込み時間が2秒以内
+
+### 望ましい条件
+- [ ] グラフのアニメーションがスムーズ
+- [ ] レスポンシブデザインが機能する
+- [ ] 色使いが既存のグラフと統一されている
+
+## 次のステップ
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
+2. 実装フェーズ - コードの変更と追加
+3. 動作確認とテスト

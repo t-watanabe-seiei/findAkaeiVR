@@ -2287,3 +2287,545 @@ Route::middleware('admin.auth')->group(function () {
 ---
 
 **ARstampRally202603のマーカー検出とボールヒット統計分離のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化7: ARstampRally202603 - dashboard202603のUI改善と日別個別ユーザー数統計追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/design.md`の設計7を読み込み、設計内容を確認済み
+
+## タスク概要
+admin/dashboard202603の管理画面において、ページネーションのUI不具合を修正し、新しい統計情報として「日別個別ユーザー数」のグラフを追加する。
+
+**変更箇所**: 2箇所
+- AdminController.php（dashboard202603メソッド）
+- dashboard202603.blade.php（CSS、HTML、JavaScript）
+
+**所要時間**: 合計約1時間
+
+---
+
+## タスク一覧
+
+### Phase 1: ページネーションUI修正
+
+#### Task 1-1: dashboard202603.blade.phpのCSS修正
+**目的**: ページネーションのSVGアイコンサイズを18px × 18pxに制御
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 113-140行目付近（`.pagination`セクション）
+**作業内容**:
+1. 既存の`.pagination`セクションのCSSを確認
+
+2. 以下のCSSルールを追加:
+   ```css
+   /* ページネーションのSVGアイコンサイズ制御 */
+   .pagination svg {
+       width: 18px !important;
+       height: 18px !important;
+       max-width: 18px !important;
+       max-height: 18px !important;
+   }
+   
+   /* ページネーションアイテムの中央揃え */
+   .pagination a,
+   .pagination span {
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       min-width: 36px;
+       min-height: 36px;
+   }
+   
+   /* Laravelページネーションの構造に対応 */
+   .pagination nav {
+       display: flex;
+       justify-content: center;
+   }
+   
+   .pagination nav svg {
+       width: 18px !important;
+       height: 18px !important;
+   }
+   ```
+
+3. 既存の`.pagination a, .pagination span`ルールに`display: inline-flex;`等を追加
+
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 
+- ✅ CSSルールが追加されている
+- ✅ SVGアイコンのサイズが制御されている
+- ✅ ボタンが中央揃えになっている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: AdminControllerの拡張
+
+#### Task 2-1: dashboard202603メソッドに日別個別ユーザー数クエリを追加
+**目的**: 日別のユニークユーザー数（capture_type別）を取得
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**行数**: 299-385行目（dashboard202603メソッド）
+**作業内容**:
+1. 既存の`$dailyStats`取得コードの後に以下を追加:
+   ```php
+   // 【新規】日別個別ユーザー数統計（タイプ別、直近30日間）
+   $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+       ->selectRaw('capture_type')
+       ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+       ->where('scanned_at', '>=', now()->subDays(30))
+       ->groupBy('date', 'capture_type')
+       ->orderBy('date', 'desc')
+       ->get();
+   
+   // 日付でグループ化
+   $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+   ```
+
+2. return文を以下のように修正:
+   ```php
+   return view('admin.dashboard202603', compact(
+       'animalStats',
+       'recentScans',
+       'dailyStats',
+       'dailyUniqueUsers'  // 【追加】
+   ));
+   ```
+
+**依存関係**: なし
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 日別個別ユーザー数クエリが追加されている
+- ✅ `$dailyUniqueUsers`がビューに渡されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: dashboard202603.blade.phpの拡張
+
+#### Task 3-1: 新規グラフセクションのHTML追加
+**目的**: 日別個別ユーザー数グラフのHTMLセクションを追加
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 228行目付近（「日別スキャン統計」セクションの後）
+**作業内容**:
+1. 「日別スキャン統計」の`</div>`閉じタグの後に以下を挿入:
+   ```html
+   <div class="card">
+       <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+       <div class="chart-container">
+           <canvas id="uniqueUsersChart"></canvas>
+       </div>
+   </div>
+   ```
+
+**依存関係**: Task 2-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ 新規セクションが追加されている
+- ✅ Canvasエレメントが配置されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3-2: グラフ描画JavaScriptコードの追加
+**目的**: Chart.jsで日別個別ユーザー数の折れ線グラフを描画
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 298行目付近（既存のdailyChartコードの後、setTimeoutの前）
+**作業内容**:
+1. 既存の`dailyChart`描画コードの後に以下を追加:
+   ```javascript
+   // 【新規】日別個別ユーザー数グラフ（折れ線グラフ）
+   const uniqueUsersData = @json($dailyUniqueUsers);
+   const uniqueDates = Object.keys(uniqueUsersData).reverse();
+   
+   const markerScanUniqueData = uniqueDates.map(date => {
+       const dayData = uniqueUsersData[date].find(d => d.capture_type === 'marker_scan');
+       return dayData ? dayData.unique_users : 0;
+   });
+   
+   const ballHitUniqueData = uniqueDates.map(date => {
+       const dayData = uniqueUsersData[date].find(d => d.capture_type === 'ball_hit');
+       return dayData ? dayData.unique_users : 0;
+   });
+   
+   const ctxUnique = document.getElementById('uniqueUsersChart').getContext('2d');
+   new Chart(ctxUnique, {
+       type: 'line',
+       data: {
+           labels: uniqueDates.map(date => {
+               const d = new Date(date);
+               return (d.getMonth() + 1) + '/' + d.getDate();
+           }),
+           datasets: [
+               {
+                   label: 'マーカー検出（個別ユーザー）',
+                   data: markerScanUniqueData,
+                   borderColor: 'rgba(52, 152, 219, 1)',
+                   backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                   borderWidth: 2,
+                   tension: 0.3,
+                   fill: true,
+                   pointRadius: 4,
+                   pointHoverRadius: 6
+               },
+               {
+                   label: 'ボールヒット（個別ユーザー）',
+                   data: ballHitUniqueData,
+                   borderColor: 'rgba(231, 76, 60, 1)',
+                   backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                   borderWidth: 2,
+                   tension: 0.3,
+                   fill: true,
+                   pointRadius: 4,
+                   pointHoverRadius: 6
+               }
+           ]
+       },
+       options: {
+           responsive: true,
+           maintainAspectRatio: true,
+           scales: {
+               x: {
+                   title: {
+                       display: true,
+                       text: '日付'
+                   }
+               },
+               y: {
+                   beginAtZero: true,
+                   title: {
+                       display: true,
+                       text: '個別ユーザー数'
+                   },
+                   ticks: {
+                       stepSize: 1
+                   }
+               }
+           },
+           plugins: {
+               legend: {
+                   position: 'top',
+               },
+               title: {
+                   display: true,
+                   text: '日別個別ユーザー数推移'
+               },
+               tooltip: {
+                   callbacks: {
+                       label: function(context) {
+                           return context.dataset.label + ': ' + context.parsed.y + '人';
+                       }
+                   }
+               }
+           }
+       }
+   });
+   ```
+
+**依存関係**: Task 3-1
+**所要時間**: 10分
+**完了条件**: 
+- ✅ グラフ描画コードが追加されている
+- ✅ データがない日は0として処理されている
+- ✅ ホバー時のツールチップが設定されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 4: 動作確認とテスト
+
+#### Task 4-1: PHP構文チェック
+**目的**: PHPファイルに構文エラーがないことを確認
+**作業内容**:
+1. AdminController.phpの構文チェック:
+   ```bash
+   php -l app/Http/Controllers/AdminController.php
+   ```
+
+2. エラーがある場合は修正
+
+**依存関係**: Task 2-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ 構文エラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4-2: ページネーションUI表示確認
+**目的**: SVGアイコンが適切なサイズで表示されることを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 「最近のスキャン履歴」のページネーションを確認:
+   - SVGアイコンのサイズが18px × 18pxであること
+   - ボタンが統一されたサイズで表示されること
+   - ページ送りが正常に機能すること
+
+3. ブラウザの開発者ツールでSVGのサイズを確認:
+   ```
+   要素を検査 → pagination内のsvgを選択 → サイズ確認
+   ```
+
+**依存関係**: Task 1-1
+**所要時間**: 5分
+**完了条件**: 
+- ✅ SVGアイコンが18px × 18pxで表示される
+- ✅ ボタンが統一されたサイズで表示される
+- ✅ ページ送りが正常に機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4-3: 日別個別ユーザー数グラフ表示確認
+**目的**: 新規グラフが正しく表示されることを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. ページをスクロールして「日別個別ユーザー数」セクションを確認:
+   - グラフが表示されること
+   - 2つのライン（マーカー検出、ボールヒット）が表示されること
+   - 色が設計通り（マーカー検出: 青、ボールヒット: 赤）であること
+
+3. グラフのインタラクティブ機能を確認:
+   - データポイントにホバーすると数値が表示されること
+   - ツールチップに「○○人」と表示されること
+   - 凡例をクリックするとライン表示がオン/オフできること
+
+4. データがない日の表示を確認:
+   - データがない日は0として表示されること
+
+**依存関係**: Task 3-1, Task 3-2
+**所要時間**: 10分
+**完了条件**: 
+- ✅ グラフが表示される
+- ✅ 2つのラインが正しい色で表示される
+- ✅ ホバーで数値が表示される
+- ✅ 凡例でライン表示のオン/オフができる
+- ✅ データがない日は0として表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4-4: 既存機能の回帰テスト
+**目的**: 既存の統計表示に影響がないことを確認
+**作業内容**:
+1. 動物別統計テーブルが正しく表示されることを確認
+
+2. 最近のスキャン履歴が正しく表示されることを確認:
+   - タイプ（マーカー検出/ボールヒット）のバッジが表示される
+   - ページネーションが機能する
+
+3. 日別スキャン統計グラフが正しく表示されることを確認:
+   - 積み上げ棒グラフが表示される
+   - 2つのタイプが色分けされている
+
+4. 30秒ごとの自動更新が機能することを確認:
+   - 30秒待機
+   - ページがリロードされること
+
+5. レスポンシブデザインの確認:
+   - ブラウザウィンドウをリサイズ
+   - グラフが適切にリサイズされること
+
+**依存関係**: Task 4-3
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 動物別統計テーブルが正しく表示される
+- ✅ 最近のスキャン履歴が正しく表示される
+- ✅ 日別スキャン統計グラフが正しく表示される
+- ✅ 30秒ごとの自動更新が機能する
+- ✅ レスポンシブデザインが機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 5: ドキュメント更新
+
+#### Task 5-1: README.mdへの変更内容追記
+**目的**: 変更内容を記録し、プロジェクトの変更履歴を更新
+**ファイル**: `README.md`
+**作業内容**:
+1. README.mdの「変更点」セクションに以下を追記:
+   ```markdown
+   ### ARスタンプラリー202603 - dashboard202603のUI改善と日別個別ユーザー数統計追加 20260219
+   **admin/dashboard202603の管理画面を改善:**
+   
+   #### 実装内容
+   1. **ページネーションUI修正**
+      - SVGアイコンのサイズを18px × 18pxに制御
+      - ボタンの視覚的なバランスを改善
+      - 中央揃えとサイズ統一
+   
+   2. **日別個別ユーザー数統計の追加**
+      - 直近30日間の日別ユニークユーザー数をグラフ化
+      - マーカー検出とボールヒット別に集計
+      - Chart.jsで折れ線グラフとして表示
+      - ホバー時にツールチップで詳細表示
+   
+   #### 変更ファイル
+   - `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張
+   - `resources/views/admin/dashboard202603.blade.php`: CSS、HTML、JavaScript追加
+   
+   #### 技術的詳細
+   - SQLクエリ: `COUNT(DISTINCT fingerprint)`で日別ユニークユーザー数を取得
+   - データ期間: 固定で直近30日間
+   - グラフタイプ: Chart.js Line Chart
+   - 色使い: マーカー検出（青: #3498db）、ボールヒット（赤: #e74c3c）
+   
+   #### 動作確認済み項目
+   - ✅ ページネーションのSVGアイコンが18px × 18pxで表示される
+   - ✅ 日別個別ユーザー数グラフが表示される
+   - ✅ グラフが2つのライン（マーカー検出/ボールヒット）で表示される
+   - ✅ ホバー時にツールチップで数値が表示される
+   - ✅ データがない日は0として表示される
+   - ✅ 既存の統計表示に影響なし
+   
+   #### 設計ドキュメント
+   - 要件定義7: `.claude_workflow/requirements.md` (要件定義7セクション)
+   - 設計7: `.claude_workflow/design.md` (設計7セクション)
+   - タスク化7: `.claude_workflow/tasks.md` (タスク化7セクション)
+   ```
+
+**依存関係**: Task 4-4
+**所要時間**: 5分
+**完了条件**: 
+- ✅ README.mdに変更内容が追記されている
+- ✅ 既存の変更履歴フォーマットと統一されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 5-2: complete.mdへの追記
+**目的**: 完了したプロジェクトとして記録
+**ファイル**: `.claude_workflow/complete.md`
+**作業内容**:
+1. complete.mdにプロジェクト7として追記:
+   ```markdown
+   ## プロジェクト7: ARスタンプラリー202603 - dashboard202603のUI改善と日別個別ユーザー数統計追加
+   
+   ### 完了日
+   2026年2月19日
+   
+   ### 概要
+   admin/dashboard202603の管理画面において、ページネーションのUI不具合を修正し、新しい統計情報として「日別個別ユーザー数」のグラフを追加しました。
+   
+   ### 実装内容
+   1. **ページネーションUI修正**
+      - SVGアイコンのサイズを18px × 18pxに制御
+      - ボタンの視覚的なバランスを改善
+   
+   2. **日別個別ユーザー数統計の追加**
+      - 直近30日間の日別ユニークユーザー数をグラフ化
+      - マーカー検出とボールヒット別に集計
+      - Chart.jsで折れ線グラフとして表示
+   
+   ### 変更ファイル
+   - `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張
+   - `resources/views/admin/dashboard202603.blade.php`: CSS、HTML、JavaScript追加
+   
+   ### 技術スタック
+   - Laravel (PHP)
+   - Blade Template
+   - Chart.js (Line Chart)
+   - CSS (Flexbox)
+   
+   ### 成果
+   - ✅ ページネーションUI修正完了
+   - ✅ 日別個別ユーザー数グラフ追加完了
+   - ✅ PHP構文エラーなし
+   - ✅ 既存機能への影響なし
+   
+   ### ドキュメント
+   - 要件定義7: `.claude_workflow/requirements.md`
+   - 設計7: `.claude_workflow/design.md`
+   - タスク化7: `.claude_workflow/tasks.md`
+   ```
+
+**依存関係**: Task 5-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ complete.mdに追記されている
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] dashboard202603.blade.phpのCSS変更箇所を慎重に確認
+- [ ] AdminController.phpのreturn文に`$dailyUniqueUsers`を追加することを忘れない
+- [ ] JavaScriptコードの挿入位置を確認（既存のdailyChartの後、setTimeoutの前）
+- [ ] Chart.jsのデータポイントが正しくマッピングされているか確認
+- [ ] 変更後にPHP構文エラーがないか確認
+
+### 実装順序
+1. **Phase 1（ページネーションUI修正）を最初に実施** - CSSのみの変更で影響範囲が限定的
+   - Task 1-1を実施
+2. **Phase 2（AdminController拡張）を実施** - バックエンドロジック
+   - Task 2-1を実施
+3. **Phase 3（Bladeテンプレート拡張）を実施** - フロントエンド表示
+   - Task 3-1, Task 3-2を順番に実施
+4. **Phase 4（動作確認）を実施** - テストと検証
+   - Task 4-1, Task 4-2, Task 4-3, Task 4-4を順番に実施
+5. **Phase 5（ドキュメント）を実施** - 記録
+   - Task 5-1, Task 5-2を順番に実施
+
+### リスク管理
+- **バックアップ**: Git commitを事前に実施（推奨）
+- **Rollback**: 
+  - CSSの変更は即座にロールバック可能
+  - AdminControllerの変更もシンプル（クエリの追加のみ）
+- **影響範囲**: 
+  - 既存機能への影響は最小限（追加のみ）
+  - ページネーションUIの修正は視覚的な改善のみ
+
+### パフォーマンス考慮
+- 日別個別ユーザー数クエリは30日分に限定
+- COUNT(DISTINCT fingerprint)は既存のインデックスを活用
+- Chart.jsの描画は高速（データポイント数が少ない）
+
+### セキュリティ考慮
+- admin/dashboard202603は認証済み管理者のみアクセス可能（既存のミドルウェアで保護）
+- SQLインジェクション対策: Eloquent ORMのパラメータバインディング
+- XSS対策: Bladeテンプレートの自動エスケープ
+
+## 成功基準
+
+### 必須条件
+- [ ] ページネーションのSVGアイコンが18px × 18pxで表示される
+- [ ] ページネーションのボタンが統一されたサイズで表示される
+- [ ] 日別個別ユーザー数のグラフが追加される
+- [ ] グラフがマーカー検出とボールヒットの2つのラインで表示される
+- [ ] グラフがホバー時に具体的な数値を表示する
+- [ ] AdminControllerで日別個別ユーザー数のデータが取得される
+- [ ] 既存のグラフや統計表示に影響がない
+- [ ] PHP構文エラーがない
+
+### 望ましい条件
+- [ ] グラフのアニメーションがスムーズ
+- [ ] レスポンシブデザインが機能する
+- [ ] 色使いが既存のグラフと統一されている
+
+## タスク実行順序
+1. Task 1-1（ページネーションCSS修正）
+2. Task 2-1（AdminController拡張）
+3. Task 3-1（新規グラフセクションHTML追加）
+4. Task 3-2（グラフ描画JavaScript追加）
+5. Task 4-1（PHP構文チェック）
+6. Task 4-2（ページネーションUI表示確認）
+7. Task 4-3（日別個別ユーザー数グラフ表示確認）
+8. Task 4-4（回帰テスト）
+9. Task 5-1（README.md更新）
+10. Task 5-2（complete.md追記）
+
+## 次のステップ
+実装フェーズへの移行
+
+---
+
+**ARstampRally202603のdashboard202603 UI改善と日別個別ユーザー数統計追加のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**

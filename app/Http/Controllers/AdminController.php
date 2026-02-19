@@ -376,10 +376,23 @@ class AdminController extends Controller
         // 日付でグループ化
         $dailyStats = $dailyStatsRaw->groupBy('date');
         
+        // 【新規】日別個別ユーザー数統計（タイプ別、直近30日間）
+        $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
+            ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+            ->where('scanned_at', '>=', now()->subDays(30))
+            ->groupBy('date', 'capture_type')
+            ->orderBy('date', 'desc')
+            ->get();
+        
+        // 日付でグループ化
+        $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+        
         return view('admin.dashboard202603', compact(
             'animalStats',
             'recentScans',
-            'dailyStats'
+            'dailyStats',
+            'dailyUniqueUsers'
         ));
     }
 }

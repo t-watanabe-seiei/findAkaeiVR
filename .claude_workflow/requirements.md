@@ -880,3 +880,268 @@ CREATE TABLE marker_scans (
 1. 設計フェーズ（design.mdへの追記）- 詳細な実装設計
 2. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順
 3. 実装フェーズ - コードの変更と追加
+
+---
+
+# 要件定義7: ARstampRally202603 - dashboard202603のUI改善と日別個別ユーザー数統計追加
+
+## 作成日時
+2026年2月19日
+
+## プロジェクト概要
+admin/dashboard202603の管理画面において、ページネーションのUI不具合を修正し、新しい統計情報として「日別個別ユーザー数」のグラフを追加する。
+
+## 目的
+- ページネーションのアイコンサイズ崩れを修正し、視認性を向上
+- 日別の個別ユーザー数（ボールヒットとマーカー検出別）を可視化し、より詳細な統計分析を可能にする
+
+## 現状の問題点
+
+### 問題1: ページネーションのアイコンサイズ崩れ
+**場所**: admin/dashboard202603の「最近のスキャン履歴」セクション  
+**問題**: ページネーションのSVGアイコン（前へ・次へボタン）のサイズが適切に制御されていない  
+**影響**: 視認性の低下、UIの不統一
+
+### 問題2: 日別個別ユーザー数統計の欠如
+**場所**: admin/dashboard202603の統計セクション  
+**問題**: 現在は日別のスキャン総数のみで、個別ユーザー数（fingerprint別のユニーク数）が可視化されていない  
+**影響**: 
+- 実際のユーザー数の推移が把握できない
+- スキャン数とユーザー数の関係が不明確
+- マーカー検出とボールヒットでのユーザー獲得状況が分析できない
+
+## 機能要件
+
+### 要件1: ページネーションのUI修正
+**対象ファイル**: `resources/views/admin/dashboard202603.blade.php`  
+**修正内容**:
+- Laravelのデフォルトページネーションに含まれるSVGアイコンのサイズを適切に制御
+- 前へ・次へボタンのアイコンが適切なサイズ（18px × 18px程度）で表示される
+- ページ番号とアイコンの視覚的なバランスを保つ
+
+**CSSスタイル要件**:
+```css
+/* SVGアイコンのサイズ制御 */
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+/* ページネーションアイテムの統一 */
+.pagination a,
+.pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+}
+```
+
+### 要件2: 日別個別ユーザー数統計の追加
+**対象ファイル**: 
+- `app/Http/Controllers/AdminController.php`
+- `resources/views/admin/dashboard202603.blade.php`
+
+**データ要件**:
+- **期間**: 直近30日間
+- **データ粒度**: 日別
+- **集計項目**:
+  - マーカー検出の個別ユーザー数（capture_type='marker_scan', fingerprintのDISTINCT COUNT）
+  - ボールヒットの個別ユーザー数（capture_type='ball_hit', fingerprintのDISTINCT COUNT）
+- **データ形式**: JSON形式でビューに渡す
+
+**SQL要件**:
+```sql
+SELECT 
+    DATE(scanned_at) as date,
+    capture_type,
+    COUNT(DISTINCT fingerprint) as unique_users
+FROM marker_scans
+WHERE scanned_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+GROUP BY DATE(scanned_at), capture_type
+ORDER BY date DESC
+```
+
+**表示要件**:
+- **配置**: 「日別スキャン統計」の下に新しいセクションとして追加
+- **タイトル**: 「👥 日別個別ユーザー数（直近30日間）」
+- **グラフタイプ**: Chart.jsを使用した折れ線グラフ（Line Chart）
+- **表示項目**:
+  - X軸: 日付（月/日形式）
+  - Y軸: ユニークユーザー数
+  - 2つのライン:
+    - マーカー検出の個別ユーザー数（青色、実線）
+    - ボールヒットの個別ユーザー数（赤色、実線）
+- **インタラクティブ機能**:
+  - ホバー時に各データポイントの具体的な数値を表示
+  - 凡例でライン表示のオン/オフ切り替え可能
+
+**Chart.js設定要件**:
+```javascript
+{
+    type: 'line',
+    data: {
+        labels: dates,
+        datasets: [
+            {
+                label: 'マーカー検出（個別ユーザー）',
+                data: markerScanUniqueData,
+                borderColor: 'rgba(52, 152, 219, 1)',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            },
+            {
+                label: 'ボールヒット（個別ユーザー）',
+                data: ballHitUniqueData,
+                borderColor: 'rgba(231, 76, 60, 1)',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: '日付'
+                }
+            },
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: '個別ユーザー数'
+                },
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: '日別個別ユーザー数推移'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y + '人';
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## 非機能要件
+
+### パフォーマンス要件
+- **クエリ実行時間**: 500ms以内
+- **ページ読み込み時間**: 2秒以内
+- **グラフ描画時間**: 500ms以内
+
+### データ整合性要件
+- **日別集計**: 各日付は必ず存在する（データがない日は0として表示）
+- **ユニークユーザー計算**: fingerprintカラムを使用し、同じfingerprintは1日1回のみカウント
+- **タイプ別分離**: capture_typeで正確に分離し、集計
+
+### UI/UX要件
+- **レスポンシブデザイン**: グラフは画面サイズに応じて適切に表示される
+- **色の統一**: 既存の統計グラフと色使いを統一
+  - マーカー検出: 青系（#3498db）
+  - ボールヒット: 赤系（#e74c3c）
+- **視認性**: グラフのライン太さ、ポイントサイズを適切に設定
+
+### ブラウザ互換性
+- **対応ブラウザ**: Chrome, Firefox, Safari, Edge（最新版）
+- **Chart.jsバージョン**: CDN経由で最新版を使用（既存の統計グラフと同じバージョン）
+
+## 成功基準
+
+### 修正完了基準
+1. ✅ ページネーションのSVGアイコンが18px × 18pxで表示される
+2. ✅ ページネーションのボタンが統一されたサイズで表示される
+3. ✅ 日別個別ユーザー数のグラフが追加される
+4. ✅ グラフがマーカー検出とボールヒットの2つのラインで表示される
+5. ✅ グラフがホバー時に具体的な数値を表示する
+6. ✅ AdminControllerで日別個別ユーザー数のデータが取得される
+7. ✅ 既存のグラフや統計表示に影響がない
+8. ✅ ページ読み込み時間が2秒以内
+
+### 動作確認項目
+- [ ] ページネーションのアイコンが適切なサイズで表示される
+- [ ] ページ送りボタンが正常に機能する
+- [ ] 日別個別ユーザー数グラフが表示される
+- [ ] グラフのホバーで数値が表示される
+- [ ] グラフの凡例でライン表示のオン/オフができる
+- [ ] データがない日は0として表示される
+- [ ] 既存の統計グラフが正常に表示される
+- [ ] 30秒ごとの自動更新が機能する
+
+## 制約条件
+
+### 技術的制約
+- **フレームワーク**: Laravel（既存のプロジェクト構造を維持）
+- **フロントエンド**: Blade Template + Chart.js
+- **データベース**: 既存のmarker_scansテーブルを使用
+- **ページネーション**: Laravelの標準ページネーション機能を使用
+
+### 変更範囲の制約
+- **変更対象ファイル**: 最小限に抑える
+  - `app/Http/Controllers/AdminController.php`（dashboard202603メソッドのみ）
+  - `resources/views/admin/dashboard202603.blade.php`（CSSとHTML、JavaScriptの追加）
+- **既存機能への影響**: ゼロ（既存の統計表示やグラフに影響を与えない）
+
+### データ制約
+- **期間**: 固定で直近30日間（パラメータ化しない）
+- **集計単位**: 日別（時間別やその他の単位は不要）
+
+## リスク分析
+
+### リスク1: パフォーマンス劣化
+**影響度**: 中  
+**発生確率**: 低  
+**対策**:
+- COUNT(DISTINCT fingerprint)は既存のインデックスを活用
+- 期間を30日に限定
+- 必要に応じてクエリキャッシュを検討
+
+### リスク2: データが存在しない日の表示
+**影響度**: 低  
+**発生確率**: 中  
+**対策**:
+- JavaScriptでデータがない日は0として補完
+- Chart.jsのグラフでは0として表示されるように設定
+
+### リスク3: CSSの競合
+**影響度**: 低  
+**発生確率**: 低  
+**対策**:
+- !importantを使用してスタイルを確実に適用
+- 既存のCSSとの競合を避けるため、セレクタを具体的に指定
+
+### リスク4: グラフ描画の遅延
+**影響度**: 低  
+**発生確率**: 低  
+**対策**:
+- Chart.jsの最新版を使用（パフォーマンス改善済み）
+- データ量を30日分に限定
+
+## 次のステップ
+1. 設計フェーズ（design.mdへの追記）- 詳細な実装設計
+2. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順
+3. 実装フェーズ - コードの変更と追加

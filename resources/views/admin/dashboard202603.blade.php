@@ -125,6 +125,11 @@
             text-decoration: none;
             color: #667eea;
             transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
         }
         .pagination a:hover {
             background: #667eea;
@@ -134,6 +139,22 @@
             background: #667eea;
             color: white;
             border-color: #667eea;
+        }
+        /* ページネーションのSVGアイコンサイズ制御 */
+        .pagination svg {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+        }
+        /* Laravelページネーションの構造に対応 */
+        .pagination nav {
+            display: flex;
+            justify-content: center;
+        }
+        .pagination nav svg {
+            width: 18px !important;
+            height: 18px !important;
         }
         .chart-container {
             margin-top: 30px;
@@ -231,6 +252,13 @@
         </div>
     </div>
 
+    <div class="card">
+        <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+        <div class="chart-container">
+            <canvas id="uniqueUsersChart"></canvas>
+        </div>
+    </div>
+
     <script>
         // 日別統計グラフ（積み上げ棒グラフ）
         const dailyData = @json($dailyStats);
@@ -301,6 +329,93 @@
                     title: {
                         display: true,
                         text: 'タイプ別日別スキャン数（積み上げ）'
+                    }
+                }
+            }
+        });
+
+        // 【新規】日別個別ユーザー数グラフ（折れ線グラフ）
+        const uniqueUsersData = @json($dailyUniqueUsers);
+        const uniqueDates = Object.keys(uniqueUsersData).reverse();
+        
+        const markerScanUniqueData = uniqueDates.map(date => {
+            const dayData = uniqueUsersData[date].find(d => d.capture_type === 'marker_scan');
+            return dayData ? dayData.unique_users : 0;
+        });
+        
+        const ballHitUniqueData = uniqueDates.map(date => {
+            const dayData = uniqueUsersData[date].find(d => d.capture_type === 'ball_hit');
+            return dayData ? dayData.unique_users : 0;
+        });
+        
+        const ctxUnique = document.getElementById('uniqueUsersChart').getContext('2d');
+        new Chart(ctxUnique, {
+            type: 'line',
+            data: {
+                labels: uniqueDates.map(date => {
+                    const d = new Date(date);
+                    return (d.getMonth() + 1) + '/' + d.getDate();
+                }),
+                datasets: [
+                    {
+                        label: 'マーカー検出（個別ユーザー）',
+                        data: markerScanUniqueData,
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'ボールヒット（個別ユーザー）',
+                        data: ballHitUniqueData,
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '日付'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '個別ユーザー数'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: '日別個別ユーザー数推移'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '人';
+                            }
+                        }
                     }
                 }
             }
