@@ -905,3 +905,635 @@ Task 4 (スコア表示修正) ──────┘                            
 ---
 
 **ARスタンプラリー202603版のlocalStorage分離のタスク化フェーズが完了しました。実行フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化4: ARstampRally202603 スタンプ帳UI改善と管理画面統計追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/design.md` の「設計4」を読み込み、設計内容を確認済み
+
+## タスク概要
+
+本タスクは2つの大きな機能に分かれています：
+1. **スタンプ帳UI改善** (ARstampRally202603.blade.php)
+2. **管理画面統計ページ追加** (新規ファイル作成 + 既存ファイル修正)
+
+## タスク一覧
+
+### Phase 1: スタンプ帳UI改善（ARstampRally202603.blade.php）
+
+---
+
+#### Task 1-1: ヒントボタンのHTMLをコメントアウト
+**目的**: スタンプ帳モーダルから「ヒントを見る」ボタンを非表示にする
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**変更箇所**: 1931行目
+**作業内容**:
+```html
+<!-- 変更前 -->
+<button id="hint-button" type="button">ヒントを見る</button>
+
+<!-- 変更後 -->
+<!-- <button id="hint-button" type="button">ヒントを見る</button> -->
+```
+**依存関係**: なし
+**所要時間**: 2分
+**完了条件**: 
+- ✅ HTML要素がコメントアウトされている
+- ✅ 周囲のHTMLに影響がない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 1-2: ヒントボタンのJavaScriptイベントハンドラーをコメントアウト
+**目的**: ヒントボタンのクリックイベントを無効化する
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**変更箇所**: 5746-5754行目
+**作業内容**:
+```javascript
+// 変更前
+const hintButton = document.getElementById('hint-button');
+if (hintButton) {
+    hintButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open('{{ asset("/cg/stampRallyHints.pdf") }}', '_blank');
+    });
+}
+
+// 変更後
+/*
+const hintButton = document.getElementById('hint-button');
+if (hintButton) {
+    hintButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open('{{ asset("/cg/stampRallyHints.pdf") }}', '_blank');
+    });
+}
+*/
+```
+**依存関係**: Task 1-1
+**所要時間**: 2分
+**完了条件**: 
+- ✅ JavaScriptがコメントアウトされている
+- ✅ 構文エラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 1-3: showStampBook関数の動物名表示ロジック修正
+**目的**: 未収集動物の名前表示を変更
+- パンダ: 未収集でも「パンダ」と表示
+- シークレット（パンダ以外）: 「シークレット」と表示
+- 通常動物15種: 「？？？」と表示
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**変更箇所**: 3365-3386行目付近
+**作業内容**:
+```javascript
+// 変更前のロジック
+if (isCollected) {
+    const date = new Date(collectedStamps[stampId].collectedAt);
+    dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+
+    // スクリーンショットがあれば画像を表示
+    if (collectedStamps[stampId].screenshot) {
+        const screenshotData = collectedStamps[stampId].screenshot;
+        iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
+    // シークレット動物でも収集後は実際の名前を表示
+    nameText = stamp.name;
+} else if (isSecret) {
+    // シークレット動物は未収集時にアイコンと名前を非表示
+    iconContent = '🐾'; // 足跡アイコン
+    nameText = 'シークレット'; // 名前も隠す
+}
+
+// 変更後のロジック
+if (isCollected) {
+    const date = new Date(collectedStamps[stampId].collectedAt);
+    dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+
+    // スクリーンショットがあれば画像を表示
+    if (collectedStamps[stampId].screenshot) {
+        const screenshotData = collectedStamps[stampId].screenshot;
+        iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
+    // シークレット動物でも収集後は実際の名前を表示
+    nameText = stamp.name;
+} else if (isSecret) {
+    // シークレット動物は未収集時にアイコンと名前を処理
+    if (stampId === 'panda') {
+        // パンダは特別扱い: 未収集でも「パンダ」と表示
+        iconContent = '🐾'; // 足跡アイコン
+        nameText = 'パンダ';
+    } else {
+        // パンダ以外のシークレット: 'シークレット'
+        iconContent = '🐾'; // 足跡アイコン
+        nameText = 'シークレット'; // 名前も隠す
+    }
+} else {
+    // 通常動物の未収集時: '？？？' を表示
+    // iconContentはデフォルトのまま（stamp.icon）
+    nameText = '？？？';
+}
+```
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 
+- ✅ 未収集のパンダが「パンダ」と表示される
+- ✅ 未収集のシークレット（パンダ以外）が「シークレット」と表示される
+- ✅ 未収集の通常動物が「？？？」と表示される
+- ✅ 収集済み動物は実際の名前が表示される（変更なし）
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: 管理画面統計ページ追加
+
+---
+
+#### Task 2-1: AdminControllerに新規メソッド追加
+**目的**: パンダマーカーの統計を取得するコントローラーメソッドを作成
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**挿入位置**: 298行目（ファイル末尾のクラス閉じ括弧の前）
+**作業内容**:
+```php
+// 追加するメソッド
+public function dashboard202603(Request $request)
+{
+    // パンダマーカーの統計
+    $totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+    
+    $uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
+        ->distinct('fingerprint')
+        ->count();
+    
+    // 最近のパンダスキャン履歴（ページネーション）
+    $recentPandaScans = MarkerScan::where('marker_id', 'panda')
+        ->orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'panda_scans_page');
+    
+    // 日別パンダスキャン数（直近30日間）
+    $dailyPandaScans = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('COUNT(*) as count')
+        ->where('marker_id', 'panda')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date')
+        ->orderBy('date', 'desc')
+        ->paginate(15, ['*'], 'daily_panda_page');
+    
+    return view('admin.dashboard202603', compact(
+        'totalPandaScans',
+        'uniquePandaUsers',
+        'recentPandaScans',
+        'dailyPandaScans'
+    ));
+}
+```
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 
+- ✅ メソッドが正しく追加されている
+- ✅ PHP構文エラーがない（php -l で確認）
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-2: ルーティングに新規ルートを追加
+**目的**: `/admin/dashboard202603` へのルートを追加
+**ファイル**: `routes/web.php`
+**変更箇所**: 管理画面のミドルウェアグループ内（90行目付近）
+**作業内容**:
+```php
+// 既存の認証が必要なルート内に追加
+Route::middleware('admin.auth')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/logout', [AdminController::class, 'logout'])->name('admin.logout');
+    Route::post('/prizes/{id}/redeem', [AdminController::class, 'redeemPrize'])->name('admin.prizes.redeem');
+    Route::get('/exchanges', [AdminController::class, 'allExchanges'])->name('admin.exchanges');
+    Route::get('/scans', [AdminController::class, 'allScans'])->name('admin.scans');
+    Route::get('/export', [AdminController::class, 'exportCsv'])->name('admin.export');
+    
+    // ↓ 追加
+    Route::get('/dashboard202603', [AdminController::class, 'dashboard202603'])->name('admin.dashboard202603');
+});
+```
+**依存関係**: Task 2-1
+**所要時間**: 2分
+**完了条件**: 
+- ✅ ルートが正しく追加されている
+- ✅ ルート名が `admin.dashboard202603` である
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-3: 新規ビューファイルの作成
+**目的**: パンダ統計専用のダッシュボードページを作成
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**作業内容**:
+- 既存の `admin/dashboard.blade.php` を参考に作成
+- パンダ統計に特化した内容
+- 統計カード: 総パンダスキャン数、ユニークユーザー数
+- 最近のパンダスキャン履歴テーブル
+- 日別パンダスキャン数（テーブル + Chart.js グラフ）
+- ナビゲーションリンク（通常ダッシュボードへのリンク）
+**依存関係**: Task 2-1, 2-2
+**所要時間**: 20分
+**完了条件**: 
+- ✅ ファイルが作成されている
+- ✅ 既存ダッシュボードと同様のスタイルが適用されている
+- ✅ パンダ統計が表示される
+- ✅ ページネーションが機能する
+- ✅ Chart.jsグラフが表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-4: 既存ダッシュボードにナビゲーションリンクを追加
+**目的**: 通常ダッシュボードから202603ダッシュボードへ移動できるようにする
+**ファイル**: `resources/views/admin/dashboard.blade.php`
+**変更箇所**: ヘッダー部分（27-30行目付近）
+**作業内容**:
+```html
+<!-- 変更前 -->
+<div class="header">
+    <h1>📊 ARスタンプラリー 管理ダッシュボード</h1>
+    <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+</div>
+
+<!-- 変更後 -->
+<div class="header">
+    <h1>📊 ARスタンプラリー 管理ダッシュボード</h1>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <a href="{{ route('admin.dashboard202603') }}" class="nav-link" style="padding: 10px 15px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-size: 14px;">ARスタンプラリー202603</a>
+        <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+    </div>
+</div>
+```
+**依存関係**: Task 2-2, 2-3
+**所要時間**: 3分
+**完了条件**: 
+- ✅ ナビゲーションリンクが表示される
+- ✅ リンクをクリックすると202603ダッシュボードに遷移する
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: 総合テストと検証
+
+---
+
+#### Task 3-1: スタンプ帳UI改善の動作確認
+**目的**: ARstampRally202603.blade.phpの変更内容を確認
+**テスト項目**:
+1. `/stamp202603` にアクセス
+2. スタンプ帳ボタンをクリック
+3. ヒントボタンが表示されないことを確認
+4. 未収集の通常動物が「？？？」と表示されることを確認
+5. 未収集のシークレット（パンダ以外）が「シークレット」と表示されることを確認
+6. 未収集のパンダが「パンダ」と表示されることを確認
+7. ARマーカーで動物を捕獲
+8. 収集済み動物が実際の名前で表示されることを確認
+**依存関係**: Task 1-1, 1-2, 1-3
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 全てのテスト項目がパスする
+- ✅ 既存機能が損なわれていない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3-2: 管理画面統計ページの動作確認
+**目的**: 新規作成した管理画面の動作を確認
+**テスト項目**:
+1. ブラウザで `/admin/login` にアクセス
+2. 管理者ログイン（username: admin, password: 0835385252）
+3. 通常ダッシュボードにリダイレクトされることを確認
+4. 「ARスタンプラリー202603」リンクが表示されることを確認
+5. リンクをクリックして `/admin/dashboard202603` に遷移
+6. パンダの統計データが表示されることを確認：
+   - 総パンダスキャン数
+   - ユニークユーザー数
+   - 最近のパンダスキャン履歴
+   - 日別パンダスキャン数
+7. ページネーションが機能することを確認
+8. Chart.jsグラフが表示されることを確認
+9. 「通常ダッシュボード」リンクをクリックして元に戻れることを確認
+10. ログアウトせずにブラウザで直接 `/admin/dashboard202603` にアクセスできることを確認
+11. ログアウト後、認証なしで `/admin/dashboard202603` にアクセスできないことを確認
+**依存関係**: Task 2-1, 2-2, 2-3, 2-4
+**所要時間**: 15分
+**完了条件**: 
+- ✅ 全てのテスト項目がパスする
+- ✅ 認証が正しく機能している
+- ✅ デザインが統一されている
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] ARstampRally202603.blade.phpは6951行の大規模ファイル - 慎重に編集
+- [ ] 変更前に該当行の周辺コードを確認（5-10行前後）
+- [ ] 文字列リテラルの完全一致を確認（スペース、引用符含む）
+- [ ] 変更後にPHPの構文エラーがないか確認（php -l コマンド）
+- [ ] JavaScriptの構文エラーがないか確認（ブラウザコンソール）
+- [ ] 変更箇所の行番号と内容を記録
+
+### 実装順序
+1. **Phase 1（スタンプ帳UI改善）を最初に実施** - 比較的独立している
+   - Task 1-1, 1-2, 1-3を順番に実施
+   - Task 3-1で動作確認
+2. **Phase 2（管理画面追加）を実施** - 新規ファイル作成を含む
+   - Task 2-1（Controller）→ Task 2-2（Routing）→ Task 2-3（View）→ Task 2-4（Navigation）の順
+   - Task 3-2で動作確認
+
+### リスク管理
+- **バックアップ**: Git commitを事前に実施（推奨）
+- **Rollback**: 問題があれば元のARstampRally.blade.phpから再コピー可能
+- **影響範囲**: 
+  - ARstampRally202603.blade.phpのみ（元のファイルは変更しない）
+  - 管理画面は新規追加のため、既存機能への影響なし
+
+### パフォーマンス考慮
+- MarkerScanテーブルに `marker_id` のインデックスが必要（確認）
+- ページネーションで一度に大量データを取得しない
+- Chart.jsのデータポイント数を制限（30日分）
+
+## 成功基準
+
+### 必須条件 - スタンプ帳UI改善
+- [ ] ヒントボタンが表示されない
+- [ ] 未収集のパンダが「パンダ」と表示される
+- [ ] 未収集のシークレット（パンダ以外）が「シークレット」と表示される
+- [ ] 未収集の通常動物が「？？？」と表示される
+- [ ] 収集済み動物は実際の名前が表示される
+- [ ] 既存機能が損なわれていない
+
+### 必須条件 - 管理画面統計ページ
+- [ ] `/admin/dashboard202603` でアクセス可能
+- [ ] 認証なしでアクセス不可
+- [ ] パンダマーカーの統計が正しく表示される
+- [ ] 既存ダッシュボードと統一感のあるデザイン
+- [ ] ナビゲーションが双方向で機能する
+- [ ] ページネーションが機能する
+- [ ] Chart.jsグラフが表示される
+
+### 検証方法
+1. ブラウザで実際にアクセスして表示を確認
+2. ブラウザの開発者ツールでコンソールエラーを確認
+3. 複数のブラウザでテスト（Chrome, Firefox, Safari）
+4. モバイルデバイスでの表示確認（レスポンシブデザイン）
+
+## 次のステップ
+実装フェーズへの移行
+
+---
+
+**ARstampRally202603のスタンプ帳UI改善と管理画面統計追加のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化5: ARstampRally202603 - スタンプ帳アイコン表示改善 (追加修正)
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/design.md`の設計5を読み込み、設計内容を確認済み
+
+## タスク概要
+前回の実装（要件4）で未収集動物の名前表示を変更したが、アイコン表示は変更していなかった。今回は未収集の通常動物15種のアイコンを絵文字から足跡（🐾）に変更する。
+
+**変更箇所**: ARstampRally202603.blade.phpの1箇所のみ（約3390行目）  
+**変更内容**: 1行追加（`iconContent = '🐾';`）  
+**影響範囲**: 未収集の通常動物15種のアイコン表示のみ  
+
+---
+
+## タスク一覧
+
+### Phase 1: コード変更
+
+#### Task 1-1: 該当箇所の確認と変更
+**目的**: showStampBook関数内の通常動物未収集時のアイコン表示ロジックを変更
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業内容**:
+1. 3388-3393行目付近の以下のコードを確認：
+   ```javascript
+   } else {
+       // 通常動物の未収集時: '？？？' を表示
+       // iconContentはデフォルトのまま（stamp.icon）
+       nameText = '？？？';
+   }
+   ```
+
+2. 以下のように変更：
+   ```javascript
+   } else {
+       // 通常動物の未収集時: '？？？' を表示、アイコンは足跡
+       iconContent = '🐾'; // 足跡アイコンに変更
+       nameText = '？？？';
+   }
+   ```
+
+**変更詳細**:
+- 3390行目の次の行に `iconContent = '🐾'; // 足跡アイコンに変更` を追加
+- コメントを「iconContentはデフォルトのまま（stamp.icon）」から「通常動物の未収集時: '？？？' を表示、アイコンは足跡」に変更
+
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 
+- ✅ コードが正しく変更されている
+- ✅ 構文エラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: 動作確認とテスト
+
+#### Task 2-1: 未収集動物のアイコン表示確認
+**目的**: 変更が正しく反映されているか確認
+**テスト項目**:
+1. ブラウザで `/stamp202603` にアクセス
+2. スタンプ帳を開く（画面下部の「スタンプ帳」ボタンをクリック）
+3. 未収集の通常動物15種のアイコンが🐾（足跡）で表示されることを確認
+4. 未収集のアイコンがgrayscale効果で表示されることを確認
+5. 未収集の通常動物の名前が「？？？」で表示されることを確認（変更なし）
+6. 未収集のパンダのアイコンが🐾で表示されることを確認（変更なし）
+7. 未収集のパンダの名前が「パンダ」で表示されることを確認（変更なし）
+8. 未収集のシークレット（パンダ以外）のアイコンが🐾で表示されることを確認（変更なし）
+9. 未収集のシークレット（パンダ以外）の名前が「シークレット」で表示されることを確認（変更なし）
+
+**依存関係**: Task 1-1
+**所要時間**: 5分
+**完了条件**: 
+- ✅ 全ての未収集動物のアイコンが🐾で表示される
+- ✅ CSS効果（grayscale、text-shadow）が正しく適用される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-2: 収集済み動物の表示確認（回帰テスト）
+**目的**: 既存機能が損なわれていないか確認
+**テスト項目**:
+1. ARマーカーで動物を捕獲（どれか1種）
+2. スタンプ帳を開く
+3. 収集済み動物のアイコンが以下のいずれかで表示されることを確認：
+   - スクリーンショット（画像）
+   - 絵文字（🐑🦊🐧など）
+4. 収集済み動物の名前が実際の名前（ひつじ、きつね、ペンギンなど）で表示されることを確認
+5. 収集済み動物に `collected` クラスが適用され、色付き表示されることを確認
+6. 収集日時が表示されることを確認
+
+**依存関係**: Task 2-1
+**所要時間**: 5分
+**完了条件**: 
+- ✅ 収集済み動物の表示が変更前と同じ
+- ✅ スクリーンショットまたは絵文字が正しく表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-3: 各種ブラウザでの表示確認
+**目的**: 絵文字（🐾）が各ブラウザで正しく表示されるか確認
+**テスト項目**:
+1. Chrome（デスクトップ）で表示確認
+2. Firefox（デスクトップ）で表示確認
+3. Safari（iOS）で表示確認（可能であれば）
+4. Edge（Windows）で表示確認（可能であれば）
+5. 各ブラウザのコンソールでエラーがないか確認
+
+**依存関係**: Task 2-2
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 全てのブラウザで足跡絵文字が正しく表示される
+- ✅ コンソールエラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-4: 回帰テスト（全体機能確認）
+**目的**: 既存機能が損なわれていないか包括的に確認
+**テスト項目**:
+1. スタンプ収集機能が正常に動作する
+2. スタンプ帳の表示が正常に動作する
+3. 捕獲メッセージが正常に表示される
+4. LocalStorageへの保存が正常に動作する
+5. ページリロード後もスタンプが保持される
+6. コンプリート時のメッセージとパーティクルが表示される
+7. ヒントボタンが非表示のままであることを確認（前回の実装）
+
+**依存関係**: Task 2-3
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 全ての既存機能が正常に動作する
+- ✅ 前回の実装（ヒントボタン非表示、名前表示変更）が維持されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: ドキュメント更新
+
+#### Task 3-1: README.mdへの変更内容追記
+**目的**: 変更内容を記録し、プロジェクトの変更履歴を更新
+**ファイル**: `README.md`
+**作業内容**:
+1. README.mdの「変更点」セクションに以下を追記：
+   ```markdown
+   ### ARスタンプラリー202603 - スタンプ帳アイコン表示改善（追加修正） 20260219
+   **未収集動物のアイコン表示を統一:**
+   
+   #### 実装内容
+   - 未収集の通常動物15種のアイコンを絵文字から足跡（🐾）に変更
+   - すべての未収集動物（パンダ、シークレット、通常動物）が足跡で統一表示される
+   - ユーザーが「まだ見つけていない動物」であることをより明確に認識できる
+   
+   #### 変更ファイル
+   - `resources/views/ARstampRally202603.blade.php`: showStampBook関数（1行追加）
+   
+   #### 表示結果
+   **未収集時**:
+   - パンダ: 🐾（足跡） + 「パンダ」
+   - シークレット（パンダ以外）: 🐾（足跡） + 「シークレット」
+   - 通常動物15種: 🐾（足跡） + 「？？？」（**絵文字から足跡に変更**）
+   
+   **収集済み時**:
+   - 全動物: スクリーンショットまたは絵文字 + 実際の名前（変更なし）
+   
+   #### 動作確認済み項目
+   - ✅ 未収集動物のアイコンが🐾で統一表示される
+   - ✅ 収集済み動物の表示は変更なし
+   - ✅ CSS効果（grayscale、text-shadow）が正しく適用される
+   - ✅ 既存機能への影響なし
+   
+   #### 設計ドキュメント
+   - 要件定義5: `.claude_workflow/requirements.md` (要件定義5セクション)
+   - 設計5: `.claude_workflow/design.md` (設計5セクション)
+   - タスク化5: `.claude_workflow/tasks.md` (タスク化5セクション)
+   ```
+
+**依存関係**: Task 2-4
+**所要時間**: 5分
+**完了条件**: 
+- ✅ README.mdに変更内容が追記されている
+- ✅ 既存の変更履歴フォーマットと統一されている
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] ARstampRally202603.blade.phpは6964行の大規模ファイル - 慎重に編集
+- [ ] 変更前に該当行の周辺コードを確認（5-10行前後）
+- [ ] 文字列リテラルの完全一致を確認（スペース、引用符含む）
+- [ ] 変更後にJavaScriptの構文エラーがないか確認（ブラウザコンソール）
+- [ ] 変更箇所の行番号と内容を記録
+
+### リスク管理
+- **バックアップ**: 不要（変更は1行のみ、簡単にrollback可能）
+- **影響範囲**: 未収集の通常動物15種のアイコン表示のみ
+- **絵文字互換性**: 🐾は既にシークレット動物で使用済み、動作確認済み
+
+### パフォーマンス考慮
+- 変更内容: 文字列代入のみ（計算処理なし）
+- パフォーマンス影響: なし
+
+## 成功基準
+
+### 必須条件
+- [ ] 未収集の通常動物15種のアイコンが🐾（足跡）で表示される
+- [ ] 未収集のパンダとシークレット動物は引き続き🐾（足跡）で表示される
+- [ ] 収集済みの動物はスクリーンショットまたは絵文字が表示される（変更なし）
+- [ ] 動物名の表示は前回の実装のまま（パンダ/シークレット/？？？）
+- [ ] 既存機能が損なわれていない
+- [ ] CSSが正しく適用される（grayscale、text-shadow）
+- [ ] ブラウザコンソールにエラーがない
+
+### 検証方法
+1. ブラウザで実際にアクセスして表示を確認
+2. ブラウザの開発者ツールでコンソールエラーを確認
+3. 複数のブラウザでテスト（Chrome, Firefox, Safari, Edge）
+4. 既存機能の回帰テスト
+
+## タスク実行順序
+1. Task 1-1: コード変更（3390行目付近に1行追加）
+2. Task 2-1: 未収集動物のアイコン表示確認
+3. Task 2-2: 収集済み動物の表示確認（回帰テスト）
+4. Task 2-3: 各種ブラウザでの表示確認
+5. Task 2-4: 回帰テスト（全体機能確認）
+6. Task 3-1: README.mdへの変更内容追記
+
+## 次のステップ
+実装フェーズへの移行
+
+---
+
+**ARstampRally202603のスタンプ帳アイコン表示改善のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**

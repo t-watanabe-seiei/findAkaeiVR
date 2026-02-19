@@ -294,4 +294,36 @@ class AdminController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $filename . '"'
         ]);
     }
+
+    // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
+    public function dashboard202603(Request $request)
+    {
+        // パンダマーカーの統計
+        $totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+        
+        $uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
+            ->distinct('fingerprint')
+            ->count();
+        
+        // 最近のパンダスキャン履歴（ページネーション）
+        $recentPandaScans = MarkerScan::where('marker_id', 'panda')
+            ->orderBy('scanned_at', 'desc')
+            ->paginate(30, ['*'], 'panda_scans_page');
+        
+        // 日別パンダスキャン数（直近30日間）
+        $dailyPandaScans = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('COUNT(*) as count')
+            ->where('marker_id', 'panda')
+            ->where('scanned_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->paginate(15, ['*'], 'daily_panda_page');
+        
+        return view('admin.dashboard202603', compact(
+            'totalPandaScans',
+            'uniquePandaUsers',
+            'recentPandaScans',
+            'dailyPandaScans'
+        ));
+    }
 }

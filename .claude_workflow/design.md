@@ -1042,3 +1042,688 @@ UserIdDBオブジェクトの定義を変更：
 ---
 
 **ARスタンプラリー202603版のlocalStorage分離の設計フェーズが完了しました。タスク化フェーズに進んでよろしいですか？**
+
+---
+
+# 設計4: ARstampRally202603 スタンプ帳UI改善と管理画面統計追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md` の「要件定義4」を読み込み、要件を確認済み
+
+## 現状分析
+
+### ARstampRally202603.blade.phpの構造
+
+**ファイル情報**:
+- 総行数: 6951行
+- 言語: HTML + JavaScript (Blade テンプレート)
+- フレームワーク: A-Frame + AR.js
+
+**重要な定義箇所**:
+
+1. **STAMPSオブジェクト** (2560-2600行目):
+```javascript
+const STAMPS = {
+    // 通常動物 (15種)
+    'sheep': { name: 'ひつじ', icon: '🐑', model: '...' },
+    'fox': { name: 'きつね', icon: '🦊', model: '...' },
+    'pengin': { name: 'ペンギン', icon: '🐧', model: '...' },
+    'tonakai': { name: 'トナカイ', icon: '🦌', model: '...' },
+    'pig': { name: 'ぶた', icon: '🐷', model: '...' },
+    'tora': { name: 'とら', icon: '🐯', model: '...' },
+    'gollira': { name: 'ごりら', icon: '🦍', model: '...' },
+    'whiteDuck': { name: '白アヒル', icon: '🦆', model: '...' },
+    'araiguma': { name: 'あらいぐま', icon: '🦝', model: '...' },
+    'wolf': { name: 'おおかみ', icon: '🐺', model: '...' },
+    'duck': { name: 'あひる', icon: '🦆', model: '...' },
+    'cat': { name: 'ねこ', icon: '🐱', model: '...' },
+    'bear': { name: 'くま', icon: '🐻', model: '...' },
+    'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '...' },
+    'hamstar': { name: 'ハムスター', icon: '🐹', model: '...' },
+    
+    // シークレット動物 (5種、全てsecret: trueフラグ付き)
+    'burger': { name: 'バーガー', icon: '🍔', model: '...', secret: true },
+    'kirin': { name: 'きりん', icon: '🦒', model: '...', secret: true },
+    'namakemono': { name: 'なまけもの', icon: '🦥', model: '...', secret: true },
+    't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '...', secret: true },
+    'panda': { name: 'パンダ', icon: '🐼', model: '...', secret: true }
+};
+
+const SECRET_STAMPS = ['burger', 'kirin', 'namakemono', 't-rex', 'panda'];
+```
+
+2. **showStampBook関数** (3333-3430行目):
+   - スタンプ帳モーダルの表示ロジック
+   - 各動物の表示状態を制御
+   - 現状の処理フロー:
+     ```javascript
+     if (isCollected) {
+         // 収集済み: 実際の名前と画像を表示
+         nameText = stamp.name;
+     } else if (isSecret) {
+         // 未収集のシークレット: アイコン '🐾'、名前 'シークレット'
+         iconContent = '🐾';
+         nameText = 'シークレット';
+     } else {
+         // 未収集の通常動物: デフォルトのまま（実際の名前）
+         nameText = stamp.name; // ← ここを変更する必要あり
+     }
+     ```
+
+3. **hint-button** (HTML: 1931行目、イベントハンドラー: 5746-5754行目):
+   - HTML:
+   ```html
+   <button id="hint-button" type="button">ヒントを見る</button>
+   ```
+   - JavaScript:
+   ```javascript
+   const hintButton = document.getElementById('hint-button');
+   if (hintButton) {
+       hintButton.addEventListener('click', function(e) {
+           e.preventDefault();
+           e.stopPropagation();
+           window.open('{{ asset("/cg/stampRallyHints.pdf") }}', '_blank');
+       });
+   }
+   ```
+
+### 既存の管理画面構造
+
+**AdminController.php** (298行):
+- `dashboard()`: 既存のダッシュボード (42-159行目)
+- MarkerScanモデルを使用した統計取得
+- ページネーション対応
+- Chart.js による可視化
+
+**admin/dashboard.blade.php** (784行):
+- 景品交換統計
+- マーカー別スキャン統計
+- 日別スキャン数
+- ユニークユーザー数
+- CSVエクスポート機能
+
+**routes/web.php**:
+- 管理画面ルートは `/admin` プレフィックスで統一
+- `admin.auth` ミドルウェアによる認証保護
+
+## 設計方針
+
+### 1. スタンプ帳UI改善の設計
+
+#### 1-1. ヒントボタンの非表示
+
+**変更箇所**:
+1. **HTML部分** (1931行目):
+   ```html
+   <!-- 変更前 -->
+   <button id="hint-button" type="button">ヒントを見る</button>
+   
+   <!-- 変更後 -->
+   <!-- <button id="hint-button" type="button">ヒントを見る</button> -->
+   ```
+
+2. **JavaScript部分** (5746-5754行目):
+   ```javascript
+   // 変更前: イベントハンドラーが存在
+   const hintButton = document.getElementById('hint-button');
+   if (hintButton) { ... }
+   
+   // 変更後: コメントアウトまたは削除
+   /*
+   const hintButton = document.getElementById('hint-button');
+   if (hintButton) { ... }
+   */
+   ```
+
+**理由**: HTMLをコメントアウトするだけで、JavaScriptは `if (hintButton)` で nullチェックしているため、エラーは発生しない。
+
+#### 1-2. 未収集動物名の「？？？」表示
+
+**変更箇所**: showStampBook関数 (3365-3386行目付近)
+
+**現状のロジック**:
+```javascript
+if (isCollected) {
+    // 収集済み: 実際の名前を表示
+    nameText = stamp.name;
+} else if (isSecret) {
+    // シークレット: '🐾' と 'シークレット'
+    iconContent = '🐾';
+    nameText = 'シークレット';
+}
+// else: デフォルトのまま（実際の名前が表示される）
+```
+
+**新しいロジック**:
+```javascript
+if (isCollected) {
+    // 収集済み: 実際の名前を表示
+    nameText = stamp.name;
+} else if (isSecret) {
+    // シークレット動物の未収集時
+    if (stampId === 'panda') {
+        // パンダは特別扱い: 未収集でも「パンダ」と表示
+        iconContent = '🐾';
+        nameText = 'パンダ';
+    } else {
+        // パンダ以外のシークレット: 'シークレット'
+        iconContent = '🐾';
+        nameText = 'シークレット';
+    }
+} else {
+    // 通常動物の未収集時: '？？？' を表示
+    iconContent = stamp.icon; // アイコンはそのまま
+    nameText = '？？？';
+}
+```
+
+**対象動物の分類**:
+- **パンダ (panda)**: `secret: true` だが未収集時も「パンダ」と表示
+- **シークレット（パンダ以外）**: burger, kirin, namakemono, t-rex → 「シークレット」
+- **通常動物（15種）**: 全て → 未収集時は「？？？」
+
+### 2. 管理画面統計ページの設計
+
+#### 2-1. システムアーキテクチャ
+
+```
+┌─────────────────────────────────────────┐
+│  Route: /admin/dashboard202603          │
+│  Name: admin.dashboard202603            │
+└──────────────┬──────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────┐
+│  AdminController::dashboard202603()     │
+│  - パンダマーカーの統計を取得            │
+│  - MarkerScanモデルを使用                │
+└──────────────┬──────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────┐
+│  View: admin/dashboard202603.blade.php  │
+│  - 既存dashboardと同様のデザイン         │
+│  - パンダ統計に特化                      │
+└─────────────────────────────────────────┘
+```
+
+#### 2-2. データベース設計
+
+**使用テーブル**: `marker_scans`
+
+**カラム**:
+- `marker_id`: マーカーの識別子 ('panda')
+- `marker_name`: マーカーの表示名 ('パンダ')
+- `fingerprint`: ユーザー識別子
+- `scan_count`: スキャン回数
+- `scanned_at`: スキャン日時
+- `device_info`: デバイス情報 (JSON)
+
+**クエリ例**:
+```php
+// パンダマーカーの総スキャン数
+$totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+
+// パンダマーカーのユニークユーザー数
+$uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
+    ->distinct('fingerprint')
+    ->count();
+
+// 最近のパンダスキャン履歴
+$recentPandaScans = MarkerScan::where('marker_id', 'panda')
+    ->orderBy('scanned_at', 'desc')
+    ->paginate(30);
+```
+
+#### 2-3. コントローラーの実装設計
+
+**ファイル**: `app/Http/Controllers/AdminController.php`
+
+**新規メソッド**: `dashboard202603()`
+
+**実装内容**:
+```php
+public function dashboard202603(Request $request)
+{
+    // パンダマーカーの統計
+    $totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+    
+    $uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
+        ->distinct('fingerprint')
+        ->count();
+    
+    // 最近のパンダスキャン履歴（ページネーション）
+    $recentPandaScans = MarkerScan::where('marker_id', 'panda')
+        ->orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'panda_scans_page');
+    
+    // 日別パンダスキャン数（直近30日間）
+    $dailyPandaScans = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('COUNT(*) as count')
+        ->where('marker_id', 'panda')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date')
+        ->orderBy('date', 'desc')
+        ->paginate(15, ['*'], 'daily_panda_page');
+    
+    return view('admin.dashboard202603', compact(
+        'totalPandaScans',
+        'uniquePandaUsers',
+        'recentPandaScans',
+        'dailyPandaScans'
+    ));
+}
+```
+
+#### 2-4. ビューの実装設計
+
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+
+**構造**:
+1. **ヘッダー**: タイトル + ログアウトボタン + ナビゲーションリンク
+2. **統計カード**:
+   - 総パンダスキャン数
+   - ユニークユーザー数
+3. **最近のパンダスキャン履歴テーブル**:
+   - 日時
+   - フィンガープリント
+   - スキャン回数
+   - デバイス情報
+4. **日別パンダスキャン数**:
+   - テーブル表示
+   - グラフ表示（Chart.js）
+
+**デザインガイドライン**:
+- 既存の `admin/dashboard.blade.php` のスタイルを踏襲
+- 色合い、フォント、レイアウトを統一
+- レスポンシブデザイン
+- ページネーション対応
+
+#### 2-5. ルーティング設計
+
+**ファイル**: `routes/web.php`
+
+**追加ルート**:
+```php
+// 認証が必要なルート（既存のミドルウェアグループ内に追加）
+Route::middleware('admin.auth')->group(function () {
+    // ... 既存のルート ...
+    
+    // ARstampRally202603用のダッシュボード
+    Route::get('/dashboard202603', [AdminController::class, 'dashboard202603'])
+        ->name('admin.dashboard202603');
+});
+```
+
+#### 2-6. ナビゲーション設計
+
+**既存ダッシュボードへのリンク追加**:
+- `admin/dashboard.blade.php` のヘッダー部分にリンクを追加:
+  ```html
+  <div class="header">
+      <h1>📊 ARスタンプラリー 管理ダッシュボード</h1>
+      <div class="nav-links">
+          <a href="{{ route('admin.dashboard202603') }}" class="nav-link">
+              ARスタンプラリー202603
+          </a>
+          <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+      </div>
+  </div>
+  ```
+
+**新ダッシュボードからのリンク**:
+- `admin/dashboard202603.blade.php` のヘッダー部分:
+  ```html
+  <div class="header">
+      <h1>📊 ARスタンプラリー202603 管理ダッシュボード</h1>
+      <div class="nav-links">
+          <a href="{{ route('admin.dashboard') }}" class="nav-link">
+              通常ダッシュボード
+          </a>
+          <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+      </div>
+  </div>
+  ```
+
+## 実装上の注意点
+
+### 1. ARstampRally202603.blade.phpの変更
+
+**注意事項**:
+- 6951行の大規模ファイルのため、慎重に編集
+- 既存の機能を損なわないように注意
+- 変更箇所を最小限に抑える
+- コメントアウトを活用（完全削除しない）
+
+**テスト項目**:
+- スタンプ帳の表示が正しいか
+- 収集済み動物の名前が正しく表示されるか
+- 未収集動物の名前が要件通り表示されるか（パンダ/シークレット/通常）
+- ヒントボタンが非表示になっているか
+
+### 2. 管理画面の実装
+
+**注意事項**:
+- 既存の `admin/dashboard.blade.php` のコードを参考にする
+- スタイルは既存のものをコピー＆ペースト
+- ページネーションのスタイルも同様に適用
+- Chart.jsのCDNリンクを含める
+
+**テスト項目**:
+- 認証なしでアクセスできないか
+- パンダマーカーの統計が正しく表示されるか
+- ページネーションが機能するか
+- ナビゲーションリンクが機能するか
+
+### 3. パフォーマンス考慮
+
+- `MarkerScan::where('marker_id', 'panda')` はインデックスが効いているか確認
+- ページネーションで大量データの取得を避ける
+- Chart.jsの描画が重くならないようにデータ量を制限
+
+### 4. セキュリティ考慮
+
+- `admin.auth` ミドルウェアで保護されているか確認
+- CSRFトークンが適切に設定されているか
+- SQLインジェクション対策（Eloquent使用で自動対策済み）
+
+## 成功基準
+
+### 1. スタンプ帳UI改善
+
+✅ ヒントボタンが表示されない  
+✅ パンダは未収集時も「パンダ」と表示される  
+✅ シークレット（パンダ以外）は未収集時に「シークレット」と表示される  
+✅ 通常動物15種は未収集時に「？？？」と表示される  
+✅ 収集済み動物は実際の名前が表示される  
+✅ 既存機能が損なわれていない  
+
+### 2. 管理画面統計ページ
+
+✅ `/admin/dashboard202603` でアクセス可能  
+✅ 認証なしでアクセス不可  
+✅ パンダマーカーの統計が正しく表示される  
+✅ 既存ダッシュボードと統一感のあるデザイン  
+✅ ナビゲーションが機能する  
+✅ ページネーションが機能する  
+
+## 次のステップ
+
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
+2. 実装フェーズ - コードの変更と追加
+
+---
+
+# 設計5: ARstampRally202603 - スタンプ帳アイコン表示改善 (追加修正)
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md`の要件定義5を読み込み、要件を確認済み
+
+## 背景分析
+
+### 現在の実装状態
+前回の実装（設計4）で以下を変更：
+- ヒントボタンを非表示化
+- 未収集動物の**名前表示**を変更（パンダ→「パンダ」、シークレット→「シークレット」、通常動物→「？？？」）
+
+しかし、**アイコン表示**は変更していなかった：
+- パンダ: 🐾（足跡）✅ 変更済み
+- シークレット: 🐾（足跡）✅ 変更済み
+- 通常動物15種: 🐑🦊🐧など（絵文字そのまま）❌ **未変更**
+
+### 問題点
+未収集の通常動物が絵文字で表示されているため、ユーザーが「何の動物か」を予測できてしまう。名前は「？？？」なのに、アイコンで動物種がわかるという矛盾が生じている。
+
+## コードベース調査結果
+
+### 1. 関連箇所の全体マッピング
+
+#### A. showStampBook関数（3333-3430行目）
+スタンプ帳を表示する関数。未収集時・収集済み時のアイコン・名前表示ロジックが含まれる。
+
+**変更対象箇所**（3388-3393行目）:
+```javascript
+} else {
+    // 通常動物の未収集時: '？？？' を表示
+    // iconContentはデフォルトのまま（stamp.icon）
+    nameText = '？？？';
+}
+```
+
+#### B. STAMPS定義（2562-2598行目）
+20種の動物定義（通常15種＋シークレット5種）。各動物にicon（絵文字）が定義されている。
+
+**通常動物15種**:
+- sheep (🐑), fox (🦊), pengin (🐧), tonakai (🦌), pig (🐷)
+- tora (🐯), gollira (🦍), whiteDuck (🦆), araiguma (🦝), wolf (🐺)
+- duck (🦆), cat (🐱), bear (🐻), harinezumi (🦔), hamstar (🐹)
+
+**シークレット5種**:
+- burger (🍔), kirin (🦒), namakemono (🦥), t-rex (🦖), panda (🐼)
+
+#### C. CSS定義（1559-1611行目）
+スタンプアイコンのスタイル定義。
+
+**重要なクラス**:
+1. `.stamp-icon`: 基本スタイル（28px font-size、60px height、白背景）
+2. `.secret .stamp-icon`: シークレット用（color: transparent + text-shadow）
+3. `.not-collected .stamp-icon`: 未収集用（**grayscale(100%)**）
+
+**影響確認**: 未収集の通常動物に足跡を表示しても、`.not-collected`クラスで自動的にgrayscale化される。
+
+#### D. 収集済み時の処理（3367-3377行目）
+```javascript
+if (isCollected) {
+    const date = new Date(collectedStamps[stampId].collectedAt);
+    dateText = `<div class="stamp-date">${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}</div>`;
+
+    // スクリーンショットがあれば画像を表示
+    if (collectedStamps[stampId].screenshot) {
+        const screenshotData = collectedStamps[stampId].screenshot;
+        iconContent = `<img src="${screenshotData}" alt="${stamp.name}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
+    // シークレット動物でも収集後は実際の名前を表示
+    nameText = stamp.name;
+}
+```
+
+**影響確認**: 収集済み時は、screenshotがあればそれを表示、なければ`stamp.icon`（絵文字）を表示。今回の変更は未収集時のみなので影響なし。
+
+#### E. シークレット動物の未収集時処理（3377-3388行目）
+```javascript
+} else if (isSecret) {
+    // シークレット動物は未収集時にアイコンと名前を処理
+    if (stampId === 'panda') {
+        // パンダは特別扱い: 未収集でも「パンダ」と表示
+        iconContent = '🐾'; // 足跡アイコン
+        nameText = 'パンダ';
+    } else {
+        // パンダ以外のシークレット: 'シークレット'
+        iconContent = '🐾'; // 足跡アイコン
+        nameText = 'シークレット'; // 名前も隠す
+    }
+}
+```
+
+**影響確認**: シークレット動物は既に足跡表示済み。今回の変更とは無関係。
+
+#### F. showCapturedMessage関数（2966-2985行目）
+動物捕獲時にメッセージを表示する関数。
+
+```javascript
+function showCapturedMessage(stampId) {
+    const message = document.getElementById('captured-message');
+    const animalName = document.getElementById('captured-animal-name');
+    
+    if (STAMPS[stampId]) {
+        animalName.textContent = `${STAMPS[stampId].icon} ${STAMPS[stampId].name}`;
+        currentCapturedAnimal = stampId;
+        // ... (略)
+    }
+}
+```
+
+**影響確認**: 捕獲済みの動物のアイコン表示なので、今回の変更とは無関係。
+
+#### G. collectStamp関数（124行目）
+スタンプ収集時の処理。LocalStorageに保存。
+
+**影響確認**: アイコン表示には関与しないため、今回の変更とは無関係。
+
+### 2. 他の箇所への影響分析
+
+| 箇所 | 影響の有無 | 理由 |
+|------|-----------|------|
+| STAMPS定義 | なし | アイコン定義は変更しない（収集済み時に使用） |
+| CSS定義 | なし | 既存スタイルがそのまま適用される |
+| 収集済み表示 | なし | screenshotまたはstamp.iconを表示（変更なし） |
+| シークレット動物 | なし | 既に足跡表示済み |
+| 捕獲メッセージ | なし | 収集済みの表示なので影響なし |
+| collectStamp関数 | なし | 保存処理のみ、表示には関与しない |
+| showStampBook以外 | なし | アイコン表示はshowStampBookのみ |
+
+### 3. 変更の影響範囲
+**変更箇所**: 1箇所のみ（約3390行目）  
+**変更内容**: 1行追加（`iconContent = '🐾';`）  
+**影響範囲**: 未収集の通常動物15種のアイコン表示のみ  
+
+## 実装設計
+
+### 1. 変更対象コード
+
+**ファイル**: `resources/views/ARstampRally202603.blade.php`  
+**行数**: 約3390行目  
+**関数**: showStampBook()  
+
+### 2. 変更内容
+
+#### 変更前（現在のコード）
+```javascript
+} else {
+    // 通常動物の未収集時: '？？？' を表示
+    // iconContentはデフォルトのまま（stamp.icon）
+    nameText = '？？？';
+}
+```
+
+#### 変更後
+```javascript
+} else {
+    // 通常動物の未収集時: '？？？' を表示、アイコンは足跡
+    iconContent = '🐾'; // 足跡アイコンに変更
+    nameText = '？？？';
+}
+```
+
+### 3. 変更の詳細説明
+
+**変更箇所**: 3390行目の次の行に追加  
+**追加コード**: `iconContent = '🐾'; // 足跡アイコンに変更`  
+**コメント修正**: 「iconContentはデフォルトのまま（stamp.icon）」→「通常動物の未収集時: '？？？' を表示、アイコンは足跡」  
+
+### 4. CSS適用の確認
+
+未収集の通常動物には以下のクラスが適用される：
+- `stamp-item`: 基本スタイル
+- `not-collected`: 未収集スタイル
+
+`.not-collected .stamp-icon` に `filter: grayscale(100%);` が適用されるため、足跡アイコン（🐾）もグレースケール表示される。これは期待通りの動作。
+
+### 5. 表示結果の確認
+
+#### 未収集時の表示（変更後）
+
+| 動物種 | アイコン | 名前 | CSS効果 |
+|--------|---------|------|---------|
+| **通常動物15種** | 🐾 | ？？？ | grayscale(100%) |
+| **パンダ** | 🐾 | パンダ | grayscale(100%) + text-shadow |
+| **シークレット（パンダ以外）** | 🐾 | シークレット | grayscale(100%) + text-shadow |
+
+#### 収集済み時の表示（変更なし）
+
+| 動物種 | アイコン | 名前 | CSS効果 |
+|--------|---------|------|---------|
+| **全動物** | スクリーンショット または 絵文字 | 実際の名前 | なし（colored） |
+
+### 6. 一貫性の確認
+
+変更後、未収集時のアイコン表示が完全に統一される：
+- ✅ すべての未収集動物が足跡（🐾）で表示される
+- ✅ 名前表示と整合性が取れる（動物種を隠す）
+- ✅ ユーザー体験が向上（謎解き要素の強化）
+
+## テスト計画
+
+### 1. 動作確認項目
+
+#### A. 未収集動物のアイコン表示
+- [ ] 通常動物15種が未収集時に🐾で表示される
+- [ ] パンダが未収集時に🐾で表示される（変更なし）
+- [ ] シークレット（パンダ以外）が未収集時に🐾で表示される（変更なし）
+
+#### B. 未収集動物の名前表示
+- [ ] 通常動物15種が未収集時に「？？？」で表示される（変更なし）
+- [ ] パンダが未収集時に「パンダ」で表示される（変更なし）
+- [ ] シークレット（パンダ以外）が未収集時に「シークレット」で表示される（変更なし）
+
+#### C. 収集済み動物の表示
+- [ ] スクリーンショットがある場合は画像が表示される（変更なし）
+- [ ] スクリーンショットがない場合は絵文字が表示される（変更なし）
+- [ ] 収集済み動物の名前が正しく表示される（変更なし）
+
+#### D. CSS効果
+- [ ] 未収集動物のアイコンがgrayscaleで表示される
+- [ ] シークレット動物のアイコンにtext-shadowが適用される
+
+### 2. 回帰テスト
+
+- [ ] スタンプ収集機能が正常に動作する
+- [ ] スタンプ帳の表示が正常に動作する
+- [ ] 捕獲メッセージが正常に表示される
+- [ ] LocalStorageへの保存が正常に動作する
+- [ ] ページリロード後もスタンプが保持される
+
+### 3. ブラウザ互換性
+
+- [ ] Chrome（デスクトップ・モバイル）
+- [ ] Safari（iOS）
+- [ ] Firefox
+- [ ] Edge
+
+## リスク評価
+
+### リスク1: 絵文字表示の互換性
+**リスク**: 一部のデバイスで🐾が正しく表示されない可能性  
+**影響度**: 低（既にシークレット動物で使用済み、動作確認済み）  
+**対策**: 既存のシークレット動物と同じ表現なので問題なし  
+
+### リスク2: CSS適用の不具合
+**リスク**: grayscaleが足跡に適用されない  
+**影響度**: 極低（CSSは既存のまま、他の絵文字と同じ処理）  
+**対策**: 変更不要  
+
+### リスク3: パフォーマンス
+**リスク**: アイコン変更による処理速度低下  
+**影響度**: なし（文字列代入のみ、計算処理なし）  
+**対策**: 不要  
+
+## 成功基準
+
+✅ 未収集の通常動物15種のアイコンが🐾（足跡）で表示される  
+✅ 未収集のパンダとシークレット動物は引き続き🐾（足跡）で表示される  
+✅ 収集済みの動物はスクリーンショットまたは絵文字が表示される（変更なし）  
+✅ 動物名の表示は前回の実装のまま（パンダ/シークレット/？？？）  
+✅ 既存機能が損なわれていない  
+✅ CSSが正しく適用される  
+
+## 次のステップ
+
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
+2. 実装フェーズ - コードの変更（1行の追加）
+3. テストフェーズ - 動作確認と回帰テスト

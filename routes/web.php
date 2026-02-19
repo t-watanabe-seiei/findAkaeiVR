@@ -90,5 +90,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/scans', [AdminController::class, 'allScans'])->name('admin.scans');
         // CSV エクスポート（dataset: exchanges|redeemed|scans|daily|markerStats, start/end optional)
         Route::get('/export', [AdminController::class, 'exportCsv'])->name('admin.export');
+        // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
+        Route::get('/dashboard202603', [AdminController::class, 'dashboard202603'])->name('admin.dashboard202603');
     });
 });

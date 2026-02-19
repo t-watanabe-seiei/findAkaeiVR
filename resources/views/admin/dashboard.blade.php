@@ -375,7 +375,10 @@
 <body>
     <div class="header">
         <h1>📊 ARスタンプラリー 管理ダッシュボード</h1>
-        <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="{{ route('admin.dashboard202603') }}" style="padding: 10px 15px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-size: 14px; transition: background 0.3s;">ARスタンプラリー202603</a>
+            <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+        </div>
     </div>
 
     <div class="stats-grid">

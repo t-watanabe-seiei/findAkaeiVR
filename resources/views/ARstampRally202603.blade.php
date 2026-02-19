@@ -1928,7 +1928,7 @@
             </div>
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
-                <button id="hint-button" type="button">ヒントを見る</button>
+                <!-- <button id="hint-button" type="button">ヒントを見る</button> -->
                 <button id="exchange-prize-button" type="button">景品と交換する</button>
                 <button id="clear-stamps" type="button">動物たちを逃がす</button>
             </div>
@@ -3375,9 +3375,20 @@
                         // シークレット動物でも収集後は実際の名前を表示
                         nameText = stamp.name;
                     } else if (isSecret) {
-                        // シークレット動物は未収集時にアイコンと名前を非表示
-                        iconContent = '🐾'; // 足跡アイコン
-                        nameText = 'シークレット'; // 名前も隠す
+                        // シークレット動物は未収集時にアイコンと名前を処理
+                        if (stampId === 'panda') {
+                            // パンダは特別扱い: 未収集でも「パンダ」と表示
+                            iconContent = '🐾'; // 足跡アイコン
+                            nameText = 'パンダ';
+                        } else {
+                            // パンダ以外のシークレット: 'シークレット'
+                            iconContent = '🐾'; // 足跡アイコン
+                            nameText = 'シークレット'; // 名前も隠す
+                        }
+                    } else {
+                        // 通常動物の未収集時: '？？？' を表示、アイコンは足跡
+                        iconContent = '🐾'; // 足跡アイコンに変更
+                        nameText = '？？？';
                     }
 
                     stampItem.innerHTML = `
@@ -5743,7 +5754,8 @@
                 }, 100);
             });
 
-            // ヒントボタン
+            // ヒントボタン（非表示化のためコメントアウト）
+            /*
             const hintButton = document.getElementById('hint-button');
             if (hintButton) {
                 hintButton.addEventListener('click', function(e) {
@@ -5752,6 +5764,7 @@
                     window.open('{{ asset("/cg/stampRallyHints.pdf") }}', '_blank');
                 });
             }
+            */
 
             // 操作説明ボタン（ヘルプ）
             const guideButton = document.getElementById('guide-button');
