@@ -156,6 +156,17 @@
             width: 18px !important;
             height: 18px !important;
         }
+        /* 【新規追加】.pagination-wrapper内のページネーションのSVGアイコンサイズ制御 */
+        .pagination-wrapper svg {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+        }
+        .pagination-wrapper nav svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
         .chart-container {
             margin-top: 30px;
             max-width: 1200px;

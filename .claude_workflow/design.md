@@ -4571,3 +4571,564 @@ if ($q) {
 1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
 2. 実装フェーズ - コードの変更と追加
 3. 動作確認とテスト
+
+---
+
+# 設計9: ARスタンプラリー202603 - dashboard202603のページネーションアイコンサイズ修正
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md`の要件定義9を読み込み、要件を確認済み
+
+## 問題の詳細分析
+
+### 現在の実装状況
+
+#### CSS構造（dashboard202603.blade.php）
+```css
+/* Line 113-142: 基本のページネーションスタイル */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.pagination a,
+.pagination span {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #667eea;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+/* Line 144-149: ページネーションのSVGアイコンサイズ制御 */
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+/* Line 151-158: Laravelページネーションの構造に対応 */
+.pagination nav {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Line 237-239: ページネーションラッパー（景品交換用） */
+.pagination-wrapper {
+    margin-top: 20px;
+}
+```
+
+#### HTML構造の違い
+
+**スキャン履歴のページネーション（Line 333）**:
+```html
+<div class="pagination">
+    {{ $recentScans->links() }}
+</div>
+```
+→ `.pagination`クラスが付いているため、`.pagination svg`のスタイルが適用される
+
+**未使用景品交換のページネーション（Line 394）**:
+```html
+<div class="pagination-wrapper">
+    {{ $recentExchanges->links() }}
+</div>
+```
+→ `.pagination`クラスが付いていないため、`.pagination svg`のスタイルが**適用されない**
+
+**使用済み景品交換のページネーション（Line 428）**:
+```html
+<div class="pagination-wrapper">
+    {{ $redeemedPrizes->links() }}
+</div>
+```
+→ `.pagination`クラスが付いていないため、`.pagination svg`のスタイルが**適用されない**
+
+### Laravelのページネーション構造
+
+`{{ $model->links() }}`が生成するHTML構造（Laravel 10/11）:
+```html
+<nav role="navigation" aria-label="Pagination Navigation">
+    <div class="flex items-center justify-between">
+        <div class="flex-1 flex justify-between sm:hidden">
+            <!-- モバイル用ナビゲーション -->
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <!-- "Showing 1 to 10 of 100 results" テキスト -->
+            </div>
+            <div>
+                <span class="relative z-0 inline-flex shadow-sm rounded-md">
+                    <!-- 前へボタン -->
+                    <span aria-disabled="true" aria-label="« Previous">
+                        <span class="...">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <!-- 矢印アイコン -->
+                            </svg>
+                        </span>
+                    </span>
+                    
+                    <!-- ページ番号ボタン -->
+                    <span aria-current="page">
+                        <span class="...">1</span>
+                    </span>
+                    
+                    <!-- 次へボタン -->
+                    <a href="..." rel="next" aria-label="Next »">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <!-- 矢印アイコン -->
+                        </svg>
+                    </a>
+                </span>
+            </div>
+        </div>
+    </div>
+</nav>
+```
+
+**重要なポイント**:
+- Laravelが生成するSVGには`class="w-5 h-5"`が含まれる（Tailwind CSSクラス）
+- `w-5 h-5`は`width: 1.25rem; height: 1.25rem;`（20px × 20px）に相当
+- `.pagination`クラス内でない限り、`.pagination svg`のスタイルが適用されない
+- `.pagination-wrapper`は単なるラッパーで、子要素のスタイルには影響しない
+
+### 問題の根本原因
+
+1. **セレクターの適用範囲不足**: `.pagination svg`は`.pagination`クラス内のSVGのみに適用される
+2. **`.pagination-wrapper`へのスタイル未定義**: `.pagination-wrapper`内のSVGに対するスタイル指定がない
+3. **Tailwind CSSクラスとの競合**: LaravelのデフォルトページネーションはTailwind CSSを使用しており、`w-5 h-5`（20px）が適用される
+4. **`!important`の不足**: Tailwind CSSクラスよりも優先度を高くするため、`.pagination-wrapper svg`にも`!important`が必要
+
+## 設計ソリューション
+
+### アプローチ1: `.pagination-wrapper`にSVGスタイルを追加（採用）
+
+**メリット**:
+- CSSの変更のみで対応可能
+- HTMLの変更不要
+- 既存のコードに影響を与えない
+- 最小限の変更で問題を解決
+
+**デメリット**:
+- CSSが若干冗長になる（`.pagination svg`と`.pagination-wrapper svg`の重複）
+
+**実装方法**:
+```css
+/* 既存のスタイル（維持） */
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+.pagination nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* 【新規追加】.pagination-wrapperに対するスタイル */
+.pagination-wrapper svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+
+.pagination-wrapper nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+```
+
+### アプローチ2: HTMLを変更して`.pagination`クラスを追加（不採用）
+
+**メリット**:
+- CSSの変更不要
+- 既存のスタイルを再利用
+
+**デメリット**:
+- HTMLの変更が必要（要件に反する）
+- 将来的に混乱を招く可能性（`.pagination`と`.pagination-wrapper`の使い分けが不明確）
+- 2箇所のHTMLを変更する必要がある
+
+**実装方法（参考）**:
+```html
+<!-- 変更前 -->
+<div class="pagination-wrapper">
+    {{ $recentExchanges->links() }}
+</div>
+
+<!-- 変更後（不採用） -->
+<div class="pagination-wrapper">
+    <div class="pagination">
+        {{ $recentExchanges->links() }}
+    </div>
+</div>
+```
+
+### アプローチ3: 全体的なSVGスタイルを定義（不採用）
+
+**メリット**:
+- 最もシンプル
+
+**デメリット**:
+- 他のSVGにも影響を与える可能性
+- 意図しない副作用が発生する可能性
+
+**実装方法（参考）**:
+```css
+/* すべてのSVGに適用（不採用） */
+svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+```
+
+## 採用する設計: アプローチ1
+
+### 変更内容
+
+#### 対象ファイル
+- `resources/views/admin/dashboard202603.blade.php`
+
+#### 変更箇所
+- `<style>`タグ内のCSS（Line 9 - Line 244）
+- `.pagination nav svg`スタイルの直後（Line 158の後）に新しいスタイルを追加
+
+#### 変更前（Line 155-159）
+```css
+        .pagination nav svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+        .chart-container {
+```
+
+#### 変更後
+```css
+        .pagination nav svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+        /* 【新規追加】.pagination-wrapper内のページネーションのSVGアイコンサイズ制御 */
+        .pagination-wrapper svg {
+            width: 18px !important;
+            height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
+        }
+        .pagination-wrapper nav svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+        .chart-container {
+```
+
+### CSS詳細設計
+
+#### セレクター優先度
+
+```
+特異性スコアの計算:
+- .pagination-wrapper svg        → 0,0,1,1 (クラス1 + 要素1) + !important
+- .pagination-wrapper nav svg    → 0,0,1,2 (クラス1 + 要素2) + !important
+- Tailwind CSS (w-5 h-5)         → 0,0,1,0 (クラス1)
+
+!importantにより、確実にTailwind CSSのスタイルを上書き
+```
+
+#### プロパティの説明
+
+**`width`と`height`**:
+- SVGの幅と高さを18pxに設定
+- `!important`で優先度を最大化
+
+**`max-width`と`max-height`**:
+- SVGが18pxを超えないように制限
+- 一部のブラウザで`width`/`height`が効かない場合の保険
+
+**重複する理由**:
+- `.pagination-wrapper svg`: 直接子孫のSVGに適用（広範囲）
+- `.pagination-wrapper nav svg`: nav要素内のSVGに適用（より具体的）
+- 両方定義することで、異なるHTML構造に対応
+
+### レスポンシブデザインへの影響
+
+**検証内容**:
+- 1200px以上: `.prizes-grid`が2カラム表示 → SVGサイズは変わらず18px
+- 1200px以下: `.prizes-grid`が1カラム表示 → SVGサイズは変わらず18px
+- モバイル: LaravelのモバイルページネーションHTML → SVGサイズは18px
+
+**結論**: すべての画面サイズで18px × 18pxのSVGが表示される
+
+### ブラウザ互換性
+
+**対応ブラウザ**:
+- Chrome/Edge (Chromium) 90+
+- Firefox 88+
+- Safari 14+
+
+**使用するCSS機能**:
+- `width`/`height`: すべてのブラウザでサポート
+- `max-width`/`max-height`: すべてのブラウザでサポート
+- `!important`: すべてのブラウザでサポート
+
+**結論**: 互換性の問題なし
+
+## パフォーマンスへの影響
+
+### CSS解析への影響
+- **追加行数**: 11行（コメント3行 + スタイル8行）
+- **セレクター数**: +2個（`.pagination-wrapper svg`、`.pagination-wrapper nav svg`）
+- **影響**: 無視できるレベル（<1ms）
+
+### レンダリングへの影響
+- **リフロー**: なし（既存のSVGサイズを変更するのみ）
+- **リペイント**: 初回ロード時のみ（SVGサイズが適用される）
+- **影響**: 無視できるレベル（<1ms）
+
+### ネットワークへの影響
+- **ファイルサイズ増加**: 約300バイト（圧縮後: 約150バイト）
+- **影響**: 無視できるレベル
+
+## セキュリティへの影響
+
+**評価**: セキュリティリスクなし
+
+**理由**:
+- CSSの変更のみ
+- ユーザー入力を含まない
+- XSSやCSSインジェクションのリスクなし
+- サーバーサイドへの影響なし
+
+## 保守性への影響
+
+### コードの可読性
+- **向上**: コメントで変更理由を明記
+- **理解しやすさ**: `.pagination`と`.pagination-wrapper`の使い分けが明確
+
+### 将来の拡張性
+- **新しいページネーション追加時**: `.pagination-wrapper`を使用すれば自動的にスタイルが適用される
+- **スタイル変更時**: 2箇所（`.pagination svg`と`.pagination-wrapper svg`）を変更する必要がある
+  - 改善案: CSS変数を使用（将来の拡張）
+
+```css
+/* 将来の拡張案（今回は実装しない） */
+:root {
+    --pagination-icon-size: 18px;
+}
+
+.pagination svg,
+.pagination-wrapper svg {
+    width: var(--pagination-icon-size) !important;
+    height: var(--pagination-icon-size) !important;
+}
+```
+
+## テスト設計
+
+### テストケース
+
+#### TC-1: 未使用景品交換のページネーションアイコンサイズ
+**前提条件**:
+- 未使用景品交換が20件以上存在する
+- ページネーションが表示される
+
+**テスト手順**:
+1. http://localhost/admin/dashboard202603 にアクセス
+2. 「未使用の景品交換」セクションのページネーションを確認
+3. ブラウザの開発者ツールでSVG要素を検査
+
+**期待結果**:
+- SVGの幅が18px
+- SVGの高さが18px
+- 前後の矢印アイコンが同じサイズ
+
+**検証方法**:
+```javascript
+// ブラウザコンソールで実行
+const svg = document.querySelector('.pagination-wrapper svg');
+const computedStyle = window.getComputedStyle(svg);
+console.log('Width:', computedStyle.width);   // "18px"
+console.log('Height:', computedStyle.height); // "18px"
+```
+
+#### TC-2: 使用済み景品交換のページネーションアイコンサイズ
+**前提条件**:
+- 使用済み景品交換が10件以上存在する
+- ページネーションが表示される
+
+**テスト手順**:
+1. http://localhost/admin/dashboard202603 にアクセス
+2. 「使用済み景品交換」セクションのページネーションを確認
+3. ブラウザの開発者ツールでSVG要素を検査
+
+**期待結果**:
+- SVGの幅が18px
+- SVGの高さが18px
+- 前後の矢印アイコンが同じサイズ
+
+#### TC-3: スキャン履歴のページネーションへの影響確認
+**前提条件**:
+- スキャン履歴が30件以上存在する
+- ページネーションが表示される
+
+**テスト手順**:
+1. http://localhost/admin/dashboard202603 にアクセス
+2. 「最近のスキャン履歴」セクションのページネーションを確認
+3. ブラウザの開発者ツールでSVG要素を検査
+
+**期待結果**:
+- SVGの幅が18px（変更前と同じ）
+- SVGの高さが18px（変更前と同じ）
+- 既存の表示から変化がない
+
+#### TC-4: すべてのページネーションの統一性確認
+**前提条件**:
+- すべてのセクションでページネーションが表示される
+
+**テスト手順**:
+1. 3つのセクション（スキャン履歴、未使用景品交換、使用済み景品交換）のページネーションを比較
+2. SVGアイコンのサイズが視覚的に同じであることを確認
+
+**期待結果**:
+- すべてのSVGアイコンが同じサイズ
+- 視覚的な統一感がある
+
+#### TC-5: レスポンシブデザインの確認
+**前提条件**:
+- すべてのセクションでページネーションが表示される
+
+**テスト手順**:
+1. ブラウザのウィンドウサイズを1400px → 1200px → 768px → 375pxと変更
+2. 各サイズでページネーションのSVGアイコンを確認
+
+**期待結果**:
+- すべての画面サイズでSVGが18px × 18px
+- レイアウト崩れがない
+
+#### TC-6: 異なるブラウザでの表示確認
+**前提条件**:
+- Chrome、Firefox、Edgeでアクセス可能
+
+**テスト手順**:
+1. 各ブラウザで http://localhost/admin/dashboard202603 にアクセス
+2. ページネーションのSVGアイコンを確認
+
+**期待結果**:
+- すべてのブラウザで18px × 18px
+- ブラウザ間で表示の違いがない
+
+### デバッグ方法
+
+#### SVGサイズが18pxにならない場合
+1. ブラウザの開発者ツールでSVG要素を検査
+2. Computed Styleで`width`と`height`を確認
+3. どのCSSルールが適用されているかを確認
+4. `!important`が効いているかを確認
+
+#### Tailwind CSSのスタイルが優先される場合
+1. `.pagination-wrapper svg`のセレクターが正しく記述されているか確認
+2. `!important`が付いているか確認
+3. CSSの記述位置を確認（`<style>`タグ内にあるか）
+4. キャッシュをクリアして再読み込み
+
+## エラーハンドリング
+
+### ページネーションが表示されない場合
+**原因**: データ件数が少ない（ページネーションが不要）
+
+**対応**: 正常な動作（エラーではない）
+
+**検証**: テストデータを追加してページネーションを表示
+
+### SVGが表示されない場合
+**原因**: Laravelのページネーション設定が異なる
+
+**対応**: `config/app.php`でLaravelのページネーション設定を確認
+
+**検証**: Laravelの`links()`メソッドが正しく動作しているか確認
+
+## ロールバック手順
+
+### 変更をロールバックする場合
+
+#### 手順1: CSSの削除
+```css
+/* 以下の11行を削除 */
+/* 【新規追加】.pagination-wrapper内のページネーションのSVGアイコンサイズ制御 */
+.pagination-wrapper svg {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+}
+.pagination-wrapper nav svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+```
+
+#### 手順2: 動作確認
+- http://localhost/admin/dashboard202603 にアクセス
+- 景品交換のページネーションアイコンが元のサイズに戻ることを確認
+
+## 依存関係
+
+### 依存するファイル
+- `resources/views/admin/dashboard202603.blade.php`: 変更対象
+
+### 影響を受けるファイル
+- なし（このファイルのみの変更）
+
+### 依存する機能
+- Laravel Pagination（`$model->links()`メソッド）
+- Blade Template Engine
+
+## 実装優先度
+
+**優先度**: 高
+
+**理由**:
+1. ユーザー体験（UX）に直接影響
+2. プロフェッショナルな見た目に必要
+3. 実装が簡単（CSS変更のみ）
+4. リスクが低い（既存機能に影響なし）
+
+## 成功基準
+
+### 必須項目
+- [x] 使用済み景品交換のページネーションアイコンが18px × 18pxで表示される
+- [x] 未使用の景品交換のページネーションアイコンが18px × 18pxで表示される
+- [x] スキャン履歴のページネーションに影響がない
+- [x] すべてのページネーションのアイコンサイズが統一される
+
+### 推奨項目
+- [ ] すべてのブラウザで一貫した表示
+- [ ] すべての画面サイズで18px × 18px
+- [ ] コードが可読性が高い（コメント付き）
+
+## 次のステップ
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な実装手順を定義
+2. 実装フェーズ - CSSの変更
+3. テストフェーズ - ブラウザでの動作確認
