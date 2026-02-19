@@ -298,32 +298,88 @@ class AdminController extends Controller
     // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
     public function dashboard202603(Request $request)
     {
-        // パンダマーカーの統計
-        $totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+        // 全動物のリスト（ARstampRally202603.blade.phpのSTAMPSと同じ順序）
+        $animals = [
+            'sheep' => 'ひつじ',
+            'fox' => 'きつね',
+            'pengin' => 'ペンギン',
+            'tonakai' => 'トナカイ',
+            'pig' => 'ぶた',
+            'tora' => 'とら',
+            'gollira' => 'ごりら',
+            'whiteDuck' => '白アヒル',
+            'araiguma' => 'あらいぐま',
+            'wolf' => 'おおかみ',
+            'duck' => 'あひる',
+            'cat' => 'ねこ',
+            'bear' => 'くま',
+            'harinezumi' => 'はりねずみ',
+            'hamstar' => 'ハムスター',
+            // シークレット動物
+            'burger' => 'バーガー',
+            'kirin' => 'きりん',
+            'namakemono' => 'なまけもの',
+            't-rex' => 'ティラノサウルス',
+            'panda' => 'パンダ'
+        ];
         
-        $uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
-            ->distinct('fingerprint')
-            ->count();
+        // 各動物の統計を収集
+        $animalStats = [];
+        foreach ($animals as $markerId => $markerName) {
+            // マーカー検出回数（capture_type: 'marker_scan'）
+            $markerScanCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'marker_scan')
+                ->count();
+            
+            // ボールヒット回数（capture_type: 'ball_hit'）
+            $ballHitCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'ball_hit')
+                ->count();
+            
+            // 合計
+            $totalCount = $markerScanCount + $ballHitCount;
+            
+            // ユニークユーザー数（fingerprint別）
+            $uniqueUsers = MarkerScan::where('marker_id', $markerId)
+                ->distinct('fingerprint')
+                ->count();
+            
+            // 最終スキャン日時
+            $lastScan = MarkerScan::where('marker_id', $markerId)
+                ->orderBy('scanned_at', 'desc')
+                ->first();
+            
+            $animalStats[] = [
+                'marker_id' => $markerId,
+                'marker_name' => $markerName,
+                'marker_scan_count' => $markerScanCount,
+                'ball_hit_count' => $ballHitCount,
+                'total_count' => $totalCount,
+                'unique_users' => $uniqueUsers,
+                'last_scan' => $lastScan ? $lastScan->scanned_at : null
+            ];
+        }
         
-        // 最近のパンダスキャン履歴（ページネーション）
-        $recentPandaScans = MarkerScan::where('marker_id', 'panda')
-            ->orderBy('scanned_at', 'desc')
-            ->paginate(30, ['*'], 'panda_scans_page');
+        // 最近のスキャン履歴（全動物、タイプ別）
+        $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+            ->paginate(30, ['*'], 'recent_scans_page');
         
-        // 日別パンダスキャン数（直近30日間）
-        $dailyPandaScans = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        // 日別統計（タイプ別、直近30日間）
+        $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
             ->selectRaw('COUNT(*) as count')
-            ->where('marker_id', 'panda')
             ->where('scanned_at', '>=', now()->subDays(30))
-            ->groupBy('date')
+            ->groupBy('date', 'capture_type')
             ->orderBy('date', 'desc')
-            ->paginate(15, ['*'], 'daily_panda_page');
+            ->get();
+        
+        // 日付でグループ化
+        $dailyStats = $dailyStatsRaw->groupBy('date');
         
         return view('admin.dashboard202603', compact(
-            'totalPandaScans',
-            'uniquePandaUsers',
-            'recentPandaScans',
-            'dailyPandaScans'
+            'animalStats',
+            'recentScans',
+            'dailyStats'
         ));
     }
 }

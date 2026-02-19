@@ -1537,3 +1537,753 @@ Route::middleware('admin.auth')->group(function () {
 ---
 
 **ARstampRally202603のスタンプ帳アイコン表示改善のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化6: ARstampRally202603 - マーカー検出とボールヒットの統計分離
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/design.md`の設計6を読み込み、設計内容を確認済み
+
+## タスク概要
+マーカー検出（ARマーカーを読み取った）とボールヒット（ボールをぶつけてゲット）を区別して統計を取り、ダッシュボードで両方の数値を表示できるようにする。
+
+**変更箇所**: 9箇所
+- データベースマイグレーション（1ファイル新規）
+- MarkerScanモデル（1箇所修正）
+- MarkerScanController（1メソッド修正）
+- ARstampRally202603.blade.php（3箇所修正、1関数新規）
+- AdminController（1メソッド修正）
+- dashboard202603.blade.php（大幅修正）
+
+**所要時間**: 合計約3-4時間
+
+---
+
+## タスク一覧
+
+### Phase 1: データベース準備
+
+#### Task 1-1: マイグレーションファイルの作成
+**目的**: marker_scansテーブルにcapture_typeカラムを追加
+**ファイル**: `database/migrations/2026_02_19_000000_add_capture_type_to_marker_scans_table.php`（新規）
+**作業内容**:
+1. artisanコマンドでマイグレーションファイルを生成:
+   ```bash
+   php artisan make:migration add_capture_type_to_marker_scans_table --table=marker_scans
+   ```
+
+2. マイグレーションファイルを編集:
+   - up()メソッド:
+     - capture_typeカラムを追加（VARCHAR(20), default: 'ball_hit'）
+     - インデックス追加（capture_type, marker_id+capture_type, fingerprint+marker_id+capture_type）
+     - 既存レコードのcapture_typeを'ball_hit'に設定
+   - down()メソッド:
+     - インデックス削除
+     - capture_typeカラム削除
+
+**依存関係**: なし
+**所要時間**: 15分
+**完了条件**: 
+- ✅ マイグレーションファイルが作成されている
+- ✅ up()とdown()が正しく実装されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 1-2: マイグレーションの実行
+**目的**: データベースにcapture_typeカラムを追加
+**作業内容**:
+1. マイグレーションを実行:
+   ```bash
+   php artisan migrate
+   ```
+
+2. 実行結果を確認:
+   - marker_scansテーブルにcapture_typeカラムが追加されている
+   - 既存レコードのcapture_typeが'ball_hit'になっている
+   - インデックスが作成されている
+
+3. データベースを確認:
+   ```bash
+   php artisan db:show
+   php artisan schema:dump
+   ```
+
+**依存関係**: Task 1-1
+**所要時間**: 5分
+**完了条件**: 
+- ✅ マイグレーションが成功している
+- ✅ capture_typeカラムが存在する
+- ✅ 既存データのcapture_typeが'ball_hit'
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: モデルとコントローラーの修正
+
+#### Task 2-1: MarkerScanモデルの修正
+**目的**: fillable配列にcapture_typeを追加
+**ファイル**: `app/Models/MarkerScan.php`
+**作業内容**:
+1. fillable配列にcapture_typeを追加:
+   ```php
+   protected $fillable = [
+       'session_id',
+       'fingerprint',
+       'marker_id',
+       'marker_name',
+       'scan_count',
+       'capture_type',  // 【新規】
+       'scanned_at',
+       'user_agent',
+       'ip_address',
+       'device_info'
+   ];
+   ```
+
+**依存関係**: Task 1-2
+**所要時間**: 3分
+**完了条件**: 
+- ✅ fillable配列にcapture_typeが追加されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 2-2: MarkerScanControllerの修正
+**目的**: record()メソッドでcaptureTypeを受け取り、処理を追加
+**ファイル**: `app/Http/Controllers/MarkerScanController.php`
+**作業内容**:
+1. バリデーションルールにcaptureTypeを追加:
+   ```php
+   'captureType' => 'nullable|string|in:marker_scan,ball_hit',
+   ```
+
+2. captureTypeを取得（デフォルト: 'ball_hit'）:
+   ```php
+   $captureType = $validated['captureType'] ?? 'ball_hit';
+   ```
+
+3. marker_scanの場合、当日の重複チェックを追加:
+   ```php
+   if ($captureType === 'marker_scan') {
+       $today = now()->toDateString();
+       $existingToday = MarkerScan::where('fingerprint', $fingerprint)
+           ->where('marker_id', $markerId)
+           ->where('capture_type', 'marker_scan')
+           ->whereDate('scanned_at', $today)
+           ->exists();
+       
+       if ($existingToday) {
+           return response()->json([...]);
+       }
+   }
+   ```
+
+4. scan_countの集計をcapture_type別に変更:
+   ```php
+   $totalScans = MarkerScan::where(...)
+       ->where('marker_id', $markerId)
+       ->where('capture_type', $captureType)  // 【追加】
+       ->count() + 1;
+   ```
+
+5. MarkerScan::create()にcapture_typeを追加:
+   ```php
+   'capture_type' => $captureType,
+   ```
+
+**依存関係**: Task 2-1
+**所要時間**: 20分
+**完了条件**: 
+- ✅ captureTypeを受け取り、DBに保存される
+- ✅ marker_scanの重複チェックが機能する
+- ✅ タイプ別にscan_countが集計される
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: フロントエンド（ARstampRally202603.blade.php）の修正
+
+#### Task 3-1: recordMarkerDetection関数の作成
+**目的**: マーカー検出を記録する新関数を作成
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**配置場所**: recordMarkerScan関数の直前（約2788行目）
+**作業内容**:
+1. 2788行目付近に新関数を挿入:
+   ```javascript
+   // マーカー検出を記録（1日1回のみ、未捕獲のみ）
+   async function recordMarkerDetection(markerId, markerName) {
+       // 当日の記録があるかLocalStorageでチェック
+       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+       const cacheKey = `marker-scan-cache-202603-${markerId}-${today}`;
+       
+       // キャッシュ確認
+       const cached = localStorage.getItem(cacheKey);
+       if (cached) {
+           console.log('✓ Marker detection already recorded today:', markerId);
+           return; // 当日既に記録済み
+       }
+       
+       // マーカースキャンを記録（capture_type: 'marker_scan'）
+       try {
+           await recordMarkerScan(markerId, markerName, 'marker_scan');
+           
+           // LocalStorageに記録（当日のキャッシュ）
+           localStorage.setItem(cacheKey, JSON.stringify({
+               scanned: true,
+               timestamp: new Date().toISOString()
+           }));
+           
+           console.log('✓ Marker detection recorded:', markerId);
+       } catch (error) {
+           console.error('Error recording marker detection:', error);
+       }
+   }
+   ```
+
+**依存関係**: なし
+**所要時間**: 10分
+**完了条件**: 
+- ✅ recordMarkerDetection関数が作成されている
+- ✅ LocalStorageキャッシュロジックが実装されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3-2: recordMarkerScan関数の修正
+**目的**: captureTypeパラメータを追加
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行数**: 2789行目
+**作業内容**:
+1. 関数シグネチャを修正:
+   ```javascript
+   // 変更前
+   async function recordMarkerScan(markerId, markerName) {
+   
+   // 変更後
+   async function recordMarkerScan(markerId, markerName, captureType = 'ball_hit') {
+   ```
+
+2. body JSONにcaptureTypeを追加:
+   ```javascript
+   body: JSON.stringify({
+       markerId: markerId,
+       markerName: markerName,
+       fingerprint: fingerprint,
+       deviceInfo: deviceInfo,
+       captureType: captureType,  // 【新規】
+       scannedAt: new Date().toISOString()
+   })
+   ```
+
+3. ログ出力を修正:
+   ```javascript
+   console.log('✓ Marker scan recorded:', markerId, 'Type:', captureType, 'Total scans:', data.totalScans);
+   ```
+
+**依存関係**: Task 3-1
+**所要時間**: 10分
+**完了条件**: 
+- ✅ captureTypeパラメータが追加されている
+- ✅ デフォルト値'ball_hit'が設定されている
+- ✅ API送信時にcaptureTypeが含まれている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3-3: markerFoundイベントリスナーの修正
+**目的**: 未捕獲時にマーカー検出を記録
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行数**: 731-773行目（markerFoundイベントリスナー内）
+**作業内容**:
+1. 760行目付近（「捕獲されていない場合のみ、モデルを表示」の直後）に追加:
+   ```javascript
+   // 捕獲されていない場合のみ、モデルを表示
+   console.log('  → Not captured - showing model with anime01');
+   el.setAttribute('visible', 'true');
+   markerVisible = true;
+   
+   // anime01を自動再生
+   if (action01) {
+       action01.reset();
+       action01.play();
+       currentAnimation = 1;
+       console.log('  anime01 started');
+   }
+   
+   // 【新規】マーカー検出を記録（未捕獲の場合のみ、1日1回）
+   try {
+       if (typeof recordMarkerDetection === 'function') {
+           const name = (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : stampId;
+           recordMarkerDetection(stampId, name);
+       }
+   } catch (e) {
+       console.warn('recordMarkerDetection failed', e);
+   }
+   
+   console.log('==================================================');
+   ```
+
+**注意**: 
+- STAMPS定義の確認が必要（stampIdからnameを取得）
+- stamp変数がスコープ内にあるか確認
+
+**依存関係**: Task 3-2
+**所要時間**: 15分
+**完了条件**: 
+- ✅ markerFoundイベント内でrecordMarkerDetection呼び出しが追加されている
+- ✅ 未捕獲の場合のみ呼び出される
+- ✅ エラーハンドリングが実装されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 3-4: collectStamp関数の修正
+**目的**: recordMarkerScan呼び出し時にcaptureTypeを指定
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行数**: 143行目
+**作業内容**:
+1. 143行目を修正:
+   ```javascript
+   // 変更前
+   try { recordMarkerScan(stampId, name); } catch (e) { console.warn('recordMarkerScan failed', e); }
+   
+   // 変更後
+   try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) { console.warn('recordMarkerScan failed', e); }
+   ```
+
+**依存関係**: Task 3-2
+**所要時間**: 3分
+**完了条件**: 
+- ✅ recordMarkerScan呼び出し時にcaptureType: 'ball_hit'が指定されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 4: ダッシュボードの拡張
+
+#### Task 4-1: AdminController::dashboard202603メソッドの拡張
+**目的**: 全動物の両タイプ別統計を取得
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**行数**: 298-330行目
+**作業内容**:
+1. 動物リストの定義を追加:
+   ```php
+   $animals = [
+       'sheep' => 'ひつじ',
+       'fox' => 'きつね',
+       // ... 全20種
+   ];
+   ```
+
+2. 各動物の統計を取得するループを追加:
+   ```php
+   $animalStats = [];
+   foreach ($animals as $markerId => $markerName) {
+       // マーカー検出回数
+       $markerScanCount = MarkerScan::where('marker_id', $markerId)
+           ->where('capture_type', 'marker_scan')
+           ->count();
+       
+       // ボールヒット回数
+       $ballHitCount = MarkerScan::where('marker_id', $markerId)
+           ->where('capture_type', 'ball_hit')
+           ->count();
+       
+       // ... (詳細は設計ドキュメント参照)
+   }
+   ```
+
+3. 最近のスキャン履歴（全動物、両タイプ）を取得:
+   ```php
+   $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+       ->paginate(30, ['*'], 'recent_scans_page');
+   ```
+
+4. 日別統計（タイプ別）を取得:
+   ```php
+   $dailyStats = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+       ->selectRaw('capture_type')
+       ->selectRaw('COUNT(*) as count')
+       ->where('scanned_at', '>=', now()->subDays(30))
+       ->groupBy('date', 'capture_type')
+       ->orderBy('date', 'desc')
+       ->get()
+       ->groupBy('date');
+   ```
+
+5. ビューに渡す変数を変更:
+   ```php
+   return view('admin.dashboard202603', compact(
+       'animalStats',
+       'recentScans',
+       'dailyStats'
+   ));
+   ```
+
+**注意**: パンダのみ表示する場合は、動物リストを['panda' => 'パンダ']のみにする
+
+**依存関係**: Task 2-2
+**所要時間**: 30分
+**完了条件**: 
+- ✅ 全動物の統計が取得される
+- ✅ タイプ別にカウントされる
+- ✅ ユニークユーザー数が計算される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4-2: dashboard202603.blade.phpの大幅修正
+**目的**: 動物別統計テーブル、タイプ別履歴、グラフを表示
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**作業内容**:
+1. 動物別統計テーブルのセクションを追加:
+   ```html
+   <div class="stats-section">
+       <h2>動物別統計</h2>
+       <table class="stats-table">
+           <thead>
+               <tr>
+                   <th>動物名</th>
+                   <th>マーカー検出回数</th>
+                   <th>ボールヒット回数</th>
+                   <th>合計</th>
+                   <th>ユニークユーザー数</th>
+                   <th>最終スキャン</th>
+               </tr>
+           </thead>
+           <tbody>
+               @foreach($animalStats as $stat)
+               <tr>
+                   <td>{{ $stat['marker_name'] }}</td>
+                   <td class="marker-scan">{{ $stat['marker_scan_count'] }}</td>
+                   <td class="ball-hit">{{ $stat['ball_hit_count'] }}</td>
+                   <td class="total">{{ $stat['total_count'] }}</td>
+                   <td>{{ $stat['unique_users'] }}</td>
+                   <td>{{ $stat['last_scan'] ? $stat['last_scan']->format('Y-m-d H:i') : '-' }}</td>
+               </tr>
+               @endforeach
+           </tbody>
+       </table>
+   </div>
+   ```
+
+2. 最近のスキャン履歴セクションを修正（タイプ表示追加）:
+   ```html
+   <td>
+       <span class="badge {{ $scan->capture_type === 'marker_scan' ? 'marker' : 'ball' }}">
+           {{ $scan->capture_type === 'marker_scan' ? 'マーカー検出' : 'ボールヒット' }}
+       </span>
+   </td>
+   ```
+
+3. CSSスタイルを追加:
+   ```css
+   .marker-scan { color: #3498db; font-weight: bold; }
+   .ball-hit { color: #e74c3c; font-weight: bold; }
+   .badge.marker { background-color: #3498db; color: white; padding: 4px 8px; border-radius: 4px; }
+   .badge.ball { background-color: #e74c3c; color: white; padding: 4px 8px; border-radius: 4px; }
+   ```
+
+4. Chart.jsで積み上げ棒グラフを追加:
+   ```javascript
+   const dailyData = @json($dailyStats);
+   const dates = Object.keys(dailyData).reverse();
+   const markerScanData = dates.map(date => {
+       const dayData = dailyData[date].find(d => d.capture_type === 'marker_scan');
+       return dayData ? dayData.count : 0;
+   });
+   const ballHitData = dates.map(date => {
+       const dayData = dailyData[date].find(d => d.capture_type === 'ball_hit');
+       return dayData ? dayData.count : 0;
+   });
+   
+   const ctx = document.getElementById('dailyChart').getContext('2d');
+   new Chart(ctx, {
+       type: 'bar',
+       data: {
+           labels: dates,
+           datasets: [
+               {
+                   label: 'マーカー検出',
+                   data: markerScanData,
+                   backgroundColor: 'rgba(54, 162, 235, 0.6)'
+               },
+               {
+                   label: 'ボールヒット',
+                   data: ballHitData,
+                   backgroundColor: 'rgba(255, 99, 132, 0.6)'
+               }
+           ]
+       },
+       options: {
+           responsive: true,
+           scales: {
+               x: { stacked: true },
+               y: { stacked: true, beginAtZero: true }
+           }
+       }
+   });
+   ```
+
+**依存関係**: Task 4-1
+**所要時間**: 45分
+**完了条件**: 
+- ✅ 動物別統計テーブルが表示される
+- ✅ タイプ別の色分け表示がされる
+- ✅ 積み上げ棒グラフが表示される
+- ✅ ページネーションが機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 5: テストと動作確認
+
+#### Task 5-1: マーカー検出の記録テスト
+**目的**: markerFoundイベント時に正しく記録されるか確認
+**テスト項目**:
+1. ARマーカーをカメラで検出（未捕獲の動物）
+2. ブラウザコンソールで「✓ Marker detection recorded」が表示される
+3. LocalStorageに当日のキャッシュが作成される（`marker-scan-cache-202603-{markerId}-{date}`）
+4. 同じマーカーを再検出しても、「already recorded today」と表示される
+5. データベースのmarker_scansテーブルを確認:
+   - capture_type: 'marker_scan'
+   - marker_id: 正しいID
+   - fingerprint: 正しい値
+
+**依存関係**: Task 3-1, 3-2, 3-3, 2-2
+**所要時間**: 15分
+**完了条件**: 
+- ✅ マーカー検出時に記録される
+- ✅ 当日の重複が防止される
+- ✅ DBレコードが正しく作成される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 5-2: ボールヒットの記録テスト
+**目的**: ボールヒット時に正しく記録されるか確認
+**テスト項目**:
+1. ボールを投げて動物にヒット（新規ゲット）
+2. ブラウザコンソールで「✓ Marker scan recorded」と「Type: ball_hit」が表示される
+3. LocalStorageにスタンプが記録される
+4. データベースのmarker_scansテーブルを確認:
+   - capture_type: 'ball_hit'
+   - marker_id: 正しいID
+   - fingerprint: 正しい値
+5. 既にゲット済みの動物の場合、記録されない
+
+**依存関係**: Task 3-2, 3-4, 2-2
+**所要時間**: 10分
+**完了条件**: 
+- ✅ ボールヒット時に記録される
+- ✅ capture_type: 'ball_hit'が設定される
+- ✅ 新規ゲット時のみ記録される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 5-3: ダッシュボード表示テスト
+**目的**: dashboard202603で統計が正しく表示されるか確認
+**テスト項目**:
+1. `/admin/login`でログイン
+2. `/admin/dashboard202603`にアクセス
+3. 動物別統計テーブルが表示される:
+   - 各動物のマーカー検出回数が表示される
+   - 各動物のボールヒット回数が表示される
+   - 合計、ユニークユーザー数、最終スキャン日時が表示される
+4. 最近のスキャン履歴が表示される:
+   - タイプ（マーカー検出 / ボールヒット）が色分けされて表示される
+5. 日別統計グラフが表示される:
+   - 積み上げ棒グラフが表示される
+   - 2つのタイプが色分けされている
+6. ページネーションが機能する
+
+**依存関係**: Task 4-1, 4-2
+**所要時間**: 15分
+**完了条件**: 
+- ✅ 統計が正しく表示される
+- ✅ タイプ別に集計されている
+- ✅ グラフが表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 5-4: 回帰テスト（既存機能確認）
+**目的**: 既存機能が損なわれていないか確認
+**テスト項目**:
+1. スタンプ収集機能が正常に動作する
+2. スタンプ帳表示が正常に動作する
+3. 捕獲メッセージが正常に表示される
+4. LocalStorageへの保存が正常に動作する
+5. ページリロード後もスタンプが保持される
+6. 既存の管理画面（/admin/dashboard）が正常に動作する
+7. CSV出力機能が正常に動作する
+
+**依存関係**: Task 5-1, 5-2, 5-3
+**所要時間**: 20分
+**完了条件**: 
+- ✅ 全ての既存機能が正常に動作する
+- ✅ エラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 6: ドキュメント更新
+
+#### Task 6-1: README.mdへの変更内容追記
+**目的**: 変更内容を記録し、プロジェクトの変更履歴を更新
+**ファイル**: `README.md`
+**作業内容**:
+1. README.mdの「変更点」セクションに以下を追記:
+   ```markdown
+   ### ARスタンプラリー202603 - マーカー検出とボールヒットの統計分離 20260219
+   **ARマーカー検出とボールヒットを区別して統計を記録:**
+   
+   #### 実装内容
+   1. **データベース拡張**
+      - marker_scansテーブルにcapture_typeカラムを追加
+      - 'marker_scan'（マーカー検出）と'ball_hit'（ボールヒット）を区別
+      - 既存データは'ball_hit'として扱う
+   
+   2. **マーカー検出の記録**
+      - markerFoundイベント時に記録（未捕獲の動物のみ）
+      - 同じ端末・同じマーカー・同じ日付の重複は記録しない
+      - LocalStorageキャッシュで当日の重複を防止
+   
+   3. **ボールヒットの記録**
+      - 既存のrecordMarkerScan関数を拡張
+      - capture_type: 'ball_hit'を明示的に指定
+   
+   4. **ダッシュボード拡張**
+      - admin/dashboard202603で全動物の統計を表示
+      - 各動物ごとにマーカー検出回数とボールヒット回数を表示
+      - タイプ別の色分け表示
+      - 積み上げ棒グラフで日別統計を表示
+   
+   #### 変更・追加ファイル
+   - `database/migrations/2026_02_19_000000_add_capture_type_to_marker_scans_table.php`: 新規マイグレーション
+   - `app/Models/MarkerScan.php`: fillable配列にcapture_type追加
+   - `app/Http/Controllers/MarkerScanController.php`: record()メソッド拡張
+   - `resources/views/ARstampRally202603.blade.php`: recordMarkerDetection関数追加、4箇所修正
+   - `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張
+   - `resources/views/admin/dashboard202603.blade.php`: 動物別統計テーブル、タイプ別履歴、グラフ追加
+   
+   #### 技術的詳細
+   - markerFoundイベント時にrecordMarkerDetection呼び出し
+   - LocalStorageキャッシュキー: `marker-scan-cache-202603-{markerId}-{date}`
+   - サーバー側でも日付ベースの重複チェック実装
+   - タイプ別にscan_countを集計
+   
+   #### 動作確認済み項目
+   - ✅ マーカー検出時にmarker_scansに記録される（capture_type: 'marker_scan'）
+   - ✅ ボールヒット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+   - ✅ 同じ日に同じマーカーを再検出しても、カウントアップされない
+   - ✅ 捕獲済みのマーカーは記録されない
+   - ✅ ダッシュボードで各動物のマーカー検出回数とボールヒット回数が表示される
+   - ✅ 既存機能への影響なし
+   
+   #### 設計ドキュメント
+   - 要件定義6: `.claude_workflow/requirements.md` (要件定義6セクション)
+   - 設計6: `.claude_workflow/design.md` (設計6セクション)
+   - タスク化6: `.claude_workflow/tasks.md` (タスク化6セクション)
+   ```
+
+**依存関係**: Task 5-4
+**所要時間**: 10分
+**完了条件**: 
+- ✅ README.mdに変更内容が追記されている
+- ✅ 既存の変更履歴フォーマットと統一されている
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] ARstampRally202603.blade.phpは6964行の大規模ファイル - 慎重に編集
+- [ ] 変更前に該当行の周辺コードを確認（10行前後）
+- [ ] 文字列リテラルの完全一致を確認（スペース、引用符含む）
+- [ ] 変更後にJavaScriptの構文エラーがないか確認（ブラウザコンソール）
+- [ ] 変更後にPHPの構文エラーがないか確認（php -l コマンド）
+- [ ] 変更箇所の行番号と内容を記録
+
+### 実装順序
+1. **Phase 1（データベース準備）を最初に実施** - 土台を作る
+   - Task 1-1, 1-2を順番に実施
+2. **Phase 2（モデルとコントローラー）を実施** - バックエンドロジック
+   - Task 2-1, 2-2を順番に実施
+3. **Phase 3（フロントエンド）を実施** - ARマーカー検出の記録
+   - Task 3-1, 3-2, 3-3, 3-4を順番に実施
+4. **Phase 4（ダッシュボード）を実施** - 統計表示
+   - Task 4-1, 4-2を順番に実施
+5. **Phase 5（テスト）を実施** - 動作確認
+   - Task 5-1, 5-2, 5-3, 5-4を順番に実施
+6. **Phase 6（ドキュメント）を実施** - 記録
+   - Task 6-1を実施
+
+### リスク管理
+- **バックアップ**: Git commitを事前に実施（推奨）
+- **Rollback**: 
+  - マイグレーションのdown()メソッドで戻せる
+  - ARstampRally202603.blade.phpの変更箇所は4箇所のみ
+- **影響範囲**: 
+  - 新機能追加が主体、既存機能への影響は最小限
+  - recordMarkerScan関数はデフォルト引数で後方互換性を保つ
+
+### パフォーマンス考慮
+- LocalStorageキャッシュで重複チェックのAPI呼び出しを削減
+- capture_typeにインデックスを追加（検索パフォーマンス向上）
+- ダッシュボードのクエリ最適化（N+1問題を回避）
+
+### セキュリティ考慮
+- CSRF保護（既存のrecordMarkerScan関数と同様）
+- バリデーション（captureTypeのin:ルール）
+- SQLインジェクション対策（Eloquent使用）
+
+## 成功基準
+
+### 必須条件
+- [ ] マーカー検出時にmarker_scansに記録される（capture_type: 'marker_scan'）
+- [ ] ボールヒット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+- [ ] 同じ日に同じマーカーを再検出しても、カウントアップされない
+- [ ] 捕獲済みのマーカーは記録されない
+- [ ] ダッシュボードで各動物のマーカー検出回数とボールヒット回数が表示される
+- [ ] 既存のmarker_scansデータが正しく集計される
+- [ ] 既存機能が損なわれない
+- [ ] ブラウザコンソールにエラーがない
+- [ ] PHP構文エラーがない
+
+### 望ましい条件
+- [ ] ダッシュボードでソート機能が動作する
+- [ ] グラフが2つのタイプ別に表示される
+- [ ] LocalStorageキャッシュでAPI呼び出しが削減される
+- [ ] ページネーションがスムーズに動作する
+
+## タスク実行順序
+1. Task 1-1（マイグレーション作成）
+2. Task 1-2（マイグレーション実行）
+3. Task 2-1（MarkerScanモデル修正）
+4. Task 2-2（MarkerScanController修正）
+5. Task 3-1（recordMarkerDetection作成）
+6. Task 3-2（recordMarkerScan修正）
+7. Task 3-3（markerFound修正）
+8. Task 3-4（collectStamp修正）
+9. Task 4-1（AdminController修正）
+10. Task 4-2（dashboard202603.blade.php修正）
+11. Task 5-1（マーカー検出テスト）
+12. Task 5-2（ボールヒットテスト）
+13. Task 5-3（ダッシュボードテスト）
+14. Task 5-4（回帰テスト）
+15. Task 6-1（README.md更新）
+
+## 次のステップ
+実装フェーズへの移行
+
+---
+
+**ARstampRally202603のマーカー検出とボールヒット統計分離のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**

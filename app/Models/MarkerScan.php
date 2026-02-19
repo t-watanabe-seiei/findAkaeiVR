@@ -15,6 +15,7 @@ class MarkerScan extends Model
         'marker_id',
         'marker_name',
         'scan_count',
+        'capture_type',
         'scanned_at',
         'user_agent',
         'ip_address',

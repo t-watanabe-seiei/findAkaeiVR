@@ -140,7 +140,7 @@
                             updateStampBadge();
 
                             // 動物をゲットした時だけマーカースキャンを記録
-                            try { recordMarkerScan(stampId, name); } catch (e) { console.warn('recordMarkerScan failed', e); }
+                            try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) { console.warn('recordMarkerScan failed', e); }
 
                             // 新規取得の処理
                             const totalCollected = Object.keys(collectedStamps).length;
@@ -776,6 +776,17 @@
                         currentAnimation = 1;
                         console.log('  anime01 started');
                     }
+                    
+                    // マーカー検出を記録（未捕獲の場合のみ、1日1回）
+                    try {
+                        if (typeof recordMarkerDetection === 'function') {
+                            const name = (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : stampId;
+                            recordMarkerDetection(stampId, name);
+                        }
+                    } catch (e) {
+                        console.warn('recordMarkerDetection failed', e);
+                    }
+                    
                     console.log('==================================================');
                 });
                 
@@ -2785,8 +2796,37 @@
             };
         }
         
+        // マーカー検出を記録（1日1回のみ、未捕獲のみ）
+        async function recordMarkerDetection(markerId, markerName) {
+            // 当日の記録があるかLocalStorageでチェック
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const cacheKey = `marker-scan-cache-202603-${markerId}-${today}`;
+            
+            // キャッシュ確認
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                console.log('✓ Marker detection already recorded today:', markerId);
+                return; // 当日既に記録済み
+            }
+            
+            // マーカースキャンを記録（capture_type: 'marker_scan'）
+            try {
+                await recordMarkerScan(markerId, markerName, 'marker_scan');
+                
+                // LocalStorageに記録（当日のキャッシュ）
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    scanned: true,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                console.log('✓ Marker detection recorded:', markerId);
+            } catch (error) {
+                console.error('Error recording marker detection:', error);
+            }
+        }
+        
         // マーカー読み取りを記録
-        async function recordMarkerScan(markerId, markerName) {
+        async function recordMarkerScan(markerId, markerName, captureType = 'ball_hit') {
             const fingerprint = await generateFingerprint();
             const deviceInfo = collectDeviceInfo();
             
@@ -2809,6 +2849,7 @@
                         markerName: markerName,
                         fingerprint: fingerprint,
                         deviceInfo: deviceInfo,
+                        captureType: captureType,
                         scannedAt: new Date().toISOString()
                     })
                 });
@@ -2816,7 +2857,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    console.log('✓ Marker scan recorded:', markerId, 'Total scans:', data.totalScans);
+                    console.log('✓ Marker scan recorded:', markerId, 'Type:', captureType, 'Total scans:', data.totalScans);
                 }
             } catch (error) {
                 console.error('Error recording marker scan:', error);

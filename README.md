@@ -7,6 +7,90 @@
 
 # 変更点
 
+### ARスタンプラリー202603 - マーカー検出とボールヒットの統計分離 20260219
+**ARマーカー検出とボールヒットを区別して統計を記録:**
+
+#### 実装内容
+1. **データベース拡張**
+   - marker_scansテーブルにcapture_typeカラムを追加（'marker_scan' または 'ball_hit'）
+   - 既存データは'ball_hit'として扱う
+   - capture_typeにインデックスを追加（検索パフォーマンス向上）
+
+2. **マーカー検出の記録（新機能）**
+   - markerFoundイベント時に記録（未捕獲の動物のみ）
+   - 同じ端末・同じマーカー・同じ日付の重複は記録しない
+   - LocalStorageキャッシュで当日の重複を防止（`marker-scan-cache-202603-{markerId}-{date}`）
+   - サーバー側でも日付ベースの重複チェック実装
+
+3. **ボールヒットの記録（既存機能の拡張）**
+   - collectStamp関数でrecordMarkerScan呼び出し時にcapture_type: 'ball_hit'を明示
+   - 新規ゲット時のみ記録（既存ロジック維持）
+
+4. **ダッシュボード拡張（admin/dashboard202603）**
+   - 全20種類の動物の統計を表示（通常15種 + シークレット5種）
+   - 各動物ごとにマーカー検出回数とボールヒット回数を表示
+   - タイプ別の色分け表示（マーカー検出: 青、ボールヒット: 赤）
+   - Chart.jsで積み上げ棒グラフを表示（日別統計、タイプ別）
+   - ユニークユーザー数（fingerprint別）を表示
+   - 最近のスキャン履歴にタイプ（マーカー検出/ボールヒット）を表示
+
+#### 変更・追加ファイル
+- `database/migrations/2026_02_19_144419_add_capture_type_to_marker_scans_table.php`: 新規マイグレーション
+- `app/Models/MarkerScan.php`: fillable配列にcapture_type追加
+- `app/Http/Controllers/MarkerScanController.php`: record()メソッド拡張
+  - captureTypeパラメータを受け取る
+  - marker_scanの場合、当日の重複チェック実装
+  - タイプ別にscan_countを集計
+- `resources/views/ARstampRally202603.blade.php`: 4箇所修正、1関数新規
+  - recordMarkerDetection関数追加（2788行目付近）
+  - recordMarkerScan関数にcaptureTypeパラメータ追加（2818行目）
+  - markerFoundイベントリスナーにrecordMarkerDetection呼び出し追加（773行目付近）
+  - collectStamp関数でrecordMarkerScan呼び出し時にcaptureType: 'ball_hit'を指定（143行目）
+- `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張
+  - 全20種類の動物の統計を取得
+  - タイプ別（marker_scan, ball_hit）にカウント
+  - 日別統計をタイプ別に取得
+- `resources/views/admin/dashboard202603.blade.php`: 全面的に書き直し
+  - 動物別統計テーブル追加（マーカー検出回数、ボールヒット回数、合計、ユニークユーザー数、最終スキャン）
+  - 最近のスキャン履歴にタイプ表示追加
+  - Chart.jsで積み上げ棒グラフ追加（日別統計、タイプ別）
+
+#### 技術的詳細
+- **マーカー検出記録フロー**:
+  1. markerFoundイベント → recordMarkerDetection呼び出し
+  2. LocalStorageで当日のキャッシュ確認 → あればスキップ
+  3. recordMarkerScan(markerId, markerName, 'marker_scan')を呼び出し
+  4. MarkerScanController::record()で日付ベースの重複チェック
+  5. 重複がなければDBに記録、LocalStorageにキャッシュ
+
+- **ボールヒット記録フロー**:
+  1. collectStamp関数 → recordMarkerScan(stampId, name, 'ball_hit')呼び出し
+  2. MarkerScanController::record()で記録（重複チェックなし）
+  3. タイプ別にscan_countを集計
+
+- **データベーススキーマ変更**:
+  - capture_typeカラム: VARCHAR(20), default 'ball_hit'
+  - インデックス: capture_type, (marker_id, capture_type), (fingerprint, marker_id, capture_type)
+
+#### 動作確認項目
+- ✅ マイグレーション実行成功（capture_typeカラム追加）
+- ✅ PHP構文エラーなし（全ファイル）
+- **テスト項目（実装後に確認が必要）**:
+  - [ ] マーカー検出時にmarker_scansに記録される（capture_type: 'marker_scan'）
+  - [ ] ボールヒット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+  - [ ] 同じ日に同じマーカーを再検出しても、カウントアップされない
+  - [ ] 捕獲済みのマーカーは記録されない
+  - [ ] ダッシュボードで各動物のマーカー検出回数とボールヒット回数が表示される
+  - [ ] 積み上げ棒グラフがタイプ別に表示される
+  - [ ] 既存機能（スタンプ収集、スタンプ帳表示）への影響なし
+
+#### 設計ドキュメント
+- 要件定義6: `.claude_workflow/requirements.md` (要件定義6セクション)
+- 設計6: `.claude_workflow/design.md` (設計6セクション)
+- タスク化6: `.claude_workflow/tasks.md` (タスク化6セクション)
+
+---
+
 ### ARスタンプラリー202603 - スタンプ帳アイコン表示改善（追加修正） 20260219
 **未収集動物のアイコン表示を統一:**
 

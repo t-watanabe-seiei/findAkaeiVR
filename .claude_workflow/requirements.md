@@ -571,3 +571,312 @@ ARstampRally202603.blade.phpの使用体験を向上させるため、スタン�
 1. 設計フェーズ（design.mdへの追記）- 詳細な実装設計
 2. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順
 3. 実装フェーズ - コードの変更（1行の追加）
+
+---
+
+# 要件定義6: ARstampRally202603 - マーカー検出とボールヒットの統計分離
+
+## 作成日時
+2026年2月19日
+
+## 背景
+現在、admin/dashboard202603ではパンダマーカーの統計を表示しているが、以下の問題がある：
+1. **マーカー検出（ARマーカーを読み取った）とボールヒット（ボールをぶつけてゲット）が区別されていない**
+2. **マーカー検出時にデータが記録されていない** - ボールヒット時（新規ゲット時）のみ記録
+3. **重複カウントの問題** - 同じ日に同じマーカーを複数回検出した場合、カウントアップされてしまう
+
+### 現在の実装状況
+**データフロー**:
+```
+1. markerFoundイベント発火（731行目）
+   ↓
+   isAnimalCaptured()でLocalStorageチェック
+   ↓
+   未捕獲 → モデル表示
+   捕獲済み → メッセージ表示
+   ↓
+   【記録なし】← 問題点
+
+2. ボールヒット（handleHit関数、340行目）
+   ↓
+   playHitAnimation実行
+   ↓
+   collectStamp呼び出し（124行目）
+   ↓
+   新規ゲット時のみrecordMarkerScan呼び出し（143行目）
+   ↓
+   marker_scansテーブルに記録（capture_typeなし）
+```
+
+**データベース構造**（現在）:
+```sql
+marker_scans:
+  - marker_id, marker_name, fingerprint
+  - scanned_at, scan_count
+  - device_info, user_agent, ip_address
+  - ※capture_type（マーカー検出 or ボールヒット）の区別なし
+```
+
+## 目的
+マーカー検出回数とボールヒット回数を分けて統計を取り、ダッシュボードで各動物ごとに2つの数値を表示できるようにする。
+
+## ユースケース
+
+### UC1: マーカー検出の記録
+**アクター**: ユーザー（ARアプリ利用者）  
+**前提条件**: ARマーカーをカメラで読み取る  
+**トリガー**: markerFoundイベント発火  
+**メインフロー**:
+1. マーカーが検出される
+2. isAnimalCaptured()で捕獲済みかチェック
+3. **未捕獲の場合のみ記録処理を実行**（新要件）
+4. 同じ端末・同じマーカー・同じ日付の記録があるかチェック（新要件）
+5. なければmarker_scansテーブルに記録（capture_type: 'marker_scan'）（新要件）
+6. あれば記録しない（重複防止）（新要件）
+
+**成功条件**:
+- 未捕獲のマーカーを初めて検出した場合、marker_scansに記録される
+- 同じ日に同じマーカーを再検出しても、カウントアップされない
+- 捕獲済みのマーカーは記録されない
+
+### UC2: ボールヒットの記録
+**アクター**: ユーザー（ARアプリ利用者）  
+**前提条件**: ボールを投げて動物にヒット  
+**トリガー**: handleHit関数実行  
+**メインフロー**:
+1. ボールが動物にヒット
+2. playHitAnimation実行
+3. collectStamp呼び出し
+4. 新規ゲットの場合、recordMarkerScan呼び出し
+5. **capture_type: 'ball_hit'を指定して記録**（変更点）
+
+**成功条件**:
+- 新規ゲット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+- 既にゲット済みの動物は記録されない（既存の動作）
+
+### UC3: ダッシュボードでの統計表示
+**アクター**: 管理者  
+**前提条件**: admin/dashboard202603にログイン済み  
+**トリガー**: ダッシュボードページアクセス  
+**メインフロー**:
+1. admin/dashboard202603にアクセス
+2. 各動物ごとに以下を表示：
+   - マーカー検出回数（capture_type: 'marker_scan'のカウント）
+   - ボールヒット回数（capture_type: 'ball_hit'のカウント）
+   - ユニークユーザー数
+   - 最近のスキャン履歴（capture_typeも表示）
+3. 日別の統計グラフ（2つのタイプ別に集計）
+
+**成功条件**:
+- 各動物のマーカー検出回数とボールヒット回数が正しく表示される
+- ページネーションが機能する
+- グラフが2つのタイプ別に表示される
+
+## 機能要件
+
+### FR1: マーカー検出の記録機能
+**優先度**: 高  
+**詳細**:
+- markerFoundイベント時に記録処理を追加
+- 未捕獲の動物のみ記録（isAnimalCaptured()でチェック）
+- 同じ端末・同じマーカー・同じ日付の記録があるかチェック
+- なければmarker_scansテーブルに記録（capture_type: 'marker_scan'）
+- 日付の粒度: 日単位（2026-02-19）
+
+**実装箇所**:
+- ARstampRally202603.blade.php の markerFoundイベントリスナー（731行目付近）
+- 新しいAPI関数 recordMarkerDetection() を作成
+
+### FR2: データベーススキーマの拡張
+**優先度**: 高  
+**詳細**:
+- marker_scansテーブルにcapture_typeカラムを追加
+- データ型: ENUM('marker_scan', 'ball_hit') または VARCHAR(20)
+- デフォルト値: 'ball_hit'（既存データとの互換性）
+- インデックス追加: capture_type
+
+**マイグレーション**:
+- 新しいマイグレーションファイルを作成
+- 既存のmarker_scansレコードのcapture_typeを'ball_hit'に設定
+
+### FR3: 既存のボールヒット記録の修正
+**優先度**: 高  
+**詳細**:
+- recordMarkerScan関数にcapture_typeパラメータを追加
+- collectStamp関数からrecordMarkerScan呼び出し時、capture_type: 'ball_hit'を指定
+
+**実装箇所**:
+- ARstampRally202603.blade.php の recordMarkerScan関数（2789行目）
+- collectStamp関数（143行目）
+
+### FR4: 重複チェック機能
+**優先度**: 高  
+**詳細**:
+- 同じ端末（fingerprint）・同じマーカー（marker_id）・同じ日付（scanned_atの日付部分）の記録があるかチェック
+- LocalStorageにキャッシュして、API呼び出しを削減
+- キャッシュキー: `marker-scan-cache-202603-${markerId}-${date}`
+
+**実装箇所**:
+- ARstampRally202603.blade.php に新関数 hasMarkerScannedToday()
+- MarkerScanController に新メソッド checkDuplicate()
+
+### FR5: ダッシュボードの拡張
+**優先度**: 高  
+**詳細**:
+- 全動物（20種）の統計を表示（パンダだけでなく）
+- 各動物ごとに2つの数値を表示：
+  - マーカー検出回数
+  - ボールヒット回数
+- テーブル形式で表示（ソート可能）
+- グラフは2つのタイプ別に表示（積み上げ棒グラフ or 2本の棒グラフ）
+
+**実装箇所**:
+- AdminController の dashboard202603メソッド
+- dashboard202603.blade.php のビューテンプレート
+
+## 非機能要件
+
+### NFR1: パフォーマンス
+- マーカー検出時のAPI呼び出しが既存のボールヒット時の記録と同等のパフォーマンス
+- LocalStorageキャッシュで重複チェックのAPI呼び出しを削減
+- ダッシュボードのページロード時間が2秒以内
+
+### NFR2: データ整合性
+- 既存のmarker_scansデータを損なわない
+- マイグレーション時に既存データのcapture_typeを'ball_hit'に設定
+- ロールバックが可能
+
+### NFR3: 保守性
+- recordMarkerScan関数の既存の呼び出し箇所を壊さない
+- 新しいパラメータはオプショナル（デフォルト値: 'ball_hit'）
+
+### NFR4: セキュリティ
+- CSRF保護（既存のrecordMarkerScan関数と同様）
+- フィンガープリント検証
+- SQLインジェクション対策（Eloquent使用）
+
+## 技術的制約
+
+### TC1: 大規模ファイルの編集
+- ARstampRally202603.blade.phpは6964行の大規模ファイル
+- 複数箇所の修正が必要（markerFoundイベント、recordMarkerScan関数等）
+- 慎重な編集とテストが必要
+
+### TC2: 既存データとの互換性
+- 既存のmarker_scansレコード（約数百～数千件）が存在する可能性
+- マイグレーション時に既存データのcapture_typeを設定
+- 統計表示時に既存データも正しく集計
+
+### TC3: ブラウザ互換性
+- LocalStorageのキャッシュ機能が動作するブラウザ
+- 既存のフィンガープリント生成機能との整合性
+
+## データモデル
+
+### marker_scans テーブル（拡張後）
+```sql
+CREATE TABLE marker_scans (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(255) NOT NULL,
+    fingerprint VARCHAR(255) NULL,
+    marker_id VARCHAR(255) NOT NULL,
+    marker_name VARCHAR(255) NOT NULL,
+    scan_count INT DEFAULT 1,
+    capture_type VARCHAR(20) DEFAULT 'ball_hit', -- 新規追加
+    scanned_at TIMESTAMP NOT NULL,
+    user_agent VARCHAR(255),
+    ip_address VARCHAR(45),
+    device_info JSON,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    KEY idx_session_id (session_id),
+    KEY idx_fingerprint (fingerprint),
+    KEY idx_marker_id (marker_id),
+    KEY idx_capture_type (capture_type), -- 新規追加
+    KEY idx_session_marker (session_id, marker_id),
+    KEY idx_fingerprint_marker (fingerprint, marker_id),
+    KEY idx_scanned_at (scanned_at)
+);
+```
+
+### LocalStorageキャッシュ
+```javascript
+// キー: marker-scan-cache-202603-{markerId}-{date}
+// 値: { scanned: true, timestamp: '2026-02-19T10:30:00Z' }
+// 有効期限: 当日のみ（日付が変わったらクリア）
+```
+
+## 成功基準
+
+### 必須条件
+- [ ] マーカー検出時にmarker_scansに記録される（capture_type: 'marker_scan'）
+- [ ] ボールヒット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+- [ ] 同じ日に同じマーカーを再検出しても、カウントアップされない
+- [ ] 捕獲済みのマーカーは記録されない
+- [ ] ダッシュボードで各動物のマーカー検出回数とボールヒット回数が表示される
+- [ ] 既存のmarker_scansデータが正しく集計される
+- [ ] 既存機能（スタンプ収集、スタンプ帳表示等）が損なわれない
+
+### 望ましい条件
+- [ ] ダッシュボードでソート機能が動作する
+- [ ] グラフが2つのタイプ別に表示される
+- [ ] LocalStorageキャッシュでAPI呼び出しが削減される
+
+## スコープ
+
+### 対象範囲
+- marker_scansテーブルのスキーマ拡張（capture_typeカラム追加）
+- ARstampRally202603.blade.php の markerFoundイベントリスナーの修正
+- recordMarkerScan関数の拡張（capture_typeパラメータ追加）
+- MarkerScanController の record メソッドの修正
+- AdminController の dashboard202603 メソッドの拡張
+- dashboard202603.blade.php の表示内容拡張
+
+### 対象外
+- ARstampRally.blade.php の変更（元のファイルは変更しない）
+- 他のダッシュボードページの変更
+- マーカースキャン以外の統計機能
+- リアルタイム更新機能
+
+## 依存関係
+- 既存のMarkerScanモデル
+- 既存のMarkerScanController
+- 既存のrecordMarkerScan関数
+- 既存のgenerateFingerprint関数
+- 既存のisAnimalCaptured関数
+
+## リスク分析
+
+### リスク1: 大規模ファイル編集のミス
+**影響度**: 高  
+**発生確率**: 中  
+**対策**: 
+- 変更前に該当行の周辺コードを確認（10行前後）
+- バックアップ（Git commit）
+- 段階的な実装とテスト
+
+### リスク2: 既存データとの互換性問題
+**影響度**: 中  
+**発生確率**: 低  
+**対策**:
+- マイグレーション時に既存データのcapture_typeを'ball_hit'に設定
+- ロールバック用のマイグレーションを用意
+
+### リスク3: パフォーマンス劣化
+**影響度**: 中  
+**発生確率**: 低  
+**対策**:
+- LocalStorageキャッシュで重複チェックのAPI呼び出しを削減
+- インデックス追加（capture_type）
+
+### リスク4: マーカー検出の過剰記録
+**影響度**: 低  
+**発生確率**: 低  
+**対策**:
+- LocalStorageキャッシュで同じ日の重複を防止
+- 捕獲済み動物は記録しない
+
+## 次のステップ
+1. 設計フェーズ（design.mdへの追記）- 詳細な実装設計
+2. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順
+3. 実装フェーズ - コードの変更と追加

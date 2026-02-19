@@ -1727,3 +1727,815 @@ function showCapturedMessage(stampId) {
 1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
 2. 実装フェーズ - コードの変更（1行の追加）
 3. テストフェーズ - 動作確認と回帰テスト
+
+---
+
+# 設計6: ARstampRally202603 - マーカー検出とボールヒットの統計分離
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md`の要件定義6を読み込み、要件を確認済み
+
+## アーキテクチャ概要
+
+### 現在のデータフロー
+```
+┌─────────────────────────────────────────┐
+│ markerFoundイベント（731行目）           │
+│ - 未捕獲チェック                         │
+│ - モデル表示                             │
+│ - 【記録なし】← 問題点                   │
+└─────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│ ボールヒット（handleHit、340行目）       │
+│ - playHitAnimation                      │
+│ - collectStamp（124行目）               │
+│ - recordMarkerScan（143行目）           │
+└─────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│ MarkerScanController::record            │
+│ - marker_scansテーブルに保存             │
+│ - capture_type なし ← 問題点             │
+└─────────────────────────────────────────┘
+```
+
+### 新しいデータフロー
+```
+┌─────────────────────────────────────────┐
+│ markerFoundイベント（731行目）           │
+│ - 未捕獲チェック                         │
+│ - モデル表示                             │
+│ - 【新規】recordMarkerDetection呼び出し  │
+│   - 当日の重複チェック（LocalStorage）   │
+│   - recordMarkerScan呼び出し             │
+│     (captureType: 'marker_scan')       │
+└─────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│ ボールヒット（handleHit、340行目）       │
+│ - playHitAnimation                      │
+│ - collectStamp（124行目）               │
+│ - recordMarkerScan（143行目）           │
+│   【修正】(captureType: 'ball_hit')     │
+└─────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│ MarkerScanController::record            │
+│ - 【新規】captureType受け取り            │
+│ - marker_scansテーブルに保存             │
+│   (capture_type カラムに保存)           │
+└─────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│ AdminController::dashboard202603        │
+│ - 【新規】両タイプ別に集計               │
+│   - marker_scan カウント                │
+│   - ball_hit カウント                   │
+└─────────────────────────────────────────┘
+```
+
+## コードベース詳細分析
+
+### 1. markerFoundイベントリスナー（731-773行目）
+
+**現在の実装**:
+```javascript
+marker.addEventListener('markerFound', () => {
+    console.log('==================================================');
+    console.log('✓ Marker found for:', stampId);
+    console.log('  Checking capture state...');
+    console.log('  modelCaptured flag:', modelCaptured);
+    
+    // ローカルフラグをチェック（ボールヒット直後）
+    if (modelCaptured) {
+        console.log('  → Model captured (local flag) - hiding model and showing message');
+        el.setAttribute('visible', 'false');
+        
+        // 捕獲済みメッセージを表示
+        if (typeof showCapturedMessage === 'function') {
+            showCapturedMessage(stampId);
+        }
+        console.log('==================================================');
+        return; // ここで処理終了
+    }
+    
+    // 外部関数を使って捕獲済みかチェック（LocalStorageを確認）
+    const isCaptured = typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId);
+    console.log('  isAnimalCaptured(' + stampId + '):', isCaptured);
+    
+    if (isCaptured) {
+        console.log('  → Already captured (LocalStorage) - showing message, hiding model');
+        el.setAttribute('visible', 'false');
+        modelCaptured = true; // ローカル状態も更新
+        
+        // 捕獲済みメッセージを表示
+        if (typeof showCapturedMessage === 'function') {
+            showCapturedMessage(stampId);
+        }
+        console.log('==================================================');
+        return; // ここで処理終了
+    }
+    
+    // 捕獲されていない場合のみ、モデルを表示
+    console.log('  → Not captured - showing model with anime01');
+    el.setAttribute('visible', 'true');
+    markerVisible = true;
+    
+    // anime01を自動再生
+    if (action01) {
+        action01.reset();
+        action01.play();
+        currentAnimation = 1;
+        console.log('  anime01 started');
+    }
+    console.log('==================================================');
+});
+```
+
+**変更箇所**: 760行目付近（「捕獲されていない場合のみ、モデルを表示」の直後）
+
+**追加コード**:
+```javascript
+// 【新規】マーカー検出を記録（未捕獲の場合のみ、1日1回）
+try {
+    if (typeof recordMarkerDetection === 'function') {
+        recordMarkerDetection(stampId, stamp.name);
+    }
+} catch (e) {
+    console.warn('recordMarkerDetection failed', e);
+}
+```
+
+### 2. recordMarkerScan関数（2789-2824行目）
+
+**現在の実装**:
+```javascript
+async function recordMarkerScan(markerId, markerName) {
+    const fingerprint = await generateFingerprint();
+    const deviceInfo = collectDeviceInfo();
+    
+    // CSRFトークンを取得
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{{ url("/api/record-marker-scan") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken.content
+            },
+            body: JSON.stringify({
+                markerId: markerId,
+                markerName: markerName,
+                fingerprint: fingerprint,
+                deviceInfo: deviceInfo,
+                scannedAt: new Date().toISOString()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✓ Marker scan recorded:', markerId, 'Total scans:', data.totalScans);
+        }
+    } catch (error) {
+        console.error('Error recording marker scan:', error);
+    }
+}
+```
+
+**変更内容**: captureTypeパラメータを追加
+
+**変更後**:
+```javascript
+async function recordMarkerScan(markerId, markerName, captureType = 'ball_hit') {
+    const fingerprint = await generateFingerprint();
+    const deviceInfo = collectDeviceInfo();
+    
+    // CSRFトークンを取得
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{{ url("/api/record-marker-scan") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken.content
+            },
+            body: JSON.stringify({
+                markerId: markerId,
+                markerName: markerName,
+                fingerprint: fingerprint,
+                deviceInfo: deviceInfo,
+                captureType: captureType,  // 【新規】
+                scannedAt: new Date().toISOString()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✓ Marker scan recorded:', markerId, 'Type:', captureType, 'Total scans:', data.totalScans);
+        }
+    } catch (error) {
+        console.error('Error recording marker scan:', error);
+    }
+}
+```
+
+### 3. recordMarkerDetection関数（新規作成）
+
+**配置場所**: recordMarkerScan関数の直前（約2788行目）
+
+**実装**:
+```javascript
+// マーカー検出を記録（1日1回のみ、未捕獲のみ）
+async function recordMarkerDetection(markerId, markerName) {
+    // 当日の記録があるかLocalStorageでチェック
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const cacheKey = `marker-scan-cache-202603-${markerId}-${today}`;
+    
+    // キャッシュ確認
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        console.log('✓ Marker detection already recorded today:', markerId);
+        return; // 当日既に記録済み
+    }
+    
+    // マーカースキャンを記録（capture_type: 'marker_scan'）
+    try {
+        await recordMarkerScan(markerId, markerName, 'marker_scan');
+        
+        // LocalStorageに記録（当日のキャッシュ）
+        localStorage.setItem(cacheKey, JSON.stringify({
+            scanned: true,
+            timestamp: new Date().toISOString()
+        }));
+        
+        console.log('✓ Marker detection recorded:', markerId);
+    } catch (error) {
+        console.error('Error recording marker detection:', error);
+    }
+}
+```
+
+### 4. collectStamp関数の修正（143行目）
+
+**現在の実装**:
+```javascript
+// 動物をゲットした時だけマーカースキャンを記録
+try { recordMarkerScan(stampId, name); } catch (e) { console.warn('recordMarkerScan failed', e); }
+```
+
+**変更後**:
+```javascript
+// 動物をゲットした時だけマーカースキャンを記録（capture_type: 'ball_hit'）
+try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) { console.warn('recordMarkerScan failed', e); }
+```
+
+### 5. MarkerScanController::record メソッド
+
+**現在の実装**:
+```php
+public function record(Request $request)
+{
+    $validated = $request->validate([
+        'markerId' => 'required|string',
+        'markerName' => 'required|string',
+        'fingerprint' => 'required|string',
+        'deviceInfo' => 'required|array',
+        'scannedAt' => 'required|date'
+    ]);
+    
+    $sessionId = session()->getId();
+    $fingerprint = $validated['fingerprint'];
+    $markerId = $validated['markerId'];
+    
+    // 同じセッション・フィンガープリント・マーカーの累積スキャン回数を取得
+    $totalScans = MarkerScan::where(function($query) use ($sessionId, $fingerprint) {
+            $query->where('session_id', $sessionId)
+                  ->orWhere('fingerprint', $fingerprint);
+        })
+        ->where('marker_id', $markerId)
+        ->count() + 1;
+    
+    // 記録を保存
+    $scan = MarkerScan::create([
+        'session_id' => $sessionId,
+        'fingerprint' => $fingerprint,
+        'marker_id' => $markerId,
+        'marker_name' => $validated['markerName'],
+        'scan_count' => $totalScans,
+        'scanned_at' => now(), // 現在のJST時刻を使用
+        'user_agent' => $request->userAgent(),
+        'ip_address' => $request->ip(),
+        'device_info' => $validated['deviceInfo']
+    ]);
+    
+    return response()->json([
+        'success' => true,
+        'totalScans' => $totalScans,
+        'scanId' => $scan->id
+    ]);
+}
+```
+
+**変更内容**: captureTypeを受け取り、保存
+
+**変更後**:
+```php
+public function record(Request $request)
+{
+    $validated = $request->validate([
+        'markerId' => 'required|string',
+        'markerName' => 'required|string',
+        'fingerprint' => 'required|string',
+        'deviceInfo' => 'required|array',
+        'captureType' => 'nullable|string|in:marker_scan,ball_hit',  // 【新規】
+        'scannedAt' => 'required|date'
+    ]);
+    
+    $sessionId = session()->getId();
+    $fingerprint = $validated['fingerprint'];
+    $markerId = $validated['markerId'];
+    $captureType = $validated['captureType'] ?? 'ball_hit';  // 【新規】デフォルト値
+    
+    // marker_scan の場合、今日既に記録があるかチェック
+    if ($captureType === 'marker_scan') {
+        $today = now()->toDateString(); // YYYY-MM-DD
+        $existingToday = MarkerScan::where('fingerprint', $fingerprint)
+            ->where('marker_id', $markerId)
+            ->where('capture_type', 'marker_scan')
+            ->whereDate('scanned_at', $today)
+            ->exists();
+        
+        if ($existingToday) {
+            // 今日既に記録済み
+            return response()->json([
+                'success' => true,
+                'message' => 'Already recorded today',
+                'totalScans' => MarkerScan::where('fingerprint', $fingerprint)
+                    ->where('marker_id', $markerId)
+                    ->where('capture_type', 'marker_scan')
+                    ->count()
+            ]);
+        }
+    }
+    
+    // 同じセッション・フィンガープリント・マーカー・タイプの累積スキャン回数を取得
+    $totalScans = MarkerScan::where(function($query) use ($sessionId, $fingerprint) {
+            $query->where('session_id', $sessionId)
+                  ->orWhere('fingerprint', $fingerprint);
+        })
+        ->where('marker_id', $markerId)
+        ->where('capture_type', $captureType)  // 【新規】タイプ別にカウント
+        ->count() + 1;
+    
+    // 記録を保存
+    $scan = MarkerScan::create([
+        'session_id' => $sessionId,
+        'fingerprint' => $fingerprint,
+        'marker_id' => $markerId,
+        'marker_name' => $validated['markerName'],
+        'scan_count' => $totalScans,
+        'capture_type' => $captureType,  // 【新規】
+        'scanned_at' => now(), // 現在のJST時刻を使用
+        'user_agent' => $request->userAgent(),
+        'ip_address' => $request->ip(),
+        'device_info' => $validated['deviceInfo']
+    ]);
+    
+    return response()->json([
+        'success' => true,
+        'totalScans' => $totalScans,
+        'scanId' => $scan->id
+    ]);
+}
+```
+
+### 6. MarkerScanモデルの修正
+
+**現在の実装**:
+```php
+protected $fillable = [
+    'session_id',
+    'fingerprint',
+    'marker_id',
+    'marker_name',
+    'scan_count',
+    'scanned_at',
+    'user_agent',
+    'ip_address',
+    'device_info'
+];
+```
+
+**変更後**:
+```php
+protected $fillable = [
+    'session_id',
+    'fingerprint',
+    'marker_id',
+    'marker_name',
+    'scan_count',
+    'capture_type',  // 【新規】
+    'scanned_at',
+    'user_agent',
+    'ip_address',
+    'device_info'
+];
+```
+
+### 7. データベースマイグレーション
+
+**新規ファイル**: `database/migrations/2026_02_19_000000_add_capture_type_to_marker_scans_table.php`
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('marker_scans', function (Blueprint $table) {
+            // capture_type カラムを追加
+            $table->string('capture_type', 20)
+                ->default('ball_hit')
+                ->after('scan_count')
+                ->comment('marker_scan: マーカー検出, ball_hit: ボールヒット');
+            
+            // インデックス追加
+            $table->index('capture_type');
+            $table->index(['marker_id', 'capture_type']);
+            $table->index(['fingerprint', 'marker_id', 'capture_type']);
+        });
+        
+        // 既存の全レコードのcapture_typeを'ball_hit'に設定
+        DB::table('marker_scans')
+            ->whereNull('capture_type')
+            ->orWhere('capture_type', '')
+            ->update(['capture_type' => 'ball_hit']);
+    }
+
+    public function down(): void
+    {
+        Schema::table('marker_scans', function (Blueprint $table) {
+            $table->dropIndex(['marker_scans_capture_type_index']);
+            $table->dropIndex(['marker_scans_marker_id_capture_type_index']);
+            $table->dropIndex(['marker_scans_fingerprint_marker_id_capture_type_index']);
+            $table->dropColumn('capture_type');
+        });
+    }
+};
+```
+
+### 8. AdminController::dashboard202603 メソッドの拡張
+
+**現在の実装**:
+```php
+public function dashboard202603(Request $request)
+{
+    // パンダマーカーの統計
+    $totalPandaScans = MarkerScan::where('marker_id', 'panda')->count();
+    
+    $uniquePandaUsers = MarkerScan::where('marker_id', 'panda')
+        ->distinct('fingerprint')
+        ->count();
+    
+    // 最近のパンダスキャン履歴（ページネーション）
+    $recentPandaScans = MarkerScan::where('marker_id', 'panda')
+        ->orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'panda_scans_page');
+    
+    // 日別パンダスキャン数（直近30日間）
+    $dailyPandaScans = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('COUNT(*) as count')
+        ->where('marker_id', 'panda')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date')
+        ->orderBy('date', 'desc')
+        ->paginate(15, ['*'], 'daily_panda_page');
+    
+    return view('admin.dashboard202603', compact(
+        'totalPandaScans',
+        'uniquePandaUsers',
+        'recentPandaScans',
+        'dailyPandaScans'
+    ));
+}
+```
+
+**変更後**:
+```php
+public function dashboard202603(Request $request)
+{
+    // 全動物のリスト（STAMPS定義と同じ順序）
+    $animals = [
+        'sheep' => 'ひつじ',
+        'fox' => 'きつね',
+        'pengin' => 'ペンギン',
+        'tonakai' => 'トナカイ',
+        'pig' => 'ぶた',
+        'tora' => 'とら',
+        'gollira' => 'ごりら',
+        'whiteDuck' => '白アヒル',
+        'araiguma' => 'あらいぐま',
+        'wolf' => 'おおかみ',
+        'duck' => 'あひる',
+        'cat' => 'ねこ',
+        'bear' => 'くま',
+        'harinezumi' => 'はりねずみ',
+        'hamstar' => 'ハムスター',
+        'burger' => 'バーガー',
+        'kirin' => 'きりん',
+        'namakemono' => 'なまけもの',
+        't-rex' => 'ティラノサウルス',
+        'panda' => 'パンダ'
+    ];
+    
+    // 各動物の統計を取得
+    $animalStats = [];
+    foreach ($animals as $markerId => $markerName) {
+        // マーカー検出回数
+        $markerScanCount = MarkerScan::where('marker_id', $markerId)
+            ->where('capture_type', 'marker_scan')
+            ->count();
+        
+        // ボールヒット回数
+        $ballHitCount = MarkerScan::where('marker_id', $markerId)
+            ->where('capture_type', 'ball_hit')
+            ->count();
+        
+        // ユニークユーザー数（両タイプ合計）
+        $uniqueUsers = MarkerScan::where('marker_id', $markerId)
+            ->distinct('fingerprint')
+            ->count();
+        
+        // 最終スキャン日時
+        $lastScan = MarkerScan::where('marker_id', $markerId)
+            ->orderBy('scanned_at', 'desc')
+            ->value('scanned_at');
+        
+        $animalStats[] = [
+            'marker_id' => $markerId,
+            'marker_name' => $markerName,
+            'marker_scan_count' => $markerScanCount,
+            'ball_hit_count' => $ballHitCount,
+            'total_count' => $markerScanCount + $ballHitCount,
+            'unique_users' => $uniqueUsers,
+            'last_scan' => $lastScan
+        ];
+    }
+    
+    // 最近のスキャン履歴（全動物、両タイプ）
+    $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'recent_scans_page');
+    
+    // 日別スキャン数（直近30日間、タイプ別）
+    $dailyStats = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(*) as count')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get()
+        ->groupBy('date');
+    
+    return view('admin.dashboard202603', compact(
+        'animalStats',
+        'recentScans',
+        'dailyStats'
+    ));
+}
+```
+
+### 9. dashboard202603.blade.php の修正
+
+**追加セクション**: 動物別統計テーブル
+
+```html
+<!-- 動物別統計テーブル -->
+<div class="stats-section">
+    <h2>動物別統計</h2>
+    <table class="stats-table">
+        <thead>
+            <tr>
+                <th>動物名</th>
+                <th>マーカー検出回数</th>
+                <th>ボールヒット回数</th>
+                <th>合計</th>
+                <th>ユニークユーザー数</th>
+                <th>最終スキャン</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($animalStats as $stat)
+            <tr>
+                <td>{{ $stat['marker_name'] }}</td>
+                <td class="marker-scan">{{ $stat['marker_scan_count'] }}</td>
+                <td class="ball-hit">{{ $stat['ball_hit_count'] }}</td>
+                <td class="total">{{ $stat['total_count'] }}</td>
+                <td>{{ $stat['unique_users'] }}</td>
+                <td>{{ $stat['last_scan'] ? $stat['last_scan']->format('Y-m-d H:i') : '-' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
+<!-- 最近のスキャン履歴 -->
+<div class="stats-section">
+    <h2>最近のスキャン履歴</h2>
+    <table class="scans-table">
+        <thead>
+            <tr>
+                <th>日時</th>
+                <th>動物名</th>
+                <th>タイプ</th>
+                <th>フィンガープリント</th>
+                <th>デバイス</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($recentScans as $scan)
+            <tr>
+                <td>{{ $scan->scanned_at->format('Y-m-d H:i:s') }}</td>
+                <td>{{ $scan->marker_name }}</td>
+                <td>
+                    <span class="badge {{ $scan->capture_type === 'marker_scan' ? 'marker' : 'ball' }}">
+                        {{ $scan->capture_type === 'marker_scan' ? 'マーカー検出' : 'ボールヒット' }}
+                    </span>
+                </td>
+                <td>{{ substr($scan->fingerprint, 0, 12) }}...</td>
+                <td>{{ $scan->device_info['isIOS'] ?? false ? 'iOS' : ($scan->device_info['isAndroid'] ?? false ? 'Android' : 'Other') }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    {{ $recentScans->links() }}
+</div>
+
+<!-- 日別統計グラフ -->
+<div class="stats-section">
+    <h2>日別スキャン数（直近30日間）</h2>
+    <div class="chart-container">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<script>
+// Chart.jsで積み上げ棒グラフを表示
+const dailyData = @json($dailyStats);
+const dates = Object.keys(dailyData).reverse();
+const markerScanData = dates.map(date => {
+    const dayData = dailyData[date].find(d => d.capture_type === 'marker_scan');
+    return dayData ? dayData.count : 0;
+});
+const ballHitData = dates.map(date => {
+    const dayData = dailyData[date].find(d => d.capture_type === 'ball_hit');
+    return dayData ? dayData.count : 0;
+});
+
+const ctx = document.getElementById('dailyChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: dates,
+        datasets: [
+            {
+                label: 'マーカー検出',
+                data: markerScanData,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'ボールヒット',
+                data: ballHitData,
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+        }
+    }
+});
+</script>
+```
+
+## テスト計画
+
+### 1. 単体テスト
+
+#### A. recordMarkerDetection関数
+- [ ] 未捕獲の動物でマーカー検出時、LocalStorageキャッシュが作成される
+- [ ] 当日2回目の検出では記録されない（ローカルキャッシュで防止）
+- [ ] 翌日の検出では記録される
+
+#### B. recordMarkerScan関数
+- [ ] captureType: 'marker_scan'で呼び出し時、正しくAPIに送信される
+- [ ] captureType: 'ball_hit'で呼び出し時、正しくAPIに送信される
+- [ ] パラメータ省略時、デフォルト'ball_hit'が使用される
+
+#### C. MarkerScanController::record
+- [ ] captureType: 'marker_scan'でリクエスト時、DBに正しく保存される
+- [ ] captureType: 'ball_hit'でリクエスト時、DBに正しく保存される
+- [ ] marker_scanタイプで同日の重複リクエストは記録されない
+
+#### D. AdminController::dashboard202603
+- [ ] 各動物のマーカー検出回数が正しく集計される
+- [ ] 各動物のボールヒット回数が正しく集計される
+- [ ] ユニークユーザー数が正しく集計される
+
+### 2. 統合テスト
+
+#### A. マーカー検出からDB保存まで
+1. ARマーカーをカメラで検出
+2. markerFoundイベント発火
+3. recordMarkerDetection呼び出し
+4. recordMarkerScan呼び出し（captureType: 'marker_scan'）
+5. MarkerScanController::record実行
+6. marker_scansテーブルに保存（capture_type: 'marker_scan'）
+
+#### B. ボールヒットからDB保存まで
+1. ボールを投げて動物にヒット
+2. handleHit関数実行
+3. collectStamp呼び出し
+4. recordMarkerScan呼び出し（captureType: 'ball_hit'）
+5. MarkerScanController::record実行
+6. marker_scansテーブルに保存（capture_type: 'ball_hit'）
+
+#### C. ダッシュボード表示
+1. admin/dashboard202603にアクセス
+2. 動物別統計テーブルが表示される
+3. マーカー検出回数とボールヒット回数が別々に表示される
+4. 最近のスキャン履歴にタイプが表示される
+5. グラフが2つのタイプ別に表示される
+
+### 3. 回帰テスト
+
+- [ ] 既存のスタンプ収集機能が正常に動作する
+- [ ] 既存のスタンプ帳表示が正常に動作する
+- [ ] 既存の捕獲メッセージが正常に表示される
+- [ ] 既存の管理画面（dashboard）が正常に動作する
+
+## リスク管理と対策
+
+### リスク1: markerFoundイベントの過剰発火
+**問題**: マーカーが短時間に複数回検出される可能性  
+**対策**: LocalStorageキャッシュで当日の重複を防止、API呼び出しも日付でチェック
+
+### リスク2: 既存のrecordMarkerScan呼び出し箇所の影響
+**問題**: 既存の呼び出し箇所（143行目）がcaptureTypeを指定していない  
+**対策**: デフォルト値'ball_hit'を設定し、後方互換性を保つ
+
+### リスク3: 大規模ファイル編集のミス
+**問題**: ARstampRally202603.blade.phpは6964行の大規模ファイル  
+**対策**: 変更箇所を限定（4箇所のみ）、段階的なテストを実施
+
+### リスク4: 既存データとの互換性
+**問題**: 既存のmarker_scansレコードがcapture_typeを持たない  
+**対策**: マイグレーションで既存データのcapture_typeを'ball_hit'に設定
+
+## 成功基準
+
+### 必須条件
+- [ ] マーカー検出時にmarker_scansに記録される（capture_type: 'marker_scan'）
+- [ ] ボールヒット時にmarker_scansに記録される（capture_type: 'ball_hit'）
+- [ ] 同じ日に同じマーカーを再検出しても、カウントアップされない
+- [ ] 捕獲済みのマーカーは記録されない
+- [ ] ダッシュボードで各動物のマーカー検出回数とボールヒット回数が表示される
+- [ ] 既存のmarker_scansデータが正しく集計される
+- [ ] 既存機能が損なわれない
+
+## 次のステップ
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
+2. 実装フェーズ - コードの変更と追加
+3. マイグレーション実行とテスト
