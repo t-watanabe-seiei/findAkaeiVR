@@ -163,6 +163,80 @@
         canvas {
             max-height: 400px;
         }
+        
+        /* 【新規】景品交換統計カード用のグリッドレイアウト */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 【新規】景品交換セクション用のグリッドレイアウト */
+        .prizes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .prizes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 【新規】景品コード表示用のスタイル */
+        .prize-code {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 16px;
+            color: #667eea;
+        }
+        
+        /* 【新規】使用済みボタンのスタイル */
+        .redeem-btn {
+            padding: 6px 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .redeem-btn:hover {
+            background: #218838;
+        }
+        
+        .redeem-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* 【新規】ページネーションラッパー */
+        .pagination-wrapper {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -171,6 +245,22 @@
         <div class="nav-links">
             <a href="{{ route('admin.dashboard') }}" class="nav-link">通常ダッシュボード</a>
             <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+        </div>
+    </div>
+
+    <!-- 【新規追加】景品交換統計カード -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>総景品交換数</h3>
+            <div class="number">{{ $totalExchanges }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>使用済み</h3>
+            <div class="number" style="color: #28a745;">{{ $redeemedExchanges }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>未使用</h3>
+            <div class="number" style="color: #ffc107;">{{ $pendingExchanges }}</div>
         </div>
     </div>
 
@@ -259,7 +349,117 @@
         </div>
     </div>
 
+    <!-- 【新規追加】景品交換セクション -->
+    <div class="prizes-grid">
+        <!-- 未使用の景品交換 -->
+        <div class="card">
+            <h2>🎁 未使用の景品交換</h2>
+            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+                <form method="GET" action="{{ route('admin.dashboard202603') }}" style="display:flex; gap:8px; align-items:center;">
+                    <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.dashboard202603') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                    @endif
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>フィンガープリント</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentExchanges as $exchange)
+                    <tr>
+                        <td class="prize-code">{{ $exchange->prize_code }}</td>
+                        <td>{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}</td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
+                        <td>
+                            <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
+                                使用済みにする
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $recentExchanges->links() }}
+            </div>
+        </div>
+
+        <!-- 使用済み景品交換 -->
+        <div class="card">
+            <h2>✅ 使用済み景品交換</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>使用日時</th>
+                        <th>フィンガープリント</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($redeemedPrizes as $prize)
+                    <tr>
+                        <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
+                        <td style="font-size: 13px;">{{ $prize->exchanged_at->format('Y/m/d H:i') }}</td>
+                        <td style="font-size: 13px; color: #28a745;">
+                            {{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}
+                        </td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $redeemedPrizes->links() }}
+            </div>
+        </div>
+    </div>
+
     <script>
+        // 【新規追加】景品コードを使用済みにする関数
+        function redeemPrize(id) {
+            if (!confirm('この景品コードを使用済みにしますか？')) {
+                return;
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('使用済みにしました');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+
         // 日別統計グラフ（積み上げ棒グラフ）
         const dailyData = @json($dailyStats);
         const dates = Object.keys(dailyData).reverse();

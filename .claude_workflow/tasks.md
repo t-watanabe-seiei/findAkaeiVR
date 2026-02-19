@@ -2829,3 +2829,804 @@ admin/dashboard202603の管理画面において、ページネーションのUI
 ---
 
 **ARstampRally202603のdashboard202603 UI改善と日別個別ユーザー数統計追加のタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化8: ARstampRally202603 - dashboard202603に景品交換統計を追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/design.md`の設計8を読み込み、設計内容を確認済み
+
+## タスク概要
+admin/dashboard202603の管理画面に景品交換の統計情報と一覧を追加する。admin/dashboardの実装を参考にしながら、dashboard202603に統合する。
+
+**変更箇所**: 2箇所
+- AdminController.php（dashboard202603メソッド）
+- dashboard202603.blade.php（CSS、HTML、JavaScript）
+
+**所要時間**: 合計約1.5時間
+
+---
+
+## タスク一覧
+
+### Phase 1: AdminController.phpの拡張
+
+#### Task 1-1: dashboard202603メソッドに景品交換データ取得を追加
+**目的**: 景品交換の統計と一覧データを取得
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**行数**: 299-399行目（dashboard202603メソッド）
+**作業内容**:
+1. dashboard202603メソッドの先頭（$animalsの定義の前）に以下を追加:
+   ```php
+   // 【新規追加】景品交換の統計
+   $totalExchanges = PrizeExchange::count();
+   $redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();
+   $pendingExchanges = $totalExchanges - $redeemedExchanges;
+
+   // 【新規追加】最近の景品交換（未使用のみ）- ページネーション
+   // optional search by prize code (query param: q)
+   $q = $request->query('q');
+   $recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+   if ($q) {
+       // allow partial matches (case-insensitive)
+       $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+   }
+   $recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+       ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+
+   // 【新規追加】使用済み景品交換 - ページネーション（10件ごと）
+   $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+       ->orderBy('redeemed_at', 'desc')
+       ->paginate(10, ['*'], 'redeemed_page');
+   ```
+
+2. return文のcompact()に以下を追加:
+   ```php
+   return view('admin.dashboard202603', compact(
+       'animalStats',
+       'recentScans',
+       'dailyStats',
+       'dailyUniqueUsers',
+       'totalExchanges',        // 【追加】
+       'redeemedExchanges',     // 【追加】
+       'pendingExchanges',      // 【追加】
+       'recentExchanges',       // 【追加】
+       'redeemedPrizes'         // 【追加】
+   ));
+   ```
+
+**依存関係**: なし
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 景品交換統計データが取得されている（$totalExchanges, $redeemedExchanges, $pendingExchanges）
+- ✅ 未使用景品交換データが取得されている（$recentExchanges、20件/ページ）
+- ✅ 使用済み景品交換データが取得されている（$redeemedPrizes、10件/ページ）
+- ✅ 景品コード検索機能が実装されている（$q）
+- ✅ compact()に5つの変数が追加されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 2: dashboard202603.blade.phpのCSS拡張
+
+#### Task 2-1: 景品交換用のCSSスタイルを追加
+**目的**: 景品交換統計カードと景品交換セクション用のスタイルを追加
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 9-141行目付近（`<style>`セクション）
+**作業内容**:
+1. 既存の`</style>`タグの前（141行目付近）に以下を追加:
+   ```css
+   /* 【新規】景品交換統計カード用のグリッドレイアウト */
+   .stats-grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-bottom: 30px;
+   }
+   
+   .stat-card {
+       background: white;
+       padding: 20px;
+       border-radius: 10px;
+       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+   }
+   
+   .stat-card h3 {
+       color: #666;
+       font-size: 14px;
+       margin-bottom: 10px;
+   }
+   
+   .stat-card .number {
+       font-size: 36px;
+       font-weight: bold;
+       color: #667eea;
+   }
+   
+   /* 【新規】景品交換セクション用のグリッドレイアウト */
+   .prizes-grid {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: 20px;
+       margin-bottom: 20px;
+   }
+   
+   @media (max-width: 1200px) {
+       .prizes-grid {
+           grid-template-columns: 1fr;
+       }
+   }
+   
+   /* 【新規】景品コード表示用のスタイル */
+   .prize-code {
+       font-family: 'Courier New', monospace;
+       font-weight: bold;
+       font-size: 16px;
+       color: #667eea;
+   }
+   
+   /* 【新規】使用済みボタンのスタイル */
+   .redeem-btn {
+       padding: 6px 12px;
+       background: #28a745;
+       color: white;
+       border: none;
+       border-radius: 4px;
+       cursor: pointer;
+       font-size: 12px;
+   }
+   
+   .redeem-btn:hover {
+       background: #218838;
+   }
+   
+   .redeem-btn:disabled {
+       background: #ccc;
+       cursor: not-allowed;
+   }
+   
+   /* 【新規】ページネーションラッパー */
+   .pagination-wrapper {
+       margin-top: 20px;
+   }
+   ```
+
+**依存関係**: なし
+**所要時間**: 5分
+**完了条件**: 
+- ✅ CSSルールが追加されている
+- ✅ stats-gridとstat-cardのスタイルが定義されている
+- ✅ prizes-gridのスタイルが定義されている
+- ✅ レスポンシブ対応（1200px以下で1カラム）
+- ✅ prize-code、redeem-btnのスタイルが定義されている
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 3: dashboard202603.blade.phpのHTML拡張（統計カード）
+
+#### Task 3-1: 景品交換統計カードのHTMLを追加
+**目的**: 総景品交換数、使用済み数、未使用数の統計カードを表示
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 151行目付近（`<div class="header">`の直後、動物別統計の前）
+**作業内容**:
+1. `</div>`（headerの閉じタグ）の後、`<div class="card">【動物別統計】`の前に以下を挿入:
+   ```html
+   </div>
+
+   <!-- 【新規追加】景品交換統計カード -->
+   <div class="stats-grid">
+       <div class="stat-card">
+           <h3>総景品交換数</h3>
+           <div class="number">{{ $totalExchanges }}</div>
+       </div>
+       <div class="stat-card">
+           <h3>使用済み</h3>
+           <div class="number" style="color: #28a745;">{{ $redeemedExchanges }}</div>
+       </div>
+       <div class="stat-card">
+           <h3>未使用</h3>
+           <div class="number" style="color: #ffc107;">{{ $pendingExchanges }}</div>
+       </div>
+   </div>
+
+   <div class="card">
+       <h2>🐾 動物別統計</h2>
+   ```
+
+**依存関係**: Task 2-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ 統計カードセクションが追加されている
+- ✅ 3枚のカード（総景品交換数、使用済み、未使用）が表示される
+- ✅ 配置位置が正しい（ヘッダー直後、動物別統計の前）
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 4: dashboard202603.blade.phpのHTML拡張（景品交換セクション）
+
+#### Task 4-1: 未使用の景品交換セクションのHTMLを追加
+**目的**: 未使用の景品交換一覧と検索機能を表示
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 243行目付近（日別個別ユーザー数グラフの後、`<script>`タグの前）
+**作業内容**:
+1. 日別個別ユーザー数の`</div>`の後、`<script>`の前に以下を挿入:
+   ```html
+   </div>
+
+   <!-- 【新規追加】景品交換セクション -->
+   <div class="prizes-grid">
+       <!-- 未使用の景品交換 -->
+       <div class="card">
+           <h2>🎁 未使用の景品交換</h2>
+           <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+               <form method="GET" action="{{ route('admin.dashboard202603') }}" style="display:flex; gap:8px; align-items:center;">
+                   <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                   <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                   @if(request('q'))
+                       <a href="{{ route('admin.dashboard202603') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                   @endif
+               </form>
+           </div>
+           <table>
+               <thead>
+                   <tr>
+                       <th>景品コード</th>
+                       <th>交換日時</th>
+                       <th>フィンガープリント</th>
+                       <th>操作</th>
+                   </tr>
+               </thead>
+               <tbody>
+                   @forelse($recentExchanges as $exchange)
+                   <tr>
+                       <td class="prize-code">{{ $exchange->prize_code }}</td>
+                       <td>{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}</td>
+                       <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
+                       <td>
+                           <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
+                               使用済みにする
+                           </button>
+                       </td>
+                   </tr>
+                   @empty
+                   <tr>
+                       <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                   </tr>
+                   @endforelse
+               </tbody>
+           </table>
+           <div class="pagination-wrapper">
+               {{ $recentExchanges->links() }}
+           </div>
+       </div>
+   ```
+
+**依存関係**: Task 3-1
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 未使用の景品交換セクションが追加されている
+- ✅ 検索フォームが表示される
+- ✅ 未使用景品交換テーブルが表示される
+- ✅ ページネーションが表示される
+- ✅ 「使用済みにする」ボタンが表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 4-2: 使用済み景品交換セクションのHTMLを追加
+**目的**: 使用済みの景品交換一覧を表示
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: Task 4-1の直後
+**作業内容**:
+1. Task 4-1のコードの直後（prizes-gridの中）に以下を追加:
+   ```html
+       <!-- 使用済み景品交換 -->
+       <div class="card">
+           <h2>✅ 使用済み景品交換</h2>
+           <table>
+               <thead>
+                   <tr>
+                       <th>景品コード</th>
+                       <th>交換日時</th>
+                       <th>使用日時</th>
+                       <th>フィンガープリント</th>
+                   </tr>
+               </thead>
+               <tbody>
+                   @forelse($redeemedPrizes as $prize)
+                   <tr>
+                       <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
+                       <td style="font-size: 13px;">{{ $prize->exchanged_at->format('Y/m/d H:i') }}</td>
+                       <td style="font-size: 13px; color: #28a745;">
+                           {{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}
+                       </td>
+                       <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
+                   </tr>
+                   @empty
+                   <tr>
+                       <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                   </tr>
+                   @endforelse
+               </tbody>
+           </table>
+           <div class="pagination-wrapper">
+               {{ $redeemedPrizes->links() }}
+           </div>
+       </div>
+   </div>
+
+   <script>
+   ```
+
+**依存関係**: Task 4-1
+**所要時間**: 8分
+**完了条件**: 
+- ✅ 使用済み景品交換セクションが追加されている
+- ✅ 使用済み景品交換テーブルが表示される
+- ✅ ページネーションが表示される
+- ✅ 使用日時が緑色で表示される
+- ✅ 景品コードがグレーアウトされる
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 5: dashboard202603.blade.phpのJavaScript拡張
+
+#### Task 5-1: redeemPrize関数のJavaScriptコードを追加
+**目的**: 景品コードを使用済みにする機能を実装
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**行数**: 245行目付近（`<script>`タグの直後、既存コードの前）
+**作業内容**:
+1. `<script>`タグの直後、既存のJavaScriptコードの前（dailyDataの前）に以下を追加:
+   ```javascript
+   <script>
+       // 【新規追加】景品コードを使用済みにする関数
+       function redeemPrize(id) {
+           if (!confirm('この景品コードを使用済みにしますか？')) {
+               return;
+           }
+
+           const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+           fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/json',
+                   'X-CSRF-TOKEN': csrfToken
+               }
+           })
+           .then(response => response.json())
+           .then(data => {
+               if (data.success) {
+                   alert('使用済みにしました');
+                   location.reload();
+               }
+           })
+           .catch(error => {
+               console.error('Error:', error);
+               alert('エラーが発生しました');
+           });
+       }
+
+       // 【既存】日別統計グラフ（積み上げ棒グラフ）
+       const dailyData = @json($dailyStats);
+   ```
+
+**依存関係**: Task 4-1（「使用済みにする」ボタンが存在する）
+**所要時間**: 10分
+**完了条件**: 
+- ✅ redeemPrize関数が追加されている
+- ✅ 確認ダイアログが実装されている
+- ✅ CSRF tokenが取得されている
+- ✅ AJAX POST通信が実装されている
+- ✅ 成功時にページリロードされる
+- ✅ エラー時にアラートが表示される
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 6: 動作確認とテスト
+
+#### Task 6-1: PHP構文チェック
+**目的**: PHPファイルに構文エラーがないことを確認
+**作業内容**:
+1. AdminController.phpの構文チェック:
+   ```bash
+   php -l app/Http/Controllers/AdminController.php
+   ```
+
+2. エラーがある場合は修正
+
+**依存関係**: Task 1-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ 構文エラーがない
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6-2: 景品交換統計カードの表示確認
+**目的**: 景品交換統計カードが正しく表示されることを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 景品交換統計カードを確認:
+   - 総景品交換数が表示されること
+   - 使用済み数が緑色で表示されること
+   - 未使用数が黄色で表示されること
+   - 3枚のカードが横並びで表示されること
+
+3. レスポンシブ表示を確認:
+   - ブラウザウィンドウを1200px以下にリサイズ
+   - カードが縦並びになること
+
+**依存関係**: Task 3-1
+**所要時間**: 5分
+**完了条件**: 
+- ✅ 総景品交換数が表示される
+- ✅ 使用済み数が緑色で表示される
+- ✅ 未使用数が黄色で表示される
+- ✅ レスポンシブデザインが機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6-3: 未使用の景品交換セクションの表示確認
+**目的**: 未使用の景品交換セクションが正しく表示され機能することを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 未使用の景品交換セクションを確認:
+   - 検索フォームが表示されること
+   - 未使用景品交換一覧が表示されること
+   - ページネーション（20件/ページ）が機能すること
+   - 「使用済みにする」ボタンが表示されること
+
+3. 検索機能を確認:
+   - 景品コードを入力して検索
+   - 検索結果が表示されること
+   - クリアボタンが表示されること
+   - クリアボタンで検索がリセットされること
+
+4. ページネーションを確認:
+   - 次のページに移動できること
+   - 検索クエリが保持されること
+
+**依存関係**: Task 4-1, Task 5-1
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 未使用景品交換一覧が表示される
+- ✅ 検索機能が動作する
+- ✅ ページネーションが動作する
+- ✅ クリアボタンが機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6-4: 使用済み景品交換セクションの表示確認
+**目的**: 使用済み景品交換セクションが正しく表示されることを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 使用済み景品交換セクションを確認:
+   - 使用済み景品交換一覧が表示されること
+   - ページネーション（10件/ページ）が機能すること
+   - 景品コードがグレーアウトされること
+   - 使用日時が緑色で表示されること
+
+3. レスポンシブ表示を確認:
+   - ブラウザウィンドウを1200px以下にリサイズ
+   - 2カラムが1カラムになること
+
+**依存関係**: Task 4-2
+**所要時間**: 5分
+**完了条件**: 
+- ✅ 使用済み景品交換一覧が表示される
+- ✅ ページネーションが動作する
+- ✅ 景品コードがグレーで表示される
+- ✅ 使用日時が緑色で表示される
+- ✅ レスポンシブデザインが機能する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6-5: 使用済み処理機能の動作確認
+**目的**: 「使用済みにする」ボタンが正しく機能することを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 未使用の景品交換から1つ選択:
+   - 「使用済みにする」ボタンをクリック
+   - 確認ダイアログが表示されること
+   - 「キャンセル」を選択した場合は何も起きないこと
+
+3. 再度「使用済みにする」ボタンをクリック:
+   - 確認ダイアログで「OK」を選択
+   - 「使用済みにしました」アラートが表示されること
+   - ページがリロードされること
+   - 該当の景品コードが使用済みリストに移動していること
+
+4. ブラウザの開発者ツールでネットワークを確認:
+   - POST /admin/prizes/{id}/redeemが送信されていること
+   - CSRF tokenが送信されていること
+   - レスポンスが{success: true}であること
+
+**依存関係**: Task 5-1
+**所要時間**: 10分
+**完了条件**: 
+- ✅ 確認ダイアログが表示される
+- ✅ キャンセル時は何も起きない
+- ✅ OK時は処理が実行される
+- ✅ 成功アラートが表示される
+- ✅ ページがリロードされる
+- ✅ 景品コードが使用済みリストに移動する
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 6-6: 既存機能の回帰テスト
+**目的**: 既存の統計表示に影響がないことを確認
+**作業内容**:
+1. admin/dashboard202603にアクセス
+
+2. 既存機能を確認:
+   - 動物別統計が正しく表示されること
+   - 最近のスキャン履歴が正しく表示されること
+   - スキャン履歴のページネーション（recent_scans_page）が機能すること
+   - 日別スキャン統計グラフが正しく表示されること
+   - 日別個別ユーザー数グラフが正しく表示されること
+   - 30秒ごとの自動更新が機能すること
+
+3. ページネーションの独立性を確認:
+   - 各セクション（スキャン履歴、未使用景品交換、使用済み景品交換）のページネーションが独立して動作すること
+   - 一つのセクションのページを変更しても他のセクションに影響しないこと
+
+4. 自動更新を確認:
+   - 30秒待機
+   - ページがリロードされること
+   - 検索状態やページネーション状態がリセットされること（仕様通り）
+
+**依存関係**: Task 6-5
+**所要時間**: 15分
+**完了条件**: 
+- ✅ 動物別統計が正しく表示される
+- ✅ 最近のスキャン履歴が正しく表示される
+- ✅ 日別スキャン統計グラフが正しく表示される
+- ✅ 日別個別ユーザー数グラフが正しく表示される
+- ✅ 30秒ごとの自動更新が機能する
+- ✅ ページネーションの独立性が保たれる
+**ステータス**: ⬜ 未着手
+
+---
+
+### Phase 7: ドキュメント更新
+
+#### Task 7-1: README.mdへの変更内容追記
+**目的**: 変更内容を記録し、プロジェクトの変更履歴を更新
+**ファイル**: `README.md`
+**作業内容**:
+1. README.mdの「変更点」セクションの先頭に以下を追記:
+   ```markdown
+   ### ARスタンプラリー202603 - dashboard202603に景品交換統計を追加 20260219
+   **admin/dashboard202603の管理画面に景品交換の統計情報と一覧を追加:**
+   
+   #### 実装内容
+   1. **景品交換統計カードの追加**
+      - 総景品交換数、使用済み数、未使用数を表示する3枚のカード
+      - ヘッダー直後、動物別統計の前に配置
+      - レスポンシブ対応（1200px以下で縦並び）
+   
+   2. **未使用の景品交換セクション**
+      - 景品コード検索機能（部分一致、大文字小文字区別なし）
+      - 未使用景品交換一覧（20件/ページ、ページネーション）
+      - 「使用済みにする」ボタン（AJAX処理）
+   
+   3. **使用済み景品交換セクション**
+      - 使用済み景品交換一覧（10件/ページ、ページネーション）
+      - 使用日時の表示（緑色）
+      - 景品コードのグレーアウト表示
+   
+   4. **JavaScript機能**
+      - redeemPrize(id)関数（AJAX POST通信）
+      - 確認ダイアログ
+      - CSRF token送信
+      - 完了後のページリロード
+   
+   #### 変更ファイル
+   - `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張（景品交換データ取得を追加）
+   - `resources/views/admin/dashboard202603.blade.php`: CSS、HTML、JavaScript追加
+   
+   #### 技術的詳細
+   - データベースクエリ: 景品交換統計（2クエリ）、未使用景品交換（2クエリ）、使用済み景品交換（2クエリ）
+   - ページネーション: 異なるクエリパラメータ名で競合回避（exchanges_page, redeemed_page）
+   - 検索機能: GET param `q`で景品コード検索（部分一致、大文字小文字区別なし）
+   - セキュリティ: CSRF保護、認証、SQLインジェクション対策、XSS対策
+   - レスポンシブ: 1200px以下で1カラムレイアウトに変更
+   
+   #### 動作確認済み項目
+   - ✅ 景品交換統計カードが表示される（3枚）
+   - ✅ 未使用の景品交換一覧が表示される（検索機能、ページネーション）
+   - ✅ 使用済み景品交換一覧が表示される（ページネーション）
+   - ✅ 「使用済みにする」ボタンが機能する（AJAX処理）
+   - ✅ ページネーションの独立性が保たれる
+   - ✅ 既存機能への影響なし
+   - ✅ 30秒ごとの自動更新が機能する
+   - ✅ PHP構文エラーなし
+   
+   #### 設計ドキュメント
+   - 要件定義8: `.claude_workflow/requirements.md` (要件定義8セクション)
+   - 設計8: `.claude_workflow/design.md` (設計8セクション)
+   - タスク化8: `.claude_workflow/tasks.md` (タスク化8セクション)
+   ```
+
+**依存関係**: Task 6-6
+**所要時間**: 5分
+**完了条件**: 
+- ✅ README.mdに変更内容が追記されている
+- ✅ 既存の変更履歴フォーマットと統一されている
+**ステータス**: ⬜ 未着手
+
+---
+
+#### Task 7-2: complete.mdへの追記
+**目的**: 完了したプロジェクトとして記録
+**ファイル**: `.claude_workflow/complete.md`
+**作業内容**:
+1. complete.mdにプロジェクト8として追記:
+   ```markdown
+   ## プロジェクト8: ARスタンプラリー202603 - dashboard202603に景品交換統計を追加
+   
+   ### 完了日
+   2026年2月19日
+   
+   ### 概要
+   admin/dashboard202603の管理画面に景品交換の統計情報と一覧を追加しました。admin/dashboardと同様の機能を持たせることで、両方のダッシュボードで同等の情報を確認できるようになりました。
+   
+   ### 実装内容
+   1. **景品交換統計カードの追加**
+      - 総景品交換数、使用済み数、未使用数を表示
+      - レスポンシブ対応（1200px以下で縦並び）
+   
+   2. **未使用の景品交換セクション**
+      - 景品コード検索機能（部分一致）
+      - 未使用景品交換一覧（20件/ページ）
+      - 「使用済みにする」ボタン
+   
+   3. **使用済み景品交換セクション**
+      - 使用済み景品交換一覧（10件/ページ）
+      - 使用日時の表示
+   
+   4. **JavaScript機能**
+      - redeemPrize(id)関数（AJAX POST通信）
+      - CSRF token送信
+   
+   ### 変更ファイル
+   - `app/Http/Controllers/AdminController.php`: dashboard202603()メソッド拡張
+   - `resources/views/admin/dashboard202603.blade.php`: CSS、HTML、JavaScript追加
+   
+   ### 技術スタック
+   - Laravel (PHP)
+   - Blade Template
+   - JavaScript (fetch API)
+   - CSS (Grid Layout、Flexbox)
+   
+   ### 成果
+   - ✅ 景品交換統計カード追加完了
+   - ✅ 未使用の景品交換セクション追加完了
+   - ✅ 使用済み景品交換セクション追加完了
+   - ✅ JavaScript機能実装完了
+   - ✅ PHP構文エラーなし
+   - ✅ 既存機能への影響なし
+   - ✅ ページネーションの独立性確保
+   - ✅ セキュリティ対策実装済み
+   
+   ### ドキュメント
+   - 要件定義8: `.claude_workflow/requirements.md`
+   - 設計8: `.claude_workflow/design.md`
+   - タスク化8: `.claude_workflow/tasks.md`
+   ```
+
+**依存関係**: Task 7-1
+**所要時間**: 3分
+**完了条件**: 
+- ✅ complete.mdに追記されている
+**ステータス**: ⬜ 未着手
+
+---
+
+## 実装の注意事項
+
+### コード変更時のチェックリスト
+- [ ] AdminController.phpの景品交換データ取得コードを動物データ取得コードの前に配置
+- [ ] compact()に5つの景品交換関連変数を追加
+- [ ] dashboard202603.blade.phpのCSSを既存の`</style>`の前に追加
+- [ ] 統計カードをヘッダー直後、動物別統計の前に配置
+- [ ] 景品交換セクションを日別個別ユーザー数グラフの後、`<script>`の前に配置
+- [ ] redeemPrize関数を`<script>`タグの直後、既存のJavaScriptコードの前に配置
+- [ ] ページネーションのクエリパラメータ名を正しく設定（exchanges_page, redeemed_page）
+- [ ] 変更後にPHP構文エラーがないか確認
+
+### 実装順序
+1. **Phase 1（AdminController拡張）を最初に実施** - バックエンドロジック
+   - Task 1-1を実施
+2. **Phase 2（CSS追加）を実施** - スタイル定義
+   - Task 2-1を実施
+3. **Phase 3（統計カード追加）を実施** - 最初のHTML追加
+   - Task 3-1を実施
+4. **Phase 4（景品交換セクション追加）を実施** - メインのHTML追加
+   - Task 4-1, Task 4-2を順番に実施
+5. **Phase 5（JavaScript追加）を実施** - インタラクティブ機能
+   - Task 5-1を実施
+6. **Phase 6（動作確認）を実施** - テストと検証
+   - Task 6-1からTask 6-6まで順番に実施
+7. **Phase 7（ドキュメント）を実施** - 記録
+   - Task 7-1, Task 7-2を順番に実施
+
+### リスク管理
+- **バックアップ**: Git commitを事前に実施（推奨）
+- **Rollback**: 
+  - AdminControllerの変更は少ないのでロールバック容易
+  - dashboard202603.blade.phpの変更は大きいがセクション単位で追加なのでロールバック可能
+- **影響範囲**: 
+  - 既存機能への影響は最小限（追加のみ、変更なし）
+  - ページネーションは異なるクエリパラメータ名で競合なし
+
+### パフォーマンス考慮
+- 景品交換データ取得は約6クエリ追加
+- ページネーションによりデータ量を制限（20件/10件）
+- 既存のインデックス（is_redeemed, prize_code）を活用
+- 推定ページ読み込み時間: 約1秒（目標2秒以内）
+
+### セキュリティ考慮
+- CSRF保護: AJAX通信でCSRF tokenを送信
+- 認証: admin_authenticatedセッション確認（既存のミドルウェア）
+- SQLインジェクション対策: Eloquent ORMのパラメータバインディング
+- XSS対策: Bladeテンプレートの自動エスケープ
+
+## 成功基準
+
+### 必須条件
+- [ ] 景品交換統計カードが表示される（3枚）
+- [ ] 未使用の景品交換一覧が表示される
+- [ ] 使用済み景品交換一覧が表示される
+- [ ] 景品コード検索が機能する
+- [ ] 「使用済みにする」ボタンが機能する
+- [ ] ページネーション（exchanges_page, redeemed_page）が機能する
+- [ ] 既存機能（動物別統計、スキャン履歴、グラフ）に影響がない
+- [ ] PHP構文エラーがない
+
+### 望ましい条件
+- [ ] レスポンシブデザインが機能する（1200px以下で1カラム）
+- [ ] エラーメッセージが明確に表示される
+- [ ] ページ読み込みが高速（2秒以内）
+- [ ] 30秒ごとの自動更新が正常に機能する
+- [ ] ページネーションの独立性が保たれる
+
+## タスク実行順序
+1. Task 1-1（AdminController拡張）
+2. Task 2-1（CSS追加）
+3. Task 3-1（統計カード追加）
+4. Task 4-1（未使用景品交換セクション追加）
+5. Task 4-2（使用済み景品交換セクション追加）
+6. Task 5-1（JavaScript追加）
+7. Task 6-1（PHP構文チェック）
+8. Task 6-2（統計カード表示確認）
+9. Task 6-3（未使用景品交換セクション表示確認）
+10. Task 6-4（使用済み景品交換セクション表示確認）
+11. Task 6-5（使用済み処理機能動作確認）
+12. Task 6-6（回帰テスト）
+13. Task 7-1（README.md更新）
+14. Task 7-2（complete.md追記）
+
+## 次のステップ
+実装フェーズへの移行
+
+---
+
+**ARstampRally202603のdashboard202603に景品交換統計を追加するタスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**

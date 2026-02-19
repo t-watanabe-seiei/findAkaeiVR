@@ -298,6 +298,27 @@ class AdminController extends Controller
     // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
     public function dashboard202603(Request $request)
     {
+        // 【新規追加】景品交換の統計
+        $totalExchanges = PrizeExchange::count();
+        $redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();
+        $pendingExchanges = $totalExchanges - $redeemedExchanges;
+
+        // 【新規追加】最近の景品交換（未使用のみ）- ページネーション
+        // optional search by prize code (query param: q)
+        $q = $request->query('q');
+        $recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+        if ($q) {
+            // allow partial matches (case-insensitive)
+            $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+        }
+        $recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+            ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+
+        // 【新規追加】使用済み景品交換 - ページネーション（10件ごと）
+        $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+            ->orderBy('redeemed_at', 'desc')
+            ->paginate(10, ['*'], 'redeemed_page');
+
         // 全動物のリスト（ARstampRally202603.blade.phpのSTAMPSと同じ順序）
         $animals = [
             'sheep' => 'ひつじ',
@@ -392,7 +413,12 @@ class AdminController extends Controller
             'animalStats',
             'recentScans',
             'dailyStats',
-            'dailyUniqueUsers'
+            'dailyUniqueUsers',
+            'totalExchanges',
+            'redeemedExchanges',
+            'pendingExchanges',
+            'recentExchanges',
+            'redeemedPrizes'
         ));
     }
 }

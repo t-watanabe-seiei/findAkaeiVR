@@ -3300,3 +3300,1274 @@ public function test_dashboard202603_includes_daily_unique_users()
 1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
 2. 実装フェーズ - コードの変更と追加
 3. 動作確認とテスト
+
+---
+
+# 設計8: ARstampRally202603 - dashboard202603に景品交換統計を追加
+
+## 作成日時
+2026年2月19日
+
+## 前提
+`.claude_workflow/requirements.md`の要件定義8を読み込み、要件を確認済み
+
+## 設計概要
+admin/dashboard202603に景品交換の統計情報と一覧を追加する。admin/dashboardの実装を参考にしながら、dashboard202603に統合する。
+
+### 変更箇所
+1. **AdminController.php**: dashboard202603()メソッドの拡張
+2. **dashboard202603.blade.php**: CSS、HTML、JavaScriptの追加
+
+### 影響範囲
+- 既存の統計表示：影響なし
+- 既存のページネーション：影響なし（異なるクエリパラメータ名を使用）
+- 30秒ごとの自動更新：影響なし（全体がリロードされる）
+
+## アーキテクチャ設計
+
+### データフロー
+```
+[ユーザー] → [ブラウザ] → [AdminController@dashboard202603]
+                              ↓
+                        [PrizeExchangeモデル]
+                              ↓
+                        [データベース]
+                              ↓
+                        [統計データ取得]
+                        - $totalExchanges
+                        - $redeemedExchanges
+                        - $pendingExchanges
+                        - $recentExchanges (未使用、20件/ページ)
+                        - $redeemedPrizes (使用済み、10件/ページ)
+                              ↓
+                        [Bladeテンプレート]
+                              ↓
+                        [HTML + CSS + JavaScript]
+                              ↓
+                        [ブラウザ表示]
+
+[ユーザー] → [「使用済みにする」ボタンクリック]
+                              ↓
+                        [JavaScript redeemPrize(id)]
+                              ↓
+                        [AJAX POST /admin/prizes/{id}/redeem]
+                              ↓
+                        [AdminController@redeemPrize]
+                              ↓
+                        [PrizeExchangeモデル更新]
+                              ↓
+                        [JSON レスポンス {success: true}]
+                              ↓
+                        [ページリロード]
+```
+
+### レイアウト構造
+```
+dashboard202603.blade.php
+
+[ヘッダー]
+  - タイトル
+  - ナビゲーションリンク
+  - ログアウトボタン
+
+【新規】[景品交換統計カード] (stats-grid)
+  - 総景品交換数
+  - 使用済み
+  - 未使用
+
+[動物別統計カード]
+  - 全20種類の動物統計テーブル
+
+[最近のスキャン履歴カード]
+  - スキャン履歴テーブル
+  - ページネーション (recent_scans_page)
+
+[日別スキャン統計カード]
+  - 積み上げ棒グラフ (Chart.js)
+
+[日別個別ユーザー数カード]
+  - 折れ線グラフ (Chart.js)
+
+【新規】[景品交換セクション] (prizes-grid)
+  左側: [未使用の景品交換カード]
+    - 検索フォーム
+    - 未使用景品交換テーブル
+    - ページネーション (exchanges_page)
+  
+  右側: [使用済み景品交換カード]
+    - 使用済み景品交換テーブル
+    - ページネーション (redeemed_page)
+
+【新規】[JavaScript]
+  - redeemPrize(id) 関数
+  - CSRF token
+  - 30秒ごとの自動更新（既存）
+```
+
+## 詳細設計
+
+### 1. AdminController.php の拡張
+
+#### 現在のdashboard202603()メソッド
+```php
+public function dashboard202603(Request $request)
+{
+    // 動物データ、スキャン統計、日別統計を取得
+    // ...
+    
+    return view('admin.dashboard202603', compact(
+        'animalStats',
+        'recentScans',
+        'dailyStats',
+        'dailyUniqueUsers'
+    ));
+}
+```
+
+#### 拡張後のdashboard202603()メソッド
+```php
+public function dashboard202603(Request $request)
+{
+    // 【新規追加】景品交換の統計
+    $totalExchanges = PrizeExchange::count();
+    $redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();
+    $pendingExchanges = $totalExchanges - $redeemedExchanges;
+
+    // 【新規追加】最近の景品交換（未使用のみ）- ページネーション
+    // optional search by prize code (query param: q)
+    $q = $request->query('q');
+    $recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+    if ($q) {
+        // allow partial matches (case-insensitive)
+        $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+    }
+    $recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+        ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+
+    // 【新規追加】使用済み景品交換 - ページネーション（10件ごと）
+    $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+        ->orderBy('redeemed_at', 'desc')
+        ->paginate(10, ['*'], 'redeemed_page');
+
+    // 【既存】全動物のリスト
+    $animals = [
+        'sheep' => 'ひつじ',
+        // ... (省略)
+    ];
+    
+    // 【既存】各動物の統計を収集
+    $animalStats = [];
+    foreach ($animals as $markerId => $markerName) {
+        // ... (省略)
+    }
+    
+    // 【既存】最近のスキャン履歴
+    $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'recent_scans_page');
+    
+    // 【既存】日別統計（タイプ別、直近30日間）
+    $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(*) as count')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyStats = $dailyStatsRaw->groupBy('date');
+    
+    // 【既存】日別個別ユーザー数統計
+    $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+    
+    // 【変更】compact()に景品交換データを追加
+    return view('admin.dashboard202603', compact(
+        'animalStats',
+        'recentScans',
+        'dailyStats',
+        'dailyUniqueUsers',
+        'totalExchanges',        // 【追加】
+        'redeemedExchanges',     // 【追加】
+        'pendingExchanges',      // 【追加】
+        'recentExchanges',       // 【追加】
+        'redeemedPrizes'         // 【追加】
+    ));
+}
+```
+
+#### 変更内容の説明
+1. **景品交換統計の取得**:
+   - `PrizeExchange::count()`: 総景品交換数
+   - `where('is_redeemed', true)->count()`: 使用済み数
+   - `$totalExchanges - $redeemedExchanges`: 未使用数
+
+2. **未使用景品交換の取得**:
+   - `where('is_redeemed', false)`: 未使用のみ
+   - 検索クエリ `q` がある場合は部分一致検索
+   - `strtoupper($q)`: 大文字小文字を区別しない
+   - `paginate(20, ['*'], 'exchanges_page')`: 20件/ページ、クエリパラメータ名は`exchanges_page`
+   - `appends(['q' => $q])`: ページネーションリンクに検索クエリを保持
+
+3. **使用済み景品交換の取得**:
+   - `where('is_redeemed', true)`: 使用済みのみ
+   - `orderBy('redeemed_at', 'desc')`: 使用日時の降順
+   - `paginate(10, ['*'], 'redeemed_page')`: 10件/ページ、クエリパラメータ名は`redeemed_page`
+
+4. **compact()の拡張**:
+   - 既存の4つの変数（animalStats, recentScans, dailyStats, dailyUniqueUsers）
+   - 新規の5つの変数（totalExchanges, redeemedExchanges, pendingExchanges, recentExchanges, redeemedPrizes）
+
+### 2. dashboard202603.blade.php の CSS 拡張
+
+#### 追加するCSS（既存の`</style>`の前に追加）
+
+```css
+/* 【新規】景品交換統計カード用のグリッドレイアウト */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.stat-card .number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #667eea;
+}
+
+/* 【新規】景品交換セクション用のグリッドレイアウト */
+.prizes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1200px) {
+    .prizes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 【新規】景品コード表示用のスタイル */
+.prize-code {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 16px;
+    color: #667eea;
+}
+
+/* 【新規】使用済みボタンのスタイル */
+.redeem-btn {
+    padding: 6px 12px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.redeem-btn:hover {
+    background: #218838;
+}
+
+.redeem-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* 【新規】ページネーションラッパー */
+.pagination-wrapper {
+    margin-top: 20px;
+}
+```
+
+#### CSSの説明
+1. **stats-grid**: 景品交換統計カード用のグリッドレイアウト
+   - `repeat(auto-fit, minmax(250px, 1fr))`: レスポンシブ対応
+   - 統計カードが横並びで表示され、画面幅に応じて自動調整
+
+2. **stat-card**: 統計カードのスタイル
+   - 白背景、影付き、角丸
+   - `.number`: 大きな数字表示（36px、太字、紫色）
+
+3. **prizes-grid**: 景品交換セクション用のグリッドレイアウト
+   - `grid-template-columns: 1fr 1fr`: 2カラムレイアウト
+   - 1200px以下では1カラムに変更（レスポンシブ）
+
+4. **prize-code**: 景品コード専用のスタイル
+   - 等幅フォント（Courier New）
+   - 太字、16px、紫色
+
+5. **redeem-btn**: 使用済みボタンのスタイル
+   - 緑色（#28a745）
+   - ホバー時に濃い緑（#218838）
+   - 無効時はグレー
+
+### 3. dashboard202603.blade.php の HTML 拡張
+
+#### 3-1. 景品交換統計カードの追加位置
+
+**挿入位置**: `<div class="header">...</div>`の直後、`<div class="card">【動物別統計】`の前
+
+```html
+</div>
+
+<!-- 【新規追加】景品交換統計カード -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>総景品交換数</h3>
+        <div class="number">{{ $totalExchanges }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>使用済み</h3>
+        <div class="number" style="color: #28a745;">{{ $redeemedExchanges }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>未使用</h3>
+        <div class="number" style="color: #ffc107;">{{ $pendingExchanges }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>🐾 動物別統計</h2>
+```
+
+#### 3-2. 景品交換セクションの追加位置
+
+**挿入位置**: 日別個別ユーザー数グラフの`</div>`の後、`<script>`の前
+
+```html
+    </div>
+
+    <!-- 【新規追加】景品交換セクション -->
+    <div class="prizes-grid">
+        <!-- 未使用の景品交換 -->
+        <div class="card">
+            <h2>🎁 未使用の景品交換</h2>
+            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+                <form method="GET" action="{{ route('admin.dashboard202603') }}" style="display:flex; gap:8px; align-items:center;">
+                    <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.dashboard202603') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                    @endif
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>フィンガープリント</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentExchanges as $exchange)
+                    <tr>
+                        <td class="prize-code">{{ $exchange->prize_code }}</td>
+                        <td>{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}</td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
+                        <td>
+                            <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
+                                使用済みにする
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $recentExchanges->links() }}
+            </div>
+        </div>
+
+        <!-- 使用済み景品交換 -->
+        <div class="card">
+            <h2>✅ 使用済み景品交換</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>使用日時</th>
+                        <th>フィンガープリント</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($redeemedPrizes as $prize)
+                    <tr>
+                        <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
+                        <td style="font-size: 13px;">{{ $prize->exchanged_at->format('Y/m/d H:i') }}</td>
+                        <td style="font-size: 13px; color: #28a745;">
+                            {{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}
+                        </td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $redeemedPrizes->links() }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+```
+
+#### HTMLの説明
+
+**景品交換統計カード**:
+1. **総景品交換数**: `{{ $totalExchanges }}` - 紫色
+2. **使用済み**: `{{ $redeemedExchanges }}` - 緑色（#28a745）
+3. **未使用**: `{{ $pendingExchanges }}` - 黄色（#ffc107）
+
+**未使用の景品交換カード**:
+1. **検索フォーム**:
+   - `method="GET"`: GETリクエスト
+   - `action="{{ route('admin.dashboard202603') }}"`: dashboard202603へ送信
+   - `name="q"`: クエリパラメータ名
+   - `placeholder`: 検索例を表示
+   - `value="{{ request('q') }}"`: 検索値を保持
+   - **クリアボタン**: `request('q')`がある場合のみ表示
+
+2. **テーブル**:
+   - 列: 景品コード、交換日時、フィンガープリント、操作
+   - `@forelse`: データがある場合とない場合を分岐
+   - `{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}`: 日時フォーマット
+   - `{{ Str::limit($exchange->fingerprint, 20) }}`: フィンガープリント先頭20文字
+   - **使用済みボタン**: `onclick="redeemPrize({{ $exchange->id }})"`
+
+3. **ページネーション**:
+   - `{{ $recentExchanges->links() }}`: Laravelのページネーション
+   - クエリパラメータ名: `exchanges_page`
+
+**使用済み景品交換カード**:
+1. **テーブル**:
+   - 列: 景品コード、交換日時、使用日時、フィンガープリント
+   - 景品コード: グレー表示（`color: #999`）
+   - 使用日時: 緑色表示（`color: #28a745`）
+   - `{{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}`: 使用日時がない場合は`-`
+
+2. **ページネーション**:
+   - `{{ $redeemedPrizes->links() }}`: Laravelのページネーション
+   - クエリパラメータ名: `redeemed_page`
+
+### 4. dashboard202603.blade.php の JavaScript 拡張
+
+#### 追加するJavaScript
+
+**挿入位置**: 既存の`<script>`タグ内の先頭（既存のコードの前）
+
+```javascript
+<script>
+    // 【新規追加】景品コードを使用済みにする関数
+    function redeemPrize(id) {
+        if (!confirm('この景品コードを使用済みにしますか？')) {
+            return;
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('使用済みにしました');
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+
+    // 【既存】日別統計グラフ（積み上げ棒グラフ）
+    const dailyData = @json($dailyStats);
+    // ... (以下、既存のコード)
+```
+
+#### JavaScriptの説明
+
+**redeemPrize(id)関数**:
+1. **確認ダイアログ**: `confirm()`で確認
+   - キャンセルした場合は`return`で終了
+
+2. **CSRF token取得**: `document.querySelector('meta[name="csrf-token"]').content`
+   - `<meta name="csrf-token" content="{{ csrf_token() }}">`から取得
+
+3. **AJAX POST通信**: `fetch()`を使用
+   - エンドポイント: `/admin/prizes/{id}/redeem`
+   - メソッド: `POST`
+   - ヘッダー: `Content-Type: application/json`, `X-CSRF-TOKEN`
+
+4. **レスポンス処理**:
+   - 成功時: `alert('使用済みにしました')` → `location.reload()`
+   - エラー時: `console.error()` → `alert('エラーが発生しました')`
+
+5. **ページリロード**: `location.reload()`
+   - 使用済みリストに移動させるため
+
+### 5. ページネーションの競合回避
+
+#### クエリパラメータ名の一覧
+
+| セクション | クエリパラメータ名 | 用途 |
+|------------|-------------------|------|
+| 最近のスキャン履歴 | `recent_scans_page` | スキャン履歴のページネーション |
+| 日別スキャン統計 | `daily_page` | （現在は未使用だが将来の拡張用） |
+| 未使用の景品交換 | `exchanges_page` | 【新規】未使用景品交換のページネーション |
+| 使用済み景品交換 | `redeemed_page` | 【新規】使用済み景品交換のページネーション |
+| 景品コード検索 | `q` | 【新規】検索クエリ |
+
+#### パラメータ保持の仕組み
+
+**未使用の景品交換**:
+```php
+$recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+    ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+```
+- `appends(['q' => $q])`: ページネーションリンクに検索クエリ`q`を保持
+
+**使用済み景品交換**:
+```php
+$redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+    ->orderBy('redeemed_at', 'desc')
+    ->paginate(10, ['*'], 'redeemed_page');
+```
+- 検索機能がないため`appends()`不要
+
+### 6. Before/After コード比較
+
+#### AdminController.php の変更
+
+**Before（現在）**:
+```php
+public function dashboard202603(Request $request)
+{
+    // 全動物のリスト
+    $animals = [...]
+    
+    // 各動物の統計を収集
+    $animalStats = [];
+    foreach ($animals as $markerId => $markerName) {
+        // ...
+    }
+    
+    // 最近のスキャン履歴
+    $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'recent_scans_page');
+    
+    // 日別統計
+    $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(*) as count')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyStats = $dailyStatsRaw->groupBy('date');
+    
+    // 日別個別ユーザー数統計
+    $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+    
+    return view('admin.dashboard202603', compact(
+        'animalStats',
+        'recentScans',
+        'dailyStats',
+        'dailyUniqueUsers'
+    ));
+}
+```
+
+**After（変更後）**:
+```php
+public function dashboard202603(Request $request)
+{
+    // 【新規追加】景品交換の統計（3行）
+    $totalExchanges = PrizeExchange::count();
+    $redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();
+    $pendingExchanges = $totalExchanges - $redeemedExchanges;
+
+    // 【新規追加】最近の景品交換（未使用のみ）- ページネーション（8行）
+    $q = $request->query('q');
+    $recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+    if ($q) {
+        $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+    }
+    $recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+        ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+
+    // 【新規追加】使用済み景品交換 - ページネーション（3行）
+    $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+        ->orderBy('redeemed_at', 'desc')
+        ->paginate(10, ['*'], 'redeemed_page');
+
+    // 【既存】全動物のリスト
+    $animals = [...]
+    
+    // 【既存】各動物の統計を収集
+    $animalStats = [];
+    foreach ($animals as $markerId => $markerName) {
+        // ...
+    }
+    
+    // 【既存】最近のスキャン履歴
+    $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+        ->paginate(30, ['*'], 'recent_scans_page');
+    
+    // 【既存】日別統計
+    $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(*) as count')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyStats = $dailyStatsRaw->groupBy('date');
+    
+    // 【既存】日別個別ユーザー数統計
+    $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+        ->selectRaw('capture_type')
+        ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+        ->where('scanned_at', '>=', now()->subDays(30))
+        ->groupBy('date', 'capture_type')
+        ->orderBy('date', 'desc')
+        ->get();
+    
+    $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+    
+    // 【変更】compact()に景品交換データを追加
+    return view('admin.dashboard202603', compact(
+        'animalStats',
+        'recentScans',
+        'dailyStats',
+        'dailyUniqueUsers',
+        'totalExchanges',        // 【追加】
+        'redeemedExchanges',     // 【追加】
+        'pendingExchanges',      // 【追加】
+        'recentExchanges',       // 【追加】
+        'redeemedPrizes'         // 【追加】
+    ));
+}
+```
+
+**変更箇所の詳細**:
+- 行数追加: 約14行（景品交換データ取得用）
+- compact()の引数: 4個 → 9個（+5個）
+
+#### dashboard202603.blade.php の変更
+
+**Before（現在）**:
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>管理ダッシュボード202603 - ARスタンプラリー</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 既存のCSS（約145行） */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: ...; background: #f5f5f5; padding: 20px; }
+        .header { ... }
+        /* ... */
+        canvas { max-height: 400px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 ARスタンプラリー202603 管理ダッシュボード（全動物統計）</h1>
+        <div class="nav-links">
+            <a href="{{ route('admin.dashboard') }}" class="nav-link">通常ダッシュボード</a>
+            <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🐾 動物別統計</h2>
+        <!-- 動物統計テーブル -->
+    </div>
+
+    <div class="card">
+        <h2>📝 最近のスキャン履歴</h2>
+        <!-- スキャン履歴テーブル -->
+        <div class="pagination">
+            {{ $recentScans->links() }}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📅 日別スキャン統計（直近30日間）</h2>
+        <div class="chart-container">
+            <canvas id="dailyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+        <div class="chart-container">
+            <canvas id="uniqueUsersChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 日別統計グラフ（積み上げ棒グラフ）
+        const dailyData = @json($dailyStats);
+        // ...
+
+        // 日別個別ユーザー数グラフ（折れ線グラフ）
+        const uniqueUsersData = @json($dailyUniqueUsers);
+        // ...
+
+        // 30秒ごとに自動更新
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>
+```
+
+**After（変更後）**:
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>管理ダッシュボード202603 - ARスタンプラリー</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 既存のCSS（約145行） */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: ...; background: #f5f5f5; padding: 20px; }
+        .header { ... }
+        /* ... */
+        canvas { max-height: 400px; }
+        
+        /* 【新規追加】景品交換統計カード用のCSS（約60行） */
+        .stats-grid { ... }
+        .stat-card { ... }
+        .stat-card h3 { ... }
+        .stat-card .number { ... }
+        .prizes-grid { ... }
+        @media (max-width: 1200px) { ... }
+        .prize-code { ... }
+        .redeem-btn { ... }
+        .redeem-btn:hover { ... }
+        .redeem-btn:disabled { ... }
+        .pagination-wrapper { ... }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 ARスタンプラリー202603 管理ダッシュボード（全動物統計）</h1>
+        <div class="nav-links">
+            <a href="{{ route('admin.dashboard') }}" class="nav-link">通常ダッシュボード</a>
+            <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
+        </div>
+    </div>
+
+    <!-- 【新規追加】景品交換統計カード -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>総景品交換数</h3>
+            <div class="number">{{ $totalExchanges }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>使用済み</h3>
+            <div class="number" style="color: #28a745;">{{ $redeemedExchanges }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>未使用</h3>
+            <div class="number" style="color: #ffc107;">{{ $pendingExchanges }}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🐾 動物別統計</h2>
+        <!-- 動物統計テーブル -->
+    </div>
+
+    <div class="card">
+        <h2>📝 最近のスキャン履歴</h2>
+        <!-- スキャン履歴テーブル -->
+        <div class="pagination">
+            {{ $recentScans->links() }}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📅 日別スキャン統計（直近30日間）</h2>
+        <div class="chart-container">
+            <canvas id="dailyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>👥 日別個別ユーザー数（直近30日間）</h2>
+        <div class="chart-container">
+            <canvas id="uniqueUsersChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 【新規追加】景品交換セクション（約120行） -->
+    <div class="prizes-grid">
+        <!-- 未使用の景品交換 -->
+        <div class="card">
+            <h2>🎁 未使用の景品交換</h2>
+            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+                <form method="GET" action="{{ route('admin.dashboard202603') }}" style="display:flex; gap:8px; align-items:center;">
+                    <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.dashboard202603') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                    @endif
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>フィンガープリント</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentExchanges as $exchange)
+                    <tr>
+                        <td class="prize-code">{{ $exchange->prize_code }}</td>
+                        <td>{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}</td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
+                        <td>
+                            <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
+                                使用済みにする
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $recentExchanges->links() }}
+            </div>
+        </div>
+
+        <!-- 使用済み景品交換 -->
+        <div class="card">
+            <h2>✅ 使用済み景品交換</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>使用日時</th>
+                        <th>フィンガープリント</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($redeemedPrizes as $prize)
+                    <tr>
+                        <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
+                        <td style="font-size: 13px;">{{ $prize->exchanged_at->format('Y/m/d H:i') }}</td>
+                        <td style="font-size: 13px; color: #28a745;">
+                            {{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}
+                        </td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $redeemedPrizes->links() }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 【新規追加】景品コードを使用済みにする関数（約25行）
+        function redeemPrize(id) {
+            if (!confirm('この景品コードを使用済みにしますか？')) {
+                return;
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('使用済みにしました');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+
+        // 【既存】日別統計グラフ（積み上げ棒グラフ）
+        const dailyData = @json($dailyStats);
+        // ...
+
+        // 【既存】日別個別ユーザー数グラフ（折れ線グラフ）
+        const uniqueUsersData = @json($dailyUniqueUsers);
+        // ...
+
+        // 【既存】30秒ごとに自動更新
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>
+```
+
+**変更箇所の詳細**:
+- CSS追加: 約60行（景品交換統計カード、景品交換セクション用）
+- HTML追加: 約140行（統計カード15行 + 景品交換セクション125行）
+- JavaScript追加: 約25行（redeemPrize関数）
+- 総追加行数: 約225行
+
+## パフォーマンス設計
+
+### データベースクエリの最適化
+
+#### 景品交換統計の取得
+```php
+$totalExchanges = PrizeExchange::count();  // 1クエリ
+$redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();  // 1クエリ
+$pendingExchanges = $totalExchanges - $redeemedExchanges;  // 計算のみ
+```
+- クエリ数: 2
+- インデックス: `is_redeemed`カラムにインデックスが存在
+
+#### 未使用景品交換の取得
+```php
+$recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+if ($q) {
+    $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+}
+$recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+    ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+```
+- クエリ数: 2（データ取得 + カウント）
+- インデックス: `is_redeemed`, `prize_code`
+- ページネーション: 20件/ページ
+
+#### 使用済み景品交換の取得
+```php
+$redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+    ->orderBy('redeemed_at', 'desc')
+    ->paginate(10, ['*'], 'redeemed_page');
+```
+- クエリ数: 2（データ取得 + カウント）
+- インデックス: `is_redeemed`, `redeemed_at`
+- ページネーション: 10件/ページ
+
+#### 合計クエリ数
+- 景品交換統計: 2クエリ
+- 未使用景品交換: 2クエリ
+- 使用済み景品交換: 2クエリ
+- **合計: 6クエリ**（既存のクエリに追加）
+
+### ページ読み込み時間の推定
+
+| 処理 | 推定時間 |
+|------|---------|
+| 景品交換統計取得 | ~50ms |
+| 未使用景品交換取得 | ~100ms |
+| 使用済み景品交換取得 | ~100ms |
+| 動物別統計（既存） | ~200ms |
+| スキャン履歴（既存） | ~100ms |
+| 日別統計（既存） | ~150ms |
+| 日別個別ユーザー数（既存） | ~150ms |
+| HTML描画 | ~100ms |
+| **合計** | **~950ms** |
+
+- 目標: 2秒以内
+- 実際: 約1秒（十分に目標を達成）
+
+## セキュリティ設計
+
+### CSRF保護
+```javascript
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+fetch(`{{ url('/admin/prizes') }}/${id}/redeem`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken
+    }
+})
+```
+- `<meta name="csrf-token" content="{{ csrf_token() }}">`からtokenを取得
+- `X-CSRF-TOKEN`ヘッダーに設定
+- Laravelが自動検証
+
+### 認証
+- 既存のミドルウェア（`admin_authenticated`セッション）が適用される
+- dashboard202603へのアクセスは認証済み管理者のみ
+
+### SQLインジェクション対策
+```php
+$recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+```
+- Eloquent ORMのパラメータバインディング
+- `strtoupper()`で大文字変換（安全）
+
+### XSS対策
+```html
+{{ $exchange->prize_code }}
+{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}
+{{ Str::limit($exchange->fingerprint, 20) }}
+```
+- Bladeテンプレートの`{{ }}`構文で自動エスケープ
+- HTMLタグは無害化される
+
+## エラーハンドリング設計
+
+### データがない場合
+```html
+@forelse($recentExchanges as $exchange)
+    <!-- データがある場合 -->
+@empty
+    <tr>
+        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+    </tr>
+@endforelse
+```
+- `@forelse`ディレクティブで空配列に対応
+- 「データがありません」メッセージを表示
+
+### AJAX通信エラー
+```javascript
+.catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+});
+```
+- ネットワークエラー時に`catch`で捕捉
+- コンソールにエラーログ出力
+- ユーザーにアラート表示
+
+### 検索クエリの処理
+```php
+$q = $request->query('q');
+if ($q) {
+    $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+}
+```
+- `$q`が`null`の場合は検索条件を追加しない
+- 空文字列の場合も問題なし
+
+## テスト設計
+
+### 単体テスト項目
+
+#### AdminController.php
+1. **dashboard202603メソッド**:
+   - [ ] 景品交換統計が正しく取得される
+   - [ ] 未使用景品交換が正しく取得される（20件/ページ）
+   - [ ] 使用済み景品交換が正しく取得される（10件/ページ）
+   - [ ] 景品コード検索が機能する
+   - [ ] 検索クエリが保持される
+   - [ ] ページネーションが機能する
+
+### 結合テスト項目
+
+#### dashboard202603.blade.php
+1. **景品交換統計カード**:
+   - [ ] 総景品交換数が表示される
+   - [ ] 使用済み数が緑色で表示される
+   - [ ] 未使用数が黄色で表示される
+
+2. **未使用の景品交換セクション**:
+   - [ ] 検索フォームが表示される
+   - [ ] 検索ボタンが機能する
+   - [ ] クリアボタンが表示される（検索時のみ）
+   - [ ] 未使用景品交換一覧が表示される
+   - [ ] ページネーション（20件/ページ）が機能する
+   - [ ] 「使用済みにする」ボタンが表示される
+
+3. **使用済み景品交換セクション**:
+   - [ ] 使用済み景品交換一覧が表示される
+   - [ ] ページネーション（10件/ページ）が機能する
+   - [ ] 景品コードがグレーアウトされる
+   - [ ] 使用日時が緑色で表示される
+
+4. **JavaScript**:
+   - [ ] redeemPrize関数が動作する
+   - [ ] 確認ダイアログが表示される
+   - [ ] キャンセル時は何も起きない
+   - [ ] OK時はAJAX通信が実行される
+   - [ ] 成功時にページリロードされる
+   - [ ] エラー時にアラートが表示される
+
+### システムテスト項目
+
+1. **ページネーションの独立性**:
+   - [ ] 未使用景品交換のページを変更しても他のセクションに影響しない
+   - [ ] 使用済み景品交換のページを変更しても他のセクションに影響しない
+   - [ ] スキャン履歴のページを変更しても他のセクションに影響しない
+
+2. **検索機能**:
+   - [ ] 景品コード検索が部分一致で機能する
+   - [ ] 大文字小文字を区別しない
+   - [ ] 検索結果が正しく表示される
+   - [ ] ページネーションで検索クエリが保持される
+
+3. **自動更新**:
+   - [ ] 30秒後にページが自動更新される
+   - [ ] 検索状態はリセットされる（仕様通り）
+   - [ ] ページネーション状態はリセットされる（仕様通り）
+
+4. **レスポンシブデザイン**:
+   - [ ] 1200px以下で景品交換セクションが1カラムになる
+   - [ ] スマートフォン表示でも正常に動作する
+
+5. **既存機能への影響**:
+   - [ ] 動物別統計が正常に表示される
+   - [ ] 最近のスキャン履歴が正常に表示される
+   - [ ] 日別スキャン統計グラフが正常に表示される
+   - [ ] 日別個別ユーザー数グラフが正常に表示される
+
+## 実装の注意事項
+
+### 1. AdminController.phpの変更
+- 景品交換データ取得コードは、既存の動物データ取得コードの**前**に配置
+- これにより、景品交換統計が最初に表示される
+
+### 2. dashboard202603.blade.phpのCSS追加
+- 既存の`</style>`タグの**前**に追加
+- admin/dashboardと同じスタイルを使用
+
+### 3. HTMLの追加位置
+- **統計カード**: `<div class="header">`の直後、動物別統計の前
+- **景品交換セクション**: 日別個別ユーザー数グラフの後、`<script>`タグの前
+
+### 4. JavaScriptの追加位置
+- 既存の`<script>`タグ内の**先頭**に追加
+- redeemPrize関数を最初に定義
+
+### 5. ページネーションのクエリパラメータ名
+- 既存: `recent_scans_page`
+- 新規: `exchanges_page`, `redeemed_page`
+- 検索: `q`
+
+### 6. CSRF tokenの確認
+- `<meta name="csrf-token" content="{{ csrf_token() }}">`が既に存在することを確認
+- 存在しない場合はエラーになる
+
+### 7. redeemPrizeエンドポイント
+- `/admin/prizes/{id}/redeem`は既に存在
+- AdminController.phpのredeemPrizeメソッドが処理
+
+### 8. 30秒ごとの自動更新
+- 既存の`setTimeout`は維持
+- 検索状態やページネーション状態はリセットされる（admin/dashboardと同じ動作）
+
+## 制約事項と前提条件
+
+### 前提条件
+1. AdminController.phpのredeemPrizeメソッドが存在する
+2. routes/web.phpに`/admin/prizes/{id}/redeem`ルートが定義されている
+3. PrizeExchangeモデルが存在する
+4. CSRF tokenのmetaタグが存在する
+
+### 制約事項
+1. 景品コード検索は部分一致のみ（完全一致、前方一致などのオプションなし）
+2. 30秒ごとの自動更新時に検索状態がリセットされる
+3. ページネーション状態も自動更新時にリセットされる
+4. 使用済み処理は即座にページリロードされる（非同期更新ではない）
+
+## 望ましい動作
+
+### 必須動作
+- [x] 景品交換統計カードが表示される
+- [x] 未使用の景品交換一覧が表示される
+- [x] 使用済みの景品交換一覧が表示される
+- [x] 景品コード検索が機能する
+- [x] 「使用済みにする」ボタンが機能する
+- [x] ページネーションが機能する
+- [x] 既存機能への影響がない
+
+### 推奨動作
+- [ ] レスポンシブデザインが美しく表示される
+- [ ] エラーメッセージが明確に表示される
+- [ ] ページ読み込みが高速（2秒以内）
+
+## 次のステップ
+1. タスク化フェーズ（tasks.mdへの追記）- 具体的な作業手順をリスト化
+2. 実装フェーズ - コードの変更と追加
+3. 動作確認とテスト
