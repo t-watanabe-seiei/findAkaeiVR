@@ -2573,7 +2573,7 @@
             'tomato': { name: 'トマト', icon: '🍅', model: '202603/3d_202603_tomato.glb' },
             'fox': { name: 'きつね', icon: '🦊', model: '202603/3d_202603_fox.glb' },
             'pengin': { name: 'ペンギン', icon: '🐧', model: '202603/3d_202603_pengin.glb' },
-            'red_panda': { name: 'レッサーパンダ', icon: '�️', model: '202603/3d_202603_red_panda.glb' },
+            'red_panda': { name: 'レッサーパンダ', icon: '🐶', model: '202603/3d_202603_red_panda.glb' },
             'koara': { name: 'コアラ', icon: '🐨', model: '202603/3d_202603_koara.glb' },
             // tora (とら) - 新しいマーカー/モデル
             'tora': { name: 'とら', icon: '🐯', model: '202603/3d_202603_tora.glb' },
