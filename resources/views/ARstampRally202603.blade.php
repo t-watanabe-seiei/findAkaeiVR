@@ -2213,10 +2213,10 @@
             </a-entity>
         </a-marker>
         
-        <a-marker type="pattern" url="{{ asset('cg/pattern-pengin.patt') }}" id="pattern-pengin-marker">
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_pengin.patt') }}" id="pattern-pengin-marker">
             <a-entity
                 id="pengin-model"
-                lazy-model="src: {{ asset('cg/3d_pro_pengin_morita.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_pengin.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -2250,10 +2250,10 @@
         </a-marker>
 
         <!-- Tora (とら) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-tora.patt') }}" id="pattern-tora-marker">
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_tora.patt') }}" id="pattern-tora-marker">
             <a-entity
                 id="tora-model"
-                lazy-model="src: {{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_tora.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -2572,11 +2572,11 @@
         const STAMPS = {
             'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_pro_sheep_matsubara.glb' },
             'fox': { name: 'きつね', icon: '🦊', model: '3d_pro_fox_isobe.glb' },
-            'pengin': { name: 'ペンギン', icon: '🐧', model: '3d_pro_pengin_morita.glb' },
+            'pengin': { name: 'ペンギン', icon: '🐧', model: '202603/3d_202603_pengin.glb' },
             'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
             'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' },
             // tora (とら) - 新しいマーカー/モデル
-            'tora': { name: 'とら', icon: '🐯', model: '3d_pro_tora_iwamoto.glb' },
+            'tora': { name: 'とら', icon: '🐯', model: '202603/3d_202603_tora.glb' },
             // gollira (ごりら) - 新しいマーカー/モデル
             'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
             // white duck - 新しいマーカー/モデル
