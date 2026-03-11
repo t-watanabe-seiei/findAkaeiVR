@@ -2084,16 +2084,16 @@
             </a-entity>
         </a-marker>
         
-        <!-- Namakemono (なまけもの) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-namakemono.patt') }}" id="pattern-namakemono-marker">
+        <!-- Aeon (イオちゃん) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_aeon.patt') }}" id="pattern-aeon-marker">
             <a-entity
-                id="namakemono-model"
-                lazy-model="src: {{ asset('cg/3d_pro_namakemono_oda.glb') }}"
+                id="aeon-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_aeon.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: aeon; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2314,16 +2314,16 @@
             </a-entity>
         </a-marker>
         
-        <!-- T-Rex (ティラノサウルス) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-t-rex.patt') }}" id="pattern-t-rex-marker">
+        <!-- Pet (ペットボトル) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_pet.patt') }}" id="pattern-pet-marker">
             <a-entity
-                id="t-rex-model"
-                lazy-model="src: {{ asset('cg/3d_pro_t-rex_ootani.glb') }}"
+                id="pet-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_pet.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: t-rex; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: pet; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2600,16 +2600,16 @@
             'barger': { name: 'バーガー', icon: '🍔', model: '202603/3d_202603_barger.glb', secret: true },
             // kirin / きりん (シークレット)
             'kirin': { name: 'きりん', icon: '🦒', model: '202603/3d_202603_kirin2.glb', secret: true },
-            // namakemono / なまけもの (シークレット)
-            'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb', secret: true },
-            // t-rex (ティラノサウルス) (シークレット)
-            't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb', secret: true },
+            // aeon / イオちゃん (シークレット)
+            'aeon': { name: 'イオちゃん', icon: '👧', model: '202603/3d_202603_aeon.glb', secret: true },
+            // pet (ペットボトル) (シークレット)
+            'pet': { name: 'ペットボトル', icon: '🥤', model: '202603/3d_202603_pet.glb', secret: true },
             // panda / パンダ (シークレット)
             'panda': { name: 'パンダ', icon: '🐼', model: '202603/3d_202603_panda2.glb', secret: true }
         };
 
         // シークレット動物のID配列
-        const SECRET_STAMPS = ['barger', 'kirin', 'namakemono', 't-rex', 'panda'];
+        const SECRET_STAMPS = ['barger', 'kirin', 'aeon', 'pet', 'panda'];
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
@@ -3589,8 +3589,8 @@
             const patternPigMarker = document.querySelector('#pattern-pig-marker');
             const patternToraMarker = document.querySelector('#pattern-tora-marker');
             const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
-            const tRexModel = document.querySelector('#t-rex-model');
-            const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
+            const petModel = document.querySelector('#pet-model');
+            const patternPetMarker = document.querySelector('#pattern-pet-marker');
             const bargerModel = document.querySelector('#barger-model');
             const patternBargerMarker = document.querySelector('#pattern-barger-marker');
             const hamstarModel = document.querySelector('#hamstar-model');
@@ -3599,8 +3599,8 @@
             const patternWhiteDuckMarker = document.querySelector('#pattern-whiteDuck-marker');
             const wolfModel = document.querySelector('#wolf-model');
             const patternWolfMarker = document.querySelector('#pattern-wolf-marker');
-            const namakemonoModel = document.querySelector('#namakemono-model');
-            const patternNamakemonoMarker = document.querySelector('#pattern-namakemono-marker');
+            const aeonModel = document.querySelector('#aeon-model');
+            const patternAeonMarker = document.querySelector('#pattern-aeon-marker');
             const araigumaModel = document.querySelector('#araiguma-model');
             const patternAraigumaMarker = document.querySelector('#pattern-araiguma-marker');
             const duckModel = document.querySelector('#duck-model');
@@ -4772,33 +4772,33 @@
                     }
                 });
 
-                // --- t-rex marker handlers ---
-                if (patternTRexMarker) {
-                    patternTRexMarker.addEventListener('markerFound', function() {
-                        console.log('Pattern-t-rex marker found');
-                        activeModel = tRexModel;
+                // --- pet marker handlers ---
+                if (patternPetMarker) {
+                    patternPetMarker.addEventListener('markerFound', function() {
+                        console.log('Pattern-pet marker found');
+                        activeModel = petModel;
                         setBaseScaleIfMissing(activeModel);
                         applyCurrentScaleTo(activeModel);
-                        currentMarkerStampId = 't-rex';
+                        currentMarkerStampId = 'pet';
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.add('visible');
-                        if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
-                            if (!allHitboxes.includes(tRexModel.components.hitbox)) {
-                                allHitboxes.push(tRexModel.components.hitbox);
+                        if (petModel && petModel.components && petModel.components.hitbox) {
+                            if (!allHitboxes.includes(petModel.components.hitbox)) {
+                                allHitboxes.push(petModel.components.hitbox);
                             }
                         }
                     });
 
-                    patternTRexMarker.addEventListener('markerLost', function() {
-                        console.log('Pattern-t-rex marker lost');
-                        if (activeModel === tRexModel) {
+                    patternPetMarker.addEventListener('markerLost', function() {
+                        console.log('Pattern-pet marker lost');
+                        if (activeModel === petModel) {
                             activeModel = null;
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.remove('visible');
                         }
-                        if (currentMarkerStampId === 't-rex') currentMarkerStampId = null;
-                        if (tRexModel && tRexModel.components && tRexModel.components.hitbox) {
-                            const index = allHitboxes.indexOf(tRexModel.components.hitbox);
+                        if (currentMarkerStampId === 'pet') currentMarkerStampId = null;
+                        if (petModel && petModel.components && petModel.components.hitbox) {
+                            const index = allHitboxes.indexOf(petModel.components.hitbox);
 //                             if (index > -1) // allHitboxes.splice(index, 1);
                         }
                     });
@@ -5093,63 +5093,63 @@
                         });
                     }
 
-                    // --- namakemono marker handlers ---
-                    if (patternNamakemonoMarker) {
-                        patternNamakemonoMarker.addEventListener('markerFound', function() {
-                            console.log('Pattern-namakemono marker found');
-                            activeModel = namakemonoModel;
+                    // --- aeon marker handlers ---
+                    if (patternAeonMarker) {
+                        patternAeonMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-aeon marker found');
+                            activeModel = aeonModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'namakemono';
+                            currentMarkerStampId = 'aeon';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
-                            if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
-                                if (!allHitboxes.includes(namakemonoModel.components.hitbox)) {
-                                    allHitboxes.push(namakemonoModel.components.hitbox);
+                            if (aeonModel && aeonModel.components && aeonModel.components.hitbox) {
+                                if (!allHitboxes.includes(aeonModel.components.hitbox)) {
+                                    allHitboxes.push(aeonModel.components.hitbox);
                                 }
-                            } else if (namakemonoModel) {
-                                const registerIfReady = function nm() {
+                            } else if (aeonModel) {
+                                const registerIfReady = function ae() {
                                     try {
-                                        try { setBaseScaleIfMissing(namakemonoModel); applyCurrentScaleTo(namakemonoModel); } catch (e) { /* ignore */ }
-                                        if (namakemonoModel.components && namakemonoModel.components.hitbox) {
-                                            if (!allHitboxes.includes(namakemonoModel.components.hitbox)) {
-                                                allHitboxes.push(namakemonoModel.components.hitbox);
-                                                console.log('Registered namakemono hitbox after model-loaded');
+                                        try { setBaseScaleIfMissing(aeonModel); applyCurrentScaleTo(aeonModel); } catch (e) { /* ignore */ }
+                                        if (aeonModel.components && aeonModel.components.hitbox) {
+                                            if (!allHitboxes.includes(aeonModel.components.hitbox)) {
+                                                allHitboxes.push(aeonModel.components.hitbox);
+                                                console.log('Registered aeon hitbox after model-loaded');
                                             }
                                         }
-                                        const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
+                                        const nested = aeonModel.querySelectorAll ? aeonModel.querySelectorAll('[hitbox]') : [];
                                         if (nested && nested.length) {
                                             nested.forEach(n => {
                                                 if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
                                                     allHitboxes.push(n.components.hitbox);
-                                                    console.log('Registered nested namakemono hitbox element', n);
+                                                    console.log('Registered nested aeon hitbox element', n);
                                                 }
                                             });
                                         }
                                     } catch (e) {
-                                        console.debug('namakemono registration check failed', e);
+                                        console.debug('aeon registration check failed', e);
                                     } finally {
-                                        namakemonoModel.removeEventListener('model-loaded', nm);
+                                        aeonModel.removeEventListener('model-loaded', ae);
                                     }
                                 };
-                                namakemonoModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                                aeonModel.addEventListener('model-loaded', registerIfReady, { once: true });
                             }
                         });
 
-                        patternNamakemonoMarker.addEventListener('markerLost', function() {
-                            console.log('Pattern-namakemono marker lost');
-                            if (activeModel === namakemonoModel) {
+                        patternAeonMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-aeon marker lost');
+                            if (activeModel === aeonModel) {
                                 activeModel = null;
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'namakemono') currentMarkerStampId = null;
-                            if (namakemonoModel && namakemonoModel.components && namakemonoModel.components.hitbox) {
-                                const index = allHitboxes.indexOf(namakemonoModel.components.hitbox);
+                            if (currentMarkerStampId === 'aeon') currentMarkerStampId = null;
+                            if (aeonModel && aeonModel.components && aeonModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(aeonModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
-                            } else if (namakemonoModel) {
-                                const nested = namakemonoModel.querySelectorAll ? namakemonoModel.querySelectorAll('[hitbox]') : [];
+                            } else if (aeonModel) {
+                                const nested = aeonModel.querySelectorAll ? aeonModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
@@ -6146,7 +6146,7 @@
                 localStorage.removeItem('ar-captured-animals-202603');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'barger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'miacat-model', 'kapibara-model', 'lion-model', 'whiteTiger-model', 'santa-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 'pet-model', 'whiteDuck-model', 'barger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'aeon-model', 'duck-model', 'miacat-model', 'kapibara-model', 'lion-model', 'whiteTiger-model', 'santa-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {

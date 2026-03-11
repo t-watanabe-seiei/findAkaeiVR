@@ -339,8 +339,8 @@ class AdminController extends Controller
             // シークレット動物
             'barger' => 'バーガー',
             'kirin' => 'きりん',
-            'namakemono' => 'なまけもの',
-            't-rex' => 'ティラノサウルス',
+            'aeon' => 'イオちゃん',
+            'pet' => 'ペットボトル',
             'panda' => 'パンダ'
         ];
         
