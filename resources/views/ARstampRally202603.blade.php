@@ -2175,11 +2175,11 @@
             </a-entity>
         </a-marker>
         
-        <!-- WhiteTiger (白いトラ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-Maker_202603_panda.patt') }}" id="pattern-whiteTiger-marker">
+        <!-- Panda (パンダ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_panda.patt') }}" id="pattern-whiteTiger-marker">
             <a-entity
                 id="whiteTiger-model"
-                lazy-model="src: {{ asset('cg/3d_202603_panda.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_panda2.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="0 0 0"
@@ -2188,11 +2188,11 @@
             </a-entity>
         </a-marker>
         
-        <!-- Santa (サンタクロース) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-Maker_202603_kirin.patt') }}" id="pattern-santa-marker">
+        <!-- Kirin (キリン) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_kirin.patt') }}" id="pattern-santa-marker">
             <a-entity
                 id="santa-model"
-                lazy-model="src: {{ asset('cg/3d_202603_kirin.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_kirin2.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
@@ -2599,13 +2599,13 @@
             // burger / バーガー (シークレット)
             'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb', secret: true },
             // kirin / きりん (シークレット)
-            'kirin': { name: 'きりん', icon: '🦒', model: '3d_202603_kirin.glb', secret: true },
+            'kirin': { name: 'きりん', icon: '🦒', model: '202603/3d_202603_kirin2.glb', secret: true },
             // namakemono / なまけもの (シークレット)
             'namakemono': { name: 'なまけもの', icon: '🦥', model: '3d_pro_namakemono_oda.glb', secret: true },
             // t-rex (ティラノサウルス) (シークレット)
             't-rex': { name: 'ティラノサウルス', icon: '🦖', model: '3d_pro_t-rex_ootani.glb', secret: true },
             // panda / パンダ (シークレット)
-            'panda': { name: 'パンダ', icon: '🐼', model: '3d_202603_panda.glb', secret: true }
+            'panda': { name: 'パンダ', icon: '🐼', model: '202603/3d_202603_panda2.glb', secret: true }
         };
 
         // シークレット動物のID配列
