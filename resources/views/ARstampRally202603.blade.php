@@ -2110,16 +2110,16 @@
             </a-entity>
         </a-marker>
         
-        <!-- Burger (バーガー) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-burger.patt') }}" id="pattern-burger-marker">
+        <!-- Barger (バーガー) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_barger.patt') }}" id="pattern-barger-marker">
             <a-entity
-                id="burger-model"
-                lazy-model="src: {{ asset('cg/3d_pro_burger_fujii.glb') }}"
+                id="barger-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_barger.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: barger; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2596,8 +2596,8 @@
             // hamstar / ハムスター
             'hamstar': { name: 'ハムスター', icon: '🐹', model: '202603/3d_202603_humstar.glb' },
             // === シークレット動物（一番下の列に表示） ===
-            // burger / バーガー (シークレット)
-            'burger': { name: 'バーガー', icon: '🍔', model: '3d_pro_burger_fujii.glb', secret: true },
+            // barger / バーガー (シークレット)
+            'barger': { name: 'バーガー', icon: '🍔', model: '202603/3d_202603_barger.glb', secret: true },
             // kirin / きりん (シークレット)
             'kirin': { name: 'きりん', icon: '🦒', model: '202603/3d_202603_kirin2.glb', secret: true },
             // namakemono / なまけもの (シークレット)
@@ -2609,7 +2609,7 @@
         };
 
         // シークレット動物のID配列
-        const SECRET_STAMPS = ['burger', 'kirin', 'namakemono', 't-rex', 'panda'];
+        const SECRET_STAMPS = ['barger', 'kirin', 'namakemono', 't-rex', 'panda'];
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
@@ -3591,8 +3591,8 @@
             const patternGolliraMarker = document.querySelector('#pattern-gollira-marker');
             const tRexModel = document.querySelector('#t-rex-model');
             const patternTRexMarker = document.querySelector('#pattern-t-rex-marker');
-            const burgerModel = document.querySelector('#burger-model');
-            const patternBurgerMarker = document.querySelector('#pattern-burger-marker');
+            const bargerModel = document.querySelector('#barger-model');
+            const patternBargerMarker = document.querySelector('#pattern-barger-marker');
             const hamstarModel = document.querySelector('#hamstar-model');
             const patternHamstarMarker = document.querySelector('#pattern-hamstar-marker');
             const whiteDuckModel = document.querySelector('#whiteDuck-model');
@@ -4803,33 +4803,33 @@
                         }
                     });
                     
-                    // --- burger marker handlers ---
-                    if (patternBurgerMarker) {
-                        patternBurgerMarker.addEventListener('markerFound', function() {
-                            console.log('Pattern-burger marker found');
-                            activeModel = burgerModel;
+                    // --- barger marker handlers ---
+                    if (patternBargerMarker) {
+                        patternBargerMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-barger marker found');
+                            activeModel = bargerModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'burger';
+                            currentMarkerStampId = 'barger';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
-                            if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
-                                if (!allHitboxes.includes(burgerModel.components.hitbox)) {
-                                    allHitboxes.push(burgerModel.components.hitbox);
+                            if (bargerModel && bargerModel.components && bargerModel.components.hitbox) {
+                                if (!allHitboxes.includes(bargerModel.components.hitbox)) {
+                                    allHitboxes.push(bargerModel.components.hitbox);
                                 }
                             }
                         });
 
-                        patternBurgerMarker.addEventListener('markerLost', function() {
-                            console.log('Pattern-burger marker lost');
-                            if (activeModel === burgerModel) {
+                        patternBargerMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-barger marker lost');
+                            if (activeModel === bargerModel) {
                                 activeModel = null;
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'burger') currentMarkerStampId = null;
-                            if (burgerModel && burgerModel.components && burgerModel.components.hitbox) {
-                                const index = allHitboxes.indexOf(burgerModel.components.hitbox);
+                            if (currentMarkerStampId === 'barger') currentMarkerStampId = null;
+                            if (bargerModel && bargerModel.components && bargerModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(bargerModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
                             }
                         });
@@ -6146,7 +6146,7 @@
                 localStorage.removeItem('ar-captured-animals-202603');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'miacat-model', 'kapibara-model', 'lion-model', 'whiteTiger-model', 'santa-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'barger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'miacat-model', 'kapibara-model', 'lion-model', 'whiteTiger-model', 'santa-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {
