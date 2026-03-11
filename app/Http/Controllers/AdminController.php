@@ -332,7 +332,7 @@ class AdminController extends Controller
             'araiguma' => 'あらいぐま',
             'wolf' => 'おおかみ',
             'duck' => 'あひる',
-            'cat' => 'ねこ',
+            'miacat' => 'ミーアキャット',
             'kapibara' => 'カピバラ',
             'lion' => 'ライオン',
             'hamstar' => 'ハムスター',
