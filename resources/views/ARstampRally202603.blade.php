@@ -2072,15 +2072,15 @@
         <a-light type="ambient" intensity="1.5"></a-light>
         <a-light type="directional" intensity="0.8" position="1 1 1"></a-light>
         
-        <a-marker type="pattern" url="{{ asset('cg/pattern-sheep.patt') }}" id="pattern-sheep-marker">
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_tomato.patt') }}" id="pattern-sheep-marker">
             <a-entity
                 id="sheep-model"
-                lazy-model="src: {{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_tomato.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: tomato; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2123,16 +2123,16 @@
             </a-entity>
         </a-marker>
         
-        <!-- Duck (アヒル) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-duck.patt') }}" id="pattern-duck-marker">
+        <!-- Duck (ポテト) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_potato.patt') }}" id="pattern-duck-marker">
             <a-entity
                 id="duck-model"
-                lazy-model="src: {{ asset('cg/3d_pro_duck_oonomi.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_potato.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: duck; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: potato; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2225,27 +2225,27 @@
             </a-entity>
         </a-marker>
         
-        <a-marker type="pattern" url="{{ asset('cg/pattern-tonakai.patt') }}" id="pattern-tonakai-marker">
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_red_panda.patt') }}" id="pattern-tonakai-marker">
             <a-entity
                 id="tonakai-model"
-                lazy-model="src: {{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_red_panda.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: red_panda; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
-        <a-marker type="pattern" url="{{ asset('cg/pattern-pig.patt') }}" id="pattern-pig-marker">
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_koara.patt') }}" id="pattern-pig-marker">
             <a-entity
                 id="pig-model"
-                lazy-model="src: {{ asset('cg/3d_pro_pig_matsubara.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_koara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: koara; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
 
@@ -2570,11 +2570,11 @@
         
         // スタンプラリー機能
         const STAMPS = {
-            'sheep': { name: 'ひつじ', icon: '🐑', model: '3d_pro_sheep_matsubara.glb' },
+            'tomato': { name: 'トマト', icon: '🍅', model: '202603/3d_202603_tomato.glb' },
             'fox': { name: 'きつね', icon: '🦊', model: '202603/3d_202603_fox.glb' },
             'pengin': { name: 'ペンギン', icon: '🐧', model: '202603/3d_202603_pengin.glb' },
-            'tonakai': { name: 'トナカイ', icon: '🦌', model: '3d_pro_tonakai_matsumura2.glb' },
-            'pig': { name: 'ぶた', icon: '🐷', model: '3d_pro_pig_matsubara.glb' },
+            'red_panda': { name: 'レッサーパンダ', icon: '�️', model: '202603/3d_202603_red_panda.glb' },
+            'koara': { name: 'コアラ', icon: '🐨', model: '202603/3d_202603_koara.glb' },
             // tora (とら) - 新しいマーカー/モデル
             'tora': { name: 'とら', icon: '🐯', model: '202603/3d_202603_tora.glb' },
             // gollira (ごりら) - 新しいマーカー/モデル
@@ -2585,8 +2585,8 @@
             'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
             // wolf / オオカミ
             'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
-            // duck / アヒル
-            'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
+            // potato / ポテト
+            'potato': { name: 'ポテト', icon: '🥔', model: '202603/3d_202603_potato.glb' },
             // miacat / ミーアキャット
             'miacat': { name: 'ミーアキャット', icon: '🐱', model: '202603/3d_202603_miacat.glb' },
             // kapibara / カピバラ
@@ -4529,7 +4529,7 @@
                     // baseScale を記録して現在スケールを適用
                     setBaseScaleIfMissing(activeModel);
                     applyCurrentScaleTo(activeModel);
-                    currentMarkerStampId = 'sheep';
+                    currentMarkerStampId = 'tomato';
                     // 回転ボタンを表示 (要素が存在する場合のみ)
                     const _rotationButtons = document.getElementById('rotation-buttons');
                     if (_rotationButtons) _rotationButtons.classList.add('visible');
@@ -4565,7 +4565,7 @@
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
-                    if (currentMarkerStampId === 'sheep') {
+                    if (currentMarkerStampId === 'tomato') {
                         currentMarkerStampId = null;
                     }
                     // ヒットボックスを削除
@@ -4655,7 +4655,7 @@
                     activeModel = tonakaiModel;
                     setBaseScaleIfMissing(activeModel);
                     applyCurrentScaleTo(activeModel);
-                    currentMarkerStampId = 'tonakai';
+                    currentMarkerStampId = 'red_panda';
                     // 回転ボタンを表示 (要素が存在する場合のみ)
                     const _rotationButtons = document.getElementById('rotation-buttons');
                     if (_rotationButtons) _rotationButtons.classList.add('visible');
@@ -4673,7 +4673,7 @@
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
-                    if (currentMarkerStampId === 'tonakai') {
+                    if (currentMarkerStampId === 'red_panda') {
                         currentMarkerStampId = null;
                     }
                     if (tonakaiModel.components.hitbox) {
@@ -4691,7 +4691,7 @@
                     activeModel = pigModel;
                     setBaseScaleIfMissing(activeModel);
                     applyCurrentScaleTo(activeModel);
-                    currentMarkerStampId = 'pig';
+                    currentMarkerStampId = 'koara';
                     // 回転ボタンを表示 (要素が存在する場合のみ)
                     const _rotationButtons = document.getElementById('rotation-buttons');
                     if (_rotationButtons) _rotationButtons.classList.add('visible');
@@ -4709,7 +4709,7 @@
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
-                    if (currentMarkerStampId === 'pig') {
+                    if (currentMarkerStampId === 'koara') {
                         currentMarkerStampId = null;
                     }
                     if (pigModel.components.hitbox) {
@@ -5169,7 +5169,7 @@
                             activeModel = duckModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'duck';
+                            currentMarkerStampId = 'potato';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
@@ -5213,7 +5213,7 @@
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'duck') currentMarkerStampId = null;
+                            if (currentMarkerStampId === 'potato') currentMarkerStampId = null;
                             if (duckModel && duckModel.components && duckModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(duckModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);

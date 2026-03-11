@@ -332,17 +332,17 @@ class AdminController extends Controller
 
         // 全動物のリスト（ARstampRally202603.blade.phpのSTAMPSと同じ順序）
         $animals = [
-            'sheep' => 'ひつじ',
+            'tomato' => 'トマト',
             'fox' => 'きつね',
             'pengin' => 'ペンギン',
-            'tonakai' => 'トナカイ',
-            'pig' => 'ぶた',
+            'red_panda' => 'レッサーパンダ',
+            'koara' => 'コアラ',
             'tora' => 'とら',
             'gollira' => 'ごりら',
             'whiteDuck' => '白アヒル',
             'araiguma' => 'あらいぐま',
             'wolf' => 'おおかみ',
-            'duck' => 'あひる',
+            'potato' => 'ポテト',
             'miacat' => 'ミーアキャット',
             'kapibara' => 'カピバラ',
             'lion' => 'ライオン',
