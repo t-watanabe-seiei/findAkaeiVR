@@ -2149,29 +2149,29 @@
             </a-entity>
         </a-marker>
         
-        <!-- Bear (くま) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-bear.patt') }}" id="pattern-bear-marker">
+        <!-- Kapibara (カピバラ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_kapibara.patt') }}" id="pattern-kapibara-marker">
             <a-entity
-                id="bear-model"
-                lazy-model="src: {{ asset('cg/3d_pro_bear_tagashira.glb') }}"
+                id="kapibara-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_kapibara.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: bear; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: kapibara; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
-        <!-- Harinezumi (はりねずみ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-harinezumi.patt') }}" id="pattern-harinezumi-marker">
+        <!-- Lion (ライオン) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_lion.patt') }}" id="pattern-lion-marker">
             <a-entity
-                id="harinezumi-model"
-                lazy-model="src: {{ asset('cg/3d_pro_harinezumi_harada.glb') }}"
+                id="lion-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_lion.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: harinezumi; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: lion; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2589,10 +2589,10 @@
             'duck': { name: 'あひる', icon: '🦆', model: '3d_pro_duck_oonomi.glb' },
             // cat / ねこ
             'cat': { name: 'ねこ', icon: '🐱', model: '3d_pro_cat_fukuda.glb' },
-            // bear / くま
-            'bear': { name: 'くま', icon: '🐻', model: '3d_pro_bear_tagashira.glb' },
-            // harinezumi / はりねずみ
-            'harinezumi': { name: 'はりねずみ', icon: '🦔', model: '3d_pro_harinezumi_harada.glb' },
+            // kapibara / カピバラ
+            'kapibara': { name: 'カピバラ', icon: '🦦', model: '202603/3d_202603_kapibara.glb' },
+            // lion / ライオン
+            'lion': { name: 'ライオン', icon: '🦁', model: '202603/3d_202603_lion.glb' },
             // hamstar / ハムスター
             'hamstar': { name: 'ハムスター', icon: '🐹', model: '3d_pro_humstar_harada.glb' },
             // === シークレット動物（一番下の列に表示） ===
@@ -3607,10 +3607,10 @@
             const patternDuckMarker = document.querySelector('#pattern-duck-marker');
             const catModel = document.querySelector('#cat-model');
             const patternCatMarker = document.querySelector('#pattern-cat-marker');
-            const bearModel = document.querySelector('#bear-model');
-            const patternBearMarker = document.querySelector('#pattern-bear-marker');
-            const harinezumiModel = document.querySelector('#harinezumi-model');
-            const patternHarinezumiMarker = document.querySelector('#pattern-harinezumi-marker');
+            const kapibaraModel = document.querySelector('#kapibara-model');
+            const patternKapibaraMarker = document.querySelector('#pattern-kapibara-marker');
+            const lionModel = document.querySelector('#lion-model');
+            const patternLionMarker = document.querySelector('#pattern-lion-marker');
             const whiteTigerModel = document.querySelector('#whiteTiger-model');
             const patternWhiteTigerMarker = document.querySelector('#pattern-whiteTiger-marker');
             const santaModel = document.querySelector('#santa-model');
@@ -5300,63 +5300,63 @@
                         });
                     }
 
-                    // --- bear marker handlers ---
-                    if (patternBearMarker) {
-                        patternBearMarker.addEventListener('markerFound', function() {
-                            console.log('Pattern-bear marker found');
-                            activeModel = bearModel;
+                    // --- kapibara marker handlers ---
+                    if (patternKapibaraMarker) {
+                        patternKapibaraMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-kapibara marker found');
+                            activeModel = kapibaraModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'bear';
+                            currentMarkerStampId = 'kapibara';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
-                            if (bearModel && bearModel.components && bearModel.components.hitbox) {
-                                if (!allHitboxes.includes(bearModel.components.hitbox)) {
-                                    allHitboxes.push(bearModel.components.hitbox);
+                            if (kapibaraModel && kapibaraModel.components && kapibaraModel.components.hitbox) {
+                                if (!allHitboxes.includes(kapibaraModel.components.hitbox)) {
+                                    allHitboxes.push(kapibaraModel.components.hitbox);
                                 }
-                            } else if (bearModel) {
+                            } else if (kapibaraModel) {
                                 const registerIfReady = function bf() {
                                     try {
-                                        try { setBaseScaleIfMissing(bearModel); applyCurrentScaleTo(bearModel); } catch (e) { /* ignore */ }
-                                        if (bearModel.components && bearModel.components.hitbox) {
-                                            if (!allHitboxes.includes(bearModel.components.hitbox)) {
-                                                allHitboxes.push(bearModel.components.hitbox);
-                                                console.log('Registered bear hitbox after model-loaded');
+                                        try { setBaseScaleIfMissing(kapibaraModel); applyCurrentScaleTo(kapibaraModel); } catch (e) { /* ignore */ }
+                                        if (kapibaraModel.components && kapibaraModel.components.hitbox) {
+                                            if (!allHitboxes.includes(kapibaraModel.components.hitbox)) {
+                                                allHitboxes.push(kapibaraModel.components.hitbox);
+                                                console.log('Registered kapibara hitbox after model-loaded');
                                             }
                                         }
-                                        const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
+                                        const nested = kapibaraModel.querySelectorAll ? kapibaraModel.querySelectorAll('[hitbox]') : [];
                                         if (nested && nested.length) {
                                             nested.forEach(n => {
                                                 if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
                                                     allHitboxes.push(n.components.hitbox);
-                                                    console.log('Registered nested bear hitbox element', n);
+                                                    console.log('Registered nested kapibara hitbox element', n);
                                                 }
                                             });
                                         }
                                     } catch (e) {
-                                        console.debug('bear registration check failed', e);
+                                        console.debug('kapibara registration check failed', e);
                                     } finally {
-                                        bearModel.removeEventListener('model-loaded', bf);
+                                        kapibaraModel.removeEventListener('model-loaded', bf);
                                     }
                                 };
-                                bearModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                                kapibaraModel.addEventListener('model-loaded', registerIfReady, { once: true });
                             }
                         });
 
-                        patternBearMarker.addEventListener('markerLost', function() {
-                            console.log('Pattern-bear marker lost');
-                            if (activeModel === bearModel) {
+                        patternKapibaraMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-kapibara marker lost');
+                            if (activeModel === kapibaraModel) {
                                 activeModel = null;
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'bear') currentMarkerStampId = null;
-                            if (bearModel && bearModel.components && bearModel.components.hitbox) {
-                                const index = allHitboxes.indexOf(bearModel.components.hitbox);
+                            if (currentMarkerStampId === 'kapibara') currentMarkerStampId = null;
+                            if (kapibaraModel && kapibaraModel.components && kapibaraModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(kapibaraModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
-                            } else if (bearModel) {
-                                const nested = bearModel.querySelectorAll ? bearModel.querySelectorAll('[hitbox]') : [];
+                            } else if (kapibaraModel) {
+                                const nested = kapibaraModel.querySelectorAll ? kapibaraModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
@@ -5369,63 +5369,63 @@
                         });
                     }
 
-                    // --- harinezumi marker handlers ---
-                    if (patternHarinezumiMarker) {
-                        patternHarinezumiMarker.addEventListener('markerFound', function() {
-                            console.log('Pattern-harinezumi marker found');
-                            activeModel = harinezumiModel;
+                    // --- lion marker handlers ---
+                    if (patternLionMarker) {
+                        patternLionMarker.addEventListener('markerFound', function() {
+                            console.log('Pattern-lion marker found');
+                            activeModel = lionModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'harinezumi';
+                            currentMarkerStampId = 'lion';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
-                            if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
-                                if (!allHitboxes.includes(harinezumiModel.components.hitbox)) {
-                                    allHitboxes.push(harinezumiModel.components.hitbox);
+                            if (lionModel && lionModel.components && lionModel.components.hitbox) {
+                                if (!allHitboxes.includes(lionModel.components.hitbox)) {
+                                    allHitboxes.push(lionModel.components.hitbox);
                                 }
-                            } else if (harinezumiModel) {
+                            } else if (lionModel) {
                                 const registerIfReady = function hf() {
                                     try {
-                                        try { setBaseScaleIfMissing(harinezumiModel); applyCurrentScaleTo(harinezumiModel); } catch (e) { /* ignore */ }
-                                        if (harinezumiModel.components && harinezumiModel.components.hitbox) {
-                                            if (!allHitboxes.includes(harinezumiModel.components.hitbox)) {
-                                                allHitboxes.push(harinezumiModel.components.hitbox);
-                                                console.log('Registered harinezumi hitbox after model-loaded');
+                                        try { setBaseScaleIfMissing(lionModel); applyCurrentScaleTo(lionModel); } catch (e) { /* ignore */ }
+                                        if (lionModel.components && lionModel.components.hitbox) {
+                                            if (!allHitboxes.includes(lionModel.components.hitbox)) {
+                                                allHitboxes.push(lionModel.components.hitbox);
+                                                console.log('Registered lion hitbox after model-loaded');
                                             }
                                         }
-                                        const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
+                                        const nested = lionModel.querySelectorAll ? lionModel.querySelectorAll('[hitbox]') : [];
                                         if (nested && nested.length) {
                                             nested.forEach(n => {
                                                 if (n.components && n.components.hitbox && !allHitboxes.includes(n.components.hitbox)) {
                                                     allHitboxes.push(n.components.hitbox);
-                                                    console.log('Registered nested harinezumi hitbox element', n);
+                                                    console.log('Registered nested lion hitbox element', n);
                                                 }
                                             });
                                         }
                                     } catch (e) {
-                                        console.debug('harinezumi registration check failed', e);
+                                        console.debug('lion registration check failed', e);
                                     } finally {
-                                        harinezumiModel.removeEventListener('model-loaded', hf);
+                                        lionModel.removeEventListener('model-loaded', hf);
                                     }
                                 };
-                                harinezumiModel.addEventListener('model-loaded', registerIfReady, { once: true });
+                                lionModel.addEventListener('model-loaded', registerIfReady, { once: true });
                             }
                         });
 
-                        patternHarinezumiMarker.addEventListener('markerLost', function() {
-                            console.log('Pattern-harinezumi marker lost');
-                            if (activeModel === harinezumiModel) {
+                        patternLionMarker.addEventListener('markerLost', function() {
+                            console.log('Pattern-lion marker lost');
+                            if (activeModel === lionModel) {
                                 activeModel = null;
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'harinezumi') currentMarkerStampId = null;
-                            if (harinezumiModel && harinezumiModel.components && harinezumiModel.components.hitbox) {
-                                const index = allHitboxes.indexOf(harinezumiModel.components.hitbox);
+                            if (currentMarkerStampId === 'lion') currentMarkerStampId = null;
+                            if (lionModel && lionModel.components && lionModel.components.hitbox) {
+                                const index = allHitboxes.indexOf(lionModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);
-                            } else if (harinezumiModel) {
-                                const nested = harinezumiModel.querySelectorAll ? harinezumiModel.querySelectorAll('[hitbox]') : [];
+                            } else if (lionModel) {
+                                const nested = lionModel.querySelectorAll ? lionModel.querySelectorAll('[hitbox]') : [];
                                 if (nested && nested.length) {
                                     nested.forEach(n => {
                                         if (n.components && n.components.hitbox) {
@@ -6146,7 +6146,7 @@
                 localStorage.removeItem('ar-captured-animals-202603');
                 
                 // 全てのモデルの状態をリセット
-                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'bear-model', 'harinezumi-model', 'whiteTiger-model', 'santa-model'];
+                const modelIds = ['sheep-model', 'fox-model', 'pengin-model', 'tonakai-model', 'pig-model', 'tora-model', 'gollira-model', 't-rex-model', 'whiteDuck-model', 'burger-model', 'hamstar-model', 'araiguma-model', 'wolf-model', 'namakemono-model', 'duck-model', 'cat-model', 'kapibara-model', 'lion-model', 'whiteTiger-model', 'santa-model'];
                 modelIds.forEach(modelId => {
                     const model = document.getElementById(modelId);
                     if (model && model.resetCaptureState) {

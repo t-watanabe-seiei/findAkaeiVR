@@ -333,8 +333,8 @@ class AdminController extends Controller
             'wolf' => 'おおかみ',
             'duck' => 'あひる',
             'cat' => 'ねこ',
-            'bear' => 'くま',
-            'harinezumi' => 'はりねずみ',
+            'kapibara' => 'カピバラ',
+            'lion' => 'ライオン',
             'hamstar' => 'ハムスター',
             // シークレット動物
             'burger' => 'バーガー',
