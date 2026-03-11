@@ -298,15 +298,25 @@ class AdminController extends Controller
     // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
     public function dashboard202603(Request $request)
     {
+        // 2026年1月〜3月の日付範囲（JST→UTC変換）
+        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-01-01 00:00:00', 'Asia/Tokyo')
+                           ->setTimezone('UTC');
+        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-03-31 23:59:59', 'Asia/Tokyo')
+                           ->setTimezone('UTC');
+
         // 【新規追加】景品交換の統計
-        $totalExchanges = PrizeExchange::count();
-        $redeemedExchanges = PrizeExchange::where('is_redeemed', true)->count();
+        $totalExchanges = PrizeExchange::whereBetween('exchanged_at', [$startDate, $endDate])
+            ->count();
+        $redeemedExchanges = PrizeExchange::where('is_redeemed', true)
+            ->whereBetween('exchanged_at', [$startDate, $endDate])
+            ->count();
         $pendingExchanges = $totalExchanges - $redeemedExchanges;
 
         // 【新規追加】最近の景品交換（未使用のみ）- ページネーション
         // optional search by prize code (query param: q)
         $q = $request->query('q');
-        $recentExchangesQuery = PrizeExchange::where('is_redeemed', false);
+        $recentExchangesQuery = PrizeExchange::where('is_redeemed', false)
+            ->whereBetween('exchanged_at', [$startDate, $endDate]);
         if ($q) {
             // allow partial matches (case-insensitive)
             $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
@@ -316,6 +326,7 @@ class AdminController extends Controller
 
         // 【新規追加】使用済み景品交換 - ページネーション（10件ごと）
         $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+            ->whereBetween('exchanged_at', [$startDate, $endDate])
             ->orderBy('redeemed_at', 'desc')
             ->paginate(10, ['*'], 'redeemed_page');
 
@@ -350,11 +361,13 @@ class AdminController extends Controller
             // マーカー検出回数（capture_type: 'marker_scan'）
             $markerScanCount = MarkerScan::where('marker_id', $markerId)
                 ->where('capture_type', 'marker_scan')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
                 ->count();
             
             // ボールヒット回数（capture_type: 'ball_hit'）
             $ballHitCount = MarkerScan::where('marker_id', $markerId)
                 ->where('capture_type', 'ball_hit')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
                 ->count();
             
             // 合計
@@ -362,11 +375,13 @@ class AdminController extends Controller
             
             // ユニークユーザー数（fingerprint別）
             $uniqueUsers = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
                 ->distinct('fingerprint')
                 ->count();
             
             // 最終スキャン日時
             $lastScan = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
                 ->orderBy('scanned_at', 'desc')
                 ->first();
             
@@ -382,14 +397,15 @@ class AdminController extends Controller
         }
         
         // 最近のスキャン履歴（全動物、タイプ別）
-        $recentScans = MarkerScan::orderBy('scanned_at', 'desc')
+        $recentScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
+            ->orderBy('scanned_at', 'desc')
             ->paginate(30, ['*'], 'recent_scans_page');
         
-        // 日別統計（タイプ別、直近30日間）
+        // 日別統計（タイプ別、2026年1月〜3月）
         $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
             ->selectRaw('capture_type')
             ->selectRaw('COUNT(*) as count')
-            ->where('scanned_at', '>=', now()->subDays(30))
+            ->whereBetween('scanned_at', [$startDate, $endDate])
             ->groupBy('date', 'capture_type')
             ->orderBy('date', 'desc')
             ->get();
@@ -397,11 +413,11 @@ class AdminController extends Controller
         // 日付でグループ化
         $dailyStats = $dailyStatsRaw->groupBy('date');
         
-        // 【新規】日別個別ユーザー数統計（タイプ別、直近30日間）
+        // 【新規】日別個別ユーザー数統計（タイプ別、2026年1月〜3月）
         $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
             ->selectRaw('capture_type')
             ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
-            ->where('scanned_at', '>=', now()->subDays(30))
+            ->whereBetween('scanned_at', [$startDate, $endDate])
             ->groupBy('date', 'capture_type')
             ->orderBy('date', 'desc')
             ->get();

@@ -5131,4 +5131,92 @@ console.log('Height:', computedStyle.height); // "18px"
 ## 次のステップ
 1. タスク化フェーズ（tasks.mdへの追記）- 具体的な実装手順を定義
 2. 実装フェーズ - CSSの変更
+
+---
+
+# 設計10: dashboard202603 - 2026年1〜3月データフィルタリング
+
+## 作成日時
+2026年3月11日
+
+## 前提
+`.claude_workflow/requirements.md`（要件定義10）を読み込み済み
+
+## タイムゾーン設計
+
+| 項目 | 値 |
+|---|---|
+| アプリタイムゾーン | `Asia/Tokyo` (JST, UTC+9) |
+| DB保存形式 | UTC |
+| DB接続 | SQLite（タイムゾーン変換なし） |
+
+### Carbon の使い方
+```php
+// JST で境界を定義し、UTC に変換してからクエリに渡す
+$startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-01-01 00:00:00', 'Asia/Tokyo')
+                   ->setTimezone('UTC');
+// = 2025-12-31 15:00:00 UTC
+
+$endDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-03-31 23:59:59', 'Asia/Tokyo')
+                 ->setTimezone('UTC');
+// = 2026-03-31 14:59:59 UTC
+```
+
+Eloquent の `where()` に Carbon オブジェクトを渡すと `->toDateTimeString()` が呼ばれ UTC 文字列として比較される。
+
+## 変更ファイル
+
+### 1. `app/Http/Controllers/AdminController.php`
+対象メソッド: `dashboard202603()`
+
+#### 変更内容
+メソッド冒頭に日付範囲変数を追加し、全クエリに `whereBetween` / `where ... >=` / `where ... <=` を適用する。
+
+```php
+// メソッド冒頭に追加
+$startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-01-01 00:00:00', 'Asia/Tokyo')
+                   ->setTimezone('UTC');
+$endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-03-31 23:59:59', 'Asia/Tokyo')
+                   ->setTimezone('UTC');
+```
+
+#### 各クエリの変更
+
+| 変数 | フィルター列 | 変更内容 |
+|---|---|---|
+| `$totalExchanges` | `exchanged_at` | `whereBetween` 追加 |
+| `$redeemedExchanges` | `exchanged_at` | `whereBetween` 追加 |
+| `$recentExchangesQuery` | `exchanged_at` | `whereBetween` 追加（検索フォームより前） |
+| `$redeemedPrizes` | `exchanged_at` | `whereBetween` 追加 |
+| 動物別統計（ループ内4クエリ×20種） | `scanned_at` | 各 MarkerScan クエリに `whereBetween` 追加 |
+| `$recentScans` | `scanned_at` | `whereBetween` 追加 |
+| `$dailyStatsRaw` | `scanned_at` | `where('scanned_at', '>=', now()->subDays(30))` → `whereBetween` に変更 |
+| `$dailyUniqueUsersRaw` | `scanned_at` | 同上 |
+
+### 2. `resources/views/admin/dashboard202603.blade.php`
+グラフセクションの見出し文言変更のみ（2箇所）：
+
+| 変更前 | 変更後 |
+|---|---|
+| `日別スキャン統計（直近30日間）` | `日別スキャン統計（2026年1月〜3月）` |
+| `日別個別ユーザー数（直近30日間）` | `日別個別ユーザー数（2026年1月〜3月）` |
+
+## 変更しないもの
+- `ARstampRally202603.blade.php` — 変更不要（ユーザー確認済み）
+- グラフの JS コード（ラベル生成ロジック）— 日付ループなので変更不要
+- ページネーション CSS — 変更不要
+
+## リスク対策
+
+| リスク | 対策 |
+|---|---|
+| UTC 変換ズレ（UTC+9 の境界） | `setTimezone('UTC')` で明示変換 |
+| ループ内クエリ増加（N+1） | ループ変更は最小限（既存構造を維持） |
+| 既存ページネーション破損 | `$pendingExchanges = $totalExchanges - $redeemedExchanges` を維持 |
+
+## 成功基準
+- [ ] 全セクションに 2026/1/1〜3/31 JST の日付フィルターが適用
+- [ ] グラフタイトルが「2026年1月〜3月」に変更
+- [ ] PHP 構文エラーなし（php -l で確認）
+- [ ] 既存機能が壊れていない
 3. テストフェーズ - ブラウザでの動作確認

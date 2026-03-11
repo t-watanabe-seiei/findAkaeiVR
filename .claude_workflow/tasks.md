@@ -4224,3 +4224,76 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 ---
 
 **ARstampRally202603のdashboard202603のページネーションアイコンサイズ修正タスク化フェーズが完了しました。実装フェーズに進んでよろしいですか？**
+
+---
+
+# タスク化10: dashboard202603 - 2026年1〜3月データフィルタリング
+
+## 作成日時
+2026年3月11日
+
+## 前提
+`.claude_workflow/design.md`（設計10）を読み込み済み
+
+---
+
+## Task 10-1: AdminController.php に日付範囲変数を追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**対象メソッド**: `dashboard202603()`
+**作業**: メソッド冒頭（`$totalExchanges` 行の前）に以下を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-2: 景品交換統計カウント3件にフィルター追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: `$totalExchanges` / `$redeemedExchanges` / `$pendingExchanges` の各クエリに `whereBetween('exchanged_at', [$startDate, $endDate])` を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-3: 未使用景品交換一覧のフィルター追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: `$recentExchangesQuery` に `whereBetween` を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-4: 使用済み景品交換一覧のフィルター追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: `$redeemedPrizes` に `whereBetween` を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-5: 動物別統計ループ内クエリのフィルター追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: ループ内の MarkerScan クエリ全てに `whereBetween('scanned_at', [$startDate, $endDate])` を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-6: スキャン履歴一覧のフィルター追加
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: `$recentScans` に `whereBetween` を追加
+**ステータス**: 未着手
+
+---
+
+## Task 10-7: 日別グラフ集計のフィルター変更
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**: `$dailyStatsRaw` と `$dailyUniqueUsersRaw` の `->where('scanned_at', '>=', now()->subDays(30))` を `->whereBetween('scanned_at', [$startDate, $endDate])` に変更
+**ステータス**: 未着手
+
+---
+
+## Task 10-8: View グラフタイトル文言変更（2箇所）
+**ファイル**: `resources/views/admin/dashboard202603.blade.php`
+**作業**: `直近30日間` を `2026年1月〜3月` に変更（2箇所）
+**ステータス**: 未着手
+
+---
+
+## Task 10-9: PHP 構文チェック
+**作業**: `php -l app/Http/Controllers/AdminController.php` を実行して確認
+**ステータス**: 未着手
