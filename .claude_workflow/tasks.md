@@ -4401,3 +4401,46 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 ## Task 11-9: PHP 構文チェック
 **作業**: `php -l app/Http/Controllers/AdminController.php` を実行して確認
 **ステータス**: 未着手
+
+---
+
+# タスク化12: ARstampRally202603 - パンダとブロッコリーの入れ替え
+
+## 作成日時
+2026年3月12日
+
+## 前提
+`.claude_workflow/design.md`（設計12）を読み込み確認済み
+
+---
+
+## Task 12-1: STAMPSオブジェクト - blockoly と panda を位置ごと入れ替え
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- 通常スタンプ内の blockoly エントリを削除し、代わりに panda（secret なし）を配置
+- シークレット末尾の panda エントリを削除し、代わりに blockoly（secret: true）を配置
+**ステータス**: 未着手
+
+---
+
+## Task 12-2: SECRET_STAMPS 配列の更新
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**: `'panda'` → `'blockoly'` に変更
+**ステータス**: 未着手
+
+---
+
+## Task 12-3: showStampBook内の panda 特別扱いを削除
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**: `if (stampId === 'panda')` ブロックを削除し `else if (isSecret)` を単純化
+**ステータス**: 未着手
+
+---
+
+## Task 12-4: 検証
+**作業**:
+- grep で `'panda'` に `secret` が付いていないこと確認
+- grep で `'blockoly'` に `secret: true` があること確認
+- grep で `SECRET_STAMPS` が `blockoly` を含むこと確認
+- grep で `stampId === 'panda'` の特別扱いが消えていること確認
+**ステータス**: 未着手

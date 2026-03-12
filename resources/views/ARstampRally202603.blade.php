@@ -2581,8 +2581,8 @@
             'kame': { name: 'カメ', icon: '🐢', model: '202603/3d_202603_kame.glb' },
             // cheetah (チーター)
             'cheetah': { name: 'チーター', icon: '🐈', model: '202603/3d_202603_cheetah.glb' },
-            // blockoly (ブロッコリー)
-            'blockoly': { name: 'ブロッコリー', icon: '🥦', model: '202603/3d_202603_blockoly.glb' },
+            // panda / パンダ（通常スタンプ）
+            'panda': { name: 'パンダ', icon: '🐼', model: '202603/3d_202603_panda2.glb' },
             // araiguma / アライグマ
             'araiguma': { name: 'アライグマ', icon: '🦝', model: '202603/3d_202603_araiguma.glb' },
             // potato / ポテト
@@ -2604,12 +2604,12 @@
             'aeon': { name: 'イオちゃん', icon: '👧', model: '202603/3d_202603_aeon.glb', secret: true },
             // pet (ペットボトル) (シークレット)
             'pet': { name: 'ペットボトル', icon: '🥤', model: '202603/3d_202603_pet.glb', secret: true },
-            // panda / パンダ (シークレット)
-            'panda': { name: 'パンダ', icon: '🐼', model: '202603/3d_202603_panda2.glb', secret: true }
+            // blockoly / ブロッコリー (シークレット)
+            'blockoly': { name: 'ブロッコリー', icon: '🥦', model: '202603/3d_202603_blockoly.glb', secret: true }
         };
 
         // シークレット動物のID配列
-        const SECRET_STAMPS = ['barger', 'kirin', 'aeon', 'pet', 'panda'];
+        const SECRET_STAMPS = ['barger', 'kirin', 'aeon', 'pet', 'blockoly'];
 
         // スタンプ帳に表示する総スロット数（最終的には20）
         const TOTAL_STAMP_SLOTS = 20;
@@ -3416,16 +3416,9 @@
                         // シークレット動物でも収集後は実際の名前を表示
                         nameText = stamp.name;
                     } else if (isSecret) {
-                        // シークレット動物は未収集時にアイコンと名前を処理
-                        if (stampId === 'panda') {
-                            // パンダは特別扱い: 未収集でも「パンダ」と表示
-                            iconContent = '🐾'; // 足跡アイコン
-                            nameText = 'パンダ';
-                        } else {
-                            // パンダ以外のシークレット: 'シークレット'
-                            iconContent = '🐾'; // 足跡アイコン
-                            nameText = 'シークレット'; // 名前も隠す
-                        }
+                        // シークレット動物は未収集時: 'シークレット'
+                        iconContent = '🐾'; // 足跡アイコン
+                        nameText = 'シークレット'; // 名前を隠す
                     } else {
                         // 通常動物の未収集時: '？？？' を表示、アイコンは足跡
                         iconContent = '🐾'; // 足跡アイコンに変更

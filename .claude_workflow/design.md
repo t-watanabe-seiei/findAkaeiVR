@@ -5299,4 +5299,74 @@ DOM要素ID・JS変数名は**変更しない**（不要な差分を避け、デ
 - STAMPSに `gollira`/`whiteDuck`/`araiguma`/`wolf` キーが残らない
 - AdminControllerの `$animals` に旧キー・旧名が残らない
 - PHP lint エラーなし
+
+---
+
+# 設計12: ARstampRally202603 - パンダとブロッコリーの入れ替え
+
+## 作成日時
+2026年3月12日
+
+## 前提
+`.claude_workflow/requirements.md`（要件定義12）を読み込み確認済み。
+
+## 変更箇所詳細（3箇所のみ）
+
+### 変更1: STAMPSオブジェクト内の blockoly エントリ → シークレット末尾へ移動
+**現在の状態（通常スタンプ9番目付近）:**
+```javascript
+// blockoly (ブロッコリー)
+'blockoly': { name: 'ブロッコリー', icon: '🥦', model: '202603/3d_202603_blockoly.glb' },
+```
+**変更後（削除して、panda の位置へ移動）:**
+- 元の位置から削除
+- シークレット末尾（元 panda の位置）に `secret: true` 付きで追加
+
+### 変更2: STAMPSオブジェクト内の panda エントリ → 通常スタンプ9番目へ移動
+**現在の状態（シークレット末尾）:**
+```javascript
+// panda / パンダ (シークレット)
+'panda': { name: 'パンダ', icon: '🐼', model: '202603/3d_202603_panda2.glb', secret: true }
+```
+**変更後（削除して、blockoly の位置へ移動）:**
+- 元の位置から削除
+- 通常9番目（元 blockoly の位置）に `secret` なしで追加
+
+### 変更3: SECRET_STAMPS 配列
+**現在:** `['barger', 'kirin', 'aeon', 'pet', 'panda']`
+**変更後:** `['barger', 'kirin', 'aeon', 'pet', 'blockoly']`
+
+### 変更4: showStampBook内の panda 特別扱い削除
+**現在（行3420付近）:**
+```javascript
+if (stampId === 'panda') {
+    iconContent = '🐾';
+    nameText = 'パンダ';
+} else {
+    iconContent = '🐾';
+    nameText = 'シークレット';
+}
+```
+**変更後:** panda の特別扱い不要。`else if (isSecret)` ブロックを単純化:
+```javascript
+// シークレット動物: 'シークレット'
+iconContent = '🐾';
+nameText = 'シークレット';
+```
+
+## 実装方針
+- `multi_replace_string_in_file` で変更1〜4を一括実行
+- STAMPSオブジェクトの書き替えは前後コンテキストで一意に特定
+- 変更後にgrep検証
+
+## 変更しないもの
+- a-markerタグ・a-entity（HTML）
+- currentMarkerStampId ロジック
+- AdminController.php / dashboard202603.blade.php
+
+## 成功基準
+- `'blockoly'` が `secret: true` 付きでシークレット末尾にある
+- `'panda'` が `secret` なしで通常スタンプにある
+- `SECRET_STAMPS` が `['barger', 'kirin', 'aeon', 'pet', 'blockoly']`
+- `stampId === 'panda'` の特別扱いコードが削除されている
 3. テストフェーズ - ブラウザでの動作確認
