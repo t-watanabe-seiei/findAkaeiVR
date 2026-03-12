@@ -4297,3 +4297,107 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 ## Task 10-9: PHP 構文チェック
 **作業**: `php -l app/Http/Controllers/AdminController.php` を実行して確認
 **ステータス**: 未着手
+
+---
+
+# タスク化11: ARstampRally202603 - gollira/whiteDuck/araiguma/wolf の4動物変更
+
+## 作成日時
+2026年3月12日
+
+## 前提
+`.claude_workflow/design.md`（設計11）を読み込み確認済み
+
+---
+
+## Task 11-1: blade.php - gollira → kame（a-marker / lazy-model / hitbox）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `a-marker url`: `cg/pattern-gollira.patt` → `cg/202603/pattern-Maker_202603_kame.patt`
+- `lazy-model src`: `cg/3d_pro_gollira_ishimaru.glb` → `cg/202603/3d_202603_kame.glb`
+- `hitbox stampId`: `gollira` → `kame`
+**ステータス**: 未着手
+
+---
+
+## Task 11-2: blade.php - whiteDuck → cheetah（a-marker / lazy-model / hitbox）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `a-marker url`: `cg/pattern-whiteDuck.patt` → `cg/202603/pattern-Maker_202603_cheetah.patt`
+- `lazy-model src`: `cg/3d_pro_whiteDuck_tagashira.glb` → `cg/202603/3d_202603_cheetah.glb`
+- `hitbox stampId`: `whiteDuck` → `cheetah`
+**ステータス**: 未着手
+
+---
+
+## Task 11-3: blade.php - araiguma → blockoly（a-marker / lazy-model / hitbox）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `a-marker url`: `cg/pattern-araiguma.patt` → `cg/202603/pattern-Maker_202603_blockoly.patt`
+- `lazy-model src`: `cg/3d_pro_araiguma_oonomi.glb` → `cg/202603/3d_202603_blockoly.glb`
+- `hitbox stampId`: `araiguma` → `blockoly`
+**ステータス**: 未着手
+
+---
+
+## Task 11-4: blade.php - wolf → araiguma（a-marker / lazy-model / hitbox）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `a-marker url`: `cg/pattern-wolf.patt` → `cg/202603/pattern-Maker_202603_araiguma.patt`
+- `lazy-model src`: `cg/3d_pro_wolf_morita.glb` → `cg/202603/3d_202603_araiguma.glb`
+- `hitbox stampId`: `wolf` → `araiguma`
+**ステータス**: 未着手
+
+---
+
+## Task 11-5: blade.php - STAMPS オブジェクト更新（4エントリ）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `'gollira'` → `'kame'`、name:`カメ`、icon:`🐢`、model:`202603/3d_202603_kame.glb`
+- `'whiteDuck'` → `'cheetah'`、name:`チーター`、icon:`🐈`、model:`202603/3d_202603_cheetah.glb`
+- `'araiguma'` → `'blockoly'`、name:`ブロッコリー`、icon:`🥦`、model:`202603/3d_202603_blockoly.glb`
+- `'wolf'` → `'araiguma'`、name:`アライグマ`、icon:`🦝`、model:`202603/3d_202603_araiguma.glb`
+**ステータス**: 未着手
+
+---
+
+## Task 11-6: blade.php - currentMarkerStampId 更新（markerFound/markerLost）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**作業**:
+- `currentMarkerStampId = 'gollira'` → `'kame'`
+- `currentMarkerStampId === 'gollira'` → `'kame'`
+- `currentMarkerStampId = 'whiteDuck'` → `'cheetah'`
+- `currentMarkerStampId === 'whiteDuck'` → `'cheetah'`
+- `currentMarkerStampId = 'araiguma'` → `'blockoly'`
+- `currentMarkerStampId === 'araiguma'` → `'blockoly'`
+- `currentMarkerStampId = 'wolf'` → `'araiguma'`
+- `currentMarkerStampId === 'wolf'` → `'araiguma'`
+**ステータス**: 未着手
+
+---
+
+## Task 11-7: AdminController.php - $animals 配列更新
+**ファイル**: `app/Http/Controllers/AdminController.php`
+**作業**:
+- `'gollira' => 'ごりら'` → `'kame' => 'カメ'`
+- `'whiteDuck' => '白アヒル'` → `'cheetah' => 'チーター'`
+- `'araiguma' => 'あらいぐま'` → `'blockoly' => 'ブロッコリー'`
+- `'wolf' => 'おおかみ'` → `'araiguma' => 'アライグマ'`
+**ステータス**: 未着手
+
+---
+
+## Task 11-8: 検証 - 旧パス・旧キーが残っていないか確認
+**作業**: grep で以下が0件であることを確認
+- `pattern-gollira.patt` / `3d_pro_gollira_ishimaru.glb`
+- `pattern-whiteDuck.patt` / `3d_pro_whiteDuck_tagashira.glb`
+- `pattern-araiguma.patt` / `3d_pro_araiguma_oonomi.glb`
+- `pattern-wolf.patt` / `3d_pro_wolf_morita.glb`
+- STAMPS内の `'gollira':` / `'whiteDuck':` / `'araiguma':` / `'wolf':`
+**ステータス**: 未着手
+
+---
+
+## Task 11-9: PHP 構文チェック
+**作業**: `php -l app/Http/Controllers/AdminController.php` を実行して確認
+**ステータス**: 未着手

@@ -1716,4 +1716,61 @@ ARスタンプラリー202603は2026年1月〜3月末の期間限定イベント
 
 ## 次のステップ
 1. 本要件定義の確認・承認を得てから設計フェーズへ
+
+---
+
+# 要件定義11: ARstampRally202603 - gollira/whiteDuck/araiguma/wolf の4動物変更
+
+## 作成日時
+2026年3月12日
+
+## プロジェクト概要
+ARstampRally202603.blade.php の4つの動物マーカーを新しいものに変更する。
+マーカーパターンファイル・3Dモデル・表示名・アイコン・マーカーIDをすべて更新し、
+AdminController.php の統計データ表示名も整合させる。
+
+## 目的
+- 既存の4動物（ゴリラ・白アヒル・アライグマ・オオカミ）を新しい動物・キャラクターに差し替え
+- マーカー・3Dモデル・UI表示名・DBスタンプID をすべて一貫して更新
+
+## ターゲットファイル
+- `resources/views/ARstampRally202603.blade.php`
+- `app/Http/Controllers/AdminController.php`
+
+## 機能要件
+
+### 変更マッピング
+
+| 旧stampId | 旧表示名 | 新stampId | 新表示名 | 新アイコン | 新pattファイル | 新glbファイル |
+|-----------|---------|-----------|---------|-----------|--------------|--------------|
+| gollira   | ごりら   | kame      | カメ     | 🐢        | pattern-Maker_202603_kame.patt | 3d_202603_kame.glb |
+| whiteDuck | 白アヒル  | cheetah   | チーター  | 🐈        | pattern-Maker_202603_cheetah.patt | 3d_202603_cheetah.glb |
+| araiguma  | あらいぐま| blockoly  | ブロッコリー | 🥦     | pattern-Maker_202603_blockoly.patt | 3d_202603_blockoly.glb |
+| wolf      | おおかみ  | araiguma  | アライグマ | 🦝       | pattern-Maker_202603_araiguma.patt | 3d_202603_araiguma.glb |
+
+### 変更対象箇所（ARstampRally202603.blade.php）
+各動物につき以下4箇所：
+1. `a-marker` タグの `url` 属性（pattファイルパス）
+2. `a-entity` の `lazy-model src` 属性（glbファイルパス）
+3. `a-entity` の `hitbox stampId` 属性（stampId）
+4. `STAMPS` JSオブジェクトのキー・name・icon・model
+5. `currentMarkerStampId = 'xxx'`（markerFound内）
+6. `currentMarkerStampId === 'xxx'`（markerLost内）
+
+### 変更対象箇所（AdminController.php）
+- `$animals` 配列のキーと表示名（4エントリ）
+
+## 制約事項
+- DOM element ID（`id="pattern-gollira-marker"`, `id="gollira-model"` 等）は変更しない
+- JS変数名（`patternGolliraMarker`, `golliraModel` 等）は変更しない
+- console.log のメッセージ文字列は変更しない（不要な差分を避けるため）
+
+## 成功基準
+- `ARstampRally202603.blade.php` に旧パス（`cg/pattern-gollira.patt` 等）が残らない
+- `STAMPS` オブジェクトに旧キー（gollira/whiteDuck/araiguma/wolf）が残らない
+- `AdminController.php` の `$animals` が新キー・新表示名になる
+- PHP lint（`php -l`）エラーなし
+
+## 次のステップ
+1. 本要件定義の確認・承認を得てから設計フェーズへ
 4. テストフェーズ - ブラウザでの動作確認

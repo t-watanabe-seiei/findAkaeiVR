@@ -2262,55 +2262,55 @@
             </a-entity>
         </a-marker>
 
-        <!-- Gollira (ごりら) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-gollira.patt') }}" id="pattern-gollira-marker">
+        <!-- Gollira (カメ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_kame.patt') }}" id="pattern-gollira-marker">
             <a-entity
                 id="gollira-model"
-                lazy-model="src: {{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_kame.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: kame; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
 
-        <!-- White Duck (白アヒル) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-whiteDuck.patt') }}" id="pattern-whiteDuck-marker">
+        <!-- WhiteDuck (チーター) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_cheetah.patt') }}" id="pattern-whiteDuck-marker">
             <a-entity
                 id="whiteDuck-model"
-                lazy-model="src: {{ asset('cg/3d_pro_whiteDuck_tagashira.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_cheetah.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
-                hitbox="stampId: whiteDuck; width: 1.6; height: 3.2; depth: 1.6">
+                hitbox="stampId: cheetah; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
-        <!-- Araiguma (あらいぐま) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-araiguma.patt') }}" id="pattern-araiguma-marker">
+        <!-- Araiguma (ブロッコリー) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_blockoly.patt') }}" id="pattern-araiguma-marker">
             <a-entity
                 id="araiguma-model"
-                lazy-model="src: {{ asset('cg/3d_pro_araiguma_oonomi.glb') }}"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_blockoly.glb') }}"
+                position="0 0 0.5"
+                scale="1.1 1.1 1.1"
+                rotation="-90 0 0"
+                click-animation="clip: anime01"
+                hitbox="stampId: blockoly; width: 1.6; height: 3.2; depth: 1.6">
+            </a-entity>
+        </a-marker>
+        
+        <!-- Wolf (アライグマ) - 新しいマーカー -->
+        <a-marker type="pattern" url="{{ asset('cg/202603/pattern-Maker_202603_araiguma.patt') }}" id="pattern-wolf-marker">
+            <a-entity
+                id="wolf-model"
+                lazy-model="src: {{ asset('cg/202603/3d_202603_araiguma.glb') }}"
                 position="0 0 0.5"
                 scale="1.1 1.1 1.1"
                 rotation="-90 0 0"
                 click-animation="clip: anime01"
                 hitbox="stampId: araiguma; width: 1.6; height: 3.2; depth: 1.6">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Wolf (おおかみ) - 新しいマーカー -->
-        <a-marker type="pattern" url="{{ asset('cg/pattern-wolf.patt') }}" id="pattern-wolf-marker">
-            <a-entity
-                id="wolf-model"
-                lazy-model="src: {{ asset('cg/3d_pro_wolf_morita.glb') }}"
-                position="0 0 0.5"
-                scale="1.1 1.1 1.1"
-                rotation="-90 0 0"
-                click-animation="clip: anime01"
-                hitbox="stampId: wolf; width: 1.6; height: 3.2; depth: 1.6">
             </a-entity>
         </a-marker>
         
@@ -2577,14 +2577,14 @@
             'koara': { name: 'コアラ', icon: '🐨', model: '202603/3d_202603_koara.glb' },
             // tora (とら) - 新しいマーカー/モデル
             'tora': { name: 'とら', icon: '🐯', model: '202603/3d_202603_tora.glb' },
-            // gollira (ごりら) - 新しいマーカー/モデル
-            'gollira': { name: 'ごりら', icon: '🦍', model: '3d_pro_gollira_ishimaru.glb' },
-            // white duck - 新しいマーカー/モデル
-            'whiteDuck': { name: '白アヒル', icon: '🦆', model: '3d_pro_whiteDuck_tagashira.glb' },
-            // araiguma - 新しいマーカー/モデル（あらいぐま）
-            'araiguma': { name: 'あらいぐま', icon: '🦝', model: '3d_pro_araiguma_oonomi.glb' },
-            // wolf / オオカミ
-            'wolf': { name: 'おおかみ', icon: '🐺', model: '3d_pro_wolf_morita.glb' },
+            // kame (カメ)
+            'kame': { name: 'カメ', icon: '🐢', model: '202603/3d_202603_kame.glb' },
+            // cheetah (チーター)
+            'cheetah': { name: 'チーター', icon: '🐈', model: '202603/3d_202603_cheetah.glb' },
+            // blockoly (ブロッコリー)
+            'blockoly': { name: 'ブロッコリー', icon: '🥦', model: '202603/3d_202603_blockoly.glb' },
+            // araiguma / アライグマ
+            'araiguma': { name: 'アライグマ', icon: '🦝', model: '202603/3d_202603_araiguma.glb' },
             // potato / ポテト
             'potato': { name: 'ポテト', icon: '🥔', model: '202603/3d_202603_potato.glb' },
             // miacat / ミーアキャット
@@ -4762,7 +4762,7 @@
                     activeModel = golliraModel;
                     setBaseScaleIfMissing(activeModel);
                     applyCurrentScaleTo(activeModel);
-                    currentMarkerStampId = 'gollira';
+                    currentMarkerStampId = 'kame';
                     const _rotationButtons = document.getElementById('rotation-buttons');
                     if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
@@ -4916,7 +4916,7 @@
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
-                    if (currentMarkerStampId === 'gollira') currentMarkerStampId = null;
+                    if (currentMarkerStampId === 'kame') currentMarkerStampId = null;
                     if (golliraModel && golliraModel.components && golliraModel.components.hitbox) {
                         const index = allHitboxes.indexOf(golliraModel.components.hitbox);
 //                         if (index > -1) // allHitboxes.splice(index, 1);
@@ -4931,7 +4931,7 @@
                     activeModel = whiteDuckModel;
                     setBaseScaleIfMissing(activeModel);
                     applyCurrentScaleTo(activeModel);
-                    currentMarkerStampId = 'whiteDuck';
+                    currentMarkerStampId = 'cheetah';
                     const _rotationButtons = document.getElementById('rotation-buttons');
                     if (_rotationButtons) _rotationButtons.classList.add('visible');
                     if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
@@ -4948,7 +4948,7 @@
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.remove('visible');
                     }
-                    if (currentMarkerStampId === 'whiteDuck') currentMarkerStampId = null;
+                    if (currentMarkerStampId === 'cheetah') currentMarkerStampId = null;
                     if (whiteDuckModel && whiteDuckModel.components && whiteDuckModel.components.hitbox) {
                         const index = allHitboxes.indexOf(whiteDuckModel.components.hitbox);
 //                         if (index > -1) // allHitboxes.splice(index, 1);
@@ -4962,7 +4962,7 @@
                         activeModel = araigumaModel;
                         setBaseScaleIfMissing(activeModel);
                         applyCurrentScaleTo(activeModel);
-                        currentMarkerStampId = 'araiguma';
+                        currentMarkerStampId = 'blockoly';
                         const _rotationButtons = document.getElementById('rotation-buttons');
                         if (_rotationButtons) _rotationButtons.classList.add('visible');
 
@@ -5007,7 +5007,7 @@
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.remove('visible');
                         }
-                        if (currentMarkerStampId === 'araiguma') currentMarkerStampId = null;
+                        if (currentMarkerStampId === 'blockoly') currentMarkerStampId = null;
                         if (araigumaModel && araigumaModel.components && araigumaModel.components.hitbox) {
                             const index = allHitboxes.indexOf(araigumaModel.components.hitbox);
 //                             if (index > -1) // allHitboxes.splice(index, 1);
@@ -5031,7 +5031,7 @@
                             activeModel = wolfModel;
                             setBaseScaleIfMissing(activeModel);
                             applyCurrentScaleTo(activeModel);
-                            currentMarkerStampId = 'wolf';
+                            currentMarkerStampId = 'araiguma';
                             const _rotationButtons = document.getElementById('rotation-buttons');
                             if (_rotationButtons) _rotationButtons.classList.add('visible');
 
@@ -5075,7 +5075,7 @@
                                 const _rotationButtons = document.getElementById('rotation-buttons');
                                 if (_rotationButtons) _rotationButtons.classList.remove('visible');
                             }
-                            if (currentMarkerStampId === 'wolf') currentMarkerStampId = null;
+                            if (currentMarkerStampId === 'araiguma') currentMarkerStampId = null;
                             if (wolfModel && wolfModel.components && wolfModel.components.hitbox) {
                                 const index = allHitboxes.indexOf(wolfModel.components.hitbox);
 //                                 if (index > -1) // allHitboxes.splice(index, 1);

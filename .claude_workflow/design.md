@@ -5219,4 +5219,84 @@ $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-03-31 23:59:59', 'Asi
 - [ ] グラフタイトルが「2026年1月〜3月」に変更
 - [ ] PHP 構文エラーなし（php -l で確認）
 - [ ] 既存機能が壊れていない
+
+---
+
+# 設計11: ARstampRally202603 - gollira/whiteDuck/araiguma/wolf の4動物変更
+
+## 作成日時
+2026年3月12日
+
+## 前提
+`.claude_workflow/requirements.md`（要件定義11）を読み込み確認済み。
+
+## 設計概要
+
+4動物のマーカーID・pattファイル・glbファイル・表示名・アイコンをすべて置換する。
+DOM要素ID・JS変数名は**変更しない**（不要な差分を避け、デグレを防ぐ）。
+
+## 変更マッピング詳細
+
+| 項目 | gollira→kame | whiteDuck→cheetah | araiguma→blockoly | wolf→araiguma |
+|------|-------------|-------------------|-------------------|---------------|
+| 新stampId | `kame` | `cheetah` | `blockoly` | `araiguma` |
+| 新表示名 | `カメ` | `チーター` | `ブロッコリー` | `アライグマ` |
+| 新アイコン | `🐢` | `🐈` | `🥦` | `🦝` |
+| 新patt | `202603/pattern-Maker_202603_kame.patt` | `202603/pattern-Maker_202603_cheetah.patt` | `202603/pattern-Maker_202603_blockoly.patt` | `202603/pattern-Maker_202603_araiguma.patt` |
+| 新glb | `202603/3d_202603_kame.glb` | `202603/3d_202603_cheetah.glb` | `202603/3d_202603_blockoly.glb` | `202603/3d_202603_araiguma.glb` |
+
+## 変更箇所一覧（ARstampRally202603.blade.php）
+
+### gollira → kame（カメ）
+1. 行2266: `a-marker url` → `cg/202603/pattern-Maker_202603_kame.patt`
+2. 行2269: `lazy-model src` → `cg/202603/3d_202603_kame.glb`
+3. 行2274: `hitbox stampId` → `kame`
+4. 行2581: STAMPSキー `'gollira'` → `'kame'`、name→`カメ`、icon→`🐢`、model→`202603/3d_202603_kame.glb`
+5. 行4764: `currentMarkerStampId = 'gollira'` → `'kame'`
+6. 行4917: `currentMarkerStampId === 'gollira'` → `'kame'`
+
+### whiteDuck → cheetah（チーター）
+1. 行2278: `a-marker url` → `cg/202603/pattern-Maker_202603_cheetah.patt`
+2. 行2282: `lazy-model src` → `cg/202603/3d_202603_cheetah.glb`
+3. 行2287: `hitbox stampId` → `cheetah`
+4. 行2583: STAMPSキー `'whiteDuck'` → `'cheetah'`、name→`チーター`、icon→`🐈`、model→`202603/3d_202603_cheetah.glb`
+5. 行4934: `currentMarkerStampId = 'whiteDuck'` → `'cheetah'`
+6. 行4951: `currentMarkerStampId === 'whiteDuck'` → `'cheetah'`
+
+### araiguma → blockoly（ブロッコリー）
+1. 行2291: `a-marker url` → `cg/202603/pattern-Maker_202603_blockoly.patt`
+2. 行2295: `lazy-model src` → `cg/202603/3d_202603_blockoly.glb`
+3. 行2300: `hitbox stampId` → `blockoly`
+4. 行2585: STAMPSキー `'araiguma'` → `'blockoly'`、name→`ブロッコリー`、icon→`🥦`、model→`202603/3d_202603_blockoly.glb`
+5. 行4966: `currentMarkerStampId = 'araiguma'` → `'blockoly'`
+6. 行5010: `currentMarkerStampId === 'araiguma'` → `'blockoly'`
+
+### wolf → araiguma（アライグマ）
+1. 行2304: `a-marker url` → `cg/202603/pattern-Maker_202603_araiguma.patt`
+2. 行2308: `lazy-model src` → `cg/202603/3d_202603_araiguma.glb`
+3. 行2313: `hitbox stampId` → `araiguma`
+4. 行2587: STAMPSキー `'wolf'` → `'araiguma'`、name→`アライグマ`、icon→`🦝`、model→`202603/3d_202603_araiguma.glb`
+5. 行5035: `currentMarkerStampId = 'wolf'` → `'araiguma'`
+6. 行5078: `currentMarkerStampId === 'wolf'` → `'araiguma'`
+
+## 変更箇所一覧（AdminController.php）
+- `'gollira' => 'ごりら'` → `'kame' => 'カメ'`
+- `'whiteDuck' => '白アヒル'` → `'cheetah' => 'チーター'`
+- `'araiguma' => 'あらいぐま'` → `'blockoly' => 'ブロッコリー'`
+- `'wolf' => 'おおかみ'` → `'araiguma' => 'アライグマ'`
+
+## 実装方針
+- `multi_replace_string_in_file` で一括置換
+- 各置換は前後3行のコンテキストを含めて一意に特定
+- 置換後は `grep` で旧パス・旧キーが残っていないことを検証
+- AdminController.php は `php -l` で構文チェック
+
+## 成功基準
+- `cg/pattern-gollira.patt` / `3d_pro_gollira_ishimaru.glb` が残らない
+- `cg/pattern-whiteDuck.patt` / `3d_pro_whiteDuck_tagashira.glb` が残らない
+- `cg/pattern-araiguma.patt` / `3d_pro_araiguma_oonomi.glb` が残らない
+- `cg/pattern-wolf.patt` / `3d_pro_wolf_morita.glb` が残らない
+- STAMPSに `gollira`/`whiteDuck`/`araiguma`/`wolf` キーが残らない
+- AdminControllerの `$animals` に旧キー・旧名が残らない
+- PHP lint エラーなし
 3. テストフェーズ - ブラウザでの動作確認
