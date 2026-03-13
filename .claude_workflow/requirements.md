@@ -1831,4 +1831,48 @@ AdminController.php の統計データ表示名も整合させる。
 
 ## 次のステップ
 1. 本要件定義の確認・承認を得てから設計フェーズへ
+
+---
+
+# 要件定義13: ARstampRally202603 - Android moto g64yで操作説明が左半分しか表示されない問題の修正
+
+## 作成日時
+2026年3月13日
+
+## 背景・現状の問題
+ARstampRally202603.blade.php において、iPhone では正常動作するが、Android の一部機種（moto g64y）でアプリ起動後に「操作方法（ガイドモーダル）」が左半分しか表示されず、操作が不能になる。
+
+## 問題の詳細
+- **症状**: `#guide-modal`（操作説明モーダル）が起動時に左半分しか表示されない
+- **影響**: モーダルの閉じるボタンにアクセスできず、アプリ全体がフリーズしたように見える
+- **対象機種**: Android moto g64y（他の Android 機種でも発生する可能性あり）
+- **正常動作**: iPhone / その他の正常な機種
+
+## 原因分析
+`#guide-modal` の CSS:
+```css
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;   ← ここが問題
+height: 100%;  ← ここが問題
+```
+
+AR.js は `a-scene embedded` モードで `sourceWidth: 640; sourceHeight: 480` のキャンバスを使用する。このキャンバスのサイズ (640px) が典型的な Android 画面の CSS 幅 (~360px) より広いため、一部の Android Chrome バージョンでは `body`（ドキュメント幅）が 640px まで拡張されることがある。
+
+`position: fixed` 要素の `width: 100%` は本来 viewport 幅 (360px) で計算されるべきだが、一部の Android Chrome ではドキュメント幅 (640px) で計算されるため、モーダルが 640px に広がり、viewport (360px) からはみ出す。ユーザーは 360/640 ≈ 「左半分」しか見えない状態になる。
+
+## 修正方針
+`width: 100%` / `height: 100%` の代わりに viewport 単位 (`100vw` / `100vh`) を使用する。
+- `100vw` / `100vh` は常に viewport サイズに対する相対値であり、ドキュメントサイズやボディ幅に影響されない
+- `right: 0; bottom: 0` も追加して、`position: fixed` の containing block (viewport) に確実に固定するフォールバックを設ける
+
+## 成功基準
+- Android moto g64y でも操作説明モーダルが全画面（viewport 全体）に表示される
+- iPhone など既存の動作環境で引き続き正常に表示される
+- 変更は純粋な CSS のみ（JavaScript の変更は不要）
+- 変更箇所は最小限（`#guide-modal` の CSS のみ）
+
+## 対象ファイル
+- `resources/views/ARstampRally202603.blade.php`（CSS 部分の `#guide-modal` スタイルのみ）
 4. テストフェーズ - ブラウザでの動作確認

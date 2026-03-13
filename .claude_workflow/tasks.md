@@ -4444,3 +4444,37 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 - grep で `SECRET_STAMPS` が `blockoly` を含むこと確認
 - grep で `stampId === 'panda'` の特別扱いが消えていること確認
 **ステータス**: 未着手
+
+---
+
+# タスク化13: ARstampRally202603 - Android moto g64yで操作説明が左半分しか表示されない問題の修正
+
+## Task 13-1: #guide-modal CSS修正（最重要）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行**: 1401-1402付近
+**変更**: `width: 100%; height: 100%;` → `right: 0; bottom: 0;`
+**ステータス**: 未着手
+
+## Task 13-2: #stamp-book-modal CSS修正
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行**: 1387-1388付近
+**変更**: `width: 100%; height: 100%;` → `right: 0; bottom: 0;`
+**ステータス**: 未着手
+
+## Task 13-3: #confirm-overlay CSS修正
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行**: 1758-1759付近
+**変更**: `width: 100%; height: 100%;` → `right: 0; bottom: 0;`
+**ステータス**: 未着手
+
+## Task 13-4: #flash CSS修正
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**行**: 1196-1197付近
+**変更**: `width: 100%; height: 100%;` → `right: 0; bottom: 0;`
+**ステータス**: 未着手
+
+## Task 13-5: 検証
+**作業**:
+- grep で修正後のセレクタに `right: 0` が含まれることを確認
+- grep で `width: 100%` が問題の4セレクタに残っていないことを確認
+**ステータス**: 未着手

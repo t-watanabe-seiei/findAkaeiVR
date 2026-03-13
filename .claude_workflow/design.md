@@ -5370,3 +5370,32 @@ nameText = 'シークレット';
 - `SECRET_STAMPS` が `['barger', 'kirin', 'aeon', 'pet', 'blockoly']`
 - `stampId === 'panda'` の特別扱いコードが削除されている
 3. テストフェーズ - ブラウザでの動作確認
+---
+
+# 設計13: ARstampRally202603 - Android moto g64yで操作説明が左半分しか表示されない問題の修正
+
+## 問題
+Android moto g64y では AR.js の `sourceWidth: 640` キャンバスにより body/document 幅が 640px に広がることがある。
+`position: fixed` 要素に `width: 100%` を使うと、一部の Android Chrome で viewport 幅 (~360px) ではなく document 幅 (640px) に対して計算され、モーダルが画面右に半分はみ出す。
+
+## 解決策
+`width: 100%; height: 100%` を `right: 0; bottom: 0` に置き換える。
+`position: fixed` + `top:0; left:0; right:0; bottom:0` は inset: 0 と等価で、常に viewport を基準にする。
+※`#camera-error` は既にこの正しいパターンを使っている。
+
+## 変更箇所（CSS のみ、4箇所）
+| セレクタ | 変更前 | 変更後 |
+|---|---|---|
+| `#guide-modal` | `width: 100%; height: 100%;` | `right: 0; bottom: 0;` |
+| `#stamp-book-modal` | `width: 100%; height: 100%;` | `right: 0; bottom: 0;` |
+| `#confirm-overlay` | `width: 100%; height: 100%;` | `right: 0; bottom: 0;` |
+| `#flash` | `width: 100%; height: 100%;` | `right: 0; bottom: 0;` |
+
+## 変更しないもの
+- JavaScript コード（1行も変更しない）
+- HTML 構造
+- 上記4要素以外の CSS
+
+## 成功基準
+- Android moto g64y でガイドモーダルが全画面表示される
+- iPhone・PC の動作は変わらない
