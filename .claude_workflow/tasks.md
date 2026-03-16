@@ -4478,3 +4478,74 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 - grep で修正後のセレクタに `right: 0` が含まれることを確認
 - grep で `width: 100%` が問題の4セレクタに残っていないことを確認
 **ステータス**: 未着手
+
+---
+
+# タスク化14: ARstampRally202603 - Android で操作説明が右に移動して閉じられない問題の再修正
+
+## Task 14-1: HTML 構造の修正（主因への対処）【完了】
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**対象行**: 1997〜2005 行付近
+**内容**:
+- `guide-step-hints` 閉じタグ直後の余分な `</div>` 2個を削除
+- `.guide-close-row` ブロックを `#guide-content` の **内側** に移動
+- インデントも正しく整形する
+
+**変更前の問題箇所**:
+```html
+                </div>      ← guide-step-hints の閉じ
+
+                    </div>  ← .guide-steps を閉じる（過剰インデント）
+                </div>      ← ⚠️ 余分：#guide-content を早期に閉じる
+
+                            <div class="guide-close-row">  ← #guide-content の外！
+                <button id="close-guide" type="button">close</button>
+            </div>
+
+            </div>          ← 余分（孤立）
+        </div>              ← 余分（孤立）
+    </div>                  ← #guide-modal
+```
+
+**変更後の正しい構造**:
+```html
+                </div>      ← guide-step-hints の閉じ
+            </div>          ← .guide-steps を閉じる
+
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
+            </div>
+        </div>              ← #guide-content を閉じる
+    </div>                  ← #guide-modal を閉じる
+```
+**ステータス**: 完了 ✅
+
+---
+
+## Task 14-2: CSS 修正（副因への対処）
+**ファイル**: `resources/views/ARstampRally202603.blade.php`
+**対象行**: 1407〜1408 行（`#guide-modal` ルール末尾）
+**内容**: `overflow-x: hidden;` を 1 行追加する
+
+**変更前**:
+```css
+            overflow-y: auto !important;
+        }
+```
+
+**変更後**:
+```css
+            overflow-y: auto !important;
+            overflow-x: hidden;
+        }
+```
+**ステータス**: 完了 ✅
+
+---
+
+## Task 14-3: 検証
+**作業**:
+- `guide-step-hints` 直後に余分な `</div>` が残っていないことを確認
+- `.guide-close-row` が `#guide-content` の内側にあることを確認
+- `#guide-modal` CSS に `overflow-x: hidden` が含まれていることを確認
+**ステータス**: 完了 ✅

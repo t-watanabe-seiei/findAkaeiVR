@@ -5399,3 +5399,140 @@ Android moto g64y では AR.js の `sourceWidth: 640` キャンバスにより b
 ## 成功基準
 - Android moto g64y でガイドモーダルが全画面表示される
 - iPhone・PC の動作は変わらない
+
+---
+
+# 設計14: ARstampRally202603 - Android moto g64yで操作説明が右側に移動して閉じられない問題の再修正
+
+## 前回(設計13)の修正状況
+設計13 の CSS 修正（right:0; bottom:0）は正しく適用済み。
+しかし問題は **HTML 構造の破損** が主因であることが判明した。
+
+## 根本原因（2つ）
+
+### 原因1: HTML 構造が壊れている（主因）
+`guide-step-hints` の閉じタグ後に余分な `</div></div>` が2個あり、
+`#guide-content` が早期に閉じられている。
+その結果 `.guide-close-row` (閉じるボタン) が `#guide-content` の**外**（暗いオーバーレイ領域）に置かれる。
+Android では暗いオーバーレイ部分のタッチイベントが `#guide-modal` のスクロールとして解釈され、
+「モーダルが右側にすっと移動し、閉じるも押せない」状態になる。
+
+### 原因2: overflow-x 未設定（副因）
+`overflow-y: auto` を指定すると CSS 仕様により `overflow-x` も暗黙的に `auto` になる。
+一部の Android Chrome では横スクロールが有効になり、コンテンツ幅がはみ出すと
+モーダルが右方向にスライドする現象が起きる。
+
+## 現在の壊れた HTML 構造（行 1993〜2005 付近）
+```
+                <div class="step" id="guide-step-hints">
+                    <!-- Marker hint PDF ... -->
+                </div>
+
+                    </div>      ← .guide-steps を閉じる
+                </div>          ← ⚠️ 余分：#guide-content を早期に閉じてしまう
+
+                            <div class="guide-close-row">   ← ⚠️ #guide-content の外！
+                <button id="close-guide" type="button">close</button>
+            </div>
+
+            </div>              ← 余分（構造上孤立している）
+        </div>                  ← 余分（構造上孤立している）
+    </div>                      ← #guide-modal を閉じる
+```
+
+## 修正後の正しい HTML 構造
+```
+                <div class="step" id="guide-step-hints">
+                    <!-- Marker hint PDF ... -->
+                </div>
+            </div>              ← .guide-steps を閉じる
+
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
+            </div>
+        </div>                  ← #guide-content を閉じる
+    </div>                      ← #guide-modal を閉じる
+```
+
+## 変更箇所
+
+### 変更1: HTML 修正（行 1997〜2005 付近）
+壊れた `</div></div>` を取り除き、`.guide-close-row` を `#guide-content` 内へ移動する。
+
+**変更前:**
+```html
+                </div>
+
+                    </div>
+                </div>
+
+                            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
+            </div>
+
+            </div>
+        </div>
+    </div>
+```
+
+**変更後:**
+```html
+                </div>
+            </div>
+
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
+            </div>
+        </div>
+    </div>
+```
+
+### 変更2: CSS 修正（行 1408 付近）
+`#guide-modal` に `overflow-x: hidden;` を追加する。
+
+**変更前:**
+```css
+        #guide-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.85);
+            display: none;
+            z-index: 10002;
+            -webkit-overflow-scrolling: touch;
+            overflow-y: auto !important;
+        }
+```
+
+**変更後:**
+```css
+        #guide-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.85);
+            display: none;
+            z-index: 10002;
+            -webkit-overflow-scrolling: touch;
+            overflow-y: auto !important;
+            overflow-x: hidden;
+        }
+```
+
+## 変更しないもの
+- JavaScript コード（1行も変更しない）
+- 上記2箇所以外の HTML・CSS
+
+## 影響範囲
+- `#guide-modal` の HTML 構造と CSS のみ
+- iOS の動作には影響なし（`position: fixed` + `inset: 0` は iOS でも正常に動作する）
+
+## 成功基準
+- Android moto g64y でモーダルが全画面表示される
+- 「閉じる(close)」ボタンと「×」ボタンが白いコンテンツ枠内に表示される
+- モーダルが右側にスライドしない
+- iPhone 等、既存の正常動作環境に影響なし

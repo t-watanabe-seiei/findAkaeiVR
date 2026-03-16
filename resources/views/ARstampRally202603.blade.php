@@ -1405,6 +1405,7 @@
             z-index: 10002;
             -webkit-overflow-scrolling: touch;
             overflow-y: auto !important;
+            overflow-x: hidden;
         }
 
         #guide-content {
@@ -1993,14 +1994,10 @@
                 <div class="step" id="guide-step-hints">
                     <!-- Marker hint PDF (localized) will be injected here -->
                 </div>
-
-                    </div>
-                </div>
-
-                            <div class="guide-close-row">
-                <button id="close-guide" type="button">close</button>
             </div>
 
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
             </div>
         </div>
     </div>
