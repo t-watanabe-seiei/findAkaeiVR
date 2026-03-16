@@ -1391,6 +1391,7 @@
             z-index: 10001;
             overflow-y: scroll !important;
             -webkit-overflow-scrolling: touch !important;
+            overflow-x: hidden;
         }
 
         /* 操作説明モーダル */
