@@ -19,8 +19,8 @@ Route::match(['get', 'head'], '/cute', function () {
     return view('shooting3DModel2');
 })->name('home.index');
 
-Route::match(['get', 'head'], '/cute2', function () {
-    return view('shooting3DModel');
+Route::match(['get', 'head'], '/cute3', function () {
+    return view('shooting3DModel3');
 })->name('home.index');
 
 Route::match(['get', 'head'], '/stamp', function () {
@@ -43,7 +43,7 @@ Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer2');
 })->name('terrer.index');
 
-Route::match(['get', 'head'], '/terrer2', function () {
+Route::match(['get', 'head'], '/terrer3', function () {
     return view('shooting3Dterrer');
 })->name('terrer.index');
 
