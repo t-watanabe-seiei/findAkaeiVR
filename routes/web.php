@@ -37,14 +37,18 @@ Route::match(['get', 'head'], '/number', function () {
 
 Route::match(['get', 'head'], '/animal', function () {
     return view('shooting3Danimal');
-})->name('terrer.index');
+})->name('animal.index');
+
+Route::match(['get', 'head'], '/animal3', function () {
+    return view('shooting3Danimal3');
+})->name('animal.index');
 
 Route::match(['get', 'head'], '/terrer', function () {
     return view('shooting3Dterrer2');
 })->name('terrer.index');
 
 Route::match(['get', 'head'], '/terrer3', function () {
-    return view('shooting3Dterrer');
+    return view('shooting3Dterrer3');
 })->name('terrer.index');
 
 Route::match(['get', 'head'], '/insect', function () {

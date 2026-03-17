@@ -4,17 +4,205 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>seieiVR Terrer</title>
+    <title>seieiVR</title>
     <script src="{{ asset('js/aframe.min.js') }}"></script>
+    <!-- Set DRACO decoder path to CDN to ensure Draco-compressed GLBs can be decoded -->
+    <script>
+        (function() {
+            // 🚀 パフォーマンス最適化: 初期化ログは本番では非表示
+            const DEBUG_INIT = false; // 本番では false に設定
+            const initLog = DEBUG_INIT ? console.log.bind(console) : function(){};
+            
+            // Wait for A-Frame/THREE to become available
+            function setDracoPath() {
+                try {
+                    if (typeof THREE !== 'undefined' && THREE.DRACOLoader && typeof THREE.DRACOLoader.setDecoderPath === 'function') {
+                        THREE.DRACOLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+                        initLog('DRACOLoader decoder path set to CDN');
+                    } else {
+                        // Retry if THREE.DRACOLoader is not yet available
+                        setTimeout(setDracoPath, 200);
+                    }
+                } catch (e) {
+                    console.warn('Failed to set DRACOLoader decoder path', e);
+                }
+            }
+            setDracoPath();
+
+            // Also ensure the gltf-model system's dracoLoader instance gets the CDN path
+            (function setSceneDracoPath() {
+                try {
+                    if (typeof AFRAME !== 'undefined' && AFRAME.scenes && AFRAME.scenes.length > 0) {
+                        const scene = AFRAME.scenes[0];
+                        if (scene && scene.systems && scene.systems['gltf-model']) {
+                            const sys = scene.systems['gltf-model'];
+                            if (sys && sys.dracoLoader && typeof sys.dracoLoader.setDecoderPath === 'function') {
+                                sys.dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+                                initLog('gltf-model system dracoLoader decoder path set to CDN');
+                                return;
+                            }
+                        }
+                        // Fallback: set scene attribute if system not initialized yet
+                        try {
+                            scene.setAttribute('gltf-model', 'dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+                            initLog('Set scene attribute gltf-model.dracoDecoderPath to CDN');
+                        } catch (e) {}
+                    }
+                } catch (e) {
+                    // ignore and retry
+                }
+                setTimeout(setSceneDracoPath, 200);
+            })();
+
+            // Debug: watch a-assets events (only in DEBUG_INIT mode)
+            if (DEBUG_INIT) {
+                (function watchAssets() {
+                    try {
+                        const assets = document.querySelector('a-assets');
+                        if (assets) {
+                            assets.addEventListener('timeout', (e) => console.warn('a-assets timeout event:', e));
+                            assets.addEventListener('loaded', (e) => initLog('a-assets loaded event:', e));
+                            assets.addEventListener('error', (e) => console.warn('a-assets error event:', e));
+                            initLog('a-assets debug listeners attached');
+                            return;
+                        }
+                    } catch (e) {}
+                    setTimeout(watchAssets, 200);
+                })();
+
+                // Attach asset item listeners to show which assets succeeded/failed
+                (function watchAssetItems() {
+                    try {
+                        const items = document.querySelectorAll('a-asset-item');
+                        if (items && items.length > 0) {
+                            items.forEach(item => {
+                                const src = item.getAttribute('src') || item.src || '(unknown)';
+                                item.addEventListener('loaded', () => initLog('Asset loaded:', src));
+                                item.addEventListener('error', (e) => console.warn('Asset ERROR:', src, e));
+                            });
+                            initLog('a-asset-item debug listeners attached');
+                            return;
+                        }
+                    } catch (e) {}
+                    setTimeout(watchAssetItems, 200);
+                })();
+            }
+        })();
+    </script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="{{ asset('js/aframe-extras.min.js') }}"></script>
     <script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>
     <script src="{{ asset('js/axios.min.js') }}"></script>
 
+    <script>
+        // ソースコード保護: 右クリック・キーボードショートカット無効化
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            // F12（開発者ツール）
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+I（検証ツール）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+J（コンソール）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+C（要素選択）
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+U（ソース表示）
+            if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+S（保存）
+            if (e.ctrlKey && (e.key === 'S' || e.keyCode === 83)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+I（Mac版検証ツール）
+            if (e.metaKey && e.altKey && (e.key === 'I' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+J（Mac版コンソール）
+            if (e.metaKey && e.altKey && (e.key === 'J' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+Option+C（Mac版要素選択）
+            if (e.metaKey && e.altKey && (e.key === 'C' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Cmd+U（Mac版ソース表示）
+            if (e.metaKey && (e.key === 'U' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // テキスト選択の無効化
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // ドラッグ操作の無効化
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // コピー操作の無効化
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 開発者ツール検知（簡易版）- デバッグ中は無効化
+        /*
+        (function() {
+            const devtools = /./;
+            devtools.toString = function() {
+                this.opened = true;
+            }
+            console.log('%c', devtools);
+            
+            setInterval(function() {
+                if (devtools.opened) {
+                    console.clear();
+                    devtools.opened = false;
+                }
+            }, 1000);
+        })();
+        */
+    </script>
+
     <script>  
-        // 🚀🚀 パフォーマンス改善: デバッグモードの制御
-        // 本番環境では false に設定してconsole.logを無効化
-        window.DEBUG_MODE = false;
+        // 🚀 パフォーマンス改善: デバッグモードの制御
+        window.DEBUG_MODE = false; // 本番環境では false に設定
         
         // デバッグログ関数（DEBUG_MODE が true の時のみ出力）
         window.debugLog = function(...args) {
@@ -22,13 +210,6 @@
                 console.log(...args);
             }
         };
-        
-        if (window.DEBUG_MODE) {
-            window.debugLog('========================================');
-            window.debugLog('🚀 SCRIPT EXECUTION STARTED!');
-            window.debugLog('AFRAME object exists:', typeof AFRAME !== 'undefined');
-            window.debugLog('========================================');
-        }
         
         // ゲーム状態管理
         window.gameStarted = false;
@@ -38,20 +219,22 @@
         window.gameTimeLeft = 75; // 75秒
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
-        window.enemiesDefeated = 0; // 倒したゾンビの数
+        window.enemiesDefeated = 0; // 捕獲した動物の数
         window.lastBallHit = false; // 最後のボールがヒットしたかどうか
         window.gameLevel = 1; // ゲームレベル選択用（1 or 2）
         window.currentLevel = 1; // 現在プレイ中のレベル（1 or 2）
         
-        // 🚀 メモリリーク対策: プレイ回数管理（2回で自動終了）
-        window.playCount = 0;
-        window.MAX_PLAY_COUNT = 2; // 最大プレイ回数
+        // ボール選択管理（2種類のポケボール）
+        window.ballTypes = [
+            'cg/poke_ball_07apple.glb',
+            'cg/poke_ball_09cabbage.glb'
+        ];
+        window.currentBallIndex = 0; // 現在選択されているボールのインデックス（0 or 1）
         
-        // 🚀 パフォーマンス改善: THREE.js オブジェクトの事前キャッシュ
-        window.cachedBallEmissiveColor = null; // THREE.Color は scene loaded 後に初期化
-        window.cachedHitEmissiveColor = null; // ヒット時の白色
-        window.cachedFlashColors = null; // フラッシュカラー（scene loaded後に初期化）
-        window.cachedEnhanceMaterialColor = null; // enhance-materials用
+        // 🚀 最適化: THREE.Vector3のグローバルキャッシュ
+        window._cachedVector3 = new THREE.Vector3();
+        window._cachedVector3_2 = new THREE.Vector3();
+        window._cachedVector3_3 = new THREE.Vector3();
         
         // GLBモデルの品質を向上させるコンポーネント
         AFRAME.registerComponent('enhance-materials', {
@@ -72,9 +255,9 @@
                                 
                                 // fukuda.glbの場合は明るさを増加
                                 if (isMattsun) {
-                                    // エミッシブカラーを追加して明るくする（🚀 キャッシュカラー使用）
+                                    // エミッシブカラーを追加して明るくする
                                     if (!node.material.emissive) {
-                                        node.material.emissive = window.cachedEnhanceMaterialColor || new THREE.Color(0x444444);
+                                        node.material.emissive = new THREE.Color(0x444444); // グレーのエミッシブ
                                     } else {
                                         node.material.emissive.multiplyScalar(1.5); // 既存のエミッシブを1.5倍
                                     }
@@ -131,7 +314,12 @@
                     if (!this.cameraEl) return;
                 }
 
-                // 🚀 最適化: 事前生成したVector3を再利用
+                // 🚀 修正: Vector3が未初期化の場合は再初期化
+                if (!this._cameraPos || !this._cameraPos.isVector3) {
+                    this._cameraPos = new THREE.Vector3();
+                    this._textPos = new THREE.Vector3();
+                }
+                
                 this.cameraEl.object3D.getWorldPosition(this._cameraPos);
                 this.el.object3D.getWorldPosition(this._textPos);
 
@@ -143,9 +331,56 @@
                 this.el.object3D.rotation.set(0, currentRotation.y, 0);
             }
         });
+
+        // fit-to-hitbox コンポーネント
+        // 目的: モデル(gltf-model)の形状を親の hit-box に合わせて自動縮尺・配置する
+        // 修正: 固定スケールを使用（GLBモデルは既に適切なサイズで作成されている前提）
+        AFRAME.registerComponent('fit-to-hitbox', {
+            schema: {
+                // 固定スケール値（デフォルト0.5）
+                scale: { type: 'number', default: 0.5 }
+            },
+            init: function() {
+                this.fitted = false;
+                this.onModelLoaded = this.onModelLoaded.bind(this);
+                this.el.addEventListener('model-loaded', this.onModelLoaded);
+                setTimeout(() => {
+                    if (this.el.getObject3D('mesh') && !this.fitted) {
+                        this.onModelLoaded();
+                    }
+                }, 100);
+            },
+            remove: function() {
+                this.el.removeEventListener('model-loaded', this.onModelLoaded);
+            },
+            onModelLoaded: function() {
+                if (this.fitted) {
+                    window.debugLog('fit-to-hitbox: already applied, skipping');
+                    return;
+                }
+                
+                try {
+                    const modelObj = this.el.getObject3D('mesh') || this.el.object3D;
+                    if (!modelObj) return;
+
+                    // 固定スケールを適用（デフォルト1.5）
+                    const targetScale = this.data.scale;
+                    this.el.setAttribute('scale', `${targetScale} ${targetScale} ${targetScale}`);
+
+                    this.fitted = true;
+                    window.debugLog('fit-to-hitbox: applied fixed scale', targetScale);
+                } catch (err) {
+                    console.warn('fit-to-hitbox error:', err);
+                }
+            }
+        });
         
         // ボール管理用のグローバル配列
         window.activeBalls = [];
+        
+        // 🚀 メモリリーク対策: プレイ回数管理（2回で自動リフレッシュ）
+        window.playCount = 0;
+        window.MAX_PLAY_COUNT = 2; // 最大プレイ回数
         
         // タイマーID管理用のグローバル配列（メモリリーク防止）
         window.activeTimers = [];
@@ -162,10 +397,6 @@
             window.activeTimers.push(timerId);
             return timerId;
         };
-        
-        // アラート音の管理用グローバル変数
-        window.alertSoundPlaying = false;
-        window.currentAlertModel = null; // 現在アラート音を鳴らしているモデル
         
         // パターン使用状況の管理（重複スポーン防止）
         window.usedPatterns = {}; // { modelId: patternIndex } の形式で保存
@@ -187,7 +418,7 @@
             
             // 使用可能なパターンがない場合は全パターンから選択（安全策）
             if (availableIndices.length === 0) {
-                window.debugLog('⚠️ All patterns in use, selecting random pattern');
+                console.warn('⚠️ All patterns in use, selecting random pattern');
                 const randomIndex = Math.floor(Math.random() * patterns.length);
                 window.usedPatterns[modelId] = randomIndex;
                 return { pattern: patterns[randomIndex], index: randomIndex };
@@ -213,96 +444,101 @@
         };
         
         // スタートメニューコンポーネント
-        if (window.DEBUG_MODE) {
-            window.debugLog('========================================');
-            window.debugLog('🔧 About to register start-menu component');
-            window.debugLog('AFRAME:', typeof AFRAME);
-            window.debugLog('AFRAME.registerComponent:', typeof AFRAME?.registerComponent);
-            window.debugLog('========================================');
-        }
-        
         AFRAME.registerComponent('start-menu', {
             init: function() {
-                window.debugLog('🎮🎮🎮 START-MENU INIT CALLED! 🎮🎮🎮');
-                window.debugLog('Element:', this.el);
-                window.debugLog('Element ID:', this.el.id);
-                
                 this.startGame = this.startGame.bind(this);
                 this.selectLevel = this.selectLevel.bind(this);
                 this.handleClick = this.handleClick.bind(this);
                 this.handleTouch = this.handleTouch.bind(this);
+                this.setupListeners = this.setupListeners.bind(this);
                 this.clickBlocked = false; // クリックブロックフラグ
                 this.controllersUpdated = false; // コントローラー更新フラグ
                 
-                window.debugLog('🎮 Start menu init - Setting up event listeners');
+                // コンポーネント初期化時に要素が見つからない場合があるため、
+                // 複数のタイミングでリスナー設定を試みる
+                const self = this;
                 
-                // 🔧 修正: イベントハンドラをプロパティとして保存（関数参照を再利用）
-                if (!this.level1Handler) {
-                    this.level1Handler = (e) => {
-                        window.debugLog('🎯 Level 1 button clicked!');
-                        if (e) e.preventDefault();
-                        this.selectLevel(1);
-                    };
+                // 方法1: loadedイベント
+                if (this.el.hasLoaded) {
+                    setTimeout(() => self.setupListeners(), 100);
+                } else {
+                    this.el.addEventListener('loaded', () => {
+                        setTimeout(() => self.setupListeners(), 100);
+                    });
                 }
-                if (!this.level2Handler) {
-                    this.level2Handler = (e) => {
-                        window.debugLog('🎯 Level 2 button clicked!');
-                        if (e) e.preventDefault();
-                        this.selectLevel(2);
-                    };
+                
+                // 方法2: シーンのloadedイベント（フォールバック）
+                this.el.sceneEl.addEventListener('loaded', () => {
+                    setTimeout(() => self.setupListeners(), 200);
+                });
+                
+                // 方法3: DOMContentLoaded後のフォールバック
+                if (document.readyState === 'complete') {
+                    setTimeout(() => self.setupListeners(), 500);
+                } else {
+                    window.addEventListener('load', () => {
+                        setTimeout(() => self.setupListeners(), 500);
+                    });
                 }
+            },
+
+            setupListeners: function() {
+                // 重複防止
+                if (this.listenersSetup) {
+                    window.debugLog('Listeners already setup, skipping...');
+                    return;
+                }
+                
+                window.debugLog('Setting up start menu listeners...');
                 
                 // レベル選択ボタンのイベントリスナーを追加
                 const level1Button = document.getElementById('level1Button');
                 const level2Button = document.getElementById('level2Button');
                 
-                window.debugLog('Level buttons:', {
-                    level1: level1Button ? 'found' : 'NOT FOUND',
-                    level2: level2Button ? 'found' : 'NOT FOUND'
-                });
+                window.debugLog('- level1Button:', level1Button ? 'FOUND' : 'NOT FOUND');
+                window.debugLog('- level2Button:', level2Button ? 'FOUND' : 'NOT FOUND');
                 
+                // ボタンが見つからない場合は再試行
+                if (!level1Button || !level2Button) {
+                    window.debugLog('Buttons not found, will retry...');
+                    return;
+                }
+                
+                const self = this;
+                
+                // A-Frameでは「click」イベントはraycaster経由で発火する
+                // 直接ボタンにイベントリスナーを設定する
                 if (level1Button) {
-                    // 既存のリスナーを削除してから追加（重複防止）
-                    level1Button.removeEventListener('click', this.level1Handler);
-                    level1Button.removeEventListener('touchstart', this.level1Handler);
-                    level1Button.addEventListener('click', this.level1Handler);
-                    level1Button.addEventListener('touchstart', this.level1Handler, { passive: false });
-                    window.debugLog('✅ Level 1 button listeners attached');
-                } else {
-                    window.debugLog('❌ Level 1 button NOT FOUND in DOM!');
+                    level1Button.addEventListener('click', function(e) {
+                        window.debugLog('=== Level 1 button CLICKED! ===');
+                        if (window.gameStarted && !window.gameEnded) {
+                            window.debugLog('Blocked - game in progress');
+                            return;
+                        }
+                        self.selectLevel(1);
+                    });
+                    window.debugLog('Level 1 button click listener attached');
                 }
                 
                 if (level2Button) {
-                    // 既存のリスナーを削除してから追加（重複防止）
-                    level2Button.removeEventListener('click', this.level2Handler);
-                    level2Button.removeEventListener('touchstart', this.level2Handler);
-                    level2Button.addEventListener('click', this.level2Handler);
-                    level2Button.addEventListener('touchstart', this.level2Handler, { passive: false });
-                    window.debugLog('✅ Level 2 button listeners attached');
-                } else {
-                    window.debugLog('❌ Level 2 button NOT FOUND in DOM!');
+                    level2Button.addEventListener('click', function(e) {
+                        window.debugLog('=== Level 2 button CLICKED! ===');
+                        if (window.gameStarted && !window.gameEnded) {
+                            window.debugLog('Blocked - game in progress');
+                            return;
+                        }
+                        self.selectLevel(2);
+                    });
+                    window.debugLog('Level 2 button click listener attached');
                 }
                 
-                // メニュー内のクリック可能な要素のみにイベントを追加（メニュー全体には追加しない）
-                const clickableElements = this.el.querySelectorAll('.clickable');
-                clickableElements.forEach(element => {
-                    element.addEventListener('click', this.handleClick);
-                    element.addEventListener('touchstart', this.handleTouch, { passive: false, capture: true }); // captureフェーズで処理
-                    window.debugLog('Click and Touch listeners added to:', element.id || element.tagName);
-                });
-                
-                window.debugLog('🎮 Start menu initialized with', clickableElements.length, 'clickable elements');
+                this.listenersSetup = true;
+                window.debugLog('Start menu listeners setup complete');
             },
             
             selectLevel: function(level) {
-                window.debugLog('🎯 ========================================');
-                window.debugLog('🎯 selectLevel called with level:', level);
-                window.debugLog('🎯 Current gameStarted:', window.gameStarted);
-                window.debugLog('🎯 Current gameEnded:', window.gameEnded);
-                window.debugLog('🎯 ========================================');
-                
+                window.debugLog('Level selected:', level);
                 window.gameLevel = level;
-                window.currentLevel = level;
                 
                 // レベルを保存してゲーム開始
                 this.startGame({ type: 'level-select' });
@@ -348,11 +584,6 @@
                     
                     this.clickBlocked = true;
                 } else {
-                    // 🚀 改善: メニュー非表示フラグをリセット
-                    if (this.menuHidden) {
-                        this.menuHidden = false;
-                    }
-                    
                     // ゲーム中でない場合（開始前またはゲーム終了後）は.clickableを復元
                     if (this.controllersUpdated) {
                         const mouseCursor = document.getElementById('mouseCursor');
@@ -386,17 +617,10 @@
             
             handleClick: function(event) {
                 window.debugLog('=== Menu Click Detected ===');
-                window.debugLog('Target:', event.target ? event.target.id : 'unknown');
                 window.debugLog('Menu visible:', this.el.getAttribute('visible'));
                 window.debugLog('Game started:', window.gameStarted);
                 window.debugLog('Game ended:', window.gameEnded);
                 window.debugLog('Click blocked:', this.clickBlocked);
-                
-                // 🚀 修正: レベルボタンのクリックはここでは処理しない（level1Handler/level2Handlerで処理）
-                if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
-                    window.debugLog('Level button click - handled by dedicated handler');
-                    return; // レベルボタンの専用ハンドラに任せる
-                }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
@@ -436,17 +660,10 @@
             
             handleTouch: function(event) {
                 window.debugLog('=== Menu Touch Detected ===');
-                window.debugLog('Target:', event.target ? event.target.id : 'unknown');
                 window.debugLog('Menu visible:', this.el.getAttribute('visible'));
                 window.debugLog('Game started:', window.gameStarted);
                 window.debugLog('Game ended:', window.gameEnded);
                 window.debugLog('Click blocked:', this.clickBlocked);
-                
-                // 🚀 修正: レベルボタンのタッチはここでは処理しない（level1Handler/level2Handlerで処理）
-                if (event.target && (event.target.id === 'level1Button' || event.target.id === 'level2Button')) {
-                    window.debugLog('Level button touch - handled by dedicated handler');
-                    return; // レベルボタンの専用ハンドラに任せる
-                }
                 
                 // ゲーム中は完全にブロック（最優先チェック）
                 if (window.gameStarted && !window.gameEnded) {
@@ -494,9 +711,27 @@
                 
                 // 🚀 メモリリーク対策: プレイ回数をインクリメント
                 window.playCount++;
-                console.log('=== GAME START ===');
-                console.log('🎮 Play count incremented:', window.playCount, '/', window.MAX_PLAY_COUNT);
-                window.debugLog('Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
+                window.debugLog('=== GAME START ===');
+                window.debugLog('🎮 Play count:', window.playCount, '/', window.MAX_PLAY_COUNT);
+                
+                // === デバッグ: startGame開始時のモデル状態確認 ===
+                if (window.DEBUG_MODE) {
+                    window.debugLog('=== Model State at startGame() ===');
+                    for (let i = 1; i <= 6; i++) {
+                        const model = document.getElementById(`modelGroup_0${i}`);
+                        if (model) {
+                            const pos = model.getAttribute('position');
+                            const visible = model.getAttribute('visible');
+                            const scale = model.getAttribute('scale');
+                            window.debugLog(`modelGroup_0${i}:`, {
+                                position: pos,
+                                visible: visible,
+                                scale: scale
+                            });
+                        }
+                    }
+                    window.debugLog('===================================');
+                }
                 
                 // レベル選択イベントの場合、window.gameLevelを使用
                 if (event && event.type === 'level-select' && window.gameLevel) {
@@ -564,29 +799,27 @@
                 window.gameStarted = true;
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
-                window.gameTimeLeft = 75; // タイマーを75秒に設定
+                window.gameTimeLeft = 75; // タイマーを70秒に設定
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
-                window.enemiesDefeated = 0; // 倒したゾンビの数をリセット
+                window.enemiesDefeated = 0; // 捕獲した動物の数をリセット
                 window.lastBallHit = false; // ヒット状態をリセット
-                window.bossSpawned = false; // ボス出現フラグをリセット
-                window.respawningModels = {}; // リスポーン中フラグを初期化
                 window.usedPatterns = {}; // パターン使用状況をリセット
                 
-                // ランダムパターン設定（初期スポーン用：シンプルなパターンのみ）
+                // ランダムパターン設定（初期スポーン用：近距離パターン）🚀 30%遅く調整
                 const movementPatterns = [
-                    // パターン1: 左後方(-5, 0, -10)からカメラ(0, 0, 0)へ - 距離: 11.2m - 速い
-                    { startPos: { x: -5, y: 0, z: -10 }, speed: 0.4, useCamera: true, waitTime: 4000 },
-                    // パターン2: 右後方(5, 0, -10)からカメラ(0, 0, 0)へ - 距離: 11.2m - 普通
-                    { startPos: { x: 5, y: 0, z: -10 }, speed: 0.3, useCamera: true, waitTime: 4000 },
-                    // パターン3: 正面奥(0, 0, -12)からカメラ(0, 0, 0)へ - 距離: 12.0m - 遅い
-                    { startPos: { x: 0, y: 0, z: -12 }, speed: 0.2, useCamera: true, waitTime: 4000 },
-                    // パターン4: 左奥(-6, 0, -8)から右奥(6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
-                    { startPos: { x: -6, y: 0, z: -8 }, endPos: { x: 6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
-                    // パターン5: 右奥(6, 0, -8)から左奥(-6, 0, -8)へ横移動 - 距離: 12.0m - 固定終点
-                    { startPos: { x: 6, y: 0, z: -8 }, endPos: { x: -6, y: 0, z: -8 }, speed: 0.35, useCamera: false, waitTime: 4000 },
-                    // パターン6: 左斜め後方(-7, 0, -7)からカメラ(0, 0, 0)へ - 距離: 9.9m - 中速
-                    { startPos: { x: -7, y: 0, z: -7 }, speed: 0.28, useCamera: true, waitTime: 4000 }
+                    // パターン1: 左前方からカメラへ - 距離: 約4m
+                    { startPos: { x: -3, y: 0, z: -4 }, speed: 0.168, useCamera: true, waitTime: 3000 },
+                    // パターン2: 右前方からカメラへ - 距離: 約4m
+                    { startPos: { x: 3, y: 0, z: -4 }, speed: 0.14, useCamera: true, waitTime: 3000 },
+                    // パターン3: 正面からカメラへ - 距離: 約5m
+                    { startPos: { x: 0, y: 0, z: -5 }, speed: 0.112, useCamera: true, waitTime: 3000 },
+                    // パターン4: 左から右へ横移動（固定終点）- 距離: 6m
+                    { startPos: { x: -3, y: 0, z: -4 }, endPos: { x: 3, y: 0, z: -4 }, speed: 0.168, useCamera: false, waitTime: 3000 },
+                    // パターン5: 右から左へ横移動（固定終点）- 距離: 6m
+                    { startPos: { x: 3, y: 0, z: -4 }, endPos: { x: -3, y: 0, z: -4 }, speed: 0.168, useCamera: false, waitTime: 3000 },
+                    // パターン6: 左斜めからカメラへ - 距離: 約4.2m
+                    { startPos: { x: -3, y: 0, z: -3 }, speed: 0.2, useCamera: true, waitTime: 3000 }
                 ];
                 
                 // 初期モデル数をレベルに応じて設定（Level 1: 3体、Level 2: 6体）
@@ -595,45 +828,80 @@
                     : ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 window.debugLog('Showing initial', initialModelIds.length, 'models with random patterns (Level', window.currentLevel, ')');
                 
-                // モデルを1秒ずつずらして出現させる - 🚀 registerTimeout使用
+                // 🚀 最適化: モデルを1秒ずつずらして出現させる（registerTimeoutで管理）
                 initialModelIds.forEach((modelId, index) => {
                     window.registerTimeout(() => {
+                        window.debugLog(`=== Spawning model ${modelId} (delay: ${index}s) ===`);
                         const model = document.getElementById(modelId);
                         if (model) {
                             // 使用可能なパターンを取得（他のモデルと重複しない）
                             const { pattern: randomPattern, index: patternIndex } = window.getAvailablePattern(movementPatterns, modelId);
                             
+                            window.debugLog(`Pattern for ${modelId}:`, randomPattern);
+                            
                             // 始点位置を設定
-                            model.setAttribute('position', `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`);
+                            const startX = randomPattern.startPos.x;
+                            const startY = randomPattern.startPos.y;
+                            const startZ = randomPattern.startPos.z;
+                            window.debugLog(`Setting ${modelId} position to: ${startX}, ${startY}, ${startZ}`);
+                            model.setAttribute('position', `${startX} ${startY} ${startZ}`);
                             
                             // 角度を計算
                             let rotation;
                             if (randomPattern.useCamera) {
-                                rotation = Math.atan2(randomPattern.startPos.x, -randomPattern.startPos.z) * (180 / Math.PI);
+                                rotation = Math.atan2(startX, -startZ) * (180 / Math.PI);
                             } else {
-                                const dx = randomPattern.endPos.x - randomPattern.startPos.x;
-                                const dz = randomPattern.endPos.z - randomPattern.startPos.z;
+                                const dx = randomPattern.endPos.x - startX;
+                                const dz = randomPattern.endPos.z - startZ;
                                 rotation = Math.atan2(dx, -dz) * (180 / Math.PI);
                             }
+                            window.debugLog(`Setting ${modelId} rotation to: 0, ${rotation}, 0`);
                             model.setAttribute('rotation', `0 ${rotation} 0`);
                             
-                            // approach-cameraコンポーネントの設定
-                            const cameraConfig = {
-                                speed: randomPattern.speed,
-                                startPos: randomPattern.startPos,
-                                useCamera: randomPattern.useCamera,
-                                autoRespawn: true,
-                                waitTime: randomPattern.waitTime
-                            };
-                            if (randomPattern.endPos) {
-                                cameraConfig.endPos = randomPattern.endPos;
-                            }
-                            model.setAttribute('approach-camera', cameraConfig);
+                            // 🎯 動物の頭上にランダムなボールインジケーターを追加（初期スポーン時）
+                            const requiredBallIndex = Math.floor(Math.random() * 2); // 0 or 1
+                            model.setAttribute('data-required-ball', requiredBallIndex.toString());
                             
+                            // 既存のボールインジケーターを削除
+                            const existingIndicator = model.querySelector(`#ball-indicator-${modelId}`);
+                            if (existingIndicator) {
+                                existingIndicator.parentNode.removeChild(existingIndicator);
+                            }
+                            
+                            // 🚀 最適化: GLBの代わりにシンプルな球体を使用（メモリ節約）
+                            const ballIndicator = document.createElement('a-sphere');
+                            ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
+                            ballIndicator.setAttribute('radius', '0.12');
+                            ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
+                            // リンゴ=赤、キャベツ=緑
+                            const indicatorColor = requiredBallIndex === 0 ? '#ff3e3e' : '#5ce35c';
+                            ballIndicator.setAttribute('color', indicatorColor);
+                            ballIndicator.setAttribute('material', `color: ${indicatorColor}; emissive: ${indicatorColor}; emissiveIntensity: 0.3; shader: flat`);
+                            // 🚀 最適化: 回転アニメーションを削除（負荷軽減）
+                            model.appendChild(ballIndicator);
+                            window.debugLog('Ball indicator added for', modelId, ':', requiredBallIndex === 0 ? 'Apple (Red)' : 'Cabbage (Green)');
+                            
+                            // まずvisibleをtrueにする
                             model.setAttribute('visible', true);
-                            window.debugLog(`Model ${modelId} appeared after ${index} seconds (pattern ${patternIndex}:`, randomPattern, ')');
+                            window.debugLog(`${modelId} visible set to true`);
+                            
+                            // approach-cameraコンポーネントの設定
+                            // A-Frameのvec3は文字列 "x y z" または オブジェクト {x, y, z} で設定
+                            const startPosStr = `${randomPattern.startPos.x} ${randomPattern.startPos.y} ${randomPattern.startPos.z}`;
+                            let configStr = `speed: ${randomPattern.speed}; startPos: ${startPosStr}; useCamera: ${randomPattern.useCamera}; autoRespawn: true; waitTime: 2000; active: true`;
+                            if (randomPattern.endPos) {
+                                const endPosStr = `${randomPattern.endPos.x} ${randomPattern.endPos.y} ${randomPattern.endPos.z}`;
+                                configStr += `; endPos: ${endPosStr}`;
+                            }
+                            window.debugLog(`Setting ${modelId} approach-camera string:`, configStr);
+                            model.setAttribute('approach-camera', configStr);
+                            
+                            // 位置を確認
+                            const finalPos = model.getAttribute('position');
+                            const finalVisible = model.getAttribute('visible');
+                            window.debugLog(`${modelId} FINAL state - position:`, finalPos, 'visible:', finalVisible);
                         } else {
-                            window.debugLog('Model not found:', modelId);
+                            console.error('Model not found:', modelId);
                         }
                     }, index * 1000); // 0秒、1秒、2秒、3秒後に出現
                 });
@@ -680,13 +948,6 @@
                         timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
                     }
                     
-                    // 60秒経過時（残り15秒）にボスを出現（1度のみ、Level 2のみ）
-                    if (window.gameTimeLeft === 15 && !window.bossSpawned && window.currentLevel === 2) {
-                        window.debugLog('=== 60 seconds elapsed - Spawning BOSS (Level 2) ===');
-                        window.bossSpawned = true;
-                        this.spawnBoss();
-                    }
-                    
                     // 時間切れ
                     if (window.gameTimeLeft <= 0) {
                         window.debugLog('=== Timer reached 0 ===');
@@ -701,49 +962,15 @@
                         window.debugLog('gameEnded after set:', window.gameEnded);
                         window.debugLog('Total Score:', window.totalScore);
                         
-                        // すべてのモデルにanime02と死亡音を再生してからフェードアウト
-                        const models = document.querySelectorAll('[id^="modelGroup_"]');
-                        window.debugLog('Playing death animation for models, count:', models.length);
-                        
-                        // 死亡音を1回だけ再生
-                        const dieSound = document.getElementById('sound_zombie_die');
-                        if (dieSound) {
-                            dieSound.currentTime = 0;
-                            dieSound.play().then(() => {
-                                window.debugLog('Zombie die sound played (time over)');
-                            }).catch(err => {
-                                window.debugLog('Zombie die sound play failed:', err);
-                            });
-                        }
-                        
-                        models.forEach(model => {
-                            if (model.getAttribute('visible')) {
-                                // anime02に切り替え - 🚀 registerTimeout使用
-                                const modelEntity = model.querySelector('[gltf-model]');
-                                if (modelEntity) {
-                                    modelEntity.removeAttribute('animation-mixer');
-                                    window.registerTimeout(() => {
-                                        modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
-                                        window.debugLog('Playing anime02 for model:', model.id);
-                                    }, 50);
-                                }
-                                
-                                // 1.5秒後にフェードアウト - 🚀 registerTimeout使用
-                                window.registerTimeout(() => {
-                                    model.setAttribute('animation__timeoverfadeout', {
-                                        property: 'scale',
-                                        to: '0 0 0',
-                                        dur: 500,
-                                        easing: 'easeInQuad'
-                                    });
-                                }, 1500);
-                                
-                                // 2秒後に完全に非表示 - 🚀 registerTimeout使用
-                                window.registerTimeout(() => {
-                                    model.setAttribute('visible', false);
-                                }, 2000);
+                        // 🚀 最適化: IDで直接取得（querySelectorAllを避ける）
+                        const modelIds = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
+                        modelIds.forEach(modelId => {
+                            const model = document.getElementById(modelId);
+                            if (model) {
+                                model.setAttribute('visible', false);
                             }
                         });
+                        window.debugLog('All models hidden');
                         
                         // タイマー非表示
                         const timerDisplay = document.getElementById('timerDisplay');
@@ -751,125 +978,73 @@
                             timerDisplay.setAttribute('visible', false);
                         }
                         
-                        // 2.5秒後にリザルト画面を表示（モデルのフェードアウト完了を待つ）- 🚀 registerTimeout使用
-                        window.registerTimeout(() => {
-                            const currentResultMenu = document.getElementById('resultMenu');
-                            window.debugLog('=== Looking for result menu ===');
-                            window.debugLog('Result menu element:', currentResultMenu);
-                            window.debugLog('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
-                            
-                            if (currentResultMenu) {
-                                window.debugLog('Calling showResult...');
-                                window.updateDebug('Showing result...');
-                                self.showResult(currentResultMenu);
-                            } else {
-                                window.debugLog('ERROR: Result menu element NOT FOUND!');
-                                window.updateDebug('ERROR: Result menu NOT FOUND!');
-                                // デバッグ: DOM内のすべての要素を確認
-                                const allEntities = document.querySelectorAll('a-entity');
-                                window.debugLog('Total a-entity count:', allEntities.length);
-                                const menuEntities = document.querySelectorAll('[result-menu]');
-                                window.debugLog('Entities with result-menu attribute:', menuEntities.length);
-                            }
-                        }, 2500);
+                        // リザルト画面を表示（再度取得して確実に存在することを確認）
+                        const currentResultMenu = document.getElementById('resultMenu');
+                        window.debugLog('=== Looking for result menu ===');
+                        window.debugLog('Result menu element:', currentResultMenu);
+                        window.debugLog('Result menu exists:', currentResultMenu ? 'YES' : 'NO');
+                        
+                        if (currentResultMenu) {
+                            window.debugLog('Calling showResult...');
+                            window.updateDebug('Showing result...');
+                            self.showResult(currentResultMenu);
+                        } else {
+                            console.error('ERROR: Result menu element NOT FOUND!');
+                            window.updateDebug('ERROR: Result menu NOT FOUND!');
+                            // デバッグ: DOM内のすべての要素を確認
+                            const allEntities = document.querySelectorAll('a-entity');
+                            window.debugLog('Total a-entity count:', allEntities.length);
+                            const menuEntities = document.querySelectorAll('[result-menu]');
+                            window.debugLog('Entities with result-menu attribute:', menuEntities.length);
+                        }
                     }
                 }, 1000);
                 
                 window.debugLog('Timer started, interval ID:', window.gameTimer);
             },
             
-            spawnBoss: function() {
-                window.debugLog('=== Spawning BOSS ===');
-                const sceneEl = document.querySelector('a-scene');
-                
-                // ランダムパターンから1つ選択（4パターン）
-                const bossPatterns = [
-                    { startPos: { x: -4, y: 0, z: 0 }, speed: 0.15 },
-                    { startPos: { x: 4, y: 0, z: 0 }, speed: 0.15 },
-                    { startPos: { x: 0, y: 0, z: 4 }, speed: 0.15 },
-                    { startPos: { x: 0, y: 0, z: -4 }, speed: 0.15 }
-                ];
-                
-                const randomPattern = bossPatterns[Math.floor(Math.random() * bossPatterns.length)];
-                const startPos = randomPattern.startPos;
-                const speed = randomPattern.speed;
-                
-                // カメラ方向への角度を計算
-                const rotation = Math.atan2(startPos.x, -startPos.z) * (180 / Math.PI);
-                
-                // ボスモデルグループを作成
-                const bossGroup = document.createElement('a-entity');
-                bossGroup.setAttribute('id', 'modelGroup_boss');
-                bossGroup.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
-                bossGroup.setAttribute('rotation', `0 ${rotation} 0`);
-                bossGroup.setAttribute('scale', '0 0 0'); // 最初は見えない状態
-                bossGroup.setAttribute('approach-camera', {
-                    speed: speed,
-                    startPos: startPos,
-                    useCamera: true,
-                    autoRespawn: false, // ボスは再出現しない
-                    waitTime: 4000
-                });
-                
-                // ボス3Dモデルエンティティを作成（1.8倍サイズ）
-                const bossEntity = document.createElement('a-entity');
-                bossEntity.setAttribute('gltf-model', '#model_boss');
-                bossEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                bossEntity.setAttribute('enhance-materials', '');
-                bossEntity.setAttribute('scale', '1.8 1.8 1.8'); // 1.8倍サイズ（1.5 × 1.2）
-                bossGroup.appendChild(bossEntity);
-                
-                // ボス当たり判定オブジェクトを作成（1.8倍サイズ + すり抜け防止で拡大）
-                const bossHitBox = document.createElement('a-entity');
-                bossHitBox.setAttribute('id', 'hit-boxed_boss');
-                bossHitBox.setAttribute('hit-box', 'isBoss: true'); // ボスフラグ
-                bossHitBox.setAttribute('position', '0 1.0 0'); // 通常モデルと同じ高さに統一
-                
-                const bossHitBoxCylinder = document.createElement('a-entity');
-                bossHitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
-                bossHitBoxCylinder.setAttribute('material', 'color: red; opacity: 0.0; transparent: true');
-                bossHitBoxCylinder.setAttribute('scale', '1.8 3.2 1.8'); // すり抜け防止のため拡大（半径1.8m、高さ3.2m）
-                bossHitBoxCylinder.setAttribute('class', 'collidable');
-                
-                bossHitBox.appendChild(bossHitBoxCylinder);
-                bossGroup.appendChild(bossHitBox);
-                
-                // シーンに追加
-                sceneEl.appendChild(bossGroup);
-                window.debugLog('BOSS added to scene at:', startPos);
-                
-                // BOSS出現音を再生
-                const appearSound = document.getElementById('sound_zombie_appear');
-                if (appearSound) {
-                    appearSound.currentTime = 0;
-                    appearSound.play().then(() => {
-                        window.debugLog('BOSS appear sound played');
-                    }).catch(err => {
-                        window.debugLog('BOSS appear sound play failed:', err);
-                    });
-                }
-                
-                // フェードインアニメーション - 🚀 registerTimeout使用
-                window.registerTimeout(() => {
-                    bossGroup.setAttribute('animation__fadein', {
-                        property: 'scale',
-                        to: '1 1 1',
-                        dur: 2000,
-                        easing: 'easeOutQuad'
-                    });
-                    window.debugLog('BOSS fading in');
-                }, 100);
-            },
-            
             showResult: function(resultMenu) {
                 window.debugLog('=== showResult function called ===');
                 window.updateDebug(`Result: Score ${window.totalScore.toFixed(1)}`);
+                
+                // 🚀 メモリ解放: 残っているアクティブなボールを全て削除
+                if (window.activeBalls && window.activeBalls.length > 0) {
+                    window.debugLog('Cleaning up', window.activeBalls.length, 'remaining balls at game end');
+                    window.activeBalls.forEach(ballData => {
+                        if (ballData && ballData.ball) {
+                            const ball = ballData.ball;
+                            // THREE.jsオブジェクトを破棄
+                            if (ball.object3D) {
+                                ball.object3D.traverse((node) => {
+                                    if (node.geometry) node.geometry.dispose();
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => {
+                                                if (mat.map) mat.map.dispose();
+                                                mat.dispose();
+                                            });
+                                        } else {
+                                            if (node.material.map) node.material.map.dispose();
+                                            node.material.dispose();
+                                        }
+                                    }
+                                });
+                            }
+                            // DOMから削除
+                            if (ball.parentNode) {
+                                ball.parentNode.removeChild(ball);
+                            }
+                        }
+                    });
+                    window.activeBalls = [];
+                }
+                
                 window.debugLog('resultMenu parameter:', resultMenu);
                 window.debugLog('resultMenu is null?', resultMenu === null);
                 window.debugLog('resultMenu is undefined?', resultMenu === undefined);
                 
                 if (!resultMenu) {
-                    window.debugLog('ERROR: resultMenu is null or undefined!');
+                    console.error('ERROR: resultMenu is null or undefined!');
                     return;
                 }
                 
@@ -883,9 +1058,6 @@
                 
                 window.debugLog('Score text element:', scoreText ? 'found' : 'NOT FOUND');
                 window.debugLog('Comment text element:', commentText ? 'found' : 'NOT FOUND');
-                
-                window.debugLog('Score text:', scoreText ? 'found' : 'NOT FOUND');
-                window.debugLog('Comment text:', commentText ? 'found' : 'NOT FOUND');
                 
                 // レベルを表示
                 if (levelText) {
@@ -945,7 +1117,7 @@
                 resultMenu.removeAttribute('animation');
                 resultMenu.removeAttribute('animation__scale');
                 
-                // 少し待ってからアニメーション開始（確実に反映させる） - 🚀 registerTimeout使用
+                // 少し待ってからアニメーション開始（確実に反映させる）
                 window.registerTimeout(() => {
                     resultMenu.setAttribute('animation', {
                         property: 'scale',
@@ -963,7 +1135,7 @@
             },
             
             saveScoreToDatabase: function(score) {
-                window.debugLog('Saving score to database:', score, 'Level:', window.currentLevel, 'Game Mode: terrer');
+                window.debugLog('Saving score to database:', score, 'Level:', window.currentLevel);
                 
                 fetch('api/shooting-scores', {
                     method: 'POST',
@@ -975,9 +1147,9 @@
                         name: 'noName', // デフォルト名
                         score: score,
                         level: window.currentLevel || 1, // レベル情報を追加
-                        game_mode: 'terrer', // ゲームモードを追加
+                        game_mode: 'model',
                         max_combo: window.maxComboCount || 0, // 最大コンボ数
-                        enemies_defeated: window.enemiesDefeated || 0, // 倒したゾンビの数
+                        enemies_defeated: window.enemiesDefeated || 0, // 捕獲した動物の数
                     })
                 })
                 .then(response => response.json())
@@ -999,9 +1171,9 @@
             },
             
             fetchAndDisplayRankings: function() {
-                window.debugLog('Fetching top 5 rankings for Level:', window.currentLevel, 'Game Mode: terrer');
+                window.debugLog('Fetching top 5 rankings for Level:', window.currentLevel);
                 
-                fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}&game_mode=terrer`)
+                fetch(`api/shooting-scores/top5?level=${window.currentLevel || 1}&game_mode=model`)
                     .then(response => response.json())
                     .then(data => {
                         window.debugLog('Rankings fetched:', data);
@@ -1047,12 +1219,28 @@
                         particleSystem.startParticles();
                     }
                     
-                    // 5秒後にパーティクルを停止 - 🚀 registerTimeout使用
+                    // 🎯 パーティクルクリーンアップ: 5秒後にパーティクルを停止＆リセット
                     window.registerTimeout(() => {
+                        // 子要素のパーティクルシステムもすべてリセット
+                        const childParticles = celebrationParticle.querySelectorAll('[particle-system]');
+                        childParticles.forEach(child => {
+                            const childComponent = child.components['particle-system'];
+                            if (childComponent) {
+                                childComponent.stopParticles();
+                                // パーティクルグループをリセット（ゴミ残り防止）
+                                if (childComponent.particleGroup) {
+                                    childComponent.particleGroup.emitters.forEach(emitter => {
+                                        emitter.reset(true);
+                                    });
+                                }
+                            }
+                        });
+                        
                         if (particleSystem) {
                             particleSystem.stopParticles();
                         }
                         celebrationParticle.setAttribute('visible', 'false');
+                        window.debugLog('Celebration particles cleaned up');
                     }, 5000);
                 }
                 
@@ -1073,7 +1261,7 @@
                 
                 // レベル表示を追加（一番上）
                 const levelHeader = document.createElement('a-text');
-                const levelName = window.currentLevel === 2 ? 'Terrer Lv2 Ranking' : 'Terrer Lv1 Ranking';
+                const levelName = window.currentLevel === 2 ? 'Model Lv2 Ranking' : 'Model Lv1 Ranking';
                 const levelColor = window.currentLevel === 2 ? '#FF6600' : '#00FF00';
                 levelHeader.setAttribute('value', levelName);
                 levelHeader.setAttribute('position', '0 0.65 0');
@@ -1093,8 +1281,8 @@
                     const rank = index + 1;
                     const yPosition = 0.1 - (index * 0.25); // 0.25間隔で配置
                     
-                    // ランキング行のテキスト（名前の代わりにコンボ数と倒したゾンビ数を表示）
-                    const rankingText = `${rank}. ${item.score.toFixed(1)}pt  Combo:${item.max_combo || 0}  Zombies:${item.enemies_defeated || 0}`;
+                    // ランキング行のテキスト（名前の代わりにコンボ数と捕獲した動物数を表示）
+                    const rankingText = `${rank}. ${item.score.toFixed(1)}pt  Combo:${item.max_combo || 0}  Animals:${item.enemies_defeated || 0}`;
                     
                     // 自分のスコアかどうかを判定：ID一致があれば最優先、なければスコア±0.01
                     const isCurrentPlayer = (currentId && item.id === currentId) ||
@@ -1124,60 +1312,183 @@
             },
             
             recreateInitialModels: function(sceneEl) {
-                window.debugLog('Recreating initial models with staggered creation...');
+                window.debugLog('Recreating initial models...');
                 
-                // 🚀 最適化: モデル定義を配列化して時間分散で作成
-                const modelConfigs = [
-                    { id: 'modelGroup_01', gltf: '#model_01', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'blue' },
-                    { id: 'modelGroup_02', gltf: '#model_02', pos: '0 0 -10', rot: '0 0 0', approachConfig: 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'green' },
-                    { id: 'modelGroup_03', gltf: '#model_03', pos: '4 0 -8', rot: '0 -45 0', approachConfig: 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000', cylinderColor: 'red' },
-                    { id: 'modelGroup_04', gltf: '#model_04', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'yellow' },
-                    { id: 'modelGroup_05', gltf: '#model_05', pos: '-4 0 -8', rot: '0 45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'purple' },
-                    { id: 'modelGroup_06', gltf: '#model_06', pos: '4 0 -8', rot: '0 -45 0', approachConfig: 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000', cylinderColor: 'cyan' }
-                ];
+                // モデル01を再作成
+                const model01 = document.createElement('a-entity');
+                model01.setAttribute('id', 'modelGroup_01');
+                model01.setAttribute('position', '-4 0 -8');
+                model01.setAttribute('rotation', '0 45 0');
+                model01.setAttribute('scale', '1 1 1');
+                model01.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model01.setAttribute('visible', 'false');
                 
-                // 各モデルを時間分散で作成（100ms間隔）
-                modelConfigs.forEach((config, index) => {
-                    window.registerTimeout(() => {
-                        this.createSingleModel(sceneEl, config);
-                    }, index * 100); // 100ms間隔で1体ずつ作成
-                });
+                const model01Entity = document.createElement('a-entity');
+                model01Entity.setAttribute('gltf-model', '#model_01');
+                model01Entity.setAttribute('fit-to-hitbox', '');
+                model01Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model01Entity.setAttribute('enhance-materials', '');
+                model01.appendChild(model01Entity);
                 
-                window.debugLog('Initial models creation scheduled (6 models, 100ms intervals)');
-            },
-            
-            // 🚀 新規: 単一モデル作成関数（リファクタリング）
-            createSingleModel: function(sceneEl, config) {
-                const model = document.createElement('a-entity');
-                model.setAttribute('id', config.id);
-                model.setAttribute('position', config.pos);
-                model.setAttribute('rotation', config.rot);
-                model.setAttribute('scale', '1 1 1');
-                model.setAttribute('approach-camera', config.approachConfig);
-                model.setAttribute('visible', 'false');
+                const hitBox01 = document.createElement('a-entity');
+                hitBox01.setAttribute('id', 'hit-boxed_01');
+                hitBox01.setAttribute('hit-box', '');
+                hitBox01.setAttribute('position', '0 0.3 0');
+                const cylinder01 = document.createElement('a-entity');
+                cylinder01.setAttribute('geometry', 'primitive: cylinder');
+                cylinder01.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder01.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder01.setAttribute('class', 'collidable');
+                hitBox01.appendChild(cylinder01);
+                model01.appendChild(hitBox01);
+                sceneEl.appendChild(model01);
                 
-                const modelEntity = document.createElement('a-entity');
-                modelEntity.setAttribute('gltf-model', config.gltf);
-                modelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
-                modelEntity.setAttribute('enhance-materials', '');
-                model.appendChild(modelEntity);
+                // モデル02を再作成
+                const model02 = document.createElement('a-entity');
+                model02.setAttribute('id', 'modelGroup_02');
+                model02.setAttribute('position', '0 0 -10');
+                model02.setAttribute('rotation', '0 0 0');
+                model02.setAttribute('scale', '1 1 1');
+                model02.setAttribute('approach-camera', 'speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model02.setAttribute('visible', 'false');
                 
-                const hitBoxId = config.id.replace('modelGroup', 'hit-boxed');
-                const hitBox = document.createElement('a-entity');
-                hitBox.setAttribute('id', hitBoxId);
-                hitBox.setAttribute('hit-box', '');
-                hitBox.setAttribute('position', '0 1.0 0');
+                const model02Entity = document.createElement('a-entity');
+                model02Entity.setAttribute('gltf-model', '#model_02');
+                model02Entity.setAttribute('fit-to-hitbox', '');
+                model02Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model02Entity.setAttribute('enhance-materials', '');
+                model02.appendChild(model02Entity);
                 
-                const cylinder = document.createElement('a-entity');
-                cylinder.setAttribute('geometry', 'primitive: cylinder');
-                cylinder.setAttribute('material', `color: ${config.cylinderColor}; opacity: 0.0; transparent: true`);
-                cylinder.setAttribute('scale', '0.75 1.5 0.75');
-                cylinder.setAttribute('class', 'collidable');
-                hitBox.appendChild(cylinder);
-                model.appendChild(hitBox);
+                const hitBox02 = document.createElement('a-entity');
+                hitBox02.setAttribute('id', 'hit-boxed_02');
+                hitBox02.setAttribute('hit-box', '');
+                hitBox02.setAttribute('position', '0 0.3 0');
+                const cylinder02 = document.createElement('a-entity');
+                cylinder02.setAttribute('geometry', 'primitive: cylinder');
+                cylinder02.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder02.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder02.setAttribute('class', 'collidable');
+                hitBox02.appendChild(cylinder02);
+                model02.appendChild(hitBox02);
+                sceneEl.appendChild(model02);
                 
-                sceneEl.appendChild(model);
-                window.debugLog('Model created:', config.id);
+                // モデル03を再作成
+                const model03 = document.createElement('a-entity');
+                model03.setAttribute('id', 'modelGroup_03');
+                model03.setAttribute('position', '4 0 -8');
+                model03.setAttribute('rotation', '0 -45 0');
+                model03.setAttribute('scale', '1 1 1');
+                model03.setAttribute('approach-camera', 'speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 3000');
+                model03.setAttribute('visible', 'false');
+                
+                const model03Entity = document.createElement('a-entity');
+                model03Entity.setAttribute('gltf-model', '#model_03');
+                model03Entity.setAttribute('fit-to-hitbox', '');
+                model03Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model03Entity.setAttribute('enhance-materials', '');
+                model03.appendChild(model03Entity);
+                
+                const hitBox03 = document.createElement('a-entity');
+                hitBox03.setAttribute('id', 'hit-boxed_03');
+                hitBox03.setAttribute('hit-box', '');
+                hitBox03.setAttribute('position', '0 0.3 0');
+                const cylinder03 = document.createElement('a-entity');
+                cylinder03.setAttribute('geometry', 'primitive: cylinder');
+                cylinder03.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder03.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder03.setAttribute('class', 'collidable');
+                hitBox03.appendChild(cylinder03);
+                model03.appendChild(hitBox03);
+                sceneEl.appendChild(model03);
+                
+                // モデル04を再作成
+                const model04 = document.createElement('a-entity');
+                model04.setAttribute('id', 'modelGroup_04');
+                model04.setAttribute('position', '-4 0 -8');
+                model04.setAttribute('rotation', '0 45 0');
+                model04.setAttribute('scale', '1 1 1');
+                model04.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000');
+                model04.setAttribute('visible', 'false');
+                
+                const model04Entity = document.createElement('a-entity');
+                model04Entity.setAttribute('gltf-model', '#model_04');
+                model04Entity.setAttribute('fit-to-hitbox', '');
+                model04Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model04Entity.setAttribute('enhance-materials', '');
+                model04.appendChild(model04Entity);
+                
+                const hitBox04 = document.createElement('a-entity');
+                hitBox04.setAttribute('id', 'hit-boxed_04');
+                hitBox04.setAttribute('hit-box', '');
+                hitBox04.setAttribute('position', '0 0.3 0');
+                const cylinder04 = document.createElement('a-entity');
+                cylinder04.setAttribute('geometry', 'primitive: cylinder');
+                cylinder04.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder04.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder04.setAttribute('class', 'collidable');
+                hitBox04.appendChild(cylinder04);
+                model04.appendChild(hitBox04);
+                sceneEl.appendChild(model04);
+                
+                // モデル05を再作成（Level 2専用）
+                const model05 = document.createElement('a-entity');
+                model05.setAttribute('id', 'modelGroup_05');
+                model05.setAttribute('position', '3 0 -9');
+                model05.setAttribute('rotation', '0 -30 0');
+                model05.setAttribute('scale', '1 1 1');
+                model05.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model05.setAttribute('visible', 'false');
+                
+                const model05Entity = document.createElement('a-entity');
+                model05Entity.setAttribute('gltf-model', '#model_05');
+                model05Entity.setAttribute('fit-to-hitbox', '');
+                model05Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model05Entity.setAttribute('enhance-materials', '');
+                model05.appendChild(model05Entity);
+                
+                const hitBox05 = document.createElement('a-entity');
+                hitBox05.setAttribute('id', 'hit-boxed_05');
+                hitBox05.setAttribute('hit-box', '');
+                hitBox05.setAttribute('position', '0 0.3 0');
+                const cylinder05 = document.createElement('a-entity');
+                cylinder05.setAttribute('geometry', 'primitive: cylinder');
+                cylinder05.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder05.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder05.setAttribute('class', 'collidable');
+                hitBox05.appendChild(cylinder05);
+                model05.appendChild(hitBox05);
+                sceneEl.appendChild(model05);
+                
+                // モデル06を再作成（Level 2専用）
+                const model06 = document.createElement('a-entity');
+                model06.setAttribute('id', 'modelGroup_06');
+                model06.setAttribute('position', '-3 0 -9');
+                model06.setAttribute('rotation', '0 30 0');
+                model06.setAttribute('scale', '1 1 1');
+                model06.setAttribute('approach-camera', 'speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000');
+                model06.setAttribute('visible', 'false');
+                
+                const model06Entity = document.createElement('a-entity');
+                model06Entity.setAttribute('gltf-model', '#model_06');
+                model06Entity.setAttribute('fit-to-hitbox', '');
+                model06Entity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
+                model06Entity.setAttribute('enhance-materials', '');
+                model06.appendChild(model06Entity);
+                
+                const hitBox06 = document.createElement('a-entity');
+                hitBox06.setAttribute('id', 'hit-boxed_06');
+                hitBox06.setAttribute('hit-box', '');
+                hitBox06.setAttribute('position', '0 0.3 0');
+                const cylinder06 = document.createElement('a-entity');
+                cylinder06.setAttribute('geometry', 'primitive: cylinder');
+                cylinder06.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
+                cylinder06.setAttribute('scale', '0.3 0.4 0.3');
+                cylinder06.setAttribute('class', 'collidable');
+                hitBox06.appendChild(cylinder06);
+                model06.appendChild(hitBox06);
+                sceneEl.appendChild(model06);
+                
+                window.debugLog('Initial models recreated');
             },
             
             restartGame: function() {
@@ -1193,17 +1504,46 @@
                 window.lastBallHit = false;
                 window.currentLevel = 1; // デフォルトに戻す
                 window.gameLevel = 1;
+                
+                // 🚀 メモリ解放: 全てのアクティブなボールを削除
+                if (window.activeBalls && window.activeBalls.length > 0) {
+                    window.debugLog('Cleaning up', window.activeBalls.length, 'active balls');
+                    window.activeBalls.forEach(ballData => {
+                        if (ballData && ballData.ball) {
+                            const ball = ballData.ball;
+                            // THREE.jsオブジェクトを破棄
+                            if (ball.object3D) {
+                                ball.object3D.traverse((node) => {
+                                    if (node.geometry) node.geometry.dispose();
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => {
+                                                if (mat.map) mat.map.dispose();
+                                                mat.dispose();
+                                            });
+                                        } else {
+                                            if (node.material.map) node.material.map.dispose();
+                                            node.material.dispose();
+                                        }
+                                    }
+                                });
+                            }
+                            // DOMから削除
+                            if (ball.parentNode) {
+                                ball.parentNode.removeChild(ball);
+                            }
+                        }
+                    });
+                }
                 window.activeBalls = [];
-                window.respawningModels = {}; // リスポーン中フラグをリセット
                 window.usedPatterns = {}; // パターン使用状況をリセット
-                window.bossSpawned = false; // ボス出現フラグをリセット
                 
                 // クリックブロックフラグをリセット
                 this.clickBlocked = false;
                 this.controllersUpdated = false;
                 window.debugLog('Click block flags reset');
                 
-                // 【重要】全ての未実行setTimeoutをクリア（途中からカクカク対策）
+                // 【重要】全ての未実行setTimeoutをクリア（リスタート時のカクカク対策）
                 if (window.activeTimers && window.activeTimers.length > 0) {
                     window.debugLog('Clearing', window.activeTimers.length, 'active timers');
                     window.activeTimers.forEach(timerId => {
@@ -1243,37 +1583,7 @@
                         THREE.Cache.clear();
                     }
                     
-                    // 5. シーン内の全オブジェクトのgeometry/materialを解放
-                    if (sceneEl.object3D) {
-                        sceneEl.object3D.traverse((node) => {
-                            if (node.geometry) {
-                                node.geometry.dispose();
-                            }
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        if (mat.lightMap) mat.lightMap.dispose();
-                                        if (mat.bumpMap) mat.bumpMap.dispose();
-                                        if (mat.normalMap) mat.normalMap.dispose();
-                                        if (mat.specularMap) mat.specularMap.dispose();
-                                        if (mat.envMap) mat.envMap.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    if (node.material.lightMap) node.material.lightMap.dispose();
-                                    if (node.material.bumpMap) node.material.bumpMap.dispose();
-                                    if (node.material.normalMap) node.material.normalMap.dispose();
-                                    if (node.material.specularMap) node.material.specularMap.dispose();
-                                    if (node.material.envMap) node.material.envMap.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
-                    
-                    window.debugLog('🚀 THREE.js GPU resource cleanup done (safe mode)');
+                    window.debugLog('🚀 THREE.js GPU resource cleanup done');
                 }
                 
                 // BGMを停止
@@ -1283,22 +1593,44 @@
                     bgm.currentTime = 0;
                 }
                 
-                // 全パーティクルシステムを強制停止（パフォーマンス向上）
+                // 全パーティクルシステムを強制停止（パフォーマンス向上）＆ゴミクリア
                 const particleIds = ['particle-normal', 'particle-tier1', 'particle-tier2', 'particle-tier3', 'particle-celebration'];
                 particleIds.forEach(particleId => {
                     const particle = document.getElementById(particleId);
                     if (particle) {
+                        // 🎯 パーティクルシステムの完全リセット
                         const particleSystem = particle.components['particle-system'];
                         if (particleSystem) {
                             particleSystem.stopParticles();
+                            // パーティクルグループをリセット（ゴミ残り防止）
+                            if (particleSystem.particleGroup) {
+                                particleSystem.particleGroup.emitters.forEach(emitter => {
+                                    emitter.reset(true);
+                                });
+                            }
                         }
+                        
+                        // 子要素のパーティクルシステムも処理（particle-celebration用）
+                        const childParticles = particle.querySelectorAll('[particle-system]');
+                        childParticles.forEach(child => {
+                            const childComponent = child.components['particle-system'];
+                            if (childComponent) {
+                                childComponent.stopParticles();
+                                if (childComponent.particleGroup) {
+                                    childComponent.particleGroup.emitters.forEach(emitter => {
+                                        emitter.reset(true);
+                                    });
+                                }
+                            }
+                        });
+                        
                         particle.setAttribute('visible', 'false');
-                        window.debugLog('Stopped particle system:', particleId);
+                        window.debugLog('Stopped and cleaned particle system:', particleId);
                     }
                 });
                 
                 // すべてのモデルを完全に削除（アニメーションとコンポーネントもクリア）
-                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06', 'modelGroup_boss'];
+                const allModels = ['modelGroup_01', 'modelGroup_02', 'modelGroup_03', 'modelGroup_04', 'modelGroup_05', 'modelGroup_06'];
                 allModels.forEach(modelId => {
                     // 既存のモデルを全て削除（IDで検索して複数ある場合も対応）
                     const models = sceneEl.querySelectorAll(`#${modelId}`);
@@ -1385,9 +1717,6 @@
                     }
                 }
                 
-                // 🚀 変更: モデル再作成は最後に遅延実行（GCに時間を与えるため）
-                // this.recreateInitialModels(sceneEl); は restartGame の最後で遅延呼び出し
-                
                 // UI表示を初期状態に戻す
                 const startMenu = document.getElementById('startMenu');
                 const resultMenu = document.getElementById('resultMenu');
@@ -1471,7 +1800,7 @@
                     camera.components['shoot'].modelsList = null;
                     camera.components['shoot'].modelsCache = {};
                     camera.components['shoot'].hitBoxCache = {};
-                    window.debugLog('Cleared shoot component all caches (modelsList, modelsCache, hitBoxCache)');
+                    window.debugLog('Cleared shoot component all caches');
                 }
                 
                 // 🚀 追加: 少し遅延を入れてからモデルを再作成（GCに時間を与える）
@@ -1502,26 +1831,26 @@
                 window.debugLog('Restart button clicked');
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
-                console.log('=== RESTART CHECK ===');
-                console.log('Current playCount:', window.playCount);
-                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
-                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                window.debugLog('=== RESTART CHECK ===');
+                window.debugLog('Current playCount:', window.playCount);
+                window.debugLog('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                window.debugLog('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
+                    window.debugLog('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
                     
                     // 🎯 VRゴーグル対応: VRモードを終了してからリフレッシュ
                     const sceneEl = document.querySelector('a-scene');
                     const isVRMode = sceneEl && sceneEl.is('vr-mode');
                     
-                    console.log('🥽 VR Mode:', isVRMode);
+                    window.debugLog('🥽 VR Mode:', isVRMode);
                     
                     if (isVRMode) {
-                        console.log('🚪 Exiting VR mode before reload...');
+                        window.debugLog('🚪 Exiting VR mode before reload...');
                         
                         // VRモード終了後にリロード
                         sceneEl.exitVR().then(() => {
-                            console.log('✅ VR mode exited, reloading page...');
+                            window.debugLog('✅ VR mode exited, reloading page...');
                             window.registerTimeout(() => {
                                 this.performReload();
                             }, 500);
@@ -1532,13 +1861,13 @@
                         });
                     } else {
                         // 通常モードならすぐにリロード
-                        console.log('💻 Normal mode, reloading immediately...');
+                        window.debugLog('💻 Normal mode, reloading immediately...');
                         this.performReload();
                     }
                     return;
                 }
                 
-                console.log('➡️ 通常リスタート処理を実行');
+                window.debugLog('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1548,13 +1877,13 @@
             },
             
             performReload: function() {
-                console.log('🔄 Attempting page reload...');
+                window.debugLog('🔄 Attempting page reload...');
                 
                 // 複数の方法を試行（VRゴーグルのブラウザ互換性対応）
                 try {
                     // 方法1: 標準的なリロード
                     if (window.location && window.location.reload) {
-                        console.log('Method 1: location.reload()');
+                        window.debugLog('Method 1: location.reload()');
                         window.location.reload(true); // キャッシュ無視
                         return;
                     }
@@ -1564,14 +1893,14 @@
                 
                 try {
                     // 方法2: location.href再設定
-                    console.log('Method 2: location.href reassignment');
+                    window.debugLog('Method 2: location.href reassignment');
                     window.location.href = window.location.href;
                 } catch (e) {
                     console.error('Method 2 failed:', e);
                     
                     try {
                         // 方法3: location.replace（履歴残さない）
-                        console.log('Method 3: location.replace()');
+                        window.debugLog('Method 3: location.replace()');
                         window.location.replace(window.location.href);
                     } catch (e2) {
                         console.error('All reload methods failed:', e2);
@@ -1587,40 +1916,19 @@
                 event.stopPropagation();
                 
                 // 🚀 メモリリーク対策: プレイ回数チェック
-                console.log('=== RESTART TOUCH CHECK ===');
-                console.log('Current playCount:', window.playCount);
-                console.log('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
-                console.log('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
+                window.debugLog('=== RESTART TOUCH CHECK ===');
+                window.debugLog('Current playCount:', window.playCount);
+                window.debugLog('MAX_PLAY_COUNT:', window.MAX_PLAY_COUNT);
+                window.debugLog('Check result:', window.playCount >= window.MAX_PLAY_COUNT);
                 
                 if (window.playCount >= window.MAX_PLAY_COUNT) {
-                    console.log('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
-                    
-                    // 🎯 VRゴーグル対応: restart()と同じ処理を実行
-                    const sceneEl = document.querySelector('a-scene');
-                    const isVRMode = sceneEl && sceneEl.is('vr-mode');
-                    
-                    console.log('🥽 VR Mode:', isVRMode);
-                    
-                    if (isVRMode) {
-                        console.log('🚪 Exiting VR mode before reload...');
-                        
-                        sceneEl.exitVR().then(() => {
-                            console.log('✅ VR mode exited, reloading page...');
-                            window.registerTimeout(() => {
-                                this.performReload();
-                            }, 500);
-                        }).catch((err) => {
-                            console.error('❌ VR exit error:', err);
-                            this.performReload();
-                        });
-                    } else {
-                        console.log('💻 Normal mode, reloading immediately...');
-                        this.performReload();
-                    }
+                    window.debugLog('✅ 最大プレイ回数に達しました。ページをリフレッシュします。');
+                    alert('ゲーム終了！お疲れ様でした。\nページをリフレッシュします。');
+                    location.reload();
                     return;
                 }
                 
-                console.log('➡️ 通常リスタート処理を実行');
+                window.debugLog('➡️ 通常リスタート処理を実行');
                 
                 // スタートメニューコンポーネントのrestartGame関数を呼び出す
                 const startMenu = document.getElementById('startMenu');
@@ -1654,7 +1962,7 @@
                 // VRモードの変更を監視
                 this.el.sceneEl.addEventListener('enter-vr', () => {
                     window.debugLog('Entered VR mode');
-                    // VRモードに入ったらリスナーを再設定 - 🚀 registerTimeout使用
+                    // VRモードに入ったらリスナーを再設定
                     window.registerTimeout(() => {
                         this.setupCanvasListeners();
                         this.setupControllerListeners();
@@ -1663,7 +1971,7 @@
                 
                 this.el.sceneEl.addEventListener('exit-vr', () => {
                     window.debugLog('Exited VR mode');
-                    // VRモードを出たらリスナーを再設定 - 🚀 registerTimeout使用
+                    // VRモードを出たらリスナーを再設定
                     window.registerTimeout(() => {
                         this.setupCanvasListeners();
                     }, 100);
@@ -1713,29 +2021,33 @@
                 );
                 
                 // ボールの位置を更新
-                // 🚀 最適化: setAttributeではなくobject3Dを直接操作（大幅に高速化）
+                // 🚀 最適化: setAttributeではなくobject3Dを直接操作（高速化）
                 ball.object3D.position.copy(currentPos);
                 
+                // 🚀 最適化: 最初の3フレームのみログ出力（DEBUG_MODE時のみ）
                 ballData.frameCount++;
-                if (window.DEBUG_MODE && ballData.frameCount <= 3) {
+                if (ballData.frameCount <= 3 && window.DEBUG_MODE) {
                     window.debugLog(`Frame ${ballData.frameCount}: Ball at (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)})`);
                 }
                 
-                // 🚀 改善: モデル配列を初回のみ生成（キャッシュでメモリ効率向上）
+                // 🚀 改善: 衝突判定の最適化（毎フレーム実行されるため重要）
+                // モデル配列を初回のみ生成（キャッシュ）
+                // 🚀 修正: modelsCache/hitBoxCacheを初期化（undefinedエラー防止）
+                if (!this.modelsCache) this.modelsCache = {};
+                if (!this.hitBoxCache) this.hitBoxCache = {};
                 if (!this.modelsList) {
                     this.modelsList = [
-                        { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06', radius: 0.75, height: 1.5 },
-                        { id: 'modelGroup_boss', hitBoxId: 'hit-boxed_boss', radius: 1.8, height: 3.2 } // ボスはすり抜け防止のため大きめに設定
+                        { id: 'modelGroup_01', hitBoxId: 'hit-boxed_01' },
+                        { id: 'modelGroup_02', hitBoxId: 'hit-boxed_02' },
+                        { id: 'modelGroup_03', hitBoxId: 'hit-boxed_03' },
+                        { id: 'modelGroup_04', hitBoxId: 'hit-boxed_04' },
+                        { id: 'modelGroup_05', hitBoxId: 'hit-boxed_05' },
+                        { id: 'modelGroup_06', hitBoxId: 'hit-boxed_06' }
                     ];
-                    // 🚀 最適化: モデル参照もキャッシュ用配列を準備
-                    this.modelsCache = {};
                 }
                 const models = this.modelsList;
+                
+                const hitThresholdSquared = 0.25; // 0.5 * 0.5 = 0.25（2乗で比較）
                 
                 for (let i = 0; i < models.length; i++) {
                     const modelInfo = models[i];
@@ -1748,8 +2060,10 @@
                             this.modelsCache[modelInfo.id] = modelGroup;
                         }
                     }
-                    // 🚀 最適化: object3D.visibleを直接参照
-                    if (!modelGroup || !modelGroup.parentNode || !modelGroup.object3D.visible) continue;
+                    if (!modelGroup || !modelGroup.parentNode) continue;
+                    
+                    // 🚀 最適化1: visible=falseのモデルをスキップ（object3Dを直接参照）
+                    if (!modelGroup.object3D.visible) continue;
                     
                     // 🚀 最適化: hitbox参照をキャッシュ（querySelectorを毎フレーム呼ばない）
                     let hitBox = this.hitBoxCache ? this.hitBoxCache[modelInfo.hitBoxId] : null;
@@ -1758,121 +2072,83 @@
                         if (!this.hitBoxCache) this.hitBoxCache = {};
                         if (hitBox) this.hitBoxCache[modelInfo.hitBoxId] = hitBox;
                     }
-                    if (!hitBox) {
-                        // hitboxが削除されている場合はスキップ（anime02再生中）
-                        if (window.DEBUG_MODE && ballData.frameCount <= 5) {
-                            window.debugLog(`${modelInfo.id}: hitbox removed, skipping collision`);
-                        }
-                        continue;
-                    }
+                    if (!hitBox) continue;
                     
                     // 🚀 最適化: getAttributeではなくobject3D.positionを直接参照
                     const modelPos = modelGroup.object3D.position;
                     
-                    // 🚀 最適化1: 大まかな範囲チェック（早期スキップ）
+                    // 🚀 最適化2: 大まかな範囲チェック（XZ平面のみ、高速）
                     const dx = currentPos.x - modelPos.x;
                     const dz = currentPos.z - modelPos.z;
-                    const maxRadius = modelInfo.radius + 0.5; // 余裕を持たせる
-                    if (Math.abs(dx) > maxRadius || Math.abs(dz) > maxRadius) continue;
+                    if (Math.abs(dx) > 1.0 || Math.abs(dz) > 1.0) continue; // 1m以上離れていたらスキップ
                     
-                    // ヒットボックスの中心位置（モデルグループ + ヒットボックスのオフセット）
-                    // ヒットボックスはposition='0 1.0 0'に配置されている
-                    const hitBoxCenterY = modelPos.y + 1.0;
+                    // 🚀 最適化3: 距離の2乗で比較（Math.sqrtを回避）
+                    const dy = currentPos.y - modelPos.y;
+                    const distanceSquared = dx * dx + dy * dy + dz * dz;
                     
-                    // モデルごとの円柱形状での当たり判定
-                    // Y軸方向の距離チェック（円柱の高さ範囲内か）
-                    const halfHeight = modelInfo.height / 2;
-                    const yMin = hitBoxCenterY - halfHeight; // 円柱の底面
-                    const yMax = hitBoxCenterY + halfHeight; // 円柱の天面
-                    const isInHeightRange = currentPos.y >= yMin && currentPos.y <= yMax;
-                    
-                    if (!isInHeightRange) continue; // Y範囲外なら早期スキップ
-                    
-                    // 🚀 最適化2: XZ平面での距離チェック（Math.sqrtを回避）
-                    const xzDistanceSquared = dx * dx + dz * dz;
-                    const cylinderRadiusSquared = modelInfo.radius * modelInfo.radius;
-                        
-                        // デバッグ出力（最初の数フレームのみ）
-                        if (window.DEBUG_MODE && ballData.frameCount <= 5) {
-                            const xzDistance = Math.sqrt(xzDistanceSquared); // デバッグ用のみ計算
-                            window.debugLog(`${modelInfo.id}: xzDist=${xzDistance.toFixed(2)}, yInRange=${isInHeightRange}, y=${currentPos.y.toFixed(2)} (${yMin.toFixed(2)}-${yMax.toFixed(2)}), R=${modelInfo.radius}m, H=${modelInfo.height}m`);
+                    if (distanceSquared < hitThresholdSquared) {
+                        ballData.hasHit = true;
+                        window.debugLog(`Ball hit ${modelInfo.id}!`);
+                        // 🚀 最適化: 既にキャッシュ済みのhitBoxを再利用
+                        // 🎯 投げたボールの種類を渡す
+                        if (hitBox) {
+                            hitBox.emit('ball-hit', { ballIndex: ballData.ballIndex });
                         }
                         
-                        if (xzDistanceSquared < cylinderRadiusSquared) { // 🚀 2乗で比較
-                            ballData.hasHit = true;
-                            const xzDistance = Math.sqrt(xzDistanceSquared); // ログ用のみ計算
-                            window.debugLog(`✓ Ball HIT ${modelInfo.id}! xzDist=${xzDistance.toFixed(2)}m, y=${currentPos.y.toFixed(2)}m`);
-                            // 🚀 最適化: 既にキャッシュ済みのhitBoxを再利用
-                            if (hitBox) {
-                                hitBox.emit('ball-hit');
-                            }
-                            
-                            // ボールの回転アニメーションを停止
-                            ball.removeAttribute('animation__spin');
-                            
-                            // ボールのanime01アニメーションを再生（1回のみ）
-                            ball.setAttribute('animation-mixer', 'clip: anime01; loop: once');
-                            
-                            // 🚀 最適化: ボールを即座に光らせる（model-loadedは既に発火済みなので直接処理）
-                            const mesh = ball.getObject3D('mesh');
-                            if (mesh) {
-                                mesh.traverse((node) => {
-                                    if (node.isMesh && node.material) {
-                                        // ヒット時は白く光らせる
-                                        if (window.cachedHitEmissiveColor) {
-                                            node.material.emissive = window.cachedHitEmissiveColor;
+                        // 🚀 最適化: clone()を避けてスカラー計算でバウンス位置を算出
+                        const bounceX = currentPos.x - direction.x * 2;
+                        const bounceY = currentPos.y - direction.y * 2;
+                        const bounceZ = currentPos.z - direction.z * 2;
+                        
+                        ball.setAttribute('animation__bounce', {
+                            property: 'position',
+                            to: `${bounceX} ${bounceY} ${bounceZ}`,
+                            dur: 300,
+                            easing: 'easeOutQuad'
+                        });
+                        
+                        // GLBモデルのフェードアウト（scaleを0に）
+                        ball.setAttribute('animation__fade', {
+                            property: 'scale',
+                            to: '0 0 0',
+                            dur: 300,
+                            easing: 'easeInQuad'
+                        });
+                        
+                        // ヒット時の回転を速くする
+                        ball.setAttribute('animation__spin', {
+                            property: 'rotation',
+                            to: '0 720 0',
+                            dur: 300,
+                            loop: false,
+                            easing: 'linear'
+                        });
+                        
+                        window.registerTimeout(() => {
+                            // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
+                            if (ball.object3D) {
+                                ball.object3D.traverse((node) => {
+                                    if (node.geometry) node.geometry.dispose();
+                                    if (node.material) {
+                                        if (Array.isArray(node.material)) {
+                                            node.material.forEach(mat => {
+                                                if (mat.map) mat.map.dispose();
+                                                mat.dispose();
+                                            });
+                                        } else {
+                                            if (node.material.map) node.material.map.dispose();
+                                            node.material.dispose();
                                         }
-                                        node.material.emissiveIntensity = 1.5; // さらに明るく
                                     }
                                 });
                             }
-                            
-                            // 🚀 最適化: clone()を避けてスカラー計算でバウンス位置を算出
-                            const bounceX = currentPos.x - direction.x * 2;
-                            const bounceY = currentPos.y - direction.y * 2;
-                            const bounceZ = currentPos.z - direction.z * 2;
-                            
-                            ball.setAttribute('animation__bounce', {
-                                property: 'position',
-                                to: `${bounceX} ${bounceY} ${bounceZ}`,
-                                dur: 300,
-                                easing: 'easeOutQuad'
-                            });
-                            
-                            // GLBモデルのフェードアウト（scaleを0に）
-                            ball.setAttribute('animation__fade', {
-                                property: 'scale',
-                                to: '0 0 0',
-                                dur: 300,
-                                easing: 'easeInQuad'
-                            });
-                            
-                            // 🚀 修正: setTimeout → registerTimeout（タイマー管理対象に）
-                            window.registerTimeout(() => {
-                                // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
-                                if (ball.object3D) {
-                                    ball.object3D.traverse((node) => {
-                                        if (node.geometry) node.geometry.dispose();
-                                        if (node.material) {
-                                            if (Array.isArray(node.material)) {
-                                                node.material.forEach(mat => {
-                                                    if (mat.map) mat.map.dispose();
-                                                    mat.dispose();
-                                                });
-                                            } else {
-                                                if (node.material.map) node.material.map.dispose();
-                                                node.material.dispose();
-                                            }
-                                        }
-                                    });
-                                }
-                                if (ball.parentNode) {
-                                    ball.parentNode.removeChild(ball);
-                                    window.debugLog('Ball removed after hit animation');
-                                }
-                            }, 300);
-                            
-                            return;
+                            if (ball.parentNode) {
+                                ball.parentNode.removeChild(ball);
+                                window.debugLog('Ball removed after bounce');
+                            }
+                        }, 300);
+                        
+                        return;
                     }
                 }
                 
@@ -1952,11 +2228,34 @@
             },
             
             onKeyDown: function (event) {
-                // スペースキーが押された場合
+                // スペースキーが押された場合（トリガーボタン代替）
                 if (event.code === 'Space') {
                     event.preventDefault(); // デフォルトのスペースキー動作を防ぐ
                     this.shoot(event);
                     window.debugLog('space key pressed');
+                }
+                // Gキーが押された場合（グリップボタン代替）
+                if (event.code === 'KeyG') {
+                    event.preventDefault();
+                    // 【変更】ゲーム前でもボール切り替えを許可（ゲーム終了後のみ無視）
+                    if (window.gameEnded) {
+                        window.debugLog('Game ended, ignoring G key');
+                        return;
+                    }
+                    // ボールタイプを切り替え
+                    window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
+                    const newBall = window.ballTypes[window.currentBallIndex];
+                    window.debugLog('G key pressed - Switched to ball:', newBall);
+                    
+                    // 両方のコントローラーのプレビューを更新
+                    const leftController = document.getElementById('leftController');
+                    const rightController = document.getElementById('rightController');
+                    if (leftController && leftController.components['vr-controller']) {
+                        leftController.components['vr-controller'].updatePreview();
+                    }
+                    if (rightController && rightController.components['vr-controller']) {
+                        rightController.components['vr-controller'].updatePreview();
+                    }
                 }
             },
             
@@ -2001,21 +2300,15 @@
                     event.preventDefault();
                 }
                 
-                // ゲームが開始されていない場合は撃てない
-                if (!window.gameStarted) {
-                    window.debugLog('Game not started, ignoring shoot');
-                    return;
-                }
-                
-                // ゲーム終了後は撃てない
+                // 【変更】ゲーム前でも発射を許可（ゲーム終了後のみ無視）
                 if (window.gameEnded) {
                     window.debugLog('Game ended, ignoring shoot');
                     return;
                 }
                 
-                // ボールの同時描画数を制限（2個まで）
-                if (window.activeBalls.length >= 2) {
-                    window.debugLog('Ball limit reached (2), ignoring shoot');
+                // 🚀 パフォーマンス改善: ボールの同時描画数を制限（3個まで）
+                if (window.activeBalls.length >= 3) {
+                    window.debugLog('Ball limit reached (3), ignoring shoot');
                     return;
                 }
                 
@@ -2028,23 +2321,26 @@
                 const sceneEl = this.el.sceneEl;
                 const camera = this.el;
                 
-                // ボールエンティティを作成（GLBモデルを使用）
+                // ボールエンティティを作成（選択されているGLBモデルを使用）
                 const ball = document.createElement('a-entity');
-                ball.setAttribute('gltf-model', 'cg/poke_ball_seiei.glb');
-                ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
+                const currentBallModel = window.ballTypes[window.currentBallIndex];
+                ball.setAttribute('gltf-model', currentBallModel);
+                ball.setAttribute('scale', '0.14 0.14 0.14'); // サイズ調整Ｈ30%縮小: 0.2→0.14Ｉ
                 ball.setAttribute('rotation', '0 0 0');
                 
-                // 🚀 パフォーマンス改善: キャッシュしたカラーを使用し、リスナーを{once: true}で1回だけ実行
-                ball.addEventListener('model-loaded', function onBallLoaded() {
+                window.debugLog('Creating ball with model:', currentBallModel);
+                
+                // 🚀 パフォーマンス改善: モデルが読み込まれたら適切なライティングを設定
+                // {once: true} でリスナーを自動削除（メモリリーク防止）
+                ball.addEventListener('model-loaded', function onBallModelLoaded() {
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) {
                         mesh.traverse((node) => {
                             if (node.isMesh && node.material) {
-                                // マテリアルを明るくする（キャッシュしたカラーを使用）
-                                if (window.cachedBallEmissiveColor) {
-                                    node.material.emissive = window.cachedBallEmissiveColor;
-                                }
-                                node.material.emissiveIntensity = 0.1; // 発光強度
+                                // 発光は使わず、元の色のみを使用
+                                node.material.emissive = new THREE.Color(0x000000); // 発光なし
+                                node.material.emissiveIntensity = 0;
+                                // 元のマテリアル色はそのまま保持
                                 node.material.needsUpdate = true;
                             }
                         });
@@ -2054,7 +2350,7 @@
                 // 回転アニメーションを追加（飛んでいる間に回転）
                 ball.setAttribute('animation__spin', {
                     property: 'rotation',
-                    to: '-1080 0 0',
+                    to: '720 90 0',
                     dur: 1000,
                     loop: true,
                     easing: 'linear'
@@ -2130,10 +2426,10 @@
                 sceneEl.appendChild(ball);
                 
                 window.debugLog('Ball created at:', startPos);
-
-                // 物理演算で放物線を描く
+                
+                // 物理演算で放物線を描く（餌やり体験なのでゆっくり）
                 const gravity = -4.9; // 重力加速度 (m/s^2)
-                const initialSpeed = 30; // 初速度 (m/s)  10→30へ
+                const initialSpeed = 5; // 初速度 (m/s) - 餌やり体験用にゆっくり（10→5）
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 window.debugLog('Initial velocity:', velocity);
@@ -2147,7 +2443,8 @@
                     direction: direction,
                     startTime: Date.now(),
                     hasHit: false,
-                    frameCount: 0
+                    frameCount: 0,
+                    ballIndex: window.currentBallIndex // 🎯 投げたボールの種類を記録
                 });
             }
         });
@@ -2160,23 +2457,18 @@
                 endPos: { type: 'vec3', default: {x: 0, y: 0, z: -1} },   // 終点
                 useCamera: { type: 'boolean', default: true },   // カメラを終点にするか
                 autoRespawn: { type: 'boolean', default: true }, // 自動再描画
-                waitTime: { type: 'number', default: 3000 }      // 終点到着後の待機時間（ms）
+                waitTime: { type: 'number', default: 3000 },     // 終点到着後の待機時間（ms）
+                active: { type: 'boolean', default: false }      // 移動を有効にするかどうか
             },
             
             init: function() {
-                this.isMoving = true;
+                // 初期状態ではactiveプロパティに従う
+                this.isMoving = this.data.active;
                 this.hasReachedEnd = false;
                 this.reachedTime = 0;
                 this.startPosition = null;
                 this.targetPosition = null;
                 this.isRespawning = false; // 再描画中フラグ
-                this.isPlayingAlert = false; // アラート音再生中フラグ
-                this.alertSound = null; // アラート音の参照
-                
-                // 🚀 最適化: Vector3を事前生成（tick内でのnew回避）
-                this._direction = new THREE.Vector3();
-                this._cameraPos = new THREE.Vector3();
-                this._lastAlertCheck = 0; // アラート音チェックのスロットリング用
                 
                 // 始点を設定（コンポーネント指定がなければ現在位置）
                 if (this.data.startPos.x === 0 && this.data.startPos.y === 0 && this.data.startPos.z === -5) {
@@ -2187,43 +2479,54 @@
                     this.startPosition = new THREE.Vector3(this.data.startPos.x, this.data.startPos.y, this.data.startPos.z);
                 }
                 
-                // アラート音の参照を取得
-                this.alertSound = document.getElementById('sound_alert');
+                // 🚀 最適化: Vector3を事前生成（tick内でのnew回避）
+                this._direction = new THREE.Vector3();
                 
                 window.debugLog('approach-camera initialized:', {
                     speed: this.data.speed,
                     useCamera: this.data.useCamera,
                     endPos: this.data.endPos,
-                    autoRespawn: this.data.autoRespawn
+                    autoRespawn: this.data.autoRespawn,
+                    active: this.data.active
+                });
+            },
+            
+            // setAttributeで属性が変更された時に呼ばれる
+            update: function(oldData) {
+                // 初回呼び出し（init直後）はスキップ
+                if (!oldData || Object.keys(oldData).length === 0) return;
+                
+                window.debugLog('approach-camera update called:', {
+                    newStartPos: this.data.startPos,
+                    oldStartPos: oldData.startPos,
+                    newActive: this.data.active,
+                    oldActive: oldData.active
+                });
+                
+                // startPosが変更された場合、内部状態をリセット
+                this.startPosition = new THREE.Vector3(
+                    this.data.startPos.x,
+                    this.data.startPos.y,
+                    this.data.startPos.z
+                );
+                
+                this.targetPosition = null;  // 終点を再計算させる
+                this.hasReachedEnd = false;
+                this.isRespawning = false;
+                // activeの値に従って移動状態を設定
+                this.isMoving = this.data.active;
+                
+                window.debugLog('approach-camera reset:', {
+                    startPosition: this.startPosition,
+                    isMoving: this.isMoving
                 });
             },
             
             tick: function(time, timeDelta) {
-                // ゲームが終了している場合は、移動・再描画・アラート音をすべて停止
-                if (window.gameEnded) {
-                    // アラート音を停止
-                    if (this.isPlayingAlert && this.alertSound) {
-                        this.alertSound.pause();
-                        this.alertSound.currentTime = 0;
-                        this.isPlayingAlert = false;
-                        
-                        // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
-                        if (window.currentAlertModel === this.el.id) {
-                            window.alertSoundPlaying = false;
-                            window.currentAlertModel = null;
-                        }
-                    }
-                    // 移動を停止
-                    this.isMoving = false;
-                    return;
-                }
-                
-                // ゲームが開始されていない場合は移動しない
-                if (!window.gameStarted) return;
-                
-                if (!this.isMoving) {
-                    // 終点に到着している場合、待機時間をチェック（ゲーム中のみ）
-                    if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning && !window.gameEnded) {
+                // ゲームが開始されていない、またはactiveでない場合は移動しない
+                if (!window.gameStarted || !this.isMoving) {
+                    // 終点に到着している場合、待機時間をチェック
+                    if (this.hasReachedEnd && this.data.autoRespawn && !this.isRespawning) {
                         const elapsed = Date.now() - this.reachedTime;
                         if (elapsed >= this.data.waitTime) {
                             window.debugLog('Auto-respawn triggered after', this.data.waitTime, 'ms');
@@ -2237,14 +2540,10 @@
                 // 終点を取得（初回のみ設定）
                 if (!this.targetPosition) {
                     if (this.data.useCamera) {
-                        const sceneEl = this.el.sceneEl;
-                        const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
-                        if (!camera) return;
-                        
-                        this.targetPosition = new THREE.Vector3();
-                        camera.object3D.getWorldPosition(this.targetPosition);
-                        this.targetPosition.y = 0; // 地面レベルに調整
-                        window.debugLog('Target set to camera position:', this.targetPosition);
+                        // カメラの初期位置（原点）をターゲットとして使用
+                        // カメラが移動している可能性があるため、固定の原点を使用
+                        this.targetPosition = new THREE.Vector3(0, 0, 0);
+                        window.debugLog('Target set to origin (0, 0, 0)');
                     } else {
                         // useCameraがfalseの場合はendPosを使用
                         this.targetPosition = new THREE.Vector3(this.data.endPos.x, this.data.endPos.y, this.data.endPos.z);
@@ -2255,25 +2554,19 @@
                 // モデルの現在位置を取得
                 const modelPos = this.el.object3D.position;
                 
-                // 🚀 アラート音機能を無効化（パフォーマンス改善のため）
-                // カメラとの距離チェック処理をスキップ
-                
-                // 🚀 最適化: 事前生成したVector3を再利用（毎フレームのnew回避）
+                // 🚀 最適化: 事前生成したVector3を再利用
                 const direction = this._direction;
                 direction.subVectors(this.targetPosition, modelPos);
                 direction.y = 0; // Y軸方向は移動しない（地面を滑るように）
                 
                 const distance = direction.length();
                 
-                // 終点に到着したか判定（Boss: 1.6m以内、それ以外: 0.99m以内）
-                const isBoss = this.el.id === 'modelGroup_boss';
-                const stopDistance = isBoss ? 1.6 : 0.99;
-                
-                if (distance < stopDistance) {
+                // 終点に到着したか判定（0.9m以内）
+                if (distance < 0.9) {
                     this.isMoving = false;
                     this.hasReachedEnd = true;
                     this.reachedTime = Date.now();
-                    window.debugLog(`${isBoss ? 'BOSS' : 'Model'} reached end position (${stopDistance}m). Waiting for`, this.data.waitTime, 'ms before respawn');
+                    window.debugLog('Model reached end position. Waiting for', this.data.waitTime, 'ms before respawn');
                     return;
                 }
                 
@@ -2297,12 +2590,6 @@
             
             // モデルを消去して再描画
             despawnAndRespawn: function() {
-                // ゲーム終了時は再描画しない
-                if (window.gameEnded) {
-                    window.debugLog('Game ended, skipping despawn and respawn');
-                    return;
-                }
-                
                 const modelGroup = this.el;
                 const modelId = modelGroup.id;
                 const modelEntity = modelGroup.querySelector('[gltf-model]');
@@ -2315,20 +2602,6 @@
                 
                 window.debugLog('Despawning model:', modelId);
                 
-                // アラート音を停止（グローバル変数もリセット）
-                if (this.isPlayingAlert && this.alertSound) {
-                    this.alertSound.pause();
-                    this.alertSound.currentTime = 0;
-                    this.isPlayingAlert = false;
-                    
-                    // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
-                    if (window.currentAlertModel === modelId) {
-                        window.alertSoundPlaying = false;
-                        window.currentAlertModel = null;
-                    }
-                    window.debugLog('Alert sound stopped - model despawning');
-                }
-                
                 // フェードアウト
                 modelGroup.setAttribute('animation__fadeout', {
                     property: 'scale',
@@ -2337,33 +2610,8 @@
                     easing: 'easeInQuad'
                 });
                 
-                // フェードアウト後に削除して再生成 - 🚀 registerTimeout使用
+                // フェードアウト後に削除して再生成
                 window.registerTimeout(() => {
-                    // 🚀 改善: 削除前にメモリを解放
-                    if (modelGroup.object3D) {
-                        modelGroup.object3D.traverse((node) => {
-                            if (node.geometry) {
-                                node.geometry.dispose();
-                            }
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
-                    
-                    // パターン使用状況をクリア
-                    if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
-                        delete window.usedPatterns[modelId];
-                    }
-                    
                     if (modelGroup.parentNode) {
                         modelGroup.parentNode.removeChild(modelGroup);
                     }
@@ -2378,22 +2626,6 @@
             
             // リセットメソッド（リスタート時に使用）
             reset: function() {
-                const modelId = this.el.id;
-                
-                // アラート音を停止（グローバル変数もリセット）
-                if (this.isPlayingAlert && this.alertSound) {
-                    this.alertSound.pause();
-                    this.alertSound.currentTime = 0;
-                    this.isPlayingAlert = false;
-                    
-                    // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
-                    if (window.currentAlertModel === modelId) {
-                        window.alertSoundPlaying = false;
-                        window.currentAlertModel = null;
-                    }
-                    window.debugLog('Alert sound stopped - component reset');
-                }
-                
                 this.isMoving = true;
                 this.hasReachedEnd = false;
                 this.reachedTime = 0;
@@ -2402,39 +2634,23 @@
                 window.debugLog('Approach-camera component reset');
             },
             
-            // 🚀 追加: コンポーネント削除時のクリーンアップ
+            // 🚀 最適化: リソースクリーンアップ
             remove: function() {
-                // アラートサウンドを停止
-                if (this.isPlayingAlert) {
-                    const alertSound = document.getElementById('sound_alert');
-                    if (alertSound) {
-                        alertSound.pause();
-                        alertSound.currentTime = 0;
-                    }
-                }
-                // Vector3オブジェクトの参照を解放
                 this._direction = null;
                 this.startPosition = null;
                 this.targetPosition = null;
-                window.debugLog('Approach-camera component removed and cleaned up');
             }
         });
         
         AFRAME.registerComponent('hit-box', {
-            schema: {
-                isBoss: { type: 'boolean', default: false } // ボスかどうかのフラグ
-            },
-            
             init: function () {
                 const modelGroup = this.el.parentEl; // 親エンティティ（modelGroup）を取得
                 const modelEntity = modelGroup.querySelector('[gltf-model]'); // gltf-modelを持つエンティティを取得
                 let hitFlag = false;
-                let hitCount = 0; // ヒット回数をカウント
 
                 // モデルの情報を保存
                 const modelId = modelGroup.id;
                 const gltfModelSrc = modelEntity ? modelEntity.getAttribute('gltf-model') : null;
-                const isBoss = this.data.isBoss; // ボスかどうか
                 
                 // グローバルなrespawn関数を登録（初回のみ）
                 if (!window.respawnModelGlobal) {
@@ -2442,88 +2658,16 @@
                 }
 
                 // ボールがヒットしたときのみ発火する独自イベント 'ball-hit' を監視
-                this.el.addEventListener('ball-hit', () => {
+                this.el.addEventListener('ball-hit', (event) => {
                     if(!hitFlag) {
-                        // ヒット回数を増やす
-                        hitCount++;
-                        window.debugLog(`Model hit! (${hitCount} hits) - ${isBoss ? 'BOSS' : 'Normal'} - Level ${window.currentLevel}`, modelEntity);
-                        
-                        // 必要なヒット数を判定（BOSS: 15回、Level 1: 1回、Level 2: 2回）
-                        const requiredHits = isBoss ? 15 : (window.currentLevel === 2 ? 2 : 1);
-                        
-                        // 必要なヒット数に達していない場合
-                        if (hitCount < requiredHits) {
-                            window.debugLog(`Need ${requiredHits - hitCount} more hit(s) to destroy (${isBoss ? 'BOSS' : 'Level ' + window.currentLevel})`);
-                            
-                            // ヒット音を再生
-                            const hitSound = document.getElementById('sound_hit');
-                            if (hitSound) {
-                                hitSound.currentTime = 0;
-                                hitSound.play().then(() => {
-                                    window.debugLog('Hit sound played (not destroyed yet)');
-                                }).catch(err => {
-                                    window.debugLog('Hit sound play failed:', err);
-                                });
-                            }
-                            
-                            // ダメージエフェクトを表示（段階的なフラッシュ）
-                            if (modelEntity) {
-                                let flashColor;
-                                
-                                // 🚀 パフォーマンス改善: キャッシュしたカラーを使用
-                                const colors = window.cachedFlashColors || {
-                                    blue: new THREE.Color(0x0000FF),
-                                    green: new THREE.Color(0x00FF00),
-                                    yellow: new THREE.Color(0xFFFF00),
-                                    red: new THREE.Color(0xFF0000),
-                                    black: new THREE.Color(0x000000)
-                                };
-                                
-                                // Bossの場合は段階的に色を変更
-                                if (isBoss) {
-                                    if (hitCount >= 1 && hitCount <= 3) {
-                                        flashColor = colors.blue; // 青フラッシュ（1-3回目）
-                                    } else if (hitCount >= 4 && hitCount <= 6) {
-                                        flashColor = colors.green; // 緑フラッシュ（4-6回目）
-                                    } else if (hitCount >= 7 && hitCount <= 10) {
-                                        flashColor = colors.yellow; // 黄フラッシュ（7-10回目）
-                                    } else if (hitCount >= 11 && hitCount <= 14) {
-                                        flashColor = colors.red; // 赤フラッシュ（11-14回目）
-                                    }
-                                } else {
-                                    flashColor = colors.red; // 通常モデルは赤
-                                }
-                                
-                                // フラッシュエフェクトを適用
-                                const mesh = modelEntity.getObject3D('mesh');
-                                if (mesh) {
-                                    mesh.traverse((node) => {
-                                        if (node.isMesh && node.material) {
-                                            const originalEmissive = node.material.emissive ? node.material.emissive.clone() : colors.black;
-                                            node.material.emissive = flashColor;
-                                            node.material.emissiveIntensity = 0.5;
-                                            
-                                            // 0.2秒後に元に戻す - 🚀 registerTimeout使用
-                                            window.registerTimeout(() => {
-                                                node.material.emissive = originalEmissive;
-                                                node.material.emissiveIntensity = 0;
-                                            }, 200);
-                                        }
-                                    });
-                                }
-                            }
-                            
-                            // まだ倒れないので処理を終了
-                            return;
-                        }
-                        
-                        // 必要なヒット数に達した場合、以下の処理を実行
                         hitFlag = true;
-                        window.debugLog(`${isBoss ? 'BOSS' : 'Model'} destroyed after ${hitCount} hits!`);
+                        window.debugLog('Model hit!', modelEntity);
                         
-                        // 倒したゾンビの数をインクリメント
-                        window.enemiesDefeated++;
-                        window.debugLog('Enemies Defeated:', window.enemiesDefeated);
+                        // 【変更】ゲーム中のみ、捕獲した動物の数をインクリメント
+                        if (window.gameStarted && !window.gameEnded) {
+                            window.enemiesDefeated++;
+                            window.debugLog('Animals Captured:', window.enemiesDefeated);
+                        }
                         
                         // 【重要】当たり判定オブジェクトを即座に消去（anime02再生中に再ヒットを防ぐ）
                         const hitBox = this.el;
@@ -2532,20 +2676,58 @@
                             window.debugLog('Hit box removed immediately');
                         }
                         
-                        // アラート音を停止（ヒット時・グローバル変数もリセット）
-                        const approachComponent = modelGroup.components['approach-camera'];
-                        if (approachComponent && approachComponent.isPlayingAlert && approachComponent.alertSound) {
-                            approachComponent.alertSound.pause();
-                            approachComponent.alertSound.currentTime = 0;
-                            approachComponent.isPlayingAlert = false;
-                            
-                            // このモデルがアラート音を鳴らしていた場合、グローバル状態もリセット
-                            if (window.currentAlertModel === modelId) {
-                                window.alertSoundPlaying = false;
-                                window.currentAlertModel = null;
-                            }
-                            window.debugLog('Alert sound stopped - model hit');
+                        // 🎯 ボールマッチング判定（+10/+3スコア計算 + 連続正解ボーナス）
+                        const thrownBallIndex = event.detail && event.detail.ballIndex !== undefined 
+                            ? event.detail.ballIndex 
+                            : window.currentBallIndex;
+                        const requiredBallIndex = parseInt(modelGroup.getAttribute('data-required-ball') || '0');
+                        const isCorrectBall = thrownBallIndex === requiredBallIndex;
+                        
+                        // 連続正解のカウント管理（不正解でもコンボは続く）
+                        if (isCorrectBall) {
+                            window.comboCount++; // 連続正解カウントを増やす
+                            window.lastBallHit = true;
+                        } else {
+                            // 不正解でもコンボはリセットしない
+                            window.lastBallHit = false;
                         }
+                        
+                        // 連続正解ボーナス計算（5連続以上で控えめな追加ボーナス）
+                        let comboBonus = 0;
+                        let comboBonusText = '';
+                        if (isCorrectBall && window.comboCount >= 5) {
+                            if (window.comboCount >= 15) {
+                                comboBonus = 10; // 15連続以上: +10ボーナス
+                                comboBonusText = '+10';
+                            } else if (window.comboCount >= 10) {
+                                comboBonus = 7; // 10-14連続: +7ボーナス
+                                comboBonusText = '+7';
+                            } else if (window.comboCount >= 5) {
+                                comboBonus = 5; // 5-9連続: +5ボーナス
+                                comboBonusText = '+5';
+                            }
+                        }
+                        
+                        // 【変更】ゲーム中のみ、スコア加算とコンボ管理
+                        let scoreChange = 0;
+                        if (window.gameStarted && !window.gameEnded) {
+                            const baseScore = isCorrectBall ? 10 : 3;
+                            scoreChange = baseScore + comboBonus;
+                            window.totalScore += scoreChange;
+                            
+                            // スコアが0未満にならないように制限
+                            if (window.totalScore < 0) window.totalScore = 0;
+                            
+                            // 最大コンボ数を更新
+                            if (window.comboCount > window.maxComboCount) {
+                                window.maxComboCount = window.comboCount;
+                                window.debugLog('New Max Combo:', window.maxComboCount);
+                            }
+                        }
+                        
+                        window.debugLog('Ball Match:', isCorrectBall ? `CORRECT (+${scoreChange})` : 'WRONG (+3)', 
+                                       '| Thrown:', thrownBallIndex, '| Required:', requiredBallIndex,
+                                       '| Combo:', window.comboCount, '| Total Score:', window.totalScore);
                         
                         // ヒット音を再生
                         const hitSound = document.getElementById('sound_hit');
@@ -2558,13 +2740,13 @@
                             });
                         }
                         
-                        // カメラとモデルの距離を計算してスコア化
+                        // カメラとモデルの距離を計算（スコアテキストサイズ用）
                         const sceneEl = document.querySelector('a-scene');
                         const camera = sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
                         
                         let distance = 0;
                         if (camera) {
-                            // 🚀 最適化: キャッシュされたVector3を再利用
+                            // 🚀 最適化: グローバルキャッシュを使用
                             const modelPos = window._cachedModelPos;
                             const cameraPos = window._cachedCameraPos;
                             
@@ -2576,62 +2758,12 @@
                             window.debugLog('Hit distance from camera:', distance.toFixed(2), 'm');
                         }
                         
-                        // 基本スコアを計算（距離を10倍して小数第一位まで）
-                        let baseScore = Math.round(distance * 100) / 10; // 小数第一位まで
-                        
-                        // ボスボーナス：10倍スコア
-                        if (isBoss) {
-                            baseScore *= 10;
-                            window.debugLog('🎯 BOSS BONUS: Score multiplied by 10x =', baseScore);
-                        }
-                        
-                        // コンボカウントを増やす（スコア計算前に）
-                        window.comboCount++;
-                        window.lastBallHit = true;
-                        window.debugLog('Combo Count:', window.comboCount);
-                        
-                        // コンボ倍率を計算
-                        let comboMultiplier = 1.0;
-                        let comboBonus = '';
-                        let bonusTier = 0; // ボーナスレベル（0=なし, 1=1.1x, 2=1.2x, 3=1.3x）
-                        if (window.comboCount >= 6) {
-                            comboMultiplier = 1.3;
-                            comboBonus = 'x1.3';
-                            bonusTier = 3;
-                        } else if (window.comboCount >= 4) {
-                            comboMultiplier = 1.2;
-                            comboBonus = 'x1.2';
-                            bonusTier = 2;
-                        } else if (window.comboCount >= 2) {
-                            comboMultiplier = 1.1;
-                            comboBonus = 'x1.1';
-                            bonusTier = 1;
-                        }
-                        
-                        // 最終スコアを計算
-                        const finalScore = baseScore * comboMultiplier;
-                        window.debugLog('Base Score:', baseScore, 'Multiplier:', comboMultiplier, 'Final Score:', finalScore);
-                        
-                        // 合計スコアに加算
-                        window.totalScore += finalScore;
-                        window.debugLog('Total Score:', window.totalScore.toFixed(1));
-                        
-                        // 最大コンボ数を更新
-                        if (window.comboCount > window.maxComboCount) {
-                            window.maxComboCount = window.comboCount;
-                            window.debugLog('New Max Combo:', window.maxComboCount);
-                        }
-                        
-                        // コンボ表示を更新（2連続以上の場合）
-                        // ※ showCombo関数は使用しない（スコアテキストに統合済み）
-                        // if (window.comboCount >= 2) {
-                        //     this.showCombo(window.comboCount, modelGroup);
-                        // }
-                        
-                        // リアルタイムスコア表示を更新
-                        const currentScoreText = document.getElementById('currentScore');
-                        if (currentScoreText) {
-                            currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                        // 【変更】ゲーム中のみ、リアルタイムスコア表示を更新
+                        if (window.gameStarted && !window.gameEnded) {
+                            const currentScoreText = document.getElementById('currentScore');
+                            if (currentScoreText) {
+                                currentScoreText.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);
+                            }
                         }
                         
                         // 距離に応じたスコアテキストのサイズを決定（3段階）
@@ -2643,27 +2775,35 @@
                         }
                         // 4m以内は基準サイズ（6 = 1倍）
                         
-                        // ボーナス時はさらに1.1倍
-                        if (comboBonus) {
-                            scoreWidth = scoreWidth * 1.1;
-                        }
-                        
                         window.debugLog('Distance:', distance.toFixed(2), 'm, Score width:', scoreWidth);
-
-                        // スコアテキストをモデルの上に表示
+                        
+                        // 🎯 スコアテキストをモデルの上に表示（正解は緑、不正解も青、コンボは金色）
                         const scoreText = document.createElement('a-text');
-                        const scoreDisplay = comboBonus ? `Combo ${window.comboCount} ${comboBonus}\n${finalScore.toFixed(1)}pt` : `${finalScore.toFixed(1)}pt`;
+                        let scoreDisplay;
+                        let scoreColor;
+                        if (isCorrectBall) {
+                            if (comboBonus > 0) {
+                                scoreDisplay = `+${scoreChange}pt ✓ (${window.comboCount})`;
+                                scoreColor = '#FFD700'; // コンボ時は金色
+                            } else {
+                                scoreDisplay = `+${scoreChange}pt ✓`;
+                                scoreColor = '#00FF00'; // 正解は緑
+                            }
+                        } else {
+                            scoreDisplay = `+${scoreChange}pt`;
+                            scoreColor = '#87CEEB'; // 不正解は青
+                        }
                         scoreText.setAttribute('value', scoreDisplay);
                         scoreText.setAttribute('align', 'center');
-                        scoreText.setAttribute('color', comboBonus ? '#FF6600' : '#FFD700'); // ボーナス時はオレンジ、通常は金色
+                        scoreText.setAttribute('color', scoreColor);
                         scoreText.setAttribute('width', scoreWidth); // 距離に応じたサイズ
-                        scoreText.setAttribute('font', 'mozillavr'); // コンボ時も通常時もmozillavr
+                        scoreText.setAttribute('font', 'mozillavr');
                         scoreText.setAttribute('shader', 'msdf');
                         scoreText.setAttribute('anchor', 'center');
                         
-                        // ワールド座標を取得（キャッシュ使用）
-                        modelGroup.object3D.getWorldPosition(window._cachedModelPos);
-                        const scoreModelPos = window._cachedModelPos;
+                        // 🚀 最適化: グローバルキャッシュを使用
+                        const scoreModelPos = window._cachedScorePos;
+                        modelGroup.object3D.getWorldPosition(scoreModelPos);
                         
                         // ワールド座標に配置
                         scoreText.setAttribute('position', `${scoreModelPos.x} ${scoreModelPos.y + 0.5} ${scoreModelPos.z}`);
@@ -2675,58 +2815,28 @@
                         sceneEl.appendChild(scoreText);
                         window.debugLog('Score text added to scene at world position');
                         
-                        // 🚀🚀 パフォーマンス改善: パーティクルエフェクト無効化（GPUメモリ節約）
-                        // 通常ヒット時（コンボなし）のパーティクル表示 - 無効化
-                        /*
-                        if (!comboBonus) {
+                        // 🎯 パーティクル表示（正解時のみシンプルに表示）
+                        if (isCorrectBall) {
                             const normalParticle = document.getElementById('particle-normal');
                             if (normalParticle) {
-                                modelGroup.object3D.getWorldPosition(window._cachedParticlePos);
+                                // 🚀 最適化: グローバルキャッシュを使用
                                 const normalParticlePos = window._cachedParticlePos;
+                                modelGroup.object3D.getWorldPosition(normalParticlePos);
                                 normalParticle.setAttribute('position', `${normalParticlePos.x} ${normalParticlePos.y + 0.5} ${normalParticlePos.z}`);
                                 normalParticle.setAttribute('visible', true);
+                                
+                                // 🎯 パーティクルクリーンアップ: 1秒後に確実に非表示＆リセット
                                 window.registerTimeout(() => {
                                     normalParticle.setAttribute('visible', false);
+                                    // パーティクルシステムをリスタート（ゴミ残り防止）
+                                    const particleComponent = normalParticle.components['particle-system'];
+                                    if (particleComponent && particleComponent.particleGroup) {
+                                        particleComponent.particleGroup.emitters.forEach(emitter => {
+                                            emitter.reset(true);
+                                        });
+                                    }
                                 }, 1000);
                             }
-                        }
-                        */
-                        
-                        // ボーナス時のエフェクト - パーティクル無効化、スケールアニメーションのみ維持
-                        if (comboBonus) {
-                            // 🚀🚀 パーティクルエフェクト無効化（GPUメモリ節約）
-                            /*
-                            let particleId = 'particle-tier1';
-                            if (bonusTier === 1) {
-                                particleId = 'particle-tier1';
-                            } else if (bonusTier === 2) {
-                                particleId = 'particle-tier2';
-                            } else if (bonusTier === 3) {
-                                particleId = 'particle-tier3';
-                            }
-                            const particle = document.getElementById(particleId);
-                            if (particle) {
-                                const modelPos = window._cachedParticlePos;
-                                modelGroup.object3D.getWorldPosition(modelPos);
-                                particle.setAttribute('position', `${modelPos.x} ${modelPos.y + 0.5} ${modelPos.z}`);
-                                particle.setAttribute('visible', true);
-                                window.registerTimeout(() => {
-                                    particle.setAttribute('visible', false);
-                                }, 1500);
-                            }
-                            */
-                            
-                            // スコアテキストを拡大縮小アニメーション（ボーナスレベルに応じて拡大率を変更）
-                            const scaleMultiplier = 1.1 + (bonusTier * 0.2); // 1.3, 1.5, 1.7
-                            scoreText.setAttribute('scale', `${scaleMultiplier} ${scaleMultiplier} ${scaleMultiplier}`);
-                            scoreText.setAttribute('animation__scale', {
-                                property: 'scale',
-                                to: '1 1 1',
-                                dur: 400,
-                                easing: 'easeOutElastic'
-                            });
-                            
-                            // 注意: animation__rotateは削除（face-cameraと競合するため）
                         }
                         
                         // スコアテキストをフェードアウトさせる（ワールド座標で上に移動）
@@ -2754,7 +2864,8 @@
                             }, 1500);
                         }, 100);
                         
-                        // カメラへの移動を停止（既に宣言済みのapproachComponentを使用）
+                        // カメラへの移動を停止
+                        const approachComponent = modelGroup.components['approach-camera'];
                         if (approachComponent) {
                             approachComponent.stop();
                             window.debugLog('Stopped approaching camera');
@@ -2766,19 +2877,6 @@
                             window.registerTimeout(() => {
                                 modelEntity.setAttribute('animation-mixer', 'clip: anime02; loop: repeat; timeScale: 1');
                                 window.debugLog('Playing anime02 for 1.5 seconds');
-                                
-                                // BOSSの場合は死亡音を再生
-                                if (isBoss) {
-                                    const dieSound = document.getElementById('sound_zombie_die');
-                                    if (dieSound) {
-                                        dieSound.currentTime = 0;
-                                        dieSound.play().then(() => {
-                                            window.debugLog('BOSS die sound played');
-                                        }).catch(err => {
-                                            window.debugLog('BOSS die sound play failed:', err);
-                                        });
-                                    }
-                                }
                             }, 50);
                         }
                         
@@ -2806,25 +2904,9 @@
                                             window.debugLog(`📍 Pattern freed for model ${modelId}`);
                                         }
                                         
-                                        // リスポーン中フラグを設定（重複防止）
-                                        if (!window.respawningModels) {
-                                            window.respawningModels = {};
-                                        }
-                                        
-                                        // 既にこのモデルがリスポーン待機中なら無視
-                                        if (window.respawningModels[modelId]) {
-                                            window.debugLog('⚠️ Model', modelId, 'already scheduled for respawn, skipping duplicate');
-                                            return;
-                                        }
-                                        
-                                        // リスポーン待機中としてマーク
-                                        window.respawningModels[modelId] = true;
-                                        
                                         // 4秒後に別の場所に再描画
                                         window.registerTimeout(() => {
                                             this.respawnModel(modelId, gltfModelSrc);
-                                            // リスポーン完了後、フラグをクリア
-                                            delete window.respawningModels[modelId];
                                         }, 4000);
                                     }
                                 }, 500);
@@ -2849,7 +2931,7 @@
                     let distance = 0;
                     
                     if (camera) {
-                        // 🚀 最適化: キャッシュされたVector3を再利用
+                        // 🚀 最適化: グローバルキャッシュを使用
                         const modelPos = window._cachedModelPos;
                         const cameraPos = window._cachedCameraPos;
                         modelGroup.object3D.getWorldPosition(modelPos);
@@ -2867,7 +2949,7 @@
                     // 4m以内は基準サイズ（8 = 1倍）
                     
                     window.debugLog('Combo - Distance:', distance.toFixed(2), 'm, Combo width:', comboWidth);
-
+                    
                     // コンボテキストを作成
                     const comboText = document.createElement('a-text');
                     comboText.setAttribute('value', `Combo ${comboCount}!`);
@@ -2879,9 +2961,9 @@
                     comboText.setAttribute('anchor', 'center');
                     comboText.classList.add('combo-text');
                     
-                    // ワールド座標を取得（キャッシュ使用）
-                    modelGroup.object3D.getWorldPosition(window._cachedModelPos);
-                    const comboModelPos = window._cachedModelPos;
+                    // 🚀 最適化: グローバルキャッシュを使用
+                    const comboModelPos = window._cachedScorePos;
+                    modelGroup.object3D.getWorldPosition(comboModelPos);
                     
                     // スコアの上に配置（スコアは+0.5なので+1.0）
                     comboText.setAttribute('position', `${comboModelPos.x} ${comboModelPos.y + 1.0} ${comboModelPos.z}`);
@@ -2939,126 +3021,73 @@
                 window.debugLog('Respawning model:', modelId);
                 const sceneEl = document.querySelector('a-scene');
                 
-                // 【重要】既存の同IDモデルを完全に削除（重複防止）
-                const existingModel = document.getElementById(modelId);
-                if (existingModel) {
-                    window.debugLog('⚠️ WARNING: Model', modelId, 'already exists! Removing duplicate...');
-                    
-                    // 🚀 改善: THREE.jsメモリ解放（respawnModel時）
-                    if (existingModel.object3D) {
-                        existingModel.object3D.traverse((node) => {
-                            if (node.geometry) {
-                                node.geometry.dispose();
-                            }
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => mat.dispose());
-                                } else {
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
-                    
-                    if (existingModel.parentNode) {
-                        existingModel.parentNode.removeChild(existingModel);
-                    }
-                    // 削除後、少し待機してからリスポーン
-                    window.registerTimeout(() => {
-                        this.createNewModel(modelId, gltfModelSrc, sceneEl);
-                    }, 100);
-                    return;
-                }
-                
-                // 新規作成
-                this.createNewModel(modelId, gltfModelSrc, sceneEl);
-            },
-            
-            // モデル作成処理を分離（重複防止のため）
-            createNewModel: function(modelId, gltfModelSrc, sceneEl) {
-                window.debugLog('Creating new model:', modelId);
-                
-                // ランダムパターン設定（10パターン）
+                // ランダムパターン設定（8パターン）- ヒット後2秒で再描画 🚀 30%遅く調整
                 const allMovementPatterns = [
-                    // パターン1: 左後方(-3, 0, -3)からカメラ(0, 0, 0)へ - 距離: 4.2m - Level 1対象
+                    // パターン1: 左後方からカメラへ（速い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: -3, y: 0, z: -3 },
-                        speed: 0.25,
+                        speed: 0.196,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン2: 正面奥(0, 0, -4)からカメラ(0, 0, 0)へ - 距離: 4.0m - Level 1対象
+                    // パターン2: 右後方からカメラへ（普通）- Level 1対象 - 距離: 4.0m
                     {
                         startPos: { x: 0, y: 0, z: -4 },
-                        speed: 0.25,
+                        speed: 0.168,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン3: 右後方(3, 0, -3)からカメラ(0, 0, 0)へ - 距離: 4.2m - Level 1対象
+                    // パターン3: 正面奥からカメラへ（遅い）- Level 1対象 - 距離: 3.6m
                     {
                         startPos: { x: 3, y: 0, z: -3 },
-                        speed: 0.25,
+                        speed: 0.14,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン4: 右側(4, 0, 0)からカメラ(0, 0, 0)へ - 距離: 4.0m - Level 1対象
+                    // パターン4: 正面奥からカメラへ（普通）- Level 1対象 - 距離: 5.0m
                     {
-                        startPos: { x: 4, y: 0, z: 0 },
-                        speed: 0.25,
+                        startPos: { x: 5, y: 0, z: 0 },
+                        speed: 0.168,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン5: 右前方(5, 0, 3)からカメラ(0, 0, 0)へ - 距離: 5.8m - Level 2対象
+                    // パターン5: 右奥からカメラへ（速い）- Level 2対象 - 距離: 12.2m
                     {
-                        startPos: { x: 5, y: 0, z: 3 },
-                        speed: 0.25,
+                        startPos: { x: 6, y: 0, z: 6 },
+                        speed: 0.112,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン6: 左側(-6, 0, 0)からカメラ(0, 0, 0)へ - 距離: 6.0m - Level 2対象
+                    // パターン6: 後ろからカメラへ（速い）- Level 2対象 - 距離: 6.3m
                     {
-                        startPos: { x: -6, y: 0, z: 0 },
-                        speed: 0.25,
+                        startPos: { x: -6, y: 0, z: 2 },
+                        speed: 0.112,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン7: 正面前方(0, 0, 3)からカメラ(0, 0, 0)へ - 距離: 3.0m - Level 2対象
+                    // パターン7: 左から右へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 0, y: 0, z: 4 },
-                        speed: 0.15,
+                        startPos: { x: 1, y: 0, z: 7 },
+                        speed: 0.112,
                         useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     },
-                    // パターン8: 右斜め前(3, 0, 6)からカメラ(0, 0, 0)へ - 距離: 6.7m - Level 2対象
+                    // パターン8: 右から左へ横移動（固定終点）- Level 2のみ - 距離: 12.0m
                     {
-                        startPos: { x: 3, y: 0, z: 6 },
-                        speed: 0.25,
+                        startPos: { x: -3, y: 0, z: 5 },
+                        speed: 0.112,
                         useCamera: true,
-                        waitTime: 4000
-                    },
-                    // パターン9: 左斜め前(-4, 0, 6)からカメラ(0, 0, 0)へ - 距離: 7.2m - Level 2対象
-                    {
-                        startPos: { x: -4, y: 0, z: 6 },
-                        speed: 0.25,
-                        useCamera: true,
-                        waitTime: 4000
-                    },
-                    // パターン10: 左後方(-7, 0, 2)からカメラ(0, 0, 0)へ - 距離: 7.3m - Level 2対象
-                    {
-                        startPos: { x: -7, y: 0, z: 2 },
-                        speed: 0.25,
-                        useCamera: true,
-                        waitTime: 4000
+                        waitTime: 2000
                     }
                 ];
                 
                 // レベルに応じてパターンをフィルタリング
                 const movementPatterns = window.currentLevel === 1 
                     ? allMovementPatterns.slice(0, 4)  // Level 1: パターン1-4のみ
-                    : allMovementPatterns;              // Level 2: 全パターン1-10
+                    : allMovementPatterns;              // Level 2: 全パターン1-8
                 
-                // スピード倍率（Level 2は1.2倍速）
-                const speedMultiplier = window.currentLevel === 2 ? 1.2 : 1.0;
+                // スピード倍率（Level 2は2倍速）
+                const speedMultiplier = window.currentLevel === 2 ? 2.0 : 1.0;
                 
                 window.debugLog('Level:', window.currentLevel, 'Available patterns:', movementPatterns.length, 'Speed multiplier:', speedMultiplier);
                 
@@ -3084,7 +3113,6 @@
                 }
                 
                 window.debugLog('Selected random pattern:', {
-                    patternIndex: patternIndex,
                     startPos: startPos,
                     endPos: endPos,
                     speed: speed,
@@ -3104,7 +3132,8 @@
                     startPos: startPos,
                     useCamera: useCamera,
                     autoRespawn: true,
-                    waitTime: waitTime
+                    waitTime: waitTime,
+                    active: true // 常にアクティブ
                 };
                 
                 // endPosが設定されている場合は追加
@@ -3117,9 +3146,27 @@
                 // 3Dモデルエンティティを作成
                 const newModelEntity = document.createElement('a-entity');
                 newModelEntity.setAttribute('gltf-model', gltfModelSrc);
+                newModelEntity.setAttribute('fit-to-hitbox', '');
                 newModelEntity.setAttribute('animation-mixer', 'clip: anime01; loop: repeat');
                 newModelEntity.setAttribute('enhance-materials', ''); // マテリアル品質向上
                 newModelGroup.appendChild(newModelEntity);
+                
+                // 🎯 動物の頭上にランダムなボールインジケーターを追加
+                const requiredBallIndex = Math.floor(Math.random() * 2); // 0 or 1
+                newModelGroup.setAttribute('data-required-ball', requiredBallIndex.toString());
+                
+                // 🚀 最適化: GLBの代わりにシンプルな球体を使用（メモリ節約）
+                const ballIndicator = document.createElement('a-sphere');
+                ballIndicator.setAttribute('id', `ball-indicator-${modelId}`);
+                ballIndicator.setAttribute('radius', '0.12');
+                ballIndicator.setAttribute('position', '0 1.2 0'); // 動物の頭上に配置
+                // リンゴ=赤、キャベツ=緑
+                const indicatorColor = requiredBallIndex === 0 ? '#FF0000' : '#00FF00';
+                ballIndicator.setAttribute('color', indicatorColor);
+                ballIndicator.setAttribute('material', `color: ${indicatorColor}; emissive: ${indicatorColor}; emissiveIntensity: 0.3; shader: flat`);
+                // 🚀 最適化: 回転アニメーションを削除（負荷軽減）
+                newModelGroup.appendChild(ballIndicator);
+                window.debugLog('Ball indicator added:', requiredBallIndex === 0 ? 'Apple (Red)' : 'Cabbage (Green)');
                 
                 // 当たり判定オブジェクトを作成
                 const hitBoxId = modelId.replace('modelGroup', 'hit-boxed');
@@ -3129,9 +3176,9 @@
                 newHitBox.setAttribute('position', '0 0.3 0'); // HTMLと同じ位置に修正
                 
                 const hitBoxCylinder = document.createElement('a-entity');
-                hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder');
+                // ジオメトリに直接サイズを指定（scaleではなくgeometryで）
+                hitBoxCylinder.setAttribute('geometry', 'primitive: cylinder; radius: 0.3; height: 0.8');
                 hitBoxCylinder.setAttribute('material', 'color: blue; opacity: 0.0; transparent: true');
-                hitBoxCylinder.setAttribute('scale', '0.3 0.4 0.3'); // HTMLと同じスケールに修正
                 hitBoxCylinder.setAttribute('class', 'collidable');
                 
                 newHitBox.appendChild(hitBoxCylinder);
@@ -3139,9 +3186,9 @@
                 
                 // シーンに追加
                 sceneEl.appendChild(newModelGroup);
-                window.debugLog('Model added to scene with random pattern:', randomPattern);
+                window.debugLog('Model added to scene with pattern', patternIndex, ':', randomPattern);
                 
-                // フェードインアニメーション - 🚀 registerTimeout使用
+                // フェードインアニメーション
                 window.registerTimeout(() => {
                     newModelGroup.setAttribute('animation__fadein', {
                         property: 'scale',
@@ -3167,32 +3214,6 @@
                     window.debugLog('Scene loaded, checking for VR device...');
                     window.updateDebug('Checking VR device...');
                     
-                    // 🚀 パフォーマンス改善: THREE.Color を初期化（一度だけ）
-                    if (typeof THREE !== 'undefined') {
-                        if (!window.cachedBallEmissiveColor) {
-                            window.cachedBallEmissiveColor = new THREE.Color(0x444444);
-                            window.debugLog('Cached ball emissive color initialized');
-                        }
-                        if (!window.cachedHitEmissiveColor) {
-                            window.cachedHitEmissiveColor = new THREE.Color(0xFFFFFF);
-                            window.debugLog('Cached hit emissive color initialized');
-                        }
-                        if (!window.cachedFlashColors) {
-                            window.cachedFlashColors = {
-                                blue: new THREE.Color(0x0000FF),
-                                green: new THREE.Color(0x00FF00),
-                                yellow: new THREE.Color(0xFFFF00),
-                                red: new THREE.Color(0xFF0000),
-                                black: new THREE.Color(0x000000)
-                            };
-                            window.debugLog('Cached flash colors initialized');
-                        }
-                        if (!window.cachedEnhanceMaterialColor) {
-                            window.cachedEnhanceMaterialColor = new THREE.Color(0x444444);
-                            window.debugLog('Cached enhance material color initialized');
-                        }
-                    }
-                    
                     // VRデバイスが利用可能かチェック
                     if (navigator.xr) {
                         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -3200,7 +3221,7 @@
                                 window.debugLog('VR device detected! Auto-entering VR mode...');
                                 window.updateDebug('VR device found! Entering VR...');
                                 
-                                // 少し待ってからVRモードに入る（アセット読み込み完了を待つ） - 🚀 registerTimeout使用
+                                // 少し待ってからVRモードに入る（アセット読み込み完了を待つ）
                                 window.registerTimeout(() => {
                                     sceneEl.enterVR();
                                     window.debugLog('Entered VR mode automatically');
@@ -3226,13 +3247,92 @@
         AFRAME.registerComponent("vr-controller", {
             dependencies: ["raycaster"],// Important
             init: function () {
-                // window.debugLog("vr-controller");
-                // const text = document.getElementById("my_text");
-                // text.setAttribute("value", "Controller is ready!?");
-
-                // this.el.addEventListener("gripdown", function(e) {
-                //     text.setAttribute("value", "GripDown!!");
-                // });
+                window.debugLog("vr-controller initialized for", this.el.id);
+                
+                // Aボタン、Bボタン、グリップボタンでボール切り替え（Pico4対応）
+                this.onButtonDown = this.onButtonDown.bind(this);
+                this.el.addEventListener("abuttondown", this.onButtonDown); // Aボタン
+                this.el.addEventListener("bbuttondown", this.onButtonDown); // Bボタン
+                this.el.addEventListener("gripdown", this.onButtonDown); // グリップボタン
+                
+                // コントローラー先端にボールプレビューを追加
+                this.createBallPreview();
+                
+                // ボール切り替え時にプレビューを更新
+                this.updatePreview = this.updatePreview.bind(this);
+            },
+            
+            onButtonDown: function(e) {
+                window.debugLog("A/B/Grip button pressed on", this.el.id);
+                
+                // 【変更】ゲーム前でもボール切り替えを許可（ゲーム終了後のみ無視）
+                if (window.gameEnded) {
+                    window.debugLog('Game ended, ignoring button');
+                    return;
+                }
+                
+                // ボールタイプを切り替え（0 <-> 1）
+                window.currentBallIndex = (window.currentBallIndex + 1) % window.ballTypes.length;
+                const newBall = window.ballTypes[window.currentBallIndex];
+                window.debugLog("Switched to ball:", newBall);
+                
+                // プレビューを更新
+                this.updatePreview();
+            },
+            
+            createBallPreview: function() {
+                // コントローラー先端にボールのプレビューを作成
+                this.ballPreview = document.createElement('a-entity');
+                this.ballPreview.setAttribute('id', this.el.id + '-ball-preview');
+                this.ballPreview.setAttribute('gltf-model', window.ballTypes[window.currentBallIndex]);
+                this.ballPreview.setAttribute('scale', '0.05 0.05 0.05'); // 小さめに表示
+                this.ballPreview.setAttribute('position', '0 0 -0.15'); // コントローラーの少し前
+                this.ballPreview.setAttribute('rotation', '0 0 0');
+                
+                // モデルが読み込まれたら明るくする
+                this.ballPreview.addEventListener('model-loaded', () => {
+                    const mesh = this.ballPreview.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.traverse((node) => {
+                            if (node.isMesh && node.material) {
+                                node.material.emissive = new THREE.Color(0x444444);
+                                node.material.emissiveIntensity = 0.3;
+                                node.material.needsUpdate = true;
+                            }
+                        });
+                        window.debugLog('Ball preview material enhanced');
+                    }
+                });
+                
+                // 回転アニメーション追加
+                this.ballPreview.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 360 0',
+                    dur: 3000,
+                    loop: true,
+                    easing: 'linear'
+                });
+                
+                this.el.appendChild(this.ballPreview);
+                window.debugLog('Ball preview created on', this.el.id);
+            },
+            
+            updatePreview: function() {
+                // プレビューのモデルを更新
+                if (this.ballPreview) {
+                    const newModel = window.ballTypes[window.currentBallIndex];
+                    this.ballPreview.setAttribute('gltf-model', newModel);
+                    window.debugLog('Ball preview updated to:', newModel);
+                }
+            },
+            
+            remove: function() {
+                this.el.removeEventListener("abuttondown", this.onButtonDown);
+                this.el.removeEventListener("bbuttondown", this.onButtonDown);
+                this.el.removeEventListener("gripdown", this.onButtonDown);
+                if (this.ballPreview && this.ballPreview.parentNode) {
+                    this.ballPreview.parentNode.removeChild(this.ballPreview);
+                }
             }
         });
 
@@ -3250,27 +3350,23 @@
                   exposure: 1;
                   toneMapping: ACESFilmic"
         vr-mode-ui="enabled: true"
-        auto-enter-vr>
-        <a-assets>
+        auto-enter-vr
+        gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/">
+        <a-assets timeout="4000">
             <!-- 3Dモデル -->
-            <a-asset-item id="model_01" src="{{ asset('cg/zombie_matsubara.glb') }}"></a-asset-item>
-            <a-asset-item id="model_02" src="{{ asset('cg/zombie_fujii.glb') }}"></a-asset-item>
-            <a-asset-item id="model_03" src={{ asset('cg/zombie_isobe.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/zombie_ootani.glb') }}></a-asset-item>
-            <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
-            <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
-            <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige4.glb') }}></a-asset-item>
-
+            <a-asset-item id="model_01" src={{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}></a-asset-item>
+            <a-asset-item id="model_02" src={{ asset('cg/3d_pro_pengin_morita.glb') }}></a-asset-item>
+            <a-asset-item id="model_03" src={{ asset('cg/3d_pro_namakemono_oda.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/3d_pro_burger_fujii.glb') }}></a-asset-item>
+            <a-asset-item id="model_05" src={{ asset('cg/3d_pro_cat_fukuda.glb') }}></a-asset-item>
+            <a-asset-item id="model_06" src={{ asset('cg/3d_pro_bear_tagashira.glb') }}></a-asset-item>
 
             <!-- サウンド -->
-            <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto" crossorigin="anonymous"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto" crossorigin="anonymous"></audio>
-            <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop crossorigin="anonymous"></audio>
-            <audio id="sound_zombie_appear" src={{ asset('cg/sound_zombie_appear.mp3') }} preload="auto" crossorigin="anonymous"></audio>
-            <audio id="sound_zombie_die" src={{ asset('cg/sound_zombie_die.mp3') }} preload="auto" crossorigin="anonymous"></audio>
+            <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm05.mp3') }} preload="auto"></audio>
             
             <!-- 背景画像 -->
-            <img id="sky02" src={{ asset('cg/R0010143a.JPG') }} crossorigin="anonymous" >
+            <img id="sky02" src={{ asset('cg/R0010191.JPG') }} crossorigin="anonymous" >
             <!-- <img id="sky02" src={{ asset('cg/IMG_20251012_155122_00_048.jpg') }} crossorigin="anonymous" > -->
         </a-assets>
 
@@ -3281,7 +3377,8 @@
         <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0 1 2"></a-entity>
 
         <!-- マウスカーソル（スタートメニューとゲームオブジェクトをターゲット） -->
-        <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .clickable, .collidable"></a-entity>
+        <!-- fuseを無効化し、クリックイベントを発火させるために必要な設定 -->
+        <a-entity id="mouseCursor" cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .clickable, .collidable; far: 100"></a-entity>
 
         <!-- Controller -->
         <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
@@ -3289,16 +3386,15 @@
 
         <!-- スタートメニュー（半透明） -->
         <a-entity id="startMenu" position="0 1.6 -3" start-menu>
-            <!-- 背景パネル（半透明） -->
+            <!-- 背景パネル（半透明）- クリック不可 -->
             <a-plane 
                 id="menuBackground"
-                position="0 0 0" 
+                position="0 0 -0.01" 
                 width="3" 
                 height="2" 
                 color="#000000" 
                 opacity="0.7" 
-                material="transparent: true"
-                class="clickable">
+                material="transparent: true">
             </a-plane>
             
             <!-- タイトルテキスト -->
@@ -3315,19 +3411,19 @@
             <!-- Level 1 ボタンの背景 -->
             <a-plane 
                 id="level1Button"
-                position="-1.2 -0.5 0.01" 
-                width="1.8" 
+                position="-0.8 -0.5 0.1" 
+                width="1.4" 
                 height="0.6" 
                 color="#00FF00" 
                 opacity="0.9"
-                material="transparent: true"
+                material="transparent: true; side: double"
                 class="clickable">
             </a-plane>
             
             <!-- Level 1 ボタンテキスト -->
             <a-text 
                 value="Level 1&#10;EASY" 
-                position="-1.2 -0.5 0.02" 
+                position="-0.8 -0.5 0.12" 
                 align="center" 
                 color="#000000" 
                 width="3"
@@ -3339,19 +3435,19 @@
             <!-- Level 2 ボタンの背景 -->
             <a-plane 
                 id="level2Button"
-                position="1.2 -0.5 0.01" 
-                width="1.8" 
+                position="0.8 -0.5 0.1" 
+                width="1.4" 
                 height="0.6" 
                 color="#FF6600" 
                 opacity="0.9"
-                material="transparent: true"
+                material="transparent: true; side: double"
                 class="clickable">
             </a-plane>
             
             <!-- Level 2 ボタンテキスト -->
             <a-text 
                 value="Level 2&#10;HARD" 
-                position="1.2 -0.5 0.02" 
+                position="0.8 -0.5 0.12" 
                 align="center" 
                 color="#000000" 
                 width="3"
@@ -3367,6 +3463,18 @@
                 align="center" 
                 color="#CCCCCC" 
                 width="3"
+                font="roboto"
+                shader="msdf"
+                baseline="center">
+            </a-text>
+            
+            <!-- PC操作説明 -->
+            <a-text 
+                value="PC: Space=Shoot | G=Switch Ball | Click=Shoot" 
+                position="0 -1.7 0.02" 
+                align="center" 
+                color="#88FF88" 
+                width="4"
                 font="roboto"
                 shader="msdf"
                 baseline="center">
@@ -3515,111 +3623,107 @@
             </a-text>
         </a-entity>
 
-        <!-- モデル01グループ（初期非表示） -->
-        <a-entity id="modelGroup_01" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
+        <!-- モデル01グループ（初期非表示・70%縮小） -->
+        <a-entity id="modelGroup_01" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 3000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_01" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: blue; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_01" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_01" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル02グループ（初期非表示） -->
-        <a-entity id="modelGroup_02" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
-                  approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 4000" 
+        <a-entity id="modelGroup_02" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.25; useCamera: true; autoRespawn: true; waitTime: 3000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_02" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: green; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_02" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_02" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル03グループ（初期非表示） -->
         <!-- 例: 固定終点を使う場合は useCamera: false; endPos: x y z を指定 -->
-        <a-entity id="modelGroup_03" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.35; useCamera: false; endPos: 2 0 -2; autoRespawn: true; waitTime: 4000" 
+        <a-entity id="modelGroup_03" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.35; useCamera: true; autoRespawn: true; waitTime: 3000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_03" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: red; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_03" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_03" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル04グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_04" position="-4 0 -8" rotation="0 45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
+        <a-entity id="modelGroup_04" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_04" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: yellow; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_04" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_04" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル05グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_05" position="0 0 -10" rotation="0 0 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
+        <a-entity id="modelGroup_05" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_05" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_05" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: purple; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_05" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_05" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- モデル06グループ（初期非表示・Level 2専用） -->
-        <a-entity id="modelGroup_06" position="4 0 -8" rotation="0 -45 0" scale="1 1 1" 
-                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 4000" 
+        <a-entity id="modelGroup_06" position="0 0 -50" rotation="0 0 0" scale="1 1 1" 
+                  approach-camera="speed: 0.3; useCamera: true; autoRespawn: true; waitTime: 2000; active: false" 
                   visible="false">
-            <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials></a-entity>
-            <a-entity id="hit-boxed_06" hit-box position="0 1.0 0">
-                <a-entity geometry="primitive: cylinder" material="color: cyan; opacity: 0.0; transparent: true" 
-                          scale="1.0 2.0 1.0" class="collidable"></a-entity>
+            <a-entity gltf-model="#model_06" animation-mixer="clip: anime01; loop: repeat" enhance-materials fit-to-hitbox></a-entity>
+            <a-entity id="hit-boxed_06" hit-box position="0 0.3 0">
+                <a-entity geometry="primitive: cylinder; radius: 0.3; height: 0.8" material="color: blue; opacity: 0.0; transparent: true" 
+                          class="collidable"></a-entity>
             </a-entity>
         </a-entity>
 
         <!-- 360度画像を表示 -->
         <a-sky id="aSky" src="#sky02"></a-sky>
 
-        <!-- Particle Effects - 3 Tiers -->
-        <!-- 🚀🚀 パフォーマンス改善: パーティクル数を更に半分に削減 -->
-        <!-- 通常ヒット用: コンボなし時 - White, size 0.1, 3 particles -->
+        <!-- Particle Effects - 🚀 軽量化版 -->
+        <!-- 通常ヒット用（正解時）: 緑色、5 particles -->
         <a-entity id="particle-normal" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FFFFFF; particleCount: 3; size: 0.1; maxAge: 1.0; velocityValue: 1 1 1; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
+                  particle-system="preset: default; color: #00FF00; particleCount: 5; size: 0.08; maxAge: 0.8; velocityValue: 1 1 1; velocitySpread: 1.5 1.5 1.5; accelerationValue: 0 -2 0; accelerationSpread: 0.3 0.3 0.3"></a-entity>
         
-        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, size 0.1, 5 particles -->
+        <!-- Tier 1: 1.1x (2-3 combo) - Cyan, 8 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier1" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #00FFFF; particleCount: 5; size: 0.1; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #00FFFF; particleCount: 8; size: 0.08; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 2: 1.2x (4-5 combo) - Orange, size 0.15, 8 particles -->
+        <!-- Tier 2: 1.2x (4-5 combo) - Orange, 10 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier2" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF6600; particleCount: 8; size: 0.15; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF6600; particleCount: 10; size: 0.1; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Tier 3: 1.3x (6+ combo) - Magenta, size 0.2, 10 particles -->
+        <!-- Tier 3: 1.3x (6+ combo) - Magenta, 12 particles（使用されなくなったがバックアップ用に残す） -->
         <a-entity id="particle-tier3" visible="false" position="0 3 0" 
-                  particle-system="preset: default; color: #FF00FF; particleCount: 10; size: 0.2; maxAge: 1.5; velocityValue: 2 2 2; velocitySpread: 3 3 3; accelerationValue: 0 -2 0; accelerationSpread: 1 1 1"></a-entity>
+                  particle-system="preset: default; color: #FF00FF; particleCount: 12; size: 0.12; maxAge: 1.0; velocityValue: 1.5 1.5 1.5; velocitySpread: 2 2 2; accelerationValue: 0 -2 0; accelerationSpread: 0.5 0.5 0.5"></a-entity>
         
-        <!-- Top 5 Celebration Particle - 🚀🚀 パフォーマンス改善: パーティクル数を更に半分に削減 -->
+        <!-- Top 5 Celebration Particle - 🚀 軽量化版ゴールドパーティクル -->
         <a-entity id="particle-celebration" visible="false" position="0 2 -3">
-            <!-- メインゴールドパーティクル：金色パーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 15; size: 0.3; maxAge: 3; velocityValue: 0 5 0; velocitySpread: 5 2 5; accelerationValue: 0 -1 0; accelerationSpread: 2 0 2; blending: 1"></a-entity>
+            <!-- メインゴールドパーティクル：30個に削減 -->
+            <a-entity particle-system="preset: default; color: #FFD700,#FFA500,#FFFF00; particleCount: 30; size: 0.25; maxAge: 2; velocityValue: 0 4 0; velocitySpread: 3 2 3; accelerationValue: 0 -1 0; accelerationSpread: 1 0 1; blending: 1"></a-entity>
             
-            <!-- 輝く星パーティクル：キラキラ効果 -->
-            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 10; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; accelerationSpread: 1 0 1; blending: 1" position="0 0.5 0"></a-entity>
+            <!-- 輝く星パーティクル：15個に削減 -->
+            <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 15; size: 0.12; maxAge: 1.8; velocityValue: 0 2 0; velocitySpread: 3 2 3; accelerationValue: 0 -0.5 0; accelerationSpread: 0.5 0 0.5; blending: 1" position="0 0.5 0"></a-entity>
             
-            <!-- 紙吹雪効果：カラフルな紙吹雪 -->
-            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 12; size: 0.2; maxAge: 3.5; velocityValue: 0 4 0; velocitySpread: 6 1 6; accelerationValue: 0 -2 0; accelerationSpread: 3 0 3; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
-            
-            <!-- 輪っか状に広がるパーティクル -->
-            <a-entity particle-system="preset: default; color: #FFD700,#FFFFFF; particleCount: 8; size: 0.25; maxAge: 2; velocityValue: 8 0 0; velocitySpread: 2 3 8; accelerationValue: -3 -1 0; accelerationSpread: 1 2 3; blending: 1" position="0 -0.5 0"></a-entity>
+            <!-- 紙吹雪効果：20個に削減 -->
+            <a-entity particle-system="preset: default; color: #FF1493,#00FFFF,#FF6600,#00FF00,#9400D3; particleCount: 20; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 1 4; accelerationValue: 0 -2 0; accelerationSpread: 2 0 2; blending: 1; rotation: 0 0 45" position="0 1 0"></a-entity>
         </a-entity>
         
 
-        <a-camera id="my_camera" shoot>
+        <a-camera id="my_camera" shoot wasd-controls="enabled: false" look-controls="pointerLockEnabled: false">
         </a-camera>
     </a-scene>
 </body>

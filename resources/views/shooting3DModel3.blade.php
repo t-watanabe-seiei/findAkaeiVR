@@ -3014,14 +3014,14 @@
         gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/">
         <a-assets timeout="4000">
             <!-- 3Dモデル -->
-            <a-asset-item id="model_01" src={{ asset('cg/3d_pro_whiteTiger_isobe.glb') }}></a-asset-item>
-            <a-asset-item id="model_02" src={{ asset('cg/3d_pro_pengin_morita.glb') }}></a-asset-item>
-            <a-asset-item id="model_03" src={{ asset('cg/3d_pro_namakemono_oda.glb') }}></a-asset-item>
-            <a-asset-item id="model_04" src={{ asset('cg/3d_pro_burger_fujii.glb') }}></a-asset-item>
-            <a-asset-item id="model_05" src={{ asset('cg/3d_pro_cat_fukuda.glb') }}></a-asset-item>
-            <a-asset-item id="model_06" src={{ asset('cg/3d_pro_bear_tagashira.glb') }}></a-asset-item>
-            <a-asset-item id="model_07" src={{ asset('cg/3d_pro_harinezumi_harada.glb') }}></a-asset-item>
-            <a-asset-item id="model_08" src={{ asset('cg/3d_pro_tora_iwamoto.glb') }}></a-asset-item>
+            <a-asset-item id="model_01" src={{ asset('cg/202603/3d_202603_barger.glb') }}></a-asset-item>
+            <a-asset-item id="model_02" src={{ asset('cg/202603/3d_202603_kame.glb') }}></a-asset-item>
+            <a-asset-item id="model_03" src={{ asset('cg/202603/3d_202603_panda2.glb') }}></a-asset-item>
+            <a-asset-item id="model_04" src={{ asset('cg/202603/3d_202603_araiguma.glb') }}></a-asset-item>
+            <a-asset-item id="model_05" src={{ asset('cg/202603/3d_202603_koara.glb') }}></a-asset-item>
+            <a-asset-item id="model_06" src={{ asset('cg/202603/3d_202603_humstar.glb') }}></a-asset-item>
+            <a-asset-item id="model_07" src={{ asset('cg/202603/3d_202603_kapibara.glb') }}></a-asset-item>
+            <a-asset-item id="model_08" src={{ asset('cg/202603/3d_202603_blockoly.glb') }}></a-asset-item>
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
