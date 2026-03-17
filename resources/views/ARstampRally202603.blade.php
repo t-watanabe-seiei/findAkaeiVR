@@ -2569,6 +2569,14 @@
             console.log('AR.js ready');
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
+            // カメラが正常に起動した場合、誤って表示されたヘルプモーダルを自動で閉じる
+            try {
+                const helpModal = document.getElementById('camera-help-modal');
+                if (helpModal && helpModal.style.display !== 'none') {
+                    helpModal.style.display = 'none';
+                    helpModal.setAttribute('aria-hidden', 'true');
+                }
+            } catch (e) { /* ignore */ }
         });
         
         setTimeout(function() {
@@ -3860,11 +3868,14 @@
 
                             // Helper: only show for iOS scenarios where AR.js didn't start the camera
                             function showIfNoAR(reason, delay = 2000) {
+                                // iOSでは許可ダイアログが表示されて応答されるまで時間がかかるため、
+                                // 最低10秒待ってからヘルプを表示する（早期表示によるユーザー混乱を防止）
+                                const effectiveDelay = isIOS ? Math.max(delay, 10000) : delay;
                                 setTimeout(() => {
                                     if (!window.arjsVideoReady) {
                                         showCameraHelp(guideLang, reason || 'no-start');
                                     }
-                                }, delay);
+                                }, effectiveDelay);
                             }
 
                             // Use Permissions API when available
