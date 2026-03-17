@@ -613,21 +613,12 @@
                     console.log('Model loaded for:', stampId);
                     const model = el.getObject3D('mesh');
 
-                    // Android 黒輪郭対策 (Pixel 8A など mediump GPU)
-                    // FrontSide + depthWrite/Test を確実に設定し、バックフェース描画による黒シルエットを防ぐ
+                    // フラスタムカリングを無効化（Android でメッシュが消える問題の対策）
+                    // ※ mat.side / depthWrite 等の変更は Android 白画面リグレッションの原因になるため行わない
                     if (model) {
                         model.traverse(function(node) {
                             if (node.isMesh) {
                                 node.frustumCulled = false;
-                                if (node.material) {
-                                    const mats = Array.isArray(node.material) ? node.material : [node.material];
-                                    mats.forEach(function(mat) {
-                                        mat.side = THREE.FrontSide;
-                                        mat.depthWrite = true;
-                                        mat.depthTest = true;
-                                        mat.needsUpdate = true;
-                                    });
-                                }
                             }
                         });
                     }
@@ -2069,7 +2060,7 @@
     
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;"
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
@@ -6803,41 +6794,48 @@
                 let canThrow = true;
 
                 // moto g64y 等 Android でボールが表示されない問題の対策
-                // 1) モデルロード完了時にマテリアルとフラスタムカリングを修正
-                // 2) ロード失敗時はリトライ
+                // HUD ボール (カメラ子エンティティ) の frustumCulled=false を多段構えで確実に適用
+                // ※ mat.side 等マテリアル変更は Android 白画面を引き起こすため行わない
+                function applyHoldingBallFix() {
+                    if (!ballEntity || !ballEntity.object3D) return;
+                    try {
+                        ballEntity.object3D.traverse(function(node) {
+                            node.frustumCulled = false;
+                        });
+                        console.log('holding-pokeball frustumCulled fix applied');
+                    } catch (e) { console.warn('holdingBallFix failed', e); }
+                }
                 if (ballEntity) {
-                    ballEntity.addEventListener('model-loaded', function applyHoldingBallFix() {
-                        const obj = ballEntity.getObject3D('mesh');
-                        if (obj) {
-                            obj.traverse(function(node) {
-                                if (node.isMesh) {
-                                    node.frustumCulled = false;
-                                    if (node.material) {
-                                        const mats = Array.isArray(node.material) ? node.material : [node.material];
-                                        mats.forEach(function(mat) {
-                                            mat.side = THREE.FrontSide;
-                                            mat.depthWrite = true;
-                                            mat.depthTest = true;
-                                            mat.needsUpdate = true;
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                        console.log('holding-pokeball material fix applied');
-                    });
+                    applyHoldingBallFix(); // 即時適用（すでにロード済みの場合）
+                    ballEntity.addEventListener('model-loaded', applyHoldingBallFix);
+                    ballEntity.addEventListener('object3dset', applyHoldingBallFix);
+                    // ロード失敗時のリトライ（gltf-model 属性を再設定）
                     ballEntity.addEventListener('model-error', function() {
                         console.warn('holding-pokeball gltf load failed, retrying in 2s...');
                         setTimeout(function() {
                             if (ballEntity) {
+                                var src = ballEntity.getAttribute('gltf-model');
                                 ballEntity.removeAttribute('gltf-model');
                                 setTimeout(function() {
-                                    ballEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
-                                }, 100);
+                                    if (src) ballEntity.setAttribute('gltf-model', src);
+                                }, 200);
                             }
                         }, 2000);
                     });
                 }
+                // シーンロード後にも遅延適用（レース条件の回避）
+                if (scene.hasLoaded) {
+                    setTimeout(applyHoldingBallFix, 200);
+                    setTimeout(applyHoldingBallFix, 1000);
+                } else {
+                    scene.addEventListener('loaded', function() {
+                        setTimeout(applyHoldingBallFix, 200);
+                        setTimeout(applyHoldingBallFix, 1000);
+                    });
+                }
+                // フォールバック: どの段階でも確実に実行
+                setTimeout(applyHoldingBallFix, 500);
+                setTimeout(applyHoldingBallFix, 2000);
                 
                 // 画面下部中央のエリア定義（ボールがあるあたり）
                 function isBallArea(x, y) {
