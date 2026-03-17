@@ -612,7 +612,26 @@
                 el.addEventListener('model-loaded', () => {
                     console.log('Model loaded for:', stampId);
                     const model = el.getObject3D('mesh');
-                    
+
+                    // Android 黒輪郭対策 (Pixel 8A など mediump GPU)
+                    // FrontSide + depthWrite/Test を確実に設定し、バックフェース描画による黒シルエットを防ぐ
+                    if (model) {
+                        model.traverse(function(node) {
+                            if (node.isMesh) {
+                                node.frustumCulled = false;
+                                if (node.material) {
+                                    const mats = Array.isArray(node.material) ? node.material : [node.material];
+                                    mats.forEach(function(mat) {
+                                        mat.side = THREE.FrontSide;
+                                        mat.depthWrite = true;
+                                        mat.depthTest = true;
+                                        mat.needsUpdate = true;
+                                    });
+                                }
+                            }
+                        });
+                    }
+
                     if (!model || !model.animations || model.animations.length === 0) {
                         console.log('No animations in model');
                         return;
@@ -2058,7 +2077,7 @@
             <!-- 手持ちのポケボール (HUD) -->
             <a-entity 
                 id="holding-pokeball"
-                gltf-model="{{ asset('cg/poke_ball_05.glb') }}"
+                gltf-model="{{ asset('cg/poke_ball_seiei.glb') }}"
                 position="0 -0.24 -0.5"
                 scale="0.075 0.075 0.075"
                 rotation="0 0 0"
@@ -4113,7 +4132,7 @@
                 
                 // ポケボールを生成
                 const pokeball = document.createElement('a-entity');
-                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15'); // サイズを小さく（1.5x bigger than before）
                 pokeball.setAttribute('pokeball-throwable', '');
                 
@@ -4433,7 +4452,7 @@
                 
                 // ポケボールを生成（サイズを半分に: 0.2 → 0.1）
                 const pokeball = document.createElement('a-entity');
-                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15');
                 pokeball.setAttribute('pokeball-throwable', '');
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
@@ -5621,7 +5640,7 @@
                         if (cameraEl && !previewEntity) {
                             previewEntity = document.createElement('a-entity');
                             previewEntity.setAttribute('id', 'throw-preview');
-                            previewEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                            previewEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
                             // slightly larger for preview, set uniform 0.22
                             // preview ball should be half the previous size (smaller preview)
                             previewEntity.setAttribute('scale', '0.11 0.11 0.11');
@@ -6782,6 +6801,43 @@
                 let touchStartY = 0;
                 let ballEntity = document.querySelector('#holding-pokeball');
                 let canThrow = true;
+
+                // moto g64y 等 Android でボールが表示されない問題の対策
+                // 1) モデルロード完了時にマテリアルとフラスタムカリングを修正
+                // 2) ロード失敗時はリトライ
+                if (ballEntity) {
+                    ballEntity.addEventListener('model-loaded', function applyHoldingBallFix() {
+                        const obj = ballEntity.getObject3D('mesh');
+                        if (obj) {
+                            obj.traverse(function(node) {
+                                if (node.isMesh) {
+                                    node.frustumCulled = false;
+                                    if (node.material) {
+                                        const mats = Array.isArray(node.material) ? node.material : [node.material];
+                                        mats.forEach(function(mat) {
+                                            mat.side = THREE.FrontSide;
+                                            mat.depthWrite = true;
+                                            mat.depthTest = true;
+                                            mat.needsUpdate = true;
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        console.log('holding-pokeball material fix applied');
+                    });
+                    ballEntity.addEventListener('model-error', function() {
+                        console.warn('holding-pokeball gltf load failed, retrying in 2s...');
+                        setTimeout(function() {
+                            if (ballEntity) {
+                                ballEntity.removeAttribute('gltf-model');
+                                setTimeout(function() {
+                                    ballEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
+                                }, 100);
+                            }
+                        }, 2000);
+                    });
+                }
                 
                 // 画面下部中央のエリア定義（ボールがあるあたり）
                 function isBallArea(x, y) {
@@ -6896,7 +6952,7 @@
                     ballEntity.object3D.getWorldPosition(worldPos);
                     
                     newBall.setAttribute('position', worldPos);
-                    newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
+                    newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
                     newBall.setAttribute('scale', '0.075 0.075 0.075'); // 投げるときは少し大きく
                     newBall.setAttribute('pokeball-throwable', '');
                     
