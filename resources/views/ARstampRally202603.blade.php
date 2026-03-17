@@ -974,27 +974,15 @@
         }, {passive: false});
     </script>
     <style>
-        html {
-            background-color: #000; /* カメラ起動前の白フラッシュを防止 */
-        }
         body {
             margin: 0;
             overflow: hidden;
             touch-action: pan-x pan-y; /* ピンチズームを無効化、パンは許可 */
-            background-color: transparent; /* AR.jsカメラ映像(z-index負値)を透過させる Android対策 */
             -webkit-user-select: none;
             user-select: none;
         }
         a-scene {
             touch-action: none; /* ARシーン内では全てのデフォルトタッチ動作を無効化 */
-        }
-        /* Android白カメラ修正: WebGL canvasを透明に保つ */
-        canvas {
-            background: transparent !important;
-        }
-        /* AR.jsカメラ映像が画面を正しくカバーするようにする */
-        body > video {
-            object-fit: cover !important;
         }
         .arjs-loader {
             height: 100%;
@@ -2577,20 +2565,6 @@
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
         }, 3000);
-
-        // Android白カメラ修正: Three.jsレンダラー起動時に clearColor を透明に設定する
-        (function() {
-            var sceneEl = document.querySelector('a-scene');
-            if (sceneEl) {
-                sceneEl.addEventListener('renderstart', function() {
-                    try {
-                        if (this.renderer) {
-                            this.renderer.setClearColor(new THREE.Color(0, 0, 0), 0);
-                        }
-                    } catch (e) { /* ignore */ }
-                });
-            }
-        })();
         
         // スタンプラリー機能
         const STAMPS = {
@@ -6813,8 +6787,8 @@
                 function isBallArea(x, y) {
                     const w = window.innerWidth;
                     const h = window.innerHeight;
-                    // 下部30%、横幅40% (中央)
-                    return y > h * 0.7 && x > w * 0.3 && x < w * 0.7;
+                    // 下部40%、横幅60% (中央) - 以前の0.7/0.3/0.7より広げてAndroid対応
+                    return y > h * 0.6 && x > w * 0.2 && x < w * 0.8;
                 }
                 
                 // タッチ開始
@@ -6871,6 +6845,15 @@
                     canThrow = false;
                 });
                 
+                // タッチキャンセル（isHoldingBall のスタック防止）
+                document.addEventListener('touchcancel', (e) => {
+                    if (!isHoldingBall) return;
+                    isHoldingBall = false;
+                    if (ballEntity) {
+                        ballEntity.setAttribute('position', '0 -0.24 -0.5');
+                    }
+                });
+
                 // PCでのデバッグ用（マウス操作）
                 document.addEventListener('mousedown', (e) => {
                     if (!canThrow || !ballEntity) return;
@@ -6971,15 +6954,23 @@
                     });
                     
                     // 削除イベント監視（寿命 or ヒットで消滅時）
-                    newBall.addEventListener('pokeball-gone', () => {
-                        console.log('Pokeball gone, reloading...');
+                    let ballRestored = false;
+                    function restoreBall() {
+                        if (ballRestored) return;
+                        ballRestored = true;
                         setTimeout(() => {
                             if (ballEntity) {
                                 ballEntity.setAttribute('visible', 'true');
                                 canThrow = true;
                             }
                         }, 500); // 0.5秒後に再表示
+                    }
+                    newBall.addEventListener('pokeball-gone', () => {
+                        console.log('Pokeball gone, reloading...');
+                        restoreBall();
                     });
+                    // フォールバック: pokeball-goneが来なかった場合（loadedイベント未発火など）に強制リセット
+                    setTimeout(() => restoreBall(), 12000); // maxLifetime(8s) + margin
                 }
             })();
             // ========== 新しいポケボール操作ロジック ここまで ==========
