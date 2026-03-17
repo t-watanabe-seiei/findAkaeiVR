@@ -82,6 +82,106 @@
             }, 500);
         }
 
+        // iPhone 6s 等の古い端末で AR.js の getUserMedia() が発火しない場合のフォールバック
+        // ユーザージェスチャー（ガイドモーダル閉じ）から呼ばれ、"Allow" ダイアログを確実に表示する
+        window.ensureCameraAccess = function() {
+            // 既にカメラが動作中なら何もしない（他の端末への影響なし）
+            var v = document.querySelector('video');
+            if (v && v.srcObject && (v.readyState >= 2 || !v.paused)) {
+                window.arjsVideoReady = true;
+                return;
+            }
+            // readyState が 0 でも srcObject が存在し currentTime > 0 なら動作中
+            if (v && v.srcObject && v.currentTime > 0) {
+                window.arjsVideoReady = true;
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn('ensureCameraAccess: getUserMedia not available');
+                return;
+            }
+
+            // 重複呼び出し防止
+            if (window._ensureCameraInProgress) return;
+            window._ensureCameraInProgress = true;
+
+            console.log('ensureCameraAccess: AR.js がカメラを起動していないため手動で要求します...');
+
+            // 古い端末に配慮して徐々に制約を緩める
+            var constraintSets = [
+                { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
+                { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } },
+                { video: { facingMode: 'environment' } },
+                { video: true }
+            ];
+
+            function attempt(idx) {
+                if (idx >= constraintSets.length) {
+                    console.error('ensureCameraAccess: 全ての制約セットが失敗');
+                    window._ensureCameraInProgress = false;
+                    try { var el = document.getElementById('camera-error'); if (el) el.style.display = 'flex'; } catch(e){}
+                    return;
+                }
+
+                navigator.mediaDevices.getUserMedia(constraintSets[idx])
+                    .then(function(stream) {
+                        console.log('ensureCameraAccess: ストリーム取得成功 (制約セット ' + idx + ')');
+
+                        var videoEl = document.querySelector('video');
+                        if (videoEl) {
+                            // AR.js が作成した video 要素にストリームを設定
+                            if (!videoEl.srcObject || videoEl.paused) {
+                                videoEl.srcObject = stream;
+                                if (!videoEl.hasAttribute('playsinline')) videoEl.setAttribute('playsinline', '');
+                                if (!videoEl.hasAttribute('autoplay')) videoEl.setAttribute('autoplay', '');
+                                videoEl.muted = true;
+                                videoEl.play()
+                                    .then(function() {
+                                        console.log('ensureCameraAccess: カメラが起動しました');
+                                        window.arjsVideoReady = true;
+                                        window._ensureCameraInProgress = false;
+                                        try { var e1 = document.getElementById('camera-error'); if (e1) e1.style.display = 'none'; } catch(e){}
+                                        try { var e2 = document.querySelector('.arjs-loader'); if (e2) e2.style.display = 'none'; } catch(e){}
+                                        try { var e3 = document.getElementById('camera-help-modal'); if (e3) { e3.style.display = 'none'; e3.setAttribute('aria-hidden','true'); } } catch(e){}
+                                    })
+                                    .catch(function(e) {
+                                        console.warn('ensureCameraAccess: play() 失敗', e);
+                                        window._ensureCameraInProgress = false;
+                                    });
+                            } else {
+                                // 既にストリームがある場合は取得したストリームを停止
+                                stream.getTracks().forEach(function(t) { t.stop(); });
+                                window._ensureCameraInProgress = false;
+                            }
+                        } else {
+                            // video 要素が存在しない場合（AR.js が初期化に失敗）
+                            // 権限を取得してリロード（AR.js が再初期化時に使えるようにする）
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            var key = 'ar-camera-reload-202603';
+                            var count = parseInt(sessionStorage.getItem(key) || '0', 10);
+                            if (count < 2) {
+                                sessionStorage.setItem(key, String(count + 1));
+                                console.log('ensureCameraAccess: 権限取得済み。リロードします (' + (count+1) + '回目)...');
+                                window._ensureCameraInProgress = false;
+                                setTimeout(function() { location.reload(); }, 500);
+                            } else {
+                                sessionStorage.removeItem(key);
+                                console.warn('ensureCameraAccess: ' + count + '回リロードしても起動せず');
+                                window._ensureCameraInProgress = false;
+                                try { var el = document.getElementById('camera-error'); if (el) el.style.display = 'flex'; } catch(e){}
+                            }
+                        }
+                    })
+                    .catch(function(err) {
+                        console.warn('ensureCameraAccess: 制約セット ' + idx + ' 失敗:', err.name, err.message);
+                        attempt(idx + 1);
+                    });
+            }
+
+            attempt(0);
+        };
+
         // ボール（entity）を即時非表示にしてメモリを開放し、DOMから削除するユーティリティ
         function destroyAndFreeEntity(el) {
             if (!el) return;
@@ -2385,6 +2485,16 @@
                 setTimeout(function() {
                     monitorCameraStartup(7000); // 7秒待ってもカメラが起動しなければUI表示
                 }, 600);
+
+                // AR.js がカメラを起動できなかった場合のフォールバック（iPhone 6s 等の古い端末対策）
+                // ガイドモーダルが閉じられていなくても、十分な時間が経過したら自動で試みる
+                setTimeout(function() {
+                    if (!window.arjsVideoReady && !window.guideModalOpen) {
+                        if (typeof window.ensureCameraAccess === 'function') {
+                            window.ensureCameraAccess();
+                        }
+                    }
+                }, 12000);
             } catch (e) { console.warn('monitorCameraStartup failed to schedule', e); }
 
             // 再試行ボタン
@@ -5867,6 +5977,20 @@
             // ガイドモーダルを閉じたときに保留中のカメラチェックを実行する共通処理
             function onGuideModalClosed() {
                 window.guideModalOpen = false;
+
+                // iPhone 6s 等の古い端末向け：ガイドモーダル閉じ（ユーザージェスチャー）時に
+                // カメラが未起動なら手動で getUserMedia を呼んで "Allow" ダイアログを表示させる
+                setTimeout(function() {
+                    if (!window.arjsVideoReady) {
+                        var v = document.querySelector('video');
+                        if (!(v && v.srcObject && (v.readyState >= 2 || !v.paused))) {
+                            if (typeof window.ensureCameraAccess === 'function') {
+                                window.ensureCameraAccess();
+                            }
+                        }
+                    }
+                }, 500);
+
                 // 保留中のカメラヘルプモーダルを再チェック
                 if (window._pendingCameraHelpArgs) {
                     var args = window._pendingCameraHelpArgs;
