@@ -974,15 +974,27 @@
         }, {passive: false});
     </script>
     <style>
+        html {
+            background-color: #000; /* カメラ起動前の白フラッシュを防止 */
+        }
         body {
             margin: 0;
             overflow: hidden;
             touch-action: pan-x pan-y; /* ピンチズームを無効化、パンは許可 */
+            background-color: transparent; /* AR.jsカメラ映像(z-index負値)を透過させる Android対策 */
             -webkit-user-select: none;
             user-select: none;
         }
         a-scene {
             touch-action: none; /* ARシーン内では全てのデフォルトタッチ動作を無効化 */
+        }
+        /* Android白カメラ修正: WebGL canvasを透明に保つ */
+        canvas {
+            background: transparent !important;
+        }
+        /* AR.jsカメラ映像が画面を正しくカバーするようにする */
+        body > video {
+            object-fit: cover !important;
         }
         .arjs-loader {
             height: 100%;
@@ -2328,7 +2340,7 @@
     </a-scene>
 
     <!-- カメラ起動失敗の案内（古い端末や権限エラー向けの再試行UI） -->
-    <div id="camera-error" style="display:none; position:fixed; left:0; right:0; top:0; bottom:0; background: rgba(0,0,0,0.75); color:#fff; z-index:9999; align-items:center; justify-content:center; display:flex; flex-direction:column;">
+    <div id="camera-error" style="display:none; position:fixed; left:0; right:0; top:0; bottom:0; background: rgba(0,0,0,0.75); color:#fff; z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
         <div style="max-width:420px; text-align:center; padding:20px;">
             <h2 style="margin-top:0;">カメラが起動できません</h2>
             <p>カメラの許可が拒否されているか、端末がカメラを初期化できませんでした。カメラの許可を確認し、もう一度お試しください。<br>それでもダメなら別のブラウザや端末でお試しください。</p>
@@ -2565,6 +2577,20 @@
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
         }, 3000);
+
+        // Android白カメラ修正: Three.jsレンダラー起動時に clearColor を透明に設定する
+        (function() {
+            var sceneEl = document.querySelector('a-scene');
+            if (sceneEl) {
+                sceneEl.addEventListener('renderstart', function() {
+                    try {
+                        if (this.renderer) {
+                            this.renderer.setClearColor(new THREE.Color(0, 0, 0), 0);
+                        }
+                    } catch (e) { /* ignore */ }
+                });
+            }
+        })();
         
         // スタンプラリー機能
         const STAMPS = {

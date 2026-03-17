@@ -1876,3 +1876,46 @@ AR.js は `a-scene embedded` モードで `sourceWidth: 640; sourceHeight: 480` 
 ## 対象ファイル
 - `resources/views/ARstampRally202603.blade.php`（CSS 部分の `#guide-modal` スタイルのみ）
 4. テストフェーズ - ブラウザでの動作確認
+
+---
+
+# 要件定義 #15: Android白カメラ問題の修正
+
+## 作成日時
+2026年3月17日
+
+## 現状把握（ファイル全体再分析の結果）
+
+`ARstampRally202603.blade.php` を最初の1行から最後の6995行まで通読し、以下の問題を特定した。
+
+### 新症状
+- Android (moto g64y) でモーダルを閉じるとカメラが真っ白で、ボールだけ表示される
+- iPhoneでは正常動作
+
+## 根本原因
+
+### 原因A（主因）: body/htmlの背景が白
+- `body` に background-color が未指定（ブラウザデフォルト白）
+- AR.js はカメラ映像 `<video>` を z-index 負値（`-10`など）で挿入する
+- Android Chrome では通常のCSS z-index描画をするため、白い body背景にカメラ映像が隠れる
+- iPhoneは OS レベルでカメラをコンポジットするため影響なし
+
+### 原因B（副因）: canvas背景が透明でない可能性
+- `canvas { background: transparent }` の CSS がない
+- Android Adreno GPU 環境でA-Frame WebGL canvasが不透明白になりうる
+
+### 原因C（バグ）: camera-error div が常時表示
+- 行2332: `style="display:none; ...; display:flex;"` と同一inline styleに重複宣言
+- CSS ルール「後勝ち」により `display:flex` が優先し、ページ読み込み時から常に dark overlay が表示される
+- 本来は camera 起動失敗時のみ表示すべきもの
+
+### 原因D（軽微）: renderstart後のclearColor未設定
+- Three.jsのrenderer初期化時に clearColor(0,0,0,0) を明示するコードがない
+
+## 成功基準
+- Android Chrome (moto g64y) でカメラ映像が正常表示される
+- iPhone等、既存動作端末に影響がない
+- ボールと3Dモデルは引き続き表示される
+
+## 対象ファイル
+- `resources/views/ARstampRally202603.blade.php`
