@@ -48,6 +48,16 @@
                     clearInterval(interval);
                     console.log('Camera started OK');
                     const el = document.getElementById('camera-error'); if (el) el.style.display = 'none';
+                    // arjs-video-loaded が発火しない端末向けフォールバック:
+                    // カメラ正常動作を直接検出してフラグを立て、誤表示中のヘルプモーダルを閉じる
+                    window.arjsVideoReady = true;
+                    try {
+                        const helpModal = document.getElementById('camera-help-modal');
+                        if (helpModal && helpModal.style.display !== 'none') {
+                            helpModal.style.display = 'none';
+                            helpModal.setAttribute('aria-hidden', 'true');
+                        }
+                    } catch (e) { /* ignore */ }
                     return;
                 }
                 if (Date.now() - start > timeoutMs) {
@@ -3873,6 +3883,13 @@
                                 const effectiveDelay = isIOS ? Math.max(delay, 10000) : delay;
                                 setTimeout(() => {
                                     if (!window.arjsVideoReady) {
+                                        // arjs-video-loaded が未発火でも video 要素が動作中なら問題なし
+                                        // （iOS 15 など arjs-video-loaded を発火しない端末向けフォールバック）
+                                        const v = document.querySelector('video');
+                                        if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
+                                            window.arjsVideoReady = true;
+                                            return; // カメラは正常動作中 → ヘルプモーダルを出さない
+                                        }
                                         showCameraHelp(guideLang, reason || 'no-start');
                                     }
                                 }, effectiveDelay);
