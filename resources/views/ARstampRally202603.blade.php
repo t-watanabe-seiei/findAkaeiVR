@@ -10,6 +10,11 @@
         window.activeBalls = 0;
         window.allHitboxes = []; // グローバルでヒットボックスを管理
 
+        // ガイドモーダル表示中フラグ（カメラヘルプ・camera-errorの早期表示を防止）
+        window.guideModalOpen = true;
+        window._pendingCameraHelpArgs = null;
+        window._pendingCameraError = false;
+
         // グローバルエラーハンドラ（解析用／実行継続の助け）
         window.addEventListener('error', function(e) {
             try { console.error('Global error:', e && e.message ? e.message : e); } catch (err) { /* ignore */ }
@@ -63,6 +68,11 @@
                 if (Date.now() - start > timeoutMs) {
                     clearInterval(interval);
                     console.warn('Camera did not start within', timeoutMs, 'ms');
+                    // ガイドモーダル表示中はcamera-errorを保留
+                    if (window.guideModalOpen) {
+                        window._pendingCameraError = true;
+                        return;
+                    }
                     const el = document.getElementById('camera-error'); if (el) el.style.display = 'flex';
 
                     // もし古い端末であれば低解像度再試行ボタンを自動で表示（UIにボタンがあるのでこちらは任意）
@@ -3814,6 +3824,11 @@
                         const cameraHelpClose = document.getElementById('camera-help-close');
 
                         function showCameraHelp(langKey, reason) {
+                            // ガイドモーダル表示中はヘルプモーダルを表示しない（保留）
+                            if (window.guideModalOpen) {
+                                window._pendingCameraHelpArgs = [langKey, reason];
+                                return;
+                            }
                             // pick content by language
                             const title = document.getElementById('camera-help-title');
                             const body = document.getElementById('camera-help-body');
@@ -5849,6 +5864,38 @@
                 });
             }
 
+            // ガイドモーダルを閉じたときに保留中のカメラチェックを実行する共通処理
+            function onGuideModalClosed() {
+                window.guideModalOpen = false;
+                // 保留中のカメラヘルプモーダルを再チェック
+                if (window._pendingCameraHelpArgs) {
+                    var args = window._pendingCameraHelpArgs;
+                    window._pendingCameraHelpArgs = null;
+                    var v = document.querySelector('video');
+                    if (!(v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused))) {
+                        setTimeout(function() {
+                            if (!window.arjsVideoReady) {
+                                var v2 = document.querySelector('video');
+                                if (!(v2 && (v2.readyState >= 2 || v2.currentTime > 0 || !v2.paused))) {
+                                    showCameraHelp(args[0], args[1]);
+                                }
+                            }
+                        }, 5000);
+                    }
+                }
+                // 保留中のcamera-errorを再チェック
+                if (window._pendingCameraError) {
+                    window._pendingCameraError = false;
+                    setTimeout(function() {
+                        var v = document.querySelector('video');
+                        if (!(v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused))) {
+                            var el = document.getElementById('camera-error');
+                            if (el) el.style.display = 'flex';
+                        }
+                    }, 5000);
+                }
+            }
+
             const closeGuideButton = document.getElementById('close-guide');
             if (closeGuideButton) {
                 closeGuideButton.addEventListener('click', function(e) {
@@ -5857,6 +5904,7 @@
                     const modal = document.getElementById('guide-modal');
                     modal.style.display = 'none';
                     modal.setAttribute('aria-hidden', 'true');
+                    onGuideModalClosed();
                     
                     // カメラを再開（フリーズ防止）
                     setTimeout(() => {
@@ -5874,6 +5922,7 @@
                     const modal = document.getElementById('guide-modal');
                     modal.style.display = 'none';
                     modal.setAttribute('aria-hidden', 'true');
+                    onGuideModalClosed();
                     
                     // カメラを再開（フリーズ防止）
                     setTimeout(() => {
@@ -5889,6 +5938,7 @@
                     if (e.target === guideModal) {
                         guideModal.style.display = 'none';
                         guideModal.setAttribute('aria-hidden', 'true');
+                        onGuideModalClosed();
                         
                         // カメラを再開（フリーズ防止）
                         setTimeout(() => {

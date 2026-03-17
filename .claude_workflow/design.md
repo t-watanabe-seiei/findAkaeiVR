@@ -5536,3 +5536,87 @@ Android では暗いオーバーレイ部分のタッチイベントが `#guide-
 - 「閉じる(close)」ボタンと「×」ボタンが白いコンテンツ枠内に表示される
 - モーダルが右側にスライドしない
 - iPhone 等、既存の正常動作環境に影響なし
+
+---
+
+# 設計10: ARstampRally202603 - カメラヘルプモーダルの早期表示修正
+
+## アプローチ
+ガイドモーダルが表示中のとき、カメラヘルプモーダルとcamera-errorの表示を**保留**し、ガイドモーダルを閉じた時点で再チェックする。
+
+## グローバルフラグ
+- `window.guideModalOpen` (boolean) — ガイドモーダルの表示状態追跡。初期値 `true`
+- `window._pendingCameraHelpArgs` (array|null) — 保留中のshowCameraHelp引数 `[langKey, reason]`
+- `window._pendingCameraError` (boolean) — 保留中のcamera-error表示フラグ
+
+## 変更箇所
+
+### 変更1: グローバルフラグ追加（L10付近、window.activeBalls の近く）
+```js
+window.guideModalOpen = true;
+window._pendingCameraHelpArgs = null;
+window._pendingCameraError = false;
+```
+
+### 変更2: monitorCameraStartup() のtimeout分岐（L64付近）
+camera-error表示前にガイドモーダル表示中チェックを追加。表示中なら保留。
+```js
+if (window.guideModalOpen) {
+    window._pendingCameraError = true;
+    return; // ガイドモーダルが閉じてから表示
+}
+```
+
+### 変更3: showCameraHelp() 関数（L3816付近）
+ガイドモーダル表示中なら表示を保留して return。
+```js
+// ガイドモーダル表示中はヘルプモーダルを表示しない（保留）
+if (window.guideModalOpen) {
+    window._pendingCameraHelpArgs = [langKey, reason];
+    return;
+}
+```
+
+### 変更4: ガイドモーダル閉じハンドラ3箇所（L5854, L5871, L5886付近）
+閉じた後にフラグ更新＋保留チェック。共通ヘルパー関数で実装。
+```js
+window.guideModalOpen = false;
+// 保留中のカメラチェックを実行
+if (window._pendingCameraHelpArgs) {
+    var args = window._pendingCameraHelpArgs;
+    window._pendingCameraHelpArgs = null;
+    // カメラが既に動作中なら表示しない
+    var v = document.querySelector('video');
+    if (!(v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused))) {
+        // 少し待ってから再チェック（ガイドモーダル閉じ直後のカメラ起動を待つ）
+        setTimeout(function() {
+            if (!window.arjsVideoReady) {
+                var v2 = document.querySelector('video');
+                if (!(v2 && (v2.readyState >= 2 || v2.currentTime > 0 || !v2.paused))) {
+                    showCameraHelp(args[0], args[1]);
+                }
+            }
+        }, 5000);
+    }
+}
+if (window._pendingCameraError) {
+    window._pendingCameraError = false;
+    setTimeout(function() {
+        var v = document.querySelector('video');
+        if (!(v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused))) {
+            var el = document.getElementById('camera-error');
+            if (el) el.style.display = 'flex';
+        }
+    }, 5000);
+}
+```
+
+## 影響範囲
+- `ARstampRally202603.blade.php` のJavaScript部分のみ
+- mat.side / depthWrite 等のマテリアル変更なし → Android白画面リスク無し
+
+## 成功基準
+- iPhone 6s: ガイドモーダル表示中にカメラヘルプモーダルが出ない
+- iPhone 6s: ガイドモーダルを閉じた後、カメラが未起動なら5秒後にヘルプ表示
+- iPhone 6s: ガイドモーダルを閉じた後、カメラが起動済みならヘルプは出ない
+- Android: 既存動作に影響なし

@@ -1919,3 +1919,24 @@ AR.js は `a-scene embedded` モードで `sourceWidth: 640; sourceHeight: 480` 
 
 ## 対象ファイル
 - `resources/views/ARstampRally202603.blade.php`
+
+---
+
+# 要件定義10: ARstampRally202603 - カメラヘルプモーダルの早期表示修正（iPhone 6s等）
+
+## 目的
+ガイドモーダル表示中にカメラヘルプモーダルが覆い被さる問題を修正する。
+
+## 問題
+- **症状**: アプリ起動 → ガイドモーダル表示 → 10秒後に「カメラアクセスがブロックされている可能性があります」モーダルが表示
+- **根本原因**: `checkCameraPermissions()` がDOMContentLoaded時に即時実行。ガイドモーダル（z-index: 10002）が開いている最中にタイマー発火し、カメラヘルプモーダル（z-index: 10010）が被さる
+- **同様に**: `monitorCameraStartup()` の camera-error (z-index: 9999) もガイドモーダル表示中に発火しうる
+
+## 成功基準
+1. ガイドモーダルが開いている間はカメラヘルプモーダル・camera-errorを表示しない
+2. ガイドモーダルを閉じた後に適切な待機時間を経てからカメラ状態を確認する
+3. 既存の動作している端末を壊さない
+
+## 制約
+- mat.side / depthWrite 等のマテリアル変更はAndroid白画面の原因なので行わない
+- 変更は最小限に抑える

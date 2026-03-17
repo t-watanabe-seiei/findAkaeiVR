@@ -4549,3 +4549,35 @@ admin/dashboard202603の管理画面で、景品交換セクションのペー�
 - `.guide-close-row` が `#guide-content` の内側にあることを確認
 - `#guide-modal` CSS に `overflow-x: hidden` が含まれていることを確認
 **ステータス**: 完了 ✅
+
+---
+
+# タスク化15: カメラヘルプモーダルの早期表示修正（iPhone 6s等）
+
+## Task 15-1: グローバルフラグ追加
+**優先度**: 高（他タスクの前提）
+**作業**: `window.activeBalls` の近く（L11付近）に3つのグローバル変数を追加
+- `window.guideModalOpen = true;`
+- `window._pendingCameraHelpArgs = null;`
+- `window._pendingCameraError = false;`
+**ステータス**: 完了 ✅
+
+## Task 15-2: showCameraHelp() にガイドモーダルガード追加
+**優先度**: 高
+**作業**: `showCameraHelp()` 関数の冒頭（L3816付近、`const title =` の前）にガイドモーダル表示中チェックを追加。表示中なら引数を保留して return
+**ステータス**: 完了 ✅
+
+## Task 15-3: monitorCameraStartup() にガイドモーダルガード追加
+**優先度**: 高
+**作業**: `monitorCameraStartup()` のtimeout分岐（L64付近、`el.style.display = 'flex'` の前）にガイドモーダル表示中チェックを追加。表示中ならcamera-error表示を保留
+**ステータス**: 完了 ✅
+
+## Task 15-4: ガイドモーダル閉じハンドラに保留チェック追加
+**優先度**: 高
+**作業**: 3つの閉じハンドラ（close-guide, close-guide-top, 背景クリック）で `window.guideModalOpen = false` を設定し、保留中のカメラヘルプ・camera-errorを5秒遅延で再チェック
+**ステータス**: 完了 ✅
+
+## Task 15-5: PHP構文チェック
+**優先度**: 高
+**作業**: `php -l` でファイルの構文チェックを実行
+**ステータス**: 完了 ✅ — No syntax errors detected
