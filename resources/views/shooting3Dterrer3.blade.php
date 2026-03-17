@@ -3260,6 +3260,7 @@
             <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige4.glb') }}></a-asset-item>
+            <a-asset-item id="gun_model" src="{{ asset('cg/gun_01.glb') }}"></a-asset-item>
 
 
             <!-- サウンド -->
@@ -3285,7 +3286,9 @@
 
         <!-- Controller -->
         <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
-        <a-entity id="rightController" laser-controls="hand: right" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
+        <a-entity id="rightController" laser-controls="hand: right; model: false" raycaster="objects: .collidable, .clickable; far: 5" vr-controller>
+            <a-entity gltf-model="#gun_model" position="0 -0.05 -0.1" rotation="0 0 0" scale="1 1 1"></a-entity>
+        </a-entity>
 
         <!-- スタートメニュー（半透明） -->
         <a-entity id="startMenu" position="0 1.6 -3" start-menu>
