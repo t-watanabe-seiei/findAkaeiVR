@@ -3287,7 +3287,7 @@
         <!-- Controller -->
         <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
         <a-entity id="rightController" laser-controls="hand: right; model: false" raycaster="objects: .collidable, .clickable; far: 5" vr-controller>
-            <a-entity gltf-model="#gun_model" position="0 -0.05 -0.1" rotation="0 0 0" scale="1 1 1"></a-entity>
+            <a-entity gltf-model="#gun_model" position="0 -0.05 -0.1" rotation="0 90 0" scale="0.3 0.3 0.3"></a-entity>
         </a-entity>
 
         <!-- スタートメニュー（半透明） -->
