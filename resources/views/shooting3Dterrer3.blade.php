@@ -334,13 +334,13 @@
                             mouseCursor.setAttribute('raycaster', 'objects: .collidable');
                             window.debugLog('Removed .clickable from mouse cursor raycaster');
                         }
-                        const laserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                         if (leftController) {
-                            leftController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
+                            leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: true');
                             window.debugLog('Removed .clickable from left controller raycaster');
                         }
+                        const rightLaserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                         if (rightController) {
-                            rightController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
+                            rightController.setAttribute('raycaster', `objects: .collidable; far: 5${rightLaserSuffix}`);
                             window.debugLog('Removed .clickable from right controller raycaster');
                         }
                         
@@ -533,13 +533,13 @@
                     mouseCursor.setAttribute('raycaster', 'objects: .collidable');
                     window.debugLog('Removed .clickable from mouse cursor');
                 }
-                const laserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                 if (leftController) {
-                    leftController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
+                    leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: true');
                     window.debugLog('Removed .clickable from left controller');
                 }
+                const rightLaserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                 if (rightController) {
-                    rightController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
+                    rightController.setAttribute('raycaster', `objects: .collidable; far: 5${rightLaserSuffix}`);
                     window.debugLog('Removed .clickable from right controller');
                 }
                 this.controllersUpdated = true;
