@@ -1883,11 +1883,11 @@
                 const dy = currentPos.y - startPos.y;
                 const dz = currentPos.z - startPos.z;
                 const distanceSquared = dx * dx + dy * dy + dz * dz;
-                const tooFar = distanceSquared > 625; // 25m * 25m
+                const tooFar = distanceSquared > 400; // 20m * 20m
 
                 if (currentPos.y < -2 || elapsedTime > 3 || tooFar) {
                     if (tooFar) {
-                        window.debugLog('Ball removed: exceeded 25m range');
+                        window.debugLog('Ball removed: exceeded 20m range');
                     } else if (elapsedTime > 3) {
                         window.debugLog('Ball timeout after 3 seconds');
                     } else {
@@ -2143,7 +2143,7 @@
 
                 // 物理演算で放物線を描く
                 const gravity = -4.9; // 重力加速度 (m/s^2)
-                const initialSpeed = 30; // 初速度 (m/s)  10→30へ
+                const initialSpeed = 40; // 初速度 (m/s)  10→40へ
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 window.debugLog('Initial velocity:', velocity);
