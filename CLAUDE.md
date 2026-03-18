@@ -61,5 +61,5 @@ Every feature should make context switching faster or easier, not more complex.
 エラーを無視して次のステップに進まない
 指示にない機能を勝手に追加しない
 不明な部分は、随時質問して解決する
-新しくＷｅｂアプリを追加する場合は、requirements.md,design.md,tasks.mdに追記する形で要件定義等を行うこと。
+新しくWebアプリを追加する場合や、Webアプリに新機能を追加する場合は、requirements.md,design.md,tasks.mdに追記する形で要件定義等を行うこと。
 実装が管理用したら、実装内容や機能について、README.mdに追記すること。

@@ -85,7 +85,6 @@
     </script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="{{ asset('js/aframe-extras.min.js') }}"></script>
-    <script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>
     <script src="{{ asset('js/axios.min.js') }}"></script>
 
     <script>
@@ -249,7 +248,7 @@
                             if (node.isMesh && node.material) {
                                 // マテリアルの品質設定
                                 if (node.material.map) {
-                                    node.material.map.anisotropy = 16; // テクスチャのアニソトロピックフィルタリング
+                                    node.material.map.anisotropy = 2; // テクスチャのアニソトロピックフィルタリング
                                 }
                                 
                                 // model_05 (fukuda.glb) の場合は明るさを30%削減
@@ -272,13 +271,13 @@
                                 
                                 // メタルネスとラフネスマップがあれば設定
                                 if (node.material.metalnessMap) {
-                                    node.material.metalnessMap.anisotropy = 16;
+                                    node.material.metalnessMap.anisotropy = 2;
                                 }
                                 if (node.material.roughnessMap) {
-                                    node.material.roughnessMap.anisotropy = 16;
+                                    node.material.roughnessMap.anisotropy = 2;
                                 }
                                 if (node.material.normalMap) {
-                                    node.material.normalMap.anisotropy = 16;
+                                    node.material.normalMap.anisotropy = 2;
                                 }
                             }
                         });
@@ -1272,63 +1271,7 @@
                     window.gameTimer = null;
                 }
                 
-                // 🚀🚀 強化: THREE.jsの完全なGPUリソース解放（カクツキ対策）
                 const sceneEl = document.querySelector('a-scene');
-                if (sceneEl && sceneEl.renderer) {
-                    const renderer = sceneEl.renderer;
-                    
-                    // 1. レンダーリストをクリア
-                    if (renderer.renderLists) {
-                        renderer.renderLists.dispose();
-                    }
-                    
-                    // 2. レンダーターゲットをクリア（フレームバッファ等）
-                    if (renderer.renderTarget) {
-                        renderer.setRenderTarget(null);
-                    }
-                    
-                    // 3. メモリ情報をリセット
-                    if (renderer.info) {
-                        renderer.info.reset();
-                    }
-                    
-                    // 4. THREE.jsのグローバルキャッシュをクリア（テクスチャ等）
-                    if (THREE.Cache) {
-                        THREE.Cache.clear();
-                    }
-                    
-                    // 5. シーン内の全オブジェクトのgeometry/materialを解放
-                    if (sceneEl.object3D) {
-                        sceneEl.object3D.traverse((node) => {
-                            if (node.geometry) {
-                                node.geometry.dispose();
-                            }
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        if (mat.lightMap) mat.lightMap.dispose();
-                                        if (mat.bumpMap) mat.bumpMap.dispose();
-                                        if (mat.normalMap) mat.normalMap.dispose();
-                                        if (mat.specularMap) mat.specularMap.dispose();
-                                        if (mat.envMap) mat.envMap.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    if (node.material.lightMap) node.material.lightMap.dispose();
-                                    if (node.material.bumpMap) node.material.bumpMap.dispose();
-                                    if (node.material.normalMap) node.material.normalMap.dispose();
-                                    if (node.material.specularMap) node.material.specularMap.dispose();
-                                    if (node.material.envMap) node.material.envMap.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
-                    
-                    window.debugLog('🚀 THREE.js GPU resource cleanup done (safe mode)');
-                }
                 
                 // BGMを停止
                 const bgm = document.getElementById('sound_bgm');
@@ -1369,26 +1312,6 @@
                             model.removeAttribute('animation__fadeout');
                             model.removeAttribute('animation__timeoverfadeout');
                             model.removeAttribute('animation-mixer');
-                            
-                            // THREE.jsレベルのクリーンアップ
-                            if (model.object3D) {
-                                model.object3D.traverse((node) => {
-                                    if (node.geometry) {
-                                        node.geometry.dispose();
-                                    }
-                                    if (node.material) {
-                                        if (Array.isArray(node.material)) {
-                                            node.material.forEach(mat => mat.dispose());
-                                        } else {
-                                            node.material.dispose();
-                                        }
-                                    }
-                                    // 🚀 追加: テクスチャも破棄
-                                    if (node.material && node.material.map) {
-                                        node.material.map.dispose();
-                                    }
-                                });
-                            }
                             
                             window.debugLog('Removing model with cleanup:', modelId);
                             model.parentNode.removeChild(model);
@@ -1851,23 +1774,6 @@
                             });
                             
                             window.registerTimeout(() => {
-                                // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
-                                if (ball.object3D) {
-                                    ball.object3D.traverse((node) => {
-                                        if (node.geometry) node.geometry.dispose();
-                                        if (node.material) {
-                                            if (Array.isArray(node.material)) {
-                                                node.material.forEach(mat => {
-                                                    if (mat.map) mat.map.dispose();
-                                                    mat.dispose();
-                                                });
-                                            } else {
-                                                if (node.material.map) node.material.map.dispose();
-                                                node.material.dispose();
-                                            }
-                                        }
-                                    });
-                                }
                                 if (ball.parentNode) {
                                     ball.parentNode.removeChild(ball);
                                     window.debugLog('Ball removed after bounce');
@@ -1898,23 +1804,6 @@
                         }
                     }
                     
-                    // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
-                    if (ball.object3D) {
-                        ball.object3D.traverse((node) => {
-                            if (node.geometry) node.geometry.dispose();
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
                     if (ball.parentNode) {
                         ball.parentNode.removeChild(ball);
                     }
@@ -2288,26 +2177,6 @@
                 
                 // フェードアウト後に削除して再生成
                 window.registerTimeout(() => {
-                    // 🚀 改善: 削除前にメモリを解放
-                    if (modelGroup.object3D) {
-                        modelGroup.object3D.traverse((node) => {
-                            if (node.geometry) {
-                                node.geometry.dispose();
-                            }
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
-                    
                     // パターン使用状況をクリア
                     if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) {
                         delete window.usedPatterns[modelId];
@@ -3002,7 +2871,6 @@
 
 <body>
     <a-scene 
-        physics="gravity: -9.8"
         renderer="antialias: true; 
                   colorManagement: true; 
                   sortObjects: true; 

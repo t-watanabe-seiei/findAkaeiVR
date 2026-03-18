@@ -1,3 +1,70 @@
+# タスク化: shooting3Dterrer3 VRゴーグル処理落ち修正
+
+## 作成日時
+2026年3月18日
+
+## 前提
+`.claude_workflow/design.md` を読み込み済み
+
+---
+
+## タスク一覧
+
+### Task 1: aframe-physics-system スクリプトタグ削除
+**目的**: 未使用の物理エンジンを読み込まなくし、毎フレームのCPU/GPU負荷を除去  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: line 11 の `<script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>` を1行削除  
+**ステータス**: ✅ 完了
+
+### Task 2: `<a-scene>` の physics 属性削除
+**目的**: 物理エンジン属性を除去してシーン初期化負荷を排除  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: line 3255 の `physics="gravity: -9.8"` 行を削除  
+**ステータス**: ✅ 完了
+
+### Task 3: restartGame のシーン全体 dispose ブロック削除
+**目的**: リスタート時にスカイボックス・ライト・UIなど全オブジェクトを破棄してしまう箇所を削除し、WebGLクラッシュを防止  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: lines 1223〜1283 の `// 🚀🚀 強化: THREE.jsの完全なGPUリソース解放` コメント〜`if (sceneEl && sceneEl.renderer) { ... }` ブロック全体を削除  
+**ステータス**: ✅ 完了
+
+### Task 4: anisotropy を 16 → 2 に変更（4箇所）
+**目的**: モバイルGPU（Snapdragon XR2）に適正な値に変更し、テクスチャフィルタリングの過負荷を除去  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: enhance-materials コンポーネント内の `anisotropy = 16` を全4箇所 `anisotropy = 2` に変更  
+**ステータス**: ✅ 完了
+
+### Task 5: restartGame の allModels traverse+dispose ブロック削除
+**目的**: リスタート時の各モデル削除で共有GLBリソースを dispose しないようにする  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: `// THREE.jsレベルのクリーンアップ` コメント〜`if (model.object3D) { ... }` ブロックを削除  
+**ステータス**: ✅ 完了
+
+### Task 6: ボールヒット時の traverse+dispose ブロック削除
+**目的**: ヒット時のアニメーション終了後にボールGLBを dispose しないようにする  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: registerTimeout コールバック内の `// 🚀 メモリ解放` ブロック（lines 1855〜1872）を削除  
+**ステータス**: ✅ 完了
+
+### Task 7: ボール落下/タイムアウト時の traverse+dispose ブロック削除
+**目的**: ボールが落下・射程外になった時の dispose を削除  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: `// 🚀 メモリ解放` ブロック（lines 1911〜1927）を削除  
+**ステータス**: ✅ 完了
+
+### Task 8: despawnAndRespawn の traverse+dispose ブロック削除
+**目的**: ゾンビデスポーン時の共有GLBリソース dispose を削除  
+**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
+**変更**: `// 🚀 改善: 削除前にメモリを解放` ブロック（lines 2354〜2374）を削除  
+**ステータス**: ✅ 完了
+
+---
+
+## 実行順序
+Task 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8（すべて独立。同時適用可）
+
+---
+
 # タスク化: ARstampRally202603 Android (moto g64y) バグ修正
 
 ## 作成日時

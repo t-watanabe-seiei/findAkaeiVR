@@ -1,3 +1,171 @@
+# 設計: shooting3Dterrer3 VRゴーグル処理落ち修正
+
+## 作成日時
+2026年3月18日
+
+## 前提
+`.claude_workflow/requirements.md` を読み込み済み
+
+---
+
+## 対象ファイル
+`resources/views/shooting3Dterrer3.blade.php`
+
+---
+
+## 修正1: aframe-physics-system を削除
+
+### 変更箇所A（line 11）- スクリプトタグ削除
+```html
+// 削除対象
+<script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>
+```
+→ 1行丸ごと削除
+
+### 変更箇所B（line 3255）- `<a-scene>` の physics 属性削除
+```html
+// 変更前
+<a-scene 
+    physics="gravity: -9.8"
+    renderer="antialias: true; 
+```
+```html
+// 変更後
+<a-scene 
+    renderer="antialias: true; 
+```
+→ `physics="gravity: -9.8"` の行を削除
+
+---
+
+## 修正2: restartGame のシーン全体 dispose を削除
+
+### 変更箇所（lines 1223〜1280）- `if (sceneEl && sceneEl.renderer)` ブロック全体を削除
+```js
+// 削除対象（この全ブロックを削除）
+// 🚀🚀 強化: THREE.jsの完全なGPUリソース解放（カクツキ対策）
+const sceneEl = document.querySelector('a-scene');
+if (sceneEl && sceneEl.renderer) {
+    const renderer = sceneEl.renderer;
+    // 1〜4. renderLists.dispose() など（安全なもの）
+    // 5. sceneEl.object3D.traverse(...) ← ブラウザクラッシュの原因
+    ...
+    window.debugLog('🚀 THREE.js GPU resource cleanup done (safe mode)');
+}
+```
+→ ブロック全体（`// 🚀🚀 強化` コメントから closing `}` まで）を削除。  
+  A-Frame が WebGL コンテキストを管理しているため、外部から全オブジェクトを dispose するのは禁止。
+
+---
+
+## 修正3: anisotropy を 16 → 2 に変更
+
+### 変更箇所（lines 76, 97, 100, 103）- enhance-materials コンポーネント内
+4箇所すべて `anisotropy = 16` → `anisotropy = 2`
+
+```js
+// 変更前（4箇所）
+node.material.map.anisotropy = 16;
+node.material.metalnessMap.anisotropy = 16;
+node.material.roughnessMap.anisotropy = 16;
+node.material.normalMap.anisotropy = 16;
+
+// 変更後（4箇所）
+node.material.map.anisotropy = 2;
+node.material.metalnessMap.anisotropy = 2;
+node.material.roughnessMap.anisotropy = 2;
+node.material.normalMap.anisotropy = 2;
+```
+→ Snapdragon XR2 での適正値。テクスチャ品質の大幅な劣化なし。
+
+---
+
+## 修正4: traverse+dispose ブロックを全箇所削除
+
+GLBモデルは `<a-assets>` に登録され、ロード後は共有キャッシュとして使われる。
+dispose すると他インスタンスのレンダリングも破壊される。
+**DOM から `removeChild` するだけでよく、dispose は不要。**
+
+### 変更箇所A（lines 1321〜1340）- restartGame の allModels.forEach 内
+
+削除対象:
+```js
+// THREE.jsレベルのクリーンアップ
+if (model.object3D) {
+    model.object3D.traverse((node) => {
+        if (node.geometry) { node.geometry.dispose(); }
+        if (node.material) {
+            if (Array.isArray(node.material)) { node.material.forEach(mat => mat.dispose()); }
+            else { node.material.dispose(); }
+        }
+        // 🚀 追加: テクスチャも破棄
+        if (node.material && node.material.map) { node.material.map.dispose(); }
+    });
+}
+```
+→ このブロックを削除（直後の `removeChild` は残す）
+
+### 変更箇所B（lines 1855〜1872）- ボールヒット時のタイムアウト内
+
+削除対象:
+```js
+// 🚀 メモリ解放: THREE.jsオブジェクトを破棄
+if (ball.object3D) {
+    ball.object3D.traverse((node) => {
+        if (node.geometry) node.geometry.dispose();
+        if (node.material) { ... node.material.dispose(); }
+    });
+}
+```
+→ このブロックを削除（直後の `removeChild` は残す）
+
+### 変更箇所C（lines 1911〜1927）- ボール落下/タイムアウト時
+
+削除対象:
+```js
+// 🚀 メモリ解放: THREE.jsオブジェクトを破棄
+if (ball.object3D) {
+    ball.object3D.traverse((node) => {
+        if (node.geometry) node.geometry.dispose();
+        if (node.material) { ... node.material.dispose(); }
+    });
+}
+```
+→ このブロックを削除（直後の `removeChild` は残す）
+
+### 変更箇所D（lines 2354〜2374）- despawnAndRespawn のタイムアウト内
+
+削除対象:
+```js
+// 🚀 改善: 削除前にメモリを解放
+if (modelGroup.object3D) {
+    modelGroup.object3D.traverse((node) => {
+        if (node.geometry) { node.geometry.dispose(); }
+        if (node.material) { ... node.material.dispose(); }
+    });
+}
+```
+→ このブロックを削除（直後の `usedPatterns` クリアと `removeChild` は残す）
+
+---
+
+## 変更箇所まとめ
+
+| # | 場所 | 変更内容 |
+|---|------|---------|
+| 1a | line 11 | `<script>` タグ1行削除 |
+| 1b | line 3255 | `physics="gravity: -9.8"` 行削除 |
+| 2 | lines 1223-1280 | `if (sceneEl && sceneEl.renderer)` ブロック全体削除 |
+| 3 | lines 76,97,100,103 | `anisotropy = 16` → `anisotropy = 2` (4箇所) |
+| 4a | lines 1321-1340 | allModels traverse+dispose ブロック削除 |
+| 4b | lines 1855-1872 | ボールヒット traverse+dispose ブロック削除 |
+| 4c | lines 1911-1927 | ボール落下 traverse+dispose ブロック削除 |
+| 4d | lines 2354-2374 | despawnAndRespawn traverse+dispose ブロック削除 |
+
+合計: 8箇所の変更。削除のみ（新規追加なし）。
+
+---
+
 # 設計: ARstampRally202603 Android (moto g64y) バグ修正
 
 ## 作成日時

@@ -764,4 +764,53 @@ git push origin main --force
 10	4-Grok Code Fast 1	4.2	4.1	x0	Given-When-Then 形式の徹底。実装時にテストコードに変換しやすいが、ユニットレベルでの分割は上位モデルに劣る。
 11	3-GPT-5 mini	4.0	3.9	x0	分類は良いが具体性が不足。DL-08の詳細監査項目など、設計書で強調されている複雑な要件への言及が少ない。
 12	14-GPT-5.1-Codex-Mini	3.8	3.5	x0.33	要点に絞りすぎ。TDDに必要な網羅的なユニットテストの分解が不足しており、実装ドライバーとしては不十分。
+
+---
+
+### VRシューティングゲーム - Pico4パフォーマンス改善（traverse+dispose廃止） 20260319
+
+**対象ファイル:** `shooting3Dterrer3.blade.php` / `shooting3DModel3.blade.php` / `shooting3Danimal3.blade.php`
+
+Pico4 Enterprise（Snapdragon XR2）でVRブラウザがフリーズ・強制終了する問題を修正。
+THREE.jsの不適切なリソース解放処理が原因。
+
+#### 修正内容（3ファイル共通）
+
+**Fix 1: aframe-physics-system 削除**
+- `<script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>` を削除
+- `<a-scene>` から `physics="gravity: -9.8"` 属性を削除
+- 物理演算エンジン（Cannon.js）を未使用なのにロードしていた
+
+**Fix 2: restartGame のシーン全体dispose廃止**
+- `model.object3D.traverse()` で geometry/material/texture を dispose するブロックを削除
+- モデル削除は `removeChild` のみに変更
+- シーン全体を traverse することでライト・スカイ・UIのリソースまで破壊していた
+
+**Fix 3: anisotropy を 16 → 2 に変更**
+- `enhance-materials` コンポーネント内の4箇所を変更
+  - `node.material.map.anisotropy`
+  - `node.material.metalnessMap.anisotropy`
+  - `node.material.roughnessMap.anisotropy`
+  - `node.material.normalMap.anisotropy`
+- Snapdragon XR2 の最大異方性フィルタリング値は約4。16を指定するとGPUドライバーのオーバーヘッドが発生
+
+**Fix 4: ヒット・削除時の traverse+dispose 廃止**
+- `ball.object3D.traverse()` dispose ブロックを以下の全箇所から削除
+  - ボールがモデルにヒットした後のコールバック（300ms遅延）
+  - ボールが地面に落下・タイムアウトした際の削除処理
+  - `showResult`（ゲーム終了時の残存ボール一括削除）
+  - `restartGame`（リスタート時の残存ボール一括削除）
+- A-Frameは GLBジオメトリ/マテリアルをキャッシュ・共有しているため、dispose すると次の描画でGPUストールが発生していた
+- ボール削除は `removeChild` のみに統一
+
+#### 変更ファイルと行数変化
+- `shooting3Dterrer3.blade.php`: 参照元（先行修正済み）
+- `shooting3DModel3.blade.php`: 3406行 → 3274行（132行削減）
+- `shooting3Danimal3.blade.php`: 3730行 → 3640行（90行削減）
+
+#### 技術的背景
+- **ハードウェア**: Pico4 Enterprise / Qualcomm Snapdragon XR2 / 8GB LPDDR5 / 256GB UFS 3.1
+- **フレームワーク**: A-Frame VR + THREE.js（Bladeテンプレート）
+- THREE.jsはGLBをロードするとリソースをキャッシュ・共有する。そのリソースを `dispose()` で破棄すると、同じリソースを参照している別オブジェクトの描画時にGPUへの再アップロードが発生し、フリーズの原因となる
+- renderer.renderLists.dispose() / renderer.info.reset() / THREE.Cache.clear() は残置（シーン全体のフレームバッファリセットは安全）
 13	2-GPT-4o	2.5	2.0	x0	実践的な利用は困難。テスト内容が抽象的で、具体的な入力条件やDL-08の個別監査項目の検証がほとんど含まれていない。

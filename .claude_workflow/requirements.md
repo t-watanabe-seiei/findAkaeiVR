@@ -1,3 +1,50 @@
+# 要件定義: shooting3Dterrer3 VRゴーグル処理落ち修正
+
+## 作成日時
+2026年3月18日
+
+## 参照
+`.claude_workflow/complete.md` を参照済み
+
+## プロジェクト概要
+`shooting3Dterrer3.blade.php` をPico4 Enterprise（Snapdragon XR2, 8GB RAM）のVRゴーグルブラウザで動作させた際に発生する、画面カクつき・フリーズ・ブラウザ強制終了を修正する。
+
+## 修正対象（前回調査で判明した4項目）
+
+### 問題1（最優先）: aframe-physics-system を無駄にロード
+- `<script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>` を読み込んでいる
+- しかし `dynamic-body` / `static-body` コンポーネントを使っているエンティティは1つもない
+- `<a-scene physics="gravity: -9.8">` の属性だけが残っている
+- 物理エンジンが毎フレーム全エンティティをスキャンし続け、常時CPU/GPU負荷になっている
+
+### 問題2（最優先）: restartGame でシーン全体の geometry/material を dispose
+- `restartGame()` 内の「THREE.jsの完全なGPUリソース解放」ブロックで `sceneEl.object3D.traverse()` を実行
+- スカイボックス・ライト・UIパネル・固定モデルなど**シーン全体**を破棄している
+- A-Frameがそれらを引き続き使おうとしてWebGLエラー → ブラウザクラッシュの原因
+
+### 問題3（優先度高）: anisotropy: 16 をモバイルGPUで使用
+- `enhance-materials` コンポーネント内で `anisotropy = 16` を4箇所に設定
+- モバイルGPU（Snapdragon XR2）では非常に高コストな設定
+- PC向けGPUと比べてanisotropyが遅く、過負荷の原因
+
+### 問題4（優先度高）: ヒット毎・リスポーン毎に traverse+dispose を実行
+- `despawnAndRespawn()` 内でモデルDOMから削除する前に traverse+dispose を実行
+- `restartGame()` の `allModels.forEach` 内でも各モデルを traverse+dispose
+- ボール除去時（ヒット時・タイムアウト時）にも traverse+dispose
+- GLBモデルは `<a-assets>` でキャッシュされた共有リソース。dispose すると他インスタンスも壊れる
+- 毎ヒット毎にGPUリソースを破棄→フリーズの原因
+
+## 成功基準
+1. physics-system を削除後も物理演算不使用のゲームロジックが正常動作すること
+2. リスタート後にシーンが正常に表示され、2回目以降もクラッシュしないこと
+3. anisotropy を適正値（2）に変更後も視覚品質が許容範囲であること
+4. ヒット・リスポーン・リスタート時のフリーズが解消されること
+
+## 変更対象ファイル
+- `resources/views/shooting3Dterrer3.blade.php`
+
+---
+
 # 要件定義: ARstampRally202603 Android (moto g64y) バグ修正
 
 ## 作成日時

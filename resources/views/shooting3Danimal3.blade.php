@@ -91,7 +91,6 @@
     </script>
     <script src="{{ asset('js/aframe-particle-system-component.min.js') }}"></script>
     <script src="{{ asset('js/aframe-extras.min.js') }}"></script>
-    <script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>
     <script src="{{ asset('js/axios.min.js') }}"></script>
 
     <script>
@@ -250,7 +249,7 @@
                             if (node.isMesh && node.material) {
                                 // マテリアルの品質設定
                                 if (node.material.map) {
-                                    node.material.map.anisotropy = 16; // テクスチャのアニソトロピックフィルタリング
+                                    node.material.map.anisotropy = 2; // テクスチャのアニソトロピックフィルタリング
                                 }
                                 
                                 // fukuda.glbの場合は明るさを増加
@@ -273,13 +272,13 @@
                                 
                                 // メタルネスとラフネスマップがあれば設定
                                 if (node.material.metalnessMap) {
-                                    node.material.metalnessMap.anisotropy = 16;
+                                    node.material.metalnessMap.anisotropy = 2;
                                 }
                                 if (node.material.roughnessMap) {
-                                    node.material.roughnessMap.anisotropy = 16;
+                                    node.material.roughnessMap.anisotropy = 2;
                                 }
                                 if (node.material.normalMap) {
-                                    node.material.normalMap.anisotropy = 16;
+                                    node.material.normalMap.anisotropy = 2;
                                 }
                             }
                         });
@@ -1013,23 +1012,6 @@
                     window.activeBalls.forEach(ballData => {
                         if (ballData && ballData.ball) {
                             const ball = ballData.ball;
-                            // THREE.jsオブジェクトを破棄
-                            if (ball.object3D) {
-                                ball.object3D.traverse((node) => {
-                                    if (node.geometry) node.geometry.dispose();
-                                    if (node.material) {
-                                        if (Array.isArray(node.material)) {
-                                            node.material.forEach(mat => {
-                                                if (mat.map) mat.map.dispose();
-                                                mat.dispose();
-                                            });
-                                        } else {
-                                            if (node.material.map) node.material.map.dispose();
-                                            node.material.dispose();
-                                        }
-                                    }
-                                });
-                            }
                             // DOMから削除
                             if (ball.parentNode) {
                                 ball.parentNode.removeChild(ball);
@@ -1511,23 +1493,6 @@
                     window.activeBalls.forEach(ballData => {
                         if (ballData && ballData.ball) {
                             const ball = ballData.ball;
-                            // THREE.jsオブジェクトを破棄
-                            if (ball.object3D) {
-                                ball.object3D.traverse((node) => {
-                                    if (node.geometry) node.geometry.dispose();
-                                    if (node.material) {
-                                        if (Array.isArray(node.material)) {
-                                            node.material.forEach(mat => {
-                                                if (mat.map) mat.map.dispose();
-                                                mat.dispose();
-                                            });
-                                        } else {
-                                            if (node.material.map) node.material.map.dispose();
-                                            node.material.dispose();
-                                        }
-                                    }
-                                });
-                            }
                             // DOMから削除
                             if (ball.parentNode) {
                                 ball.parentNode.removeChild(ball);
@@ -1646,26 +1611,6 @@
                             model.removeAttribute('animation__fadeout');
                             model.removeAttribute('animation__timeoverfadeout');
                             model.removeAttribute('animation-mixer');
-                            
-                            // THREE.jsレベルのクリーンアップ
-                            if (model.object3D) {
-                                model.object3D.traverse((node) => {
-                                    if (node.geometry) {
-                                        node.geometry.dispose();
-                                    }
-                                    if (node.material) {
-                                        if (Array.isArray(node.material)) {
-                                            node.material.forEach(mat => mat.dispose());
-                                        } else {
-                                            node.material.dispose();
-                                        }
-                                    }
-                                    // 🚀 追加: テクスチャも破棄
-                                    if (node.material && node.material.map) {
-                                        node.material.map.dispose();
-                                    }
-                                });
-                            }
                             
                             window.debugLog('Removing model with cleanup:', modelId);
                             model.parentNode.removeChild(model);
@@ -2125,23 +2070,6 @@
                         });
                         
                         window.registerTimeout(() => {
-                            // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
-                            if (ball.object3D) {
-                                ball.object3D.traverse((node) => {
-                                    if (node.geometry) node.geometry.dispose();
-                                    if (node.material) {
-                                        if (Array.isArray(node.material)) {
-                                            node.material.forEach(mat => {
-                                                if (mat.map) mat.map.dispose();
-                                                mat.dispose();
-                                            });
-                                        } else {
-                                            if (node.material.map) node.material.map.dispose();
-                                            node.material.dispose();
-                                        }
-                                    }
-                                });
-                            }
                             if (ball.parentNode) {
                                 ball.parentNode.removeChild(ball);
                                 window.debugLog('Ball removed after bounce');
@@ -2172,23 +2100,6 @@
                         }
                     }
                     
-                    // 🚀 メモリ解放: THREE.jsオブジェクトを破棄
-                    if (ball.object3D) {
-                        ball.object3D.traverse((node) => {
-                            if (node.geometry) node.geometry.dispose();
-                            if (node.material) {
-                                if (Array.isArray(node.material)) {
-                                    node.material.forEach(mat => {
-                                        if (mat.map) mat.map.dispose();
-                                        mat.dispose();
-                                    });
-                                } else {
-                                    if (node.material.map) node.material.map.dispose();
-                                    node.material.dispose();
-                                }
-                            }
-                        });
-                    }
                     if (ball.parentNode) {
                         ball.parentNode.removeChild(ball);
                     }
@@ -3342,7 +3253,6 @@
 
 <body>
     <a-scene 
-        physics="gravity: -9.8"
         renderer="antialias: true; 
                   colorManagement: true; 
                   sortObjects: true; 
