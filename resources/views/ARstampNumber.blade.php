@@ -2408,7 +2408,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_sheep_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: sheep; width: 1.6; height: 3.2; depth: 1.6">
@@ -2422,7 +2422,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_namakemono_oda.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: namakemono; width: 1.6; height: 3.2; depth: 1.6">
@@ -2436,7 +2436,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_humstar_harada.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: hamstar; width: 1.6; height: 3.2; depth: 1.6">
@@ -2450,7 +2450,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_burger_fujii.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: burger; width: 1.6; height: 3.2; depth: 1.6">
@@ -2463,7 +2463,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_fox_isobe.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: fox; width: 1.6; height: 3.2; depth: 1.6">
@@ -2476,7 +2476,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_pengin_morita.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: pengin; width: 1.6; height: 3.2; depth: 1.6">
@@ -2489,7 +2489,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_tonakai_matsumura2.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: tonakai; width: 1.6; height: 3.2; depth: 1.6">
@@ -2502,7 +2502,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_pig_matsubara.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: pig; width: 1.6; height: 3.2; depth: 1.6">
@@ -2516,7 +2516,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_tora_iwamoto.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: tora; width: 1.6; height: 3.2; depth: 1.6">
@@ -2530,7 +2530,7 @@
                 lazy-model="src: {{ asset('cg/3d_pro_gollira_ishimaru.glb') }}"
                 position="0 0 0.5"
                 scale="0.56 0.56 0.56"
-                rotation="0 -90 0"
+                rotation="-90 0 0"
                 click-animation="clip: anime01"
                 pinch-zoom="minScale: 0.3; maxScale: 2.0"
                 hitbox="stampId: gollira; width: 1.6; height: 3.2; depth: 1.6">
