@@ -1878,9 +1878,17 @@
                     }
                 }
                 
-                // 地面に落ちたら削除（y < -2）
-                if (currentPos.y < -2 || elapsedTime > 3) {
-                    if (elapsedTime > 3) {
+                // 地面に落ちたら削除（y < -2）、タイムアウト、または飛距離25m超で削除
+                const dx = currentPos.x - startPos.x;
+                const dy = currentPos.y - startPos.y;
+                const dz = currentPos.z - startPos.z;
+                const distanceSquared = dx * dx + dy * dy + dz * dz;
+                const tooFar = distanceSquared > 625; // 25m * 25m
+
+                if (currentPos.y < -2 || elapsedTime > 3 || tooFar) {
+                    if (tooFar) {
+                        window.debugLog('Ball removed: exceeded 25m range');
+                    } else if (elapsedTime > 3) {
                         window.debugLog('Ball timeout after 3 seconds');
                     } else {
                         window.debugLog('Ball fell to ground');
@@ -2032,7 +2040,7 @@
                 
                 // ボールエンティティを作成（GLBモデルを使用）
                 const ball = document.createElement('a-entity');
-                ball.setAttribute('gltf-model', 'cg/poke_ball_seiei.glb');
+                ball.setAttribute('gltf-model', 'cg/poke_ball_seieiw.glb');
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
                 ball.setAttribute('rotation', '0 0 0');
                 
