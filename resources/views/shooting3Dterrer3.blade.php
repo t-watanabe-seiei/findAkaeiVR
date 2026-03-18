@@ -334,12 +334,13 @@
                             mouseCursor.setAttribute('raycaster', 'objects: .collidable');
                             window.debugLog('Removed .clickable from mouse cursor raycaster');
                         }
+                        const laserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                         if (leftController) {
-                            leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                            leftController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
                             window.debugLog('Removed .clickable from left controller raycaster');
                         }
                         if (rightController) {
-                            rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                            rightController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
                             window.debugLog('Removed .clickable from right controller raycaster');
                         }
                         
@@ -364,11 +365,11 @@
                             window.debugLog('Restored .clickable to mouse cursor raycaster');
                         }
                         if (leftController) {
-                            leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                            leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
                             window.debugLog('Restored .clickable to left controller raycaster');
                         }
                         if (rightController) {
-                            rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                            rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
                             window.debugLog('Restored .clickable to right controller raycaster');
                         }
                         
@@ -532,12 +533,13 @@
                     mouseCursor.setAttribute('raycaster', 'objects: .collidable');
                     window.debugLog('Removed .clickable from mouse cursor');
                 }
+                const laserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
                 if (leftController) {
-                    leftController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                    leftController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
                     window.debugLog('Removed .clickable from left controller');
                 }
                 if (rightController) {
-                    rightController.setAttribute('raycaster', 'objects: .collidable; far: 5');
+                    rightController.setAttribute('raycaster', `objects: .collidable; far: 5${laserSuffix}`);
                     window.debugLog('Removed .clickable from right controller');
                 }
                 this.controllersUpdated = true;
@@ -1451,11 +1453,11 @@
                     window.debugLog('Restored .clickable to mouse cursor');
                 }
                 if (leftController) {
-                    leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                    leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
                     window.debugLog('Restored .clickable to left controller');
                 }
                 if (rightController) {
-                    rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5');
+                    rightController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
                     window.debugLog('Restored .clickable to right controller');
                 }
                 
