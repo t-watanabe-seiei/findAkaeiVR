@@ -2040,7 +2040,7 @@
                 
                 // ボールエンティティを作成（GLBモデルを使用）
                 const ball = document.createElement('a-entity');
-                ball.setAttribute('gltf-model', 'cg/poke_ball_seieiw.glb');
+                ball.setAttribute('gltf-model', 'cg/poke_ball_seiei.glb');
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
                 ball.setAttribute('rotation', '0 0 0');
                 
@@ -3270,7 +3270,7 @@
             <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige4.glb') }}></a-asset-item>
-            <a-asset-item id="gun_model" src="{{ asset('cg/gun_02.glb') }}"></a-asset-item>
+            <a-asset-item id="gun_model" src="{{ asset('cg/gun_01.glb') }}"></a-asset-item>
 
 
             <!-- サウンド -->
