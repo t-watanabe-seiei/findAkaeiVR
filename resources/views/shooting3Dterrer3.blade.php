@@ -335,7 +335,7 @@
                             window.debugLog('Removed .clickable from mouse cursor raycaster');
                         }
                         if (leftController) {
-                            leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: true');
+                            leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: false');
                             window.debugLog('Removed .clickable from left controller raycaster');
                         }
                         const rightLaserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
@@ -365,7 +365,7 @@
                             window.debugLog('Restored .clickable to mouse cursor raycaster');
                         }
                         if (leftController) {
-                            leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
+                            leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: false');
                             window.debugLog('Restored .clickable to left controller raycaster');
                         }
                         if (rightController) {
@@ -534,7 +534,7 @@
                     window.debugLog('Removed .clickable from mouse cursor');
                 }
                 if (leftController) {
-                    leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: true');
+                    leftController.setAttribute('raycaster', 'objects: .collidable; far: 5; showLine: false');
                     window.debugLog('Removed .clickable from left controller');
                 }
                 const rightLaserSuffix = window.currentLevel === 2 ? '; showLine: false' : '; showLine: true';
@@ -1453,7 +1453,7 @@
                     window.debugLog('Restored .clickable to mouse cursor');
                 }
                 if (leftController) {
-                    leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: true');
+                    leftController.setAttribute('raycaster', 'objects: .collidable, .clickable; far: 5; showLine: false');
                     window.debugLog('Restored .clickable to left controller');
                 }
                 if (rightController) {
@@ -2032,7 +2032,7 @@
                 
                 // ボールエンティティを作成（GLBモデルを使用）
                 const ball = document.createElement('a-entity');
-                ball.setAttribute('gltf-model', 'cg/poke_ball_seieiv.glb');
+                ball.setAttribute('gltf-model', 'cg/poke_ball_seiei.glb');
                 ball.setAttribute('scale', '0.1 0.1 0.1'); // サイズ調整
                 ball.setAttribute('rotation', '0 0 0');
                 
@@ -3262,7 +3262,7 @@
             <a-asset-item id="model_05" src={{ asset('cg/zombie_oda3.glb') }}></a-asset-item>
             <a-asset-item id="model_06" src={{ asset('cg/zombie_ishimaru.glb') }}></a-asset-item>
             <a-asset-item id="model_boss" src={{ asset('cg/zombie_morishige4.glb') }}></a-asset-item>
-            <a-asset-item id="gun_model" src="{{ asset('cg/gun_01.glb') }}"></a-asset-item>
+            <a-asset-item id="gun_model" src="{{ asset('cg/gun_02.glb') }}"></a-asset-item>
 
 
             <!-- サウンド -->
@@ -3287,7 +3287,7 @@
         <a-entity id="mouseCursor" cursor="rayOrigin: mouse" raycaster="objects: .clickable, .collidable"></a-entity>
 
         <!-- Controller -->
-        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5" vr-controller></a-entity>
+        <a-entity id="leftController" laser-controls="hand: left" raycaster="objects: .collidable, .clickable; far: 5; showLine: false" vr-controller></a-entity>
         <a-entity id="rightController" laser-controls="hand: right; model: false" raycaster="objects: .collidable, .clickable; far: 5" vr-controller>
             <a-entity gltf-model="#gun_model" position="0 -0.05 -0.1" rotation="0 -90 0" scale="0.2 0.2 0.2"></a-entity>
         </a-entity>
