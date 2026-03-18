@@ -3697,6 +3697,18 @@
         // (double-tap behavior removed) // previously used to detect double-tap animation toggles
         
         document.addEventListener('DOMContentLoaded', function() {
+            // Android 判定: カメラ解像度を 640×480 (4:3) に変更してポートレート表示のズームを防止
+            // iPhone / Desktop は変更しない
+            (function() {
+                if (!/Android/i.test(navigator.userAgent)) return;
+                var _scene = document.querySelector('a-scene');
+                if (!_scene) return;
+                _scene.setAttribute('arjs',
+                    'sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;'
+                );
+                console.log('[Android fix] AR.js source size overridden to 640x480');
+            })();
+
             const scene = document.querySelector('a-scene');
             const sheepModel = document.querySelector('#sheep-model');
             const foxModel = document.querySelector('#fox-model');
@@ -7181,8 +7193,13 @@
                     scene.appendChild(newBall);
                     
                     // コンポーネントが初期化されたら投げる
-                    newBall.addEventListener('loaded', () => {
-                        // マテリアル調整（既存コードと同様）
+                    // model-loaded を使用（GLB が確実にロードされたタイミング）
+                    // Android ではキャッシュ済みの場合 loaded より前に発火するためフォールバック追加
+                    let throwCalled = false;
+                    function doThrowSetup() {
+                        if (throwCalled) return;
+                        throwCalled = true;
+                        // マテリアル調整
                         const model = newBall.getObject3D('mesh');
                         if (model) {
                             model.traverse(function(node) {
@@ -7204,10 +7221,12 @@
                                 }
                             });
                         }
-                        
-                        // 投げる処理を実行（当たり判定はコンポーネント内で行うため、ここでのsetIntervalは削除）
+                        // 投げる処理を実行
                         newBall.components['pokeball-throwable'].throw(direction, speed);
-                    });
+                    }
+                    newBall.addEventListener('model-loaded', doThrowSetup);
+                    // フォールバック: model-loaded が来なかった場合 (Android キャッシュ済みモデル等)
+                    setTimeout(doThrowSetup, 500);
                     
                     // 削除イベント監視（寿命 or ヒットで消滅時）
                     let ballRestored = false;
