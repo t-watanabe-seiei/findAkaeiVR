@@ -2608,21 +2608,21 @@
                         let comboBonusText = '';
                         if (isCorrectBall && window.comboCount >= 5) {
                             if (window.comboCount >= 15) {
-                                comboBonus = 10; // 15連続以上: +10ボーナス
-                                comboBonusText = '+10';
+                                comboBonus = 100; // 15連続以上: +100ボーナス
+                                comboBonusText = '+100';
                             } else if (window.comboCount >= 10) {
-                                comboBonus = 7; // 10-14連続: +7ボーナス
-                                comboBonusText = '+7';
+                                comboBonus = 70; // 10-14連続: +70ボーナス
+                                comboBonusText = '+70';
                             } else if (window.comboCount >= 5) {
-                                comboBonus = 5; // 5-9連続: +5ボーナス
-                                comboBonusText = '+5';
+                                comboBonus = 50; // 5-9連続: +50ボーナス
+                                comboBonusText = '+50';
                             }
                         }
                         
                         // 【変更】ゲーム中のみ、スコア加算とコンボ管理
                         let scoreChange = 0;
                         if (window.gameStarted && !window.gameEnded) {
-                            const baseScore = isCorrectBall ? 10 : 3;
+                            const baseScore = isCorrectBall ? 100 : 30;
                             scoreChange = baseScore + comboBonus;
                             window.totalScore += scoreChange;
                             
