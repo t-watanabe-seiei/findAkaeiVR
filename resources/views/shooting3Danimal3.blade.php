@@ -1066,13 +1066,13 @@
                 let comment = '';
                 if (window.totalScore >= 4000) {
                     comment = 'AMAZING! PERFECT SNIPER!';
-                } else if (window.totalScore >= 3500) {
-                    comment = 'EXCELLENT! GREAT JOB!';
                 } else if (window.totalScore >= 3000) {
-                    comment = 'VERY GOOD! NICE SHOOTING!';
+                    comment = 'EXCELLENT! GREAT JOB!';
                 } else if (window.totalScore >= 2000) {
-                    comment = 'GOOD! KEEP IT UP!';
+                    comment = 'VERY GOOD! NICE SHOOTING!';
                 } else if (window.totalScore >= 1000) {
+                    comment = 'GOOD! KEEP IT UP!';
+                } else if (window.totalScore >= 500) {
                     comment = 'NOT BAD! TRY AGAIN!';
                 } else {
                     comment = 'KEEP PRACTICING!';
@@ -2608,21 +2608,21 @@
                         let comboBonusText = '';
                         if (isCorrectBall && window.comboCount >= 5) {
                             if (window.comboCount >= 15) {
-                                comboBonus = 100; // 15連続以上: +100ボーナス
-                                comboBonusText = '+100';
-                            } else if (window.comboCount >= 10) {
-                                comboBonus = 70; // 10-14連続: +70ボーナス
-                                comboBonusText = '+70';
-                            } else if (window.comboCount >= 5) {
-                                comboBonus = 50; // 5-9連続: +50ボーナス
+                                comboBonus = 50; // 15連続以上: +50ボーナス
                                 comboBonusText = '+50';
+                            } else if (window.comboCount >= 10) {
+                                comboBonus = 35; // 10-14連続: +35ボーナス
+                                comboBonusText = '+35';
+                            } else if (window.comboCount >= 5) {
+                                comboBonus = 25; // 5-9連続: +25ボーナス
+                                comboBonusText = '+25';
                             }
                         }
                         
                         // 【変更】ゲーム中のみ、スコア加算とコンボ管理
                         let scoreChange = 0;
                         if (window.gameStarted && !window.gameEnded) {
-                            const baseScore = isCorrectBall ? 100 : 30;
+                            const baseScore = isCorrectBall ? 50 : 15;
                             scoreChange = baseScore + comboBonus;
                             window.totalScore += scoreChange;
                             
