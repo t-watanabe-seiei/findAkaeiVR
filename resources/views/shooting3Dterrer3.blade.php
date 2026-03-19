@@ -565,7 +565,7 @@
                 window.gameStarted = true;
                 window.gameEnded = false; // ゲーム終了フラグもリセット
                 window.totalScore = 0; // スコアをリセット
-                window.gameTimeLeft = 75; // タイマーを75秒に設定
+                window.gameTimeLeft = 90; // タイマーを90（75→90）秒に設定
                 window.comboCount = 0; // コンボカウントをリセット
                 window.maxComboCount = 0; // 最大コンボカウントをリセット
                 window.enemiesDefeated = 0; // 倒したゾンビの数をリセット
