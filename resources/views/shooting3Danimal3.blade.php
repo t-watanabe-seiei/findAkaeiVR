@@ -1064,15 +1064,15 @@
                 
                 // スコアに応じたコメント
                 let comment = '';
-                if (window.totalScore >= 1000) {
+                if (window.totalScore >= 4000) {
                     comment = 'AMAZING! PERFECT SNIPER!';
-                } else if (window.totalScore >= 800) {
+                } else if (window.totalScore >= 3500) {
                     comment = 'EXCELLENT! GREAT JOB!';
-                } else if (window.totalScore >= 600) {
+                } else if (window.totalScore >= 3000) {
                     comment = 'VERY GOOD! NICE SHOOTING!';
-                } else if (window.totalScore >= 400) {
+                } else if (window.totalScore >= 2000) {
                     comment = 'GOOD! KEEP IT UP!';
-                } else if (window.totalScore >= 200) {
+                } else if (window.totalScore >= 1000) {
                     comment = 'NOT BAD! TRY AGAIN!';
                 } else {
                     comment = 'KEEP PRACTICING!';
@@ -2340,7 +2340,7 @@
                 
                 // 物理演算で放物線を描く（餌やり体験なのでゆっくり）
                 const gravity = -4.9; // 重力加速度 (m/s^2)
-                const initialSpeed = 5; // 初速度 (m/s) - 餌やり体験用にゆっくり（10→5）
+                const initialSpeed = 10; // 初速度 (m/s) - 餌やり体験用にゆっくり（10→5）
                 const velocity = direction.clone().multiplyScalar(initialSpeed); // 初速度ベクトル
                 
                 window.debugLog('Initial velocity:', velocity);

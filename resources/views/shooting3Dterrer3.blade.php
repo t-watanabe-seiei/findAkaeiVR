@@ -34,7 +34,7 @@
         window.gameEnded = false;
         window.totalScore = 0;
         window.gameTimer = null;
-        window.gameTimeLeft = 75; // 75秒
+        window.gameTimeLeft = 90; // 75->90秒
         window.comboCount = 0; // 連続ヒット数
         window.maxComboCount = 0; // 最大連続ヒット数
         window.enemiesDefeated = 0; // 倒したゾンビの数
