@@ -2004,11 +2004,11 @@
         /* HUDポケボール画像オーバーレイ */
         #hud-pokeball {
             position: fixed;
-            bottom: -15%;
+            bottom: -5%;
             left: 50%;
             transform: translateX(-50%);
-            width: 160px;
-            height: 160px;
+            width: 240px;
+            height: 240px;
             z-index: 500;
             pointer-events: none;
             touch-action: none;
