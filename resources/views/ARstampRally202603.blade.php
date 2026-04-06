@@ -2004,7 +2004,7 @@
         /* HUDポケボール画像オーバーレイ */
         #hud-pokeball {
             position: fixed;
-            bottom: -1%;
+            bottom: -15%;
             left: 50%;
             transform: translateX(-50%);
             width: 240px;
