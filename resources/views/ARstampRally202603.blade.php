@@ -2000,6 +2000,26 @@
         #close-button {
             background-color: #f44336;
         }
+
+        /* HUDポケボール画像オーバーレイ */
+        #hud-pokeball {
+            position: fixed;
+            bottom: -12%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 160px;
+            z-index: 500;
+            pointer-events: none;
+            touch-action: none;
+            transition: transform 0.1s ease;
+        }
+        #hud-pokeball img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -2168,7 +2188,12 @@
             <circle cx="32" cy="32" r="8" fill="#fff" stroke="#f4c0c0" stroke-width="1"/>
         </svg>
     </button>
-    
+
+    <!-- HUDポケボール画像オーバーレイ -->
+    <div id="hud-pokeball">
+        <img src="{{ asset('cg/pokeball_image.png') }}" alt="pokeball">
+    </div>
+
     <!-- 撮影した写真のプレビュー -->
     <div id="photo-preview">
         <img id="preview-image" src="" alt="撮影した写真">
@@ -2199,7 +2224,7 @@
                 position="0 -0.24 -0.5"
                 scale="0.075 0.075 0.075"
                 rotation="0 0 0"
-                visible="true">
+                visible="false">
             </a-entity>
         </a-entity>
         
@@ -3368,11 +3393,11 @@
                             }
                         } catch (e) { /* ignore per-element errors */ }
                     });
-                    const holding = document.getElementById('holding-pokeball');
-                    if (holding) {
-                        holding._prevDisplay = holding.style.display || '';
-                        holding.style.display = 'none';
-                        _tmpHiddenEls.push(holding);
+                    const hudPokeball = document.getElementById('hud-pokeball');
+                    if (hudPokeball) {
+                        hudPokeball._prevVisibility = hudPokeball.style.visibility || '';
+                        hudPokeball.style.visibility = 'hidden';
+                        _tmpHiddenEls.push(hudPokeball);
                     }
                 } catch (e) { console.warn('Failed to hide transient elements for screenshot', e); }
 
@@ -3397,7 +3422,7 @@
                         
                         if (!bounds) {
                             console.warn('No model detected in image');
-                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
+                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'hud-pokeball') { el.style.visibility = el._prevVisibility || ''; delete el._prevVisibility; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                             callback(null);
                             return;
                         }
@@ -3412,13 +3437,13 @@
                                 length: screenshot.length,
                                 bounds: bounds
                             });
-                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
+                            try { _tmpHiddenEls.forEach(el => { if (el.id === 'hud-pokeball') { el.style.visibility = el._prevVisibility || ''; delete el._prevVisibility; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                             callback(screenshot);
                         }, 0);
                         
                     } catch (drawError) {
                         console.error('Draw error:', drawError);
-                        try { _tmpHiddenEls.forEach(el => { if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
+                        try { _tmpHiddenEls.forEach(el => { if (el.id === 'hud-pokeball') { el.style.visibility = el._prevVisibility || ''; delete el._prevVisibility; } else { try { el.setAttribute('visible', el._prevVisible || 'true'); } catch (e) {} delete el._prevVisible; } }); } catch (e) { console.warn('Failed to restore transient elements after screenshot', e); }
                         callback(null);
                     }
                 });
@@ -7026,51 +7051,8 @@
                 let touchStartX = 0;
                 let touchStartY = 0;
                 let ballEntity = document.querySelector('#holding-pokeball');
+                let hudEl = document.getElementById('hud-pokeball');
                 let canThrow = true;
-
-                // moto g64y 等 Android でボールが表示されない問題の対策
-                // HUD ボール (カメラ子エンティティ) の frustumCulled=false を多段構えで確実に適用
-                // ※ mat.side 等マテリアル変更は Android 白画面を引き起こすため行わない
-                function applyHoldingBallFix() {
-                    if (!ballEntity || !ballEntity.object3D) return;
-                    try {
-                        ballEntity.object3D.traverse(function(node) {
-                            node.frustumCulled = false;
-                        });
-                        console.log('holding-pokeball frustumCulled fix applied');
-                    } catch (e) { console.warn('holdingBallFix failed', e); }
-                }
-                if (ballEntity) {
-                    applyHoldingBallFix(); // 即時適用（すでにロード済みの場合）
-                    ballEntity.addEventListener('model-loaded', applyHoldingBallFix);
-                    ballEntity.addEventListener('object3dset', applyHoldingBallFix);
-                    // ロード失敗時のリトライ（gltf-model 属性を再設定）
-                    ballEntity.addEventListener('model-error', function() {
-                        console.warn('holding-pokeball gltf load failed, retrying in 2s...');
-                        setTimeout(function() {
-                            if (ballEntity) {
-                                var src = ballEntity.getAttribute('gltf-model');
-                                ballEntity.removeAttribute('gltf-model');
-                                setTimeout(function() {
-                                    if (src) ballEntity.setAttribute('gltf-model', src);
-                                }, 200);
-                            }
-                        }, 2000);
-                    });
-                }
-                // シーンロード後にも遅延適用（レース条件の回避）
-                if (scene.hasLoaded) {
-                    setTimeout(applyHoldingBallFix, 200);
-                    setTimeout(applyHoldingBallFix, 1000);
-                } else {
-                    scene.addEventListener('loaded', function() {
-                        setTimeout(applyHoldingBallFix, 200);
-                        setTimeout(applyHoldingBallFix, 1000);
-                    });
-                }
-                // フォールバック: どの段階でも確実に実行
-                setTimeout(applyHoldingBallFix, 500);
-                setTimeout(applyHoldingBallFix, 2000);
                 
                 // 画面全体でタップしてボールを投げられる
                 // （HUDボールが非表示の端末でも、画面のどこをタップしても投げられる）
@@ -7094,7 +7076,7 @@
                         touchStartY = touch.clientY;
                         
                         // ボールを持ち上げる演出
-                        ballEntity.setAttribute('position', '0 -0.23 -0.5');
+                        if (hudEl) hudEl.style.transform = 'translateX(-50%) translateY(-3px)';
                         
                         // デフォルトのスクロール等を防止
                         if (e.cancelable) e.preventDefault();
@@ -7126,10 +7108,8 @@
                     // 投げる処理
                     throwBall(dx, dy, distance);
                     
-                    // 手元のボールを隠す
-                    ballEntity.setAttribute('visible', 'false');
-                    // 位置を戻す
-                    ballEntity.setAttribute('position', '0 -0.24 -0.5');
+                    // HUDボールを隠す
+                    if (hudEl) hudEl.style.visibility = 'hidden';
                     canThrow = false;
                 });
                 
@@ -7137,9 +7117,7 @@
                 document.addEventListener('touchcancel', (e) => {
                     if (!isHoldingBall) return;
                     isHoldingBall = false;
-                    if (ballEntity) {
-                        ballEntity.setAttribute('position', '0 -0.24 -0.5');
-                    }
+                    if (hudEl) { hudEl.style.transform = 'translateX(-50%)'; hudEl.style.visibility = 'visible'; }
                 });
 
                 // PCでのデバッグ用（マウス操作）
@@ -7152,7 +7130,7 @@
                         isHoldingBall = true;
                         touchStartX = e.clientX;
                         touchStartY = e.clientY;
-                        ballEntity.setAttribute('position', '0 -0.23 -0.5');
+                        if (hudEl) hudEl.style.transform = 'translateX(-50%) translateY(-3px)';
                     }
                 });
                 
@@ -7166,8 +7144,7 @@
                     
                     throwBall(dx, dy, distance);
                     
-                    ballEntity.setAttribute('visible', 'false');
-                    ballEntity.setAttribute('position', '0 -0.24 -0.5');
+                    if (hudEl) hudEl.style.visibility = 'hidden';
                     canThrow = false;
                 });
                 
@@ -7179,9 +7156,12 @@
                     // 新しいボールを生成
                     const newBall = document.createElement('a-entity');
                     
-                    // 手元のボールのワールド座標を取得して初期位置とする
+                    // カメラ位置 + HUDオフセットからボール初期位置を計算
+                    const cam = document.querySelector('[camera]').object3D;
                     const worldPos = new THREE.Vector3();
-                    ballEntity.object3D.getWorldPosition(worldPos);
+                    cam.getWorldPosition(worldPos);
+                    const hudOffset = new THREE.Vector3(0, -0.24, -0.5).applyQuaternion(cam.quaternion);
+                    worldPos.add(hudOffset);
                     
                     newBall.setAttribute('position', worldPos);
                     newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
@@ -7257,10 +7237,11 @@
                         if (ballRestored) return;
                         ballRestored = true;
                         setTimeout(() => {
-                            if (ballEntity) {
-                                ballEntity.setAttribute('visible', 'true');
-                                canThrow = true;
+                            if (hudEl) {
+                                hudEl.style.visibility = 'visible';
+                                hudEl.style.transform = 'translateX(-50%)';
                             }
+                            canThrow = true;
                         }, 500); // 0.5秒後に再表示
                     }
                     newBall.addEventListener('pokeball-gone', () => {

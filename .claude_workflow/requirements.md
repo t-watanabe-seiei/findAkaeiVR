@@ -127,3 +127,63 @@ moto g64y (Android 14) のポートレート画面 (例: 412×915px) に対し�
 
 ## 次ステップ
 設計フェーズへ進む
+
+---
+
+# 要件定義: ARstampRally202603 HUDポケボール DOM オーバーレイ化（パターン2）
+
+## 作成日時
+2026年4月6日
+
+## 参照
+`.claude_workflow/complete.md` を参照済み
+
+## プロジェクト概要
+AR スタンプラリーアプリ (`ARstampRally202603.blade.php`) において、HUD ポケボール（手元に持つボール表示）が一部端末で表示されない問題を根本解決する。  
+A-Frame 3D エンティティとして camera の子要素に配置している `#holding-pokeball` を廃止し、HTML `<img>` DOM オーバーレイに置き換える（パターン2実装）。
+
+## 問題の根本原因
+- **原因A（フラスタムカリング誤検出）**: AR.js がカメラのワールドマトリクスを直接書き換えるため、Three.js がバウンディング球を誤算 → `frustumCulled=true` でHUDが消える
+- **原因B（アスペクト比/FOV不一致）**: `sourceWidth/sourceHeight` が端末画面比率と異なると、A-Frame カメラのプロジェクション行列と画面サイズがずれる → 固定位置 `0 -0.24 -0.5` が画面外になる
+
+## 解決策（パターン2）
+`#holding-pokeball`（A-Frame 3D エンティティ）を `visible="false"` で残しつつ、  
+`<div id="hud-pokeball"><img ...></div>` という純粋な DOM 要素に置き換えてポケボール画像を表示する。
+
+### 採用理由
+- DOM `<img>` は A-Frame・AR.js・Three.js の影響を一切受けない → どの端末でも確実に表示される
+- フラスタムカリングもアスペクト比問題も原理的に発生しない
+- CSS `position: fixed; bottom: 12%; left: 50%` で任意の画面サイズに対応
+
+## 制約条件
+- `#holding-pokeball`（A-Frame エンティティ）は `visible="false"` で DOM に残す（後方互換のため）
+- `applyHoldingBallFix` の3Dエンティティ向けコードは削除してよい（不要になるため）
+- iPhone の既存動作（動物アニメーション・ボール投げ）を壊さない
+- 変更は `ARstampRally202603.blade.php` 1ファイルのみ
+- 用意するアセット: `public/cg/pokeball_image.png`（ユーザー用意済み）
+
+## 変更箇所の概要
+
+| # | 種類 | 場所 |
+|---|------|------|
+| 1 | CSS追加 | `</style>` 直前（約2003行目） |
+| 2 | HTML追加 | `<button id="throw-button">` の閉じタグ直後（約2172行目） |
+| 3 | HTML変更 | `#holding-pokeball` の `visible="true"` → `visible="false"` |
+| 4a | JS変更（hide） | `captureModelScreenshot()` 内 holding 非表示コード（3371行目） |
+| 4b | JS変更（restore）| 同関数内 restore コード × 3か所（3400, 3415, 3421行目） |
+| 5 | JS変更 | IIFE 先頭: `hudEl` 変数追加、`applyHoldingBallFix` 全削除（7028〜7074行目） |
+| 6a | JS変更 | touchstart 持ち上げ演出（7096行目） |
+| 6b | JS変更 | touchend ボール隠し（7131〜7133行目） |
+| 6c | JS変更 | touchcancel 復元（7139〜7141行目） |
+| 6d | JS変更 | mousedown 持ち上げ演出（7155行目） |
+| 6e | JS変更 | mouseup ボール隠し（7169〜7170行目） |
+| 7 | JS変更 | `throwBall()` 内 初期位置計算（7183〜7185行目） |
+| 8 | JS変更 | `restoreBall()` 内 ボール復元（7255〜7259行目） |
+
+## 成功基準
+- iOS・Android 両端末でポケボール画像が画面下中央に常時表示される
+- スワイプでボールが正常に投げられる
+- 既存の iPhone 動作に影響なし
+
+## 次ステップ
+設計フェーズへ進む

@@ -308,3 +308,279 @@ arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight
 - 既存の `applyHoldingBallFix()` は変更不要（既に正しく実装済み）
 - PHP lint は修正後に必ず実行
 
+---
+
+# 設計: ARstampRally202603 HUDポケボール DOM オーバーレイ化（パターン2）
+
+## 作成日時
+2026年4月6日
+
+## 前提
+`.claude_workflow/requirements.md` を読み込み済み
+
+---
+
+## 対象ファイル
+`resources/views/ARstampRally202603.blade.php`
+
+---
+
+## 変更1: CSS追加（`</style>` 直前）
+
+HUDポケボール画像を画面下中央に固定表示するスタイル。  
+`touch-action: none` でタッチイベントを妨害しない設定も含む。
+
+```css
+/* HUDポケボール画像オーバーレイ */
+#hud-pokeball {
+    position: fixed;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 80px;
+    z-index: 500;
+    pointer-events: none;
+    touch-action: none;
+    transition: transform 0.1s ease;
+}
+#hud-pokeball img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+```
+
+---
+
+## 変更2: HTML追加（`throw-button` 直後）
+
+```html
+<!-- HUDポケボール画像オーバーレイ -->
+<div id="hud-pokeball">
+    <img src="{{ asset('cg/pokeball_image.png') }}" alt="pokeball">
+</div>
+```
+
+---
+
+## 変更3: `#holding-pokeball` 非表示化
+
+```html
+<!-- 変更前 -->
+visible="true"
+
+<!-- 変更後 -->
+visible="false"
+```
+
+---
+
+## 変更4a: `captureModelScreenshot()` HUD非表示
+
+変更前（`holding-pokeball` の display を操作）：
+```javascript
+const holding = document.getElementById('holding-pokeball');
+if (holding) {
+    holding._prevDisplay = holding.style.display || '';
+    holding.style.display = 'none';
+    _tmpHiddenEls.push(holding);
+}
+```
+
+変更後（`hud-pokeball` の visibility を操作）：
+```javascript
+const hudPokeball = document.getElementById('hud-pokeball');
+if (hudPokeball) {
+    hudPokeball._prevVisibility = hudPokeball.style.visibility || '';
+    hudPokeball.style.visibility = 'hidden';
+    _tmpHiddenEls.push(hudPokeball);
+}
+```
+
+---
+
+## 変更4b: `captureModelScreenshot()` 復元コード × 3か所
+
+変更前（same pattern in 3 places）：
+```javascript
+if (el.id === 'holding-pokeball') { el.style.display = el._prevDisplay || ''; delete el._prevDisplay; }
+```
+
+変更後：
+```javascript
+if (el.id === 'hud-pokeball') { el.style.visibility = el._prevVisibility || ''; delete el._prevVisibility; }
+```
+
+---
+
+## 変更5: IIFE 先頭 — `hudEl` 追加 + `applyHoldingBallFix` 全削除
+
+変更前（抜粋）：
+```javascript
+let ballEntity = document.querySelector('#holding-pokeball');
+let canThrow = true;
+
+function applyHoldingBallFix() {
+    // ... ~42行 ...
+}
+if (ballEntity) { ballEntity.addEventListener('model-loaded', applyHoldingBallFix); ... }
+setTimeout(applyHoldingBallFix, 500);
+setTimeout(applyHoldingBallFix, 2000);
+```
+
+変更後：
+```javascript
+let ballEntity = document.querySelector('#holding-pokeball');
+let hudEl = document.getElementById('hud-pokeball');
+let canThrow = true;
+// applyHoldingBallFix() は DOM overlayが担うため削除
+```
+
+---
+
+## 変更6a: touchstart — 持ち上げ演出
+
+変更前：
+```javascript
+ballEntity.setAttribute('position', '0 -0.23 -0.5');
+```
+
+変更後：
+```javascript
+if (hudEl) hudEl.style.transform = 'translateX(-50%) translateY(-3px)';
+```
+
+---
+
+## 変更6b: touchend — ボール隠し
+
+変更前：
+```javascript
+ballEntity.setAttribute('visible', 'false');
+ballEntity.setAttribute('position', '0 -0.24 -0.5');
+canThrow = false;
+```
+
+変更後：
+```javascript
+if (hudEl) hudEl.style.visibility = 'hidden';
+canThrow = false;
+```
+
+---
+
+## 変更6c: touchcancel — 復元
+
+変更前：
+```javascript
+ballEntity.setAttribute('position', '0 -0.24 -0.5');
+```
+
+変更後（transform リセット＋visibility 復元）：
+```javascript
+if (hudEl) { hudEl.style.transform = 'translateX(-50%)'; hudEl.style.visibility = 'visible'; }
+```
+
+---
+
+## 変更6d: mousedown — 持ち上げ演出
+
+変更前：
+```javascript
+ballEntity.setAttribute('position', '0 -0.23 -0.5');
+```
+
+変更後：
+```javascript
+if (hudEl) hudEl.style.transform = 'translateX(-50%) translateY(-3px)';
+```
+
+---
+
+## 変更6e: mouseup — ボール隠し
+
+変更前：
+```javascript
+ballEntity.setAttribute('visible', 'false');
+ballEntity.setAttribute('position', '0 -0.24 -0.5');
+```
+
+変更後：
+```javascript
+if (hudEl) hudEl.style.visibility = 'hidden';
+```
+
+---
+
+## 変更7: `throwBall()` — 初期位置計算
+
+AR.js がカメラのワールドマトリクスを直接書き換えるため `getWorldPosition()` が信頼できない。
+代わりにカメラのワールド行列からカメラ位置と前方向を取得してオフセット計算する。
+
+変更前：
+```javascript
+const worldPos = new THREE.Vector3();
+ballEntity.object3D.getWorldPosition(worldPos);
+```
+
+変更後：
+```javascript
+const cam = document.querySelector('[camera]').object3D;
+const worldPos = new THREE.Vector3();
+cam.getWorldPosition(worldPos);
+const forward = new THREE.Vector3(0, -0.24, -0.5).applyQuaternion(cam.quaternion);
+worldPos.add(forward);
+```
+
+---
+
+## 変更8: `restoreBall()` — ボール復元
+
+変更前：
+```javascript
+setTimeout(() => {
+    if (ballEntity) {
+        ballEntity.setAttribute('visible', 'true');
+        canThrow = true;
+    }
+}, 500);
+```
+
+変更後：
+```javascript
+setTimeout(() => {
+    if (hudEl) {
+        hudEl.style.visibility = 'visible';
+        hudEl.style.transform = 'translateX(-50%)';
+    }
+    canThrow = true;
+}, 500);
+```
+
+---
+
+## 変更箇所まとめ
+
+| # | 変更種別 | ファイル内位置（概算行） | 内容 |
+|---|----------|--------------------------|------|
+| 1 | CSS追加 | ~2003 `</style>` 直前 | `#hud-pokeball` スタイル |
+| 2 | HTML追加 | ~2172 `throw-button` 直後 | `<div id="hud-pokeball">` |
+| 3 | HTML変更 | ~2201 `#holding-pokeball` | `visible="true"` → `"false"` |
+| 4a | JS変更 | ~3371 screenshot hide | `holding-pokeball` → `hud-pokeball` |
+| 4b | JS変更 | ~3400,3415,3421 restore×3 | id + property 変更 |
+| 5 | JS変更 | ~7028〜7074 IIFE先頭 | `hudEl` 追加、`applyHoldingBallFix` 削除 |
+| 6a | JS変更 | ~7096 touchstart | `setAttribute` → `hudEl.style.transform` |
+| 6b | JS変更 | ~7131 touchend | `setAttribute` → `hudEl.style.visibility` |
+| 6c | JS変更 | ~7139 touchcancel | `setAttribute` → `hudEl.style.*` |
+| 6d | JS変更 | ~7155 mousedown | `setAttribute` → `hudEl.style.transform` |
+| 6e | JS変更 | ~7169 mouseup | `setAttribute` → `hudEl.style.visibility` |
+| 7 | JS変更 | ~7183 throwBall初期位置 | `getWorldPosition` → camera+offset |
+| 8 | JS変更 | ~7255 restoreBall | `setAttribute` → `hudEl.style.*` |
+
+## 注意事項
+- PHP lint（`php -l`）を実装後に必ず実行
+- `ballEntity` 変数は `throwBall()` 内で 3D アニメーション用に引き続き使用するため削除しない
+- `restoreBall()` 内の `ballEntity` 参照はすべて `hudEl` に置き換える
+
