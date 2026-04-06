@@ -2178,9 +2178,16 @@
         </div>
     </div>
     
+@php
+    // Android 端末はサーバーサイドで 640x480 を初期値として設定し、
+    // JS (DOMContentLoaded) による上書きよりも確実に適用する。
+    // AR.js が connectedCallback (HTML パース時) で属性を読む場合でも正しい値になる。
+    $_arjsUa = request()->header('User-Agent', '');
+    $_arjsIsAndroid = stripos($_arjsUa, 'android') !== false;
+@endphp
     <a-scene
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720; detectionMode: mono; maxDetectionRate: 15;"
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: {{ $_arjsIsAndroid ? 640 : 1280 }}; sourceHeight: {{ $_arjsIsAndroid ? 480 : 720 }}; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
@@ -4490,13 +4497,17 @@
             // 捕まえるボタンは廃止し、常に投げられる状態に
             const catchModeActive = true;
             
-            // UIボタンかどうかをチェックする関数
+            // UIボタン / オーバーレイかどうかをチェックする関数
+            // isBallArea が常に true を返すようになったため、
+            // モーダル表示中や各種ボタンタップ時に誤ってボールが投げられないようにする
             function isUIButton(element) {
-                return element && (element.id === 'stamp-book-button' || 
+                return element && (
+                    element.id === 'stamp-book-button' || 
                     element.id === 'camera-button' ||
                     element.id === 'throw-button' ||
                     element.id === 'video-button' ||
                     element.id === 'switch-camera-button' ||
+                    element.id === 'guide-button' ||
                     // element.id === 'rotate-up' ||
                     // element.id === 'rotate-down' ||
                     element.closest('#stamp-book-button') ||
@@ -4504,9 +4515,19 @@
                     element.closest('#video-button') ||
                     element.closest('#switch-camera-button') ||
                     element.closest('#throw-button') ||
+                    element.closest('#guide-button') ||
                     // element.closest('#rotate-up') ||
                     // element.closest('#rotate-down') ||
-                    element.closest('.rotation-buttons'));
+                    element.closest('.rotation-buttons') ||
+                    // モーダル / オーバーレイ表示中はボールを投げない
+                    element.closest('#stamp-book-modal') ||
+                    element.closest('#guide-modal') ||
+                    element.closest('#photo-preview') ||
+                    element.closest('#camera-help-modal') ||
+                    element.closest('#confirm-dialog') ||
+                    element.closest('#confirm-overlay') ||
+                    element.closest('#camera-error')
+                );
             }
             
             // タップ/クリック開始検出（タッチデバイス）
@@ -7051,12 +7072,11 @@
                 setTimeout(applyHoldingBallFix, 500);
                 setTimeout(applyHoldingBallFix, 2000);
                 
-                // 画面下部中央のエリア定義（ボールがあるあたり）
+                // 画面全体でタップしてボールを投げられる
+                // （HUDボールが非表示の端末でも、画面のどこをタップしても投げられる）
                 function isBallArea(x, y) {
-                    const w = window.innerWidth;
-                    const h = window.innerHeight;
-                    // 下部40%、横幅60% (中央) - 以前の0.7/0.3/0.7より広げてAndroid対応
-                    return y > h * 0.6 && x > w * 0.2 && x < w * 0.8;
+                    // UIボタン・モーダルのチェックは isUIButton() に委ねる
+                    return true;
                 }
                 
                 // タッチ開始
