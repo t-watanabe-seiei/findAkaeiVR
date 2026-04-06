@@ -4322,8 +4322,8 @@
                                 if (node.material) {
                                     const materials = Array.isArray(node.material) ? node.material : [node.material];
                                     materials.forEach(mat => {
-                                        // 両面レンダリング
-                                        mat.side = THREE.DoubleSide;
+                                        // 片面レンダリング（iPhone での「ひび割れ」防止: 裏面非描画）
+                                        mat.side = THREE.FrontSide;
                                         mat.depthWrite = true;
                                         mat.depthTest = true;
                                         
@@ -4668,8 +4668,8 @@
                                         
                                         // Android向け：polygonOffsetを大幅に強化
                                         mat.polygonOffset = true;
-                                        mat.polygonOffsetFactor = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
-                                        mat.polygonOffsetUnits = (meshIndex * 1.0 + index * 1.0); // 0.1 → 1.0に増加
+                                        mat.polygonOffsetFactor = (meshIndex * 1.0 + index * 1.0 + 1.0); // 0スタートを避け最小1以上に（iPhone Zファイティング防止）
+                                        mat.polygonOffsetUnits = (meshIndex * 1.0 + index * 1.0 + 1.0); // 0スタートを避け最小1以上に（iPhone Zファイティング防止）
                                         
                                         mat.flatShading = false;
                                         mat.precision = 'highp';
@@ -4683,7 +4683,7 @@
                                         // 透明度設定
                                         mat.transparent = false;
                                         mat.opacity = 1.0;
-                                        mat.alphaTest = 0.5;
+                                        mat.alphaTest = 0; // 0に設定（iPhoneでの球体端ピクセル欠落→ひび割れ防止）
                                         
                                         // 深度関数（Android向け）
                                         mat.depthFunc = THREE.LessEqualDepth;
@@ -7228,9 +7228,12 @@
                                     if (node.material) {
                                         const materials = Array.isArray(node.material) ? node.material : [node.material];
                                         materials.forEach(mat => {
-                                            mat.side = THREE.DoubleSide;
+                                            mat.side = THREE.FrontSide; // DoubleSide→FrontSide: iPhoneでの「ひび割れ」防止（裏面非描画）
                                             mat.depthWrite = true;
                                             mat.depthTest = true;
+                                            mat.polygonOffset = true;
+                                            mat.polygonOffsetFactor = 1;
+                                            mat.polygonOffsetUnits = 1;
                                             mat.flatShading = false;
                                             mat.transparent = false;
                                             mat.opacity = 1.0;
