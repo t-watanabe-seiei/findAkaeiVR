@@ -2195,7 +2195,7 @@
             <!-- 手持ちのポケボール (HUD) -->
             <a-entity 
                 id="holding-pokeball"
-                gltf-model="{{ asset('cg/poke_ball_seiei.glb') }}"
+                gltf-model="{{ asset('cg/poke_ball_seiei2.glb') }}"
                 position="0 -0.24 -0.5"
                 scale="0.075 0.075 0.075"
                 rotation="0 0 0"
@@ -4295,7 +4295,7 @@
                 
                 // ポケボールを生成
                 const pokeball = document.createElement('a-entity');
-                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15'); // サイズを小さく（1.5x bigger than before）
                 pokeball.setAttribute('pokeball-throwable', '');
                 
@@ -4629,7 +4629,7 @@
                 
                 // ポケボールを生成（サイズを半分に: 0.2 → 0.1）
                 const pokeball = document.createElement('a-entity');
-                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15');
                 pokeball.setAttribute('pokeball-throwable', '');
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
@@ -5817,7 +5817,7 @@
                         if (cameraEl && !previewEntity) {
                             previewEntity = document.createElement('a-entity');
                             previewEntity.setAttribute('id', 'throw-preview');
-                            previewEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
+                            previewEntity.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                             // slightly larger for preview, set uniform 0.22
                             // preview ball should be half the previous size (smaller preview)
                             previewEntity.setAttribute('scale', '0.11 0.11 0.11');
@@ -7184,7 +7184,7 @@
                     ballEntity.object3D.getWorldPosition(worldPos);
                     
                     newBall.setAttribute('position', worldPos);
-                    newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei.glb") }}');
+                    newBall.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                     newBall.setAttribute('scale', '0.075 0.075 0.075'); // 投げるときは少し大きく
                     newBall.setAttribute('pokeball-throwable', '');
                     
