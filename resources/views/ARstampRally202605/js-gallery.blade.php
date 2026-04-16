@@ -29,7 +29,7 @@
                     var modelUrl = '{{ asset("cg") }}/' + modelPath;
 
                     entity.setAttribute('gltf-model', modelUrl);
-                    entity.setAttribute('position', '-1.5 ' + (index * GALLERY_Y_SPACING) + ' 0');
+                    entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
                     entity.setAttribute('scale', '1.1 1.1 1.1');
                     entity.setAttribute('rotation', '0 90 0');
 

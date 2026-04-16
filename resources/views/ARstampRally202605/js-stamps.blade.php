@@ -143,6 +143,8 @@
 
         var _currentCapturedAnimal = null;
 
+        var _capturedMessageTimer = null;
+
         function showCapturedMessage(stampId) {
             var msg = document.getElementById('captured-message');
             var nameEl = document.getElementById('captured-animal-name');
@@ -155,6 +157,13 @@
                 msg.style.visibility = '';
                 msg.style.opacity = '';
                 msg.classList.add('show');
+
+                // 1.5秒後に自動で閉じる
+                if (_capturedMessageTimer) clearTimeout(_capturedMessageTimer);
+                _capturedMessageTimer = setTimeout(function () {
+                    hideCapturedMessage();
+                    _capturedMessageTimer = null;
+                }, 1500);
             }
         }
 
