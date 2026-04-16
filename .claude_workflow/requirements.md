@@ -1,3 +1,86 @@
+# 要件定義: ARstampRally202605 新規作成
+
+## 作成日時
+2026年4月15日
+
+## 参照
+`.claude_workflow/complete.md` を参照済み
+
+## プロジェクト概要
+`ARstampRally202603.blade.php`（7291行）を参考に、ARスタンプラリー2026年5月版を新規作成する。  
+ファイルが1000行を超えるため、`resources/views/ARstampRally202605/` サブディレクトリにモジュール化して作成する。
+
+## 現状把握
+- 202603版はマーカー数20個、7291行の単一ファイル
+- AR.js + A-Frame を用いたWebARアプリ
+- 既存APIエンドポイント（`/api/record-marker-scan`, `/api/exchange-prize`, `/api/check-prize-exchange`）を流用
+- 既存ダッシュボード（`admin/dashboard202603`）を参考に202605版を追加
+
+## 要件詳細
+
+### 1. マーカー・モデル構成
+- **マーカー数**: 11個（maker00 ～ maker10）
+- **捕獲対象モデル**: 10個（Model_01.glb ～ Model_10.glb）
+  - スタンプID: `model_01` ～ `model_10`（汎用ID、後で名称変更可）
+  - 各モデルに `anime01`, `anime02`, `anime03` アニメーションを持つ
+- **maker00**: ギャラリー専用マーカー（捕獲対象なし）
+
+### 2. アニメーション仕様
+| 状態 | アニメーション |
+|------|--------------|
+| ボールが当たる前（マーカー検出時） | `anime01` をループ再生 |
+| ボールヒット時 | `anime02` を1回のみ再生 |
+| ギャラリー表示（maker00） | `anime03` をループ再生 |
+
+### 3. maker00 ギャラリー機能
+- marker00を読み込んだとき、これまで捕まえたモデルをすべてARとして表示
+- **位置**: X・Z は同じ（例: `0 * 0`）、Y だけ 1.0 ずつずらして縦に並べる
+- **アニメーション**: `anime03` をループ再生
+- ギャラリーモデルは捕獲対象外（ヒットボックスなし）
+
+### 4. ボール投擲仕様（変更点）
+- **方式**: 画面のどこをタップしても即座にボールを投げる
+- HUDボール（スワイプ方式）は廃止
+- UIボタン（スタンプ帳・写真等）タップ時は除外
+- 実装：`touchstart`→`touchend` の座標差ベクトルで方向を決め `throwPokeballToCenter()` 呼び出し
+
+### 5. Androidカメラズーム問題の修正
+- **症状**: 一部Androidでカメラ映像が拡大（ズームイン）されて見える
+- **原因**: AR.jsがデフォルトで`object-fit: cover`相当の挙動をするため、カメラの縦横比とディスプレイの縦横比のミスマッチが生じる
+- **解決策**: 
+  - Android検出時に `sourceWidth: 640; sourceHeight: 480` を保持（現状維持）
+  - 追加で `video` 要素に `object-fit: contain` をCSS適用
+  - AR.jsの `displayWidth` / `displayHeight` オプションを明示的に指定
+  - `cameraParametersUrl` を明示してカメラ歪み補正を活用
+
+### 6. 景品交換
+- **必要スタンプ数**: **6個以上**（202603の10個から変更）
+- その他の景品交換ロジックは202603と同じ
+
+### 7. 管理画面
+- パス: `/admin/dashboard202605`
+- 同じ認証ミドルウェア（`admin.auth`）
+- レイアウト: dashboard202603と同一
+- 集計対象: 2026年5月（JST）のデータ
+- 対象マーカーID: `model_01` ～ `model_10`
+
+### 8. API・ストレージキー
+- 既存API（`/api/record-marker-scan`, `/api/exchange-prize`等）を流用
+- LocalStorageキー: `ar-stamp-rally-202605`（202603と分離）
+- `ar-captured-animals-202605`
+- `ar-user-id-202605`
+- IndexedDB名: `ARStampRallyDB202605`
+
+## 成功基準
+- [ ] 10個のマーカーでARモデルが表示・捕獲できる
+- [ ] maker00でギャラリー表示が動作する
+- [ ] 画面タップでボールが投げられる
+- [ ] Android端末でカメラのズーム問題が改善される
+- [ ] 6個以上のスタンプで景品交換できる
+- [ ] `/admin/dashboard202605` が202603と同様に表示される
+
+---
+
 # 要件定義: shooting3Dterrer3 VRゴーグル処理落ち修正
 
 ## 作成日時

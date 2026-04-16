@@ -1,3 +1,264 @@
+# 設計: ARstampRally202605 新規作成
+
+## 作成日時
+2026年4月16日
+
+## 前提
+`.claude_workflow/requirements.md` を読み込み済み
+
+---
+
+## ファイル構成設計
+
+ファイルを1000行以内に収めるため、`resources/views/ARstampRally202605/` 以下に分割する。
+
+```
+resources/views/
+├── ARstampRally202605.blade.php   ← エントリポイント（@includeを呼ぶだけ）
+└── ARstampRally202605/
+    ├── head.blade.php             ← <head>タグ・CSS・初期グローバル変数
+    ├── aframe-components.blade.php ← AFRAME.registerComponent群
+    ├── scene.blade.php            ← <a-scene>全体（マーカー・モデルのHTML）
+    ├── ui.blade.php               ← UI HTML（モーダル・ボタン等）
+    ├── js-stamps.blade.php        ← STAMPS定数・LocalStorage管理・スタンプ帳ロジック
+    ├── js-prize.blade.php         ← 景品交換ロジック・IndexedDB・UUID
+    ├── js-throw.blade.php         ← ポケボール投擲ロジック（タップ投げ）
+    ├── js-gallery.blade.php       ← maker00ギャラリー機能
+    ├── js-camera.blade.php        ← 写真撮影・動画録画・カメラ切り替え
+    └── js-init.blade.php          ← DOMContentLoaded 初期化（マーカーイベント등）
+```
+
+**行数目安（合計 ≈ 900行）**:
+| ファイル | 予想行数 |
+|---------|---------|
+| ARstampRally202605.blade.php | 20行 |
+| head.blade.php | 100行 |
+| aframe-components.blade.php | 250行 |
+| scene.blade.php | 120行 |
+| ui.blade.php | 150行 |
+| js-stamps.blade.php | 200行 |
+| js-prize.blade.php | 150行 |
+| js-throw.blade.php | 100行 |
+| js-gallery.blade.php | 80行 |
+| js-camera.blade.php | 200行 |
+| js-init.blade.php | 180行 |
+
+---
+
+## 各ファイルの設計詳細
+
+### ARstampRally202605.blade.php（エントリポイント）
+```php
+<!DOCTYPE html>
+<html lang="ja">
+@include('ARstampRally202605.head')
+<body>
+@include('ARstampRally202605.ui')
+@include('ARstampRally202605.scene')
+<script>
+@include('ARstampRally202605.js-stamps')
+@include('ARstampRally202605.js-prize')
+@include('ARstampRally202605.js-throw')
+@include('ARstampRally202605.js-gallery')
+@include('ARstampRally202605.js-camera')
+@include('ARstampRally202605.js-init')
+</script>
+</body>
+</html>
+```
+※ `<script>`ブロック内にBladeを@includeすることで、アセットURLの`{{ asset(...) }}`が正常に展開される。
+
+### head.blade.php
+- `<head>` + `<meta>` + `<title>` + CSRF
+- グローバル変数（`window.activeBalls`, `window.allHitboxes`, `window.guideModalOpen`）
+- `detectOldAndroid()`, `AR_FORCE_LOWRES`
+- `monitorCameraStartup()`, `ensureCameraAccess()`
+- `destroyAndFreeEntity()`
+- ピンチ/ズーム防止、キーボードイベントブロック（Ctrl+U等）
+- `<script src="ar-engine.min.js">` / `<script src="ar-tracking.min.js">`
+- CSS（全スタイル）
+
+### aframe-components.blade.php
+- `AFRAME.registerComponent('pokeball-throwable', {...})`
+- `AFRAME.registerComponent('hitbox', {...})`
+- `AFRAME.registerComponent('lazy-model', {...})`
+- `AFRAME.registerComponent('click-animation', {...})`  
+  ※ anime03対応を追加（ギャラリーモード用）
+
+### scene.blade.php
+```html
+@php
+    $_arjsIsAndroid = stripos(request()->header('User-Agent',''),'android') !== false;
+@endphp
+<a-scene embedded arjs="..." ...>
+    <a-entity camera>
+        <!-- 手持ちポケボール（202603から流用・HUDは残すが非表示） -->
+    </a-entity>
+    <a-light ...>
+
+    <!-- maker00: ギャラリーマーカー（モデルなし、JSで動的追加） -->
+    <a-marker type="pattern" url="{{ asset('cg/202605/pattern-maker00.patt') }}" id="marker-00">
+    </a-marker>
+
+    <!-- maker01 ～ maker10: 捕獲マーカー -->
+    @for ($i = 1; $i <= 10; $i++)
+    @php $id = str_pad($i, 2, '0', STR_PAD_LEFT); @endphp
+    <a-marker type="pattern" url="{{ asset('cg/202605/pattern-maker'.$id.'.patt') }}" id="marker-{{ $id }}">
+        <a-entity
+            id="model-{{ $id }}"
+            lazy-model="src: {{ asset('cg/202605/Model_'.sprintf('%02d',$i).'.glb') }}"
+            position="0 0 0.5"
+            scale="1.1 1.1 1.1"
+            rotation="-90 0 0"
+            click-animation="clip: anime01"
+            hitbox="stampId: model_{{ $id }}; width: 1.6; height: 3.2; depth: 1.6">
+        </a-entity>
+    </a-marker>
+    @endfor
+</a-scene>
+```
+
+### js-gallery.blade.php（新機能）
+```javascript
+// maker00 markerFound: 捕獲済みモデルをギャラリー表示
+const marker00 = document.getElementById('marker-00');
+if (marker00) {
+    let galleryEntities = [];
+
+    marker00.addEventListener('markerFound', function() {
+        // 既存ギャラリーエンティティを削除
+        galleryEntities.forEach(e => { try { if(e.parentNode) e.parentNode.removeChild(e); } catch(ex){} });
+        galleryEntities = [];
+
+        const captured = getCapturedAnimals202605(); // LocalStorageから取得
+        const ids = Object.keys(captured).filter(id => captured[id] === true);
+
+        ids.forEach((stampId, index) => {
+            const entity = document.createElement('a-entity');
+            const modelIdx = parseInt(stampId.replace('model_', ''), 10);
+            entity.setAttribute('gltf-model', `{{ asset('cg/202605/Model_') }}${String(modelIdx).padStart(2,'0')}.glb`);
+            entity.setAttribute('position', `0 ${index * 1.0} 0`);
+            entity.setAttribute('scale', '1.1 1.1 1.1');
+            entity.setAttribute('rotation', '-90 0 0');
+
+            // anime03 ループ再生
+            entity.addEventListener('model-loaded', function() {
+                const model = entity.getObject3D('mesh');
+                if (!model || !model.animations || !model.animations.length) return;
+                model.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
+                const mixer = new THREE.AnimationMixer(model);
+                entity._galleryMixer = mixer;
+                let clip = THREE.AnimationClip.findByName(model.animations, 'anime03');
+                if (!clip) clip = model.animations[Math.min(2, model.animations.length - 1)];
+                const action = mixer.clipAction(clip);
+                action.setLoop(THREE.LoopRepeat, Infinity);
+                action.play();
+            });
+
+            marker00.appendChild(entity);
+            galleryEntities.push(entity);
+        });
+    });
+
+    marker00.addEventListener('markerLost', function() {
+        galleryEntities.forEach(e => { try { if(e.parentNode) e.parentNode.removeChild(e); } catch(ex){} });
+        galleryEntities = [];
+    });
+}
+```
+**注意**: ギャラリーエンティティのアニメーションmixerのtick（更新）は `js-init.blade.php` のシーンtickイベントで一括処理。
+
+### js-throw.blade.php（タップ投げ）
+202603版のHUDスワイプ方式を廃止し、シンプルなタップ投げに変更。
+
+```javascript
+// 画面タップで即投げ（UIボタン上は除外）
+document.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    if (isUIButton(document.elementFromPoint(touch.clientX, touch.clientY))) return;
+    tapThrowStart = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+    if (!tapThrowStart) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - tapThrowStart.x;
+    const dy = touch.clientY - tapThrowStart.y;
+    tapThrowStart = null;
+
+    const scene = document.querySelector('a-scene');
+    const camera = scene && scene.camera;
+    if (!camera) return;
+
+    // カメラ前方 + スワイプ補正
+    const dir = new THREE.Vector3(0, 0, -1);
+    dir.x += dx * 0.002;
+    dir.applyQuaternion(camera.quaternion).normalize();
+
+    throwPokeballToCenter(dir, 15); // 固定速度15
+}, { passive: true });
+```
+※ PC用（mousedown/mouseup）も同様に対応。
+
+### Androidカメラズーム修正
+`head.blade.php` のCSSに以下を追加:
+```css
+/* Androidカメラズーム防止 */
+video {
+    object-fit: contain !important; /* coverではなくcontainで歪みなし */
+    width: 100% !important;
+    height: 100% !important;
+}
+```
+`DOMContentLoaded` 内のAndroid判定で `sourceWidth: 640; sourceHeight: 480` を保持（202603と同様）。
+
+### 景品交換修正（6個以上）
+`js-prize.blade.php` の `exchangePrize()` 内:
+```javascript
+if (collectedCount < 6) {  // 10 → 6 に変更
+    alert('6匹以上捕まえると景品と交換できるよ！');
+    return;
+}
+```
+`updatePrizeButton()` も同様に閾値6に変更。
+
+---
+
+## ルート追加
+
+### routes/web.php に追加
+```php
+Route::match(['get', 'head'], '/stamp202605', function () {
+    return view('ARstampRally202605');
+})->name('stamp202605.index');
+
+// admin グループ内に追加
+Route::get('/dashboard202605', [AdminController::class, 'dashboard202605'])->name('admin.dashboard202605');
+```
+
+---
+
+## AdminController::dashboard202605() 設計
+
+202603版の `dashboard202603()` メソッドをコピーし、以下を変更:
+- 日付範囲: 2026年5月（`2026-05-01 00:00:00` ～ `2026-05-31 23:59:59`）
+- animals配列: `model_01` ～ `model_10`（各モデルのIDと表示名）
+- return view: `admin.dashboard202605`
+
+---
+
+## 問題点・注意事項
+
+1. **Bladeの@includeとJavaScript**: `<script>`ブロック内の `@include` は正常にレンダリングされる。ただし `{{ asset(...) }}` はBladeで処理されるため問題なし。
+
+2. **ギャラリーモデルのmixerのtick**: `scene.addEventListener('tick', ...)` でgalleryEntitiesのmixerを更新する必要あり。または `click-animation` コンポーネントの拡張として実装可能。
+
+3. **maker00のギャラリーで既存ヒットボックスと衝突しない**: ギャラリーエンティティには `hitbox` コンポーネントを付与しない。
+
+4. **Androidカメラズーム**: `object-fit: contain` を video に適用すると、スクリーン端に黒帯が生じる場合がある。AR.jsがビデオ要素を直接スタイリングする競合が起きうるため、`!important` で強制適用。
+
+---
+
 # 設計: shooting3Dterrer3 VRゴーグル処理落ち修正
 
 ## 作成日時

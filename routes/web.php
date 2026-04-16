@@ -31,6 +31,10 @@ Route::match(['get', 'head'], '/stamp202603', function () {
     return view('ARstampRally202603');
 })->name('stamp.index');
 
+Route::match(['get', 'head'], '/stamp202605', function () {
+    return view('ARstampRally202605');
+})->name('stamp202605.index');
+
 Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');
@@ -96,5 +100,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/export', [AdminController::class, 'exportCsv'])->name('admin.export');
         // ARstampRally202603用のダッシュボード（パンダマーカーの統計）
         Route::get('/dashboard202603', [AdminController::class, 'dashboard202603'])->name('admin.dashboard202603');
+        // ARstampRally202605用のダッシュボード
+        Route::get('/dashboard202605', [AdminController::class, 'dashboard202605'])->name('admin.dashboard202605');
     });
 });

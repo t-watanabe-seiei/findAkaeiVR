@@ -5,6 +5,46 @@
 　・https://seiei.tech/dx-2025　へのリンク（活動を紹介）
 　・
 
+# ARstampRally202605 にかかわるTodo
+　・model_01〜model_10 の GLBファイルを `public/cg/202605/Model_01.glb` 〜 `Model_10.glb` に配置すること
+　・マーカーパターンファイルを `public/cg/202605/` に配置すること (pattern-maker00.patt, pattern-maker01.patt 〜 pattern-maker10.patt)
+　・STAMPS オブジェクトのモデル名・アイコンを実際のキャラクター名に合わせて更新すること (`resources/views/ARstampRally202605/js-stamps.blade.php`)
+　・景品交換閾値: 6 (PRIZE_EXCHANGE_THRESHOLD = 6)
+　・ギャラリー(maker00): 捕獲済みモデルをY軸方向に並べて表示 (GALLERY_Y_SPACING = 0.6)
+　・投げ方式: タップ即投げ（HUDスワイプなし）
+
+---
+
+### ARstampRally202605 - 新規作成 (モジュール化リファクタリング)
+
+**ARstampRally202603をベースに2026年5月イベント向け新版を作成:**
+
+**新機能・変更点:**
+- タップ投げ方式（HUDポケボール画像・スワイプ廃止）
+- maker00をギャラリーマーカーとして使用（捕獲済みモデルをY軸方向に並べて表示）
+- 景品交換閾値: 10→6
+- Androidカメラズーム修正 CSS (`video { object-fit: contain !important; }`)
+- 11ファイルのモジュール構成
+
+**新規ファイル:**
+- `resources/views/ARstampRally202605.blade.php`: エントリポイント
+- `resources/views/ARstampRally202605/head.blade.php`: HEADタグ・CSS・グローバル変数
+- `resources/views/ARstampRally202605/aframe-components.blade.php`: pokeball-throwable, hitbox, lazy-model, click-animation
+- `resources/views/ARstampRally202605/scene.blade.php`: a-sceneとマーカー定義 (maker00+maker01-10)
+- `resources/views/ARstampRally202605/ui.blade.php`: モーダル・ボタン等のHTML
+- `resources/views/ARstampRally202605/js-stamps.blade.php`: STAMPS定義、LocalStorage管理
+- `resources/views/ARstampRally202605/js-prize.blade.php`: IndexedDB/Cookie、景品交換API
+- `resources/views/ARstampRally202605/js-throw.blade.php`: タップ投げ実装
+- `resources/views/ARstampRally202605/js-gallery.blade.php`: maker00ギャラリー機能
+- `resources/views/ARstampRally202605/js-camera.blade.php`: 写真・動画撮影
+- `resources/views/ARstampRally202605/js-init.blade.php`: DOMContentLoaded初期化
+- `app/Http/Controllers/AdminController.php`: `dashboard202605()`メソッド追加
+- `resources/views/admin/dashboard202605.blade.php`: 管理ダッシュボード（2026年5月統計）
+
+**追加ルート (`routes/web.php`):**
+- `GET /stamp202605` → `ARstampRally202605` ビュー
+- `GET /admin/dashboard202605` → `AdminController@dashboard202605`
+
 # 変更点
 
 ### ARスタンプラリー202603 - dashboard202603のページネーションアイコンサイズ修正 20260219
