@@ -270,3 +270,27 @@ A-Frame 3D エンティティとして camera の子要素に配置している 
 
 ## 次ステップ
 設計フェーズへ進む
+
+---
+
+# 要件定義10: ギャラリーマーカー（maker00）iPhone SEフリーズ修正
+
+## 作成日時
+2026年4月17日
+
+## 問題
+- `/stamp202605` で6匹捕獲後、`pattern-maker00.patt`（ギャラリーマーカー）を読むとiPhone SEがフリーズする
+- 原因: 6つのGLBモデルを同時にロード＋markerFound/markerLostフリッカーで繰り返し破棄・再生成
+
+## 選択された解決策
+- **A: キャッシュ＋デバウンス** — markerLostでモデルを破棄せずvisible=falseにし、markerFoundで再表示。デバウンス300msでフリッカー防止
+- **B: 逐次ロード** — 6モデルを同時ロードせず、1つずつ500ms間隔で順次ロード。初回のみ
+
+## 変更対象
+- `resources/views/ARstampRally202605/js-gallery.blade.php` のみ
+
+## 成功基準
+- iPhone SEでギャラリーマーカーを読んでもフリーズしない
+- 捕獲済みモデルがギャラリーに表示される
+- markerLost→markerFoundの高速切り替えで再ロードが走らない
+- 既存の捕獲・投擲機能に影響なし

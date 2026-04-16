@@ -430,3 +430,16 @@ Task 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9（順番に実施。エ�
 - [x] Task 7: throwBall 初期位置計算変更
 - [x] Task 8: restoreBall 復元処理変更
 - [x] Task 9: PHP lint 確認
+
+---
+
+# タスク化10: ギャラリーマーカー（maker00）iPhone SEフリーズ修正
+
+## 前段階のmdファイルを読み込みました
+`.claude_workflow/design.md` の設計10を参照
+
+## タスク一覧
+
+- [x] Task 1: js-gallery.blade.php を全面書き換え（キャッシュ＋デバウンス＋逐次ロード）
+- [x] Task 2: PHP lint 確認
+- [x] Task 3: 動作確認（ブラウザでアクセス可能か確認）

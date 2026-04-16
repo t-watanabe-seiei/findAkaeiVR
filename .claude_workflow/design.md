@@ -845,3 +845,66 @@ setTimeout(() => {
 - `ballEntity` 変数は `throwBall()` 内で 3D アニメーション用に引き続き使用するため削除しない
 - `restoreBall()` 内の `ballEntity` 参照はすべて `hudEl` に置き換える
 
+---
+
+# 設計10: ギャラリーマーカー（maker00）iPhone SEフリーズ修正
+
+## 作成日時
+2026年4月17日
+
+## 前段階のmdファイルを読み込みました
+`.claude_workflow/requirements.md` の要件定義10を参照
+
+## 設計方針
+
+### 改修対象ファイル
+`resources/views/ARstampRally202605/js-gallery.blade.php` のみ
+
+### 現在の問題点（コード上）
+1. `markerFound` → 全捕獲モデルを `forEach` で同時に `gltf-model` セット → メモリスパイク
+2. `markerLost` → `clearGallery()` で全エンティティを `removeChild` → 次の `markerFound` で再度1からロード
+3. `galleryMixers` を `window.galleryMixers` に公開しているが、どのtick()からも `mixer.update()` が呼ばれていない
+
+### 設計A: キャッシュ＋デバウンス
+
+**markerFoundハンドラ:**
+- デバウンスタイマー（300ms）を導入。300ms以内の再発火を無視
+- 既にキャッシュ済みエンティティがあれば、`visible=true` にするだけ（再ロードしない）
+- 新たに捕獲された動物がある場合のみ、差分エンティティを追加生成
+
+**markerLostハンドラ:**
+- `clearGallery()` を廃止
+- 代わりに全ギャラリーエンティティを `visible=false` にするだけ
+- AnimationMixerは停止しない（tickでvisible=falseなら自然にスキップ）
+
+**キャッシュ管理:**
+- `galleryCache` オブジェクト: `{ stampId: entityElement }` 形式
+- 新規捕獲時のみエンティティを追加（既存キャッシュと比較）
+
+### 設計B: 逐次ロード
+
+**初回ロード時:**
+- 捕獲済みリストを取得
+- `galleryCache` にない分だけ、500ms間隔のキュー方式で1体ずつ生成
+- `setTimeout` チェーンで実装（再帰呼び出し）
+- ロード中にmarkerLostが発生した場合、キューを中断
+
+**再表示時（キャッシュ済み）:**
+- 即座に `visible=true`（遅延なし）
+
+### AnimationMixer修正
+- ギャラリーエンティティ専用のtickループは作らない
+- `model-loaded` で `mixer.clipAction().play()` → Three.jsの内部clockで再生される
+- ただし `mixer.update(dt)` がないとアニメーションは進まないため、`requestAnimationFrame` ベースの軽量ループを1つだけ追加
+
+## 変更箇所一覧
+
+| # | 変更内容 | 詳細 |
+|---|---------|------|
+| 1 | galleryEntities/galleryMixers → galleryCache | キャッシュ用オブジェクトに変更 |
+| 2 | markerFoundハンドラ書き換え | デバウンス300ms + キャッシュ判定 + 逐次ロード |
+| 3 | markerLostハンドラ書き換え | removeChild → visible=false + キュー中断 |
+| 4 | clearGallery廃止 | hideGallery（visible切替のみ）に置換 |
+| 5 | 逐次ロードキュー | loadNextModel再帰関数 |
+| 6 | AnimationMixerの更新ループ | requestAnimationFrameで全mixer一括update |
+

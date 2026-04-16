@@ -1,87 +1,146 @@
         // ========== maker00 ギャラリー機能 ==========
         // marker-00 が見つかったとき、捕獲済みモデルを Y軸方向に並べて anime03 でループ表示する
+        // 修正: キャッシュ＋デバウンス＋逐次ロードでiPhone SEフリーズ対策
 
         (function () {
-            var galleryEntities = [];
-            var galleryMixers   = [];
-            var GALLERY_Y_SPACING = 0.6; // モデル間の Y 間隔（単位: A-Frame 空間）
+            var GALLERY_Y_SPACING = 0.6;
+            var DEBOUNCE_MS       = 300;   // markerFound デバウンス
+            var LOAD_INTERVAL_MS  = 500;   // 逐次ロード間隔
+
+            var galleryCache  = {};        // { stampId: entityElement }
+            var galleryMixers = [];
+            var markerVisible = false;
+            var debounceTimer = null;
+            var loadQueue     = [];        // 逐次ロード用キュー
+            var loadingActive = false;
 
             var marker00 = document.getElementById('marker-00');
             if (!marker00) return;
 
+            // --- markerFound（デバウンス付き） ---
             marker00.addEventListener('markerFound', function () {
-                // 前回のエンティティを念のりクリア
-                clearGallery();
+                markerVisible = true;
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(onMarkerConfirmed, DEBOUNCE_MS);
+            });
+
+            // --- markerLost（モデル非表示のみ、破棄しない） ---
+            marker00.addEventListener('markerLost', function () {
+                markerVisible = false;
+                if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+                // 逐次ロードキューを中断
+                loadQueue = [];
+                loadingActive = false;
+                hideGallery();
+            });
+
+            // --- デバウンス後に呼ばれる本処理 ---
+            function onMarkerConfirmed() {
+                debounceTimer = null;
+                if (!markerVisible) return;
 
                 var captured = getCapturedAnimals202605();
                 var ids = Object.keys(captured).filter(function (id) { return captured[id] === true; });
+                if (ids.length === 0) return;
 
-                if (ids.length === 0) return; // まだ何も捕獲していない
-
+                // キャッシュ済みエンティティを再表示
+                var newIds = [];
                 ids.forEach(function (stampId, index) {
-                    var entity = document.createElement('a-entity');
+                    if (galleryCache[stampId]) {
+                        // 既にキャッシュ済み → 位置更新してvisible=true
+                        var entity = galleryCache[stampId];
+                        entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
+                        entity.setAttribute('visible', 'true');
+                    } else {
+                        newIds.push({ stampId: stampId, index: index });
+                    }
+                });
 
-                    // ModelパスをSTAMPSから取得（例: '202605/Model_01.glb'）
-                    var modelPath = STAMPS[stampId] ? STAMPS[stampId].model : null;
-                    if (!modelPath) return;
+                // 新規モデルは逐次ロード
+                if (newIds.length > 0) {
+                    loadQueue = newIds.slice(); // コピー
+                    if (!loadingActive) loadNextModel();
+                }
+            }
 
-                    // asset() の代わりに public パスを直接組み立てる
-                    var modelUrl = '{{ asset("cg") }}/' + modelPath;
+            // --- 逐次ロード: 1体ずつ500ms間隔で生成 ---
+            function loadNextModel() {
+                if (loadQueue.length === 0 || !markerVisible) {
+                    loadingActive = false;
+                    return;
+                }
+                loadingActive = true;
 
-                    entity.setAttribute('gltf-model', modelUrl);
-                    entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
-                    entity.setAttribute('scale', '1.1 1.1 1.1');
-                    entity.setAttribute('rotation', '0 90 0');
+                var item = loadQueue.shift();
+                var stampId = item.stampId;
+                var index   = item.index;
 
-                    entity.addEventListener('model-loaded', function () {
-                        var model = entity.getObject3D('mesh');
-                        if (!model || !model.animations || model.animations.length === 0) return;
+                // 二重チェック（ロード待ちの間にキャッシュされた可能性）
+                if (galleryCache[stampId]) {
+                    galleryCache[stampId].setAttribute('visible', 'true');
+                    setTimeout(loadNextModel, 50);
+                    return;
+                }
 
-                        // フラスタムカリング無効化（モデルが途切れる問題の回避）
-                        model.traverse(function (node) {
-                            if (node.isMesh) node.frustumCulled = false;
-                        });
+                var modelPath = STAMPS[stampId] ? STAMPS[stampId].model : null;
+                if (!modelPath) { setTimeout(loadNextModel, 50); return; }
 
-                        var mixer = new THREE.AnimationMixer(model);
-                        entity._galleryMixer = mixer;
-                        galleryMixers.push(mixer);
+                var modelUrl = '{{ asset("cg") }}/' + modelPath;
+                var entity = document.createElement('a-entity');
+                entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
+                entity.setAttribute('scale', '1.1 1.1 1.1');
+                entity.setAttribute('rotation', '0 90 0');
+                entity.setAttribute('visible', markerVisible ? 'true' : 'false');
 
-                        // anime03 → 見つからなければ3番目、それもなければ最初のアニメーション
-                        var clip = THREE.AnimationClip.findByName(model.animations, 'anime03')
-                                 || (model.animations.length > 2 ? model.animations[2] : null)
-                                 || model.animations[0];
+                entity.addEventListener('model-loaded', function () {
+                    var model = entity.getObject3D('mesh');
+                    if (!model || !model.animations || model.animations.length === 0) return;
 
-                        if (clip) {
-                            var action = mixer.clipAction(clip);
-                            action.setLoop(THREE.LoopRepeat, Infinity);
-                            action.play();
-                        }
+                    model.traverse(function (node) {
+                        if (node.isMesh) node.frustumCulled = false;
                     });
 
-                    marker00.appendChild(entity);
-                    galleryEntities.push(entity);
+                    var mixer = new THREE.AnimationMixer(model);
+                    entity._galleryMixer = mixer;
+                    galleryMixers.push(mixer);
+                    window.galleryMixers = galleryMixers;
+
+                    var clip = THREE.AnimationClip.findByName(model.animations, 'anime03')
+                             || (model.animations.length > 2 ? model.animations[2] : null)
+                             || model.animations[0];
+                    if (clip) {
+                        var action = mixer.clipAction(clip);
+                        action.setLoop(THREE.LoopRepeat, Infinity);
+                        action.play();
+                    }
                 });
 
-                // scene の tick から参照できるようにグローバルに公開
-                window.galleryMixers = galleryMixers;
-            });
+                // GLBロード開始
+                entity.setAttribute('gltf-model', modelUrl);
+                marker00.appendChild(entity);
+                galleryCache[stampId] = entity;
 
-            marker00.addEventListener('markerLost', function () {
-                clearGallery();
-            });
-
-            function clearGallery() {
-                // DOM から除去
-                galleryEntities.forEach(function (e) {
-                    try { if (e.parentNode) e.parentNode.removeChild(e); } catch (ex) {}
-                });
-                galleryEntities = [];
-
-                // Mixer を停止
-                galleryMixers.forEach(function (m) {
-                    try { m.stopAllAction(); } catch (ex) {}
-                });
-                galleryMixers = [];
-                window.galleryMixers = [];
+                // 次のモデルをLOAD_INTERVAL_MS後にロード
+                setTimeout(loadNextModel, LOAD_INTERVAL_MS);
             }
+
+            // --- 全ギャラリーエンティティを非表示（破棄しない） ---
+            function hideGallery() {
+                Object.keys(galleryCache).forEach(function (key) {
+                    try { galleryCache[key].setAttribute('visible', 'false'); } catch (e) {}
+                });
+            }
+
+            // --- AnimationMixer更新ループ ---
+            var prevTime = 0;
+            function tickGalleryMixers(time) {
+                requestAnimationFrame(tickGalleryMixers);
+                if (galleryMixers.length === 0) return;
+                var dt = prevTime ? Math.min((time - prevTime) / 1000, 0.1) : 0.016;
+                prevTime = time;
+                for (var i = 0; i < galleryMixers.length; i++) {
+                    try { galleryMixers[i].update(dt); } catch (e) {}
+                }
+            }
+            requestAnimationFrame(tickGalleryMixers);
         })();

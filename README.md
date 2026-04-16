@@ -15,6 +15,49 @@
 
 ---
 
+### ARstampRally202605 - ギャラリーマーカーiPhone SEフリーズ修正 20260417
+
+**maker00（ギャラリーマーカー）読み取り時にiPhone SEがフリーズする問題を修正:**
+
+#### 原因
+- `markerFound` 時に捕獲済み全モデル（最大10体）のGLBを同時ロードしていた
+- `markerLost` のたびに全エンティティを `removeChild` で破棄 → 再検出時に再ロード（GC + GPU再アップロードで詰まる）
+- `markerFound/Lost` の高速フリッカー（AR.jsの検出不安定）が上記を繰り返し発生させていた
+- `AnimationMixer.update()` が呼ばれておらずアニメーションも正常再生されていなかった
+
+#### 修正内容（3対策を統合）
+
+1. **キャッシュ**: `markerLost` でエンティティを破棄せず `visible=false` のみ。再検出時は `visible=true` で即表示（再ロードなし）
+2. **デバウンス 300ms**: `markerFound` 発火から300ms以内の再発火を無視。高速フリッカーによる繰り返し処理を防止
+3. **逐次ロード 500ms間隔**: 未キャッシュモデルを同時生成せず1体ずつ500ms間隔でロード。`markerLost` 時にキュー中断
+
+#### 追加修正
+- `requestAnimationFrame` で全 `AnimationMixer` を毎フレーム `update()` するループを追加（アニメーション正常再生）
+
+#### 変更ファイル
+- `resources/views/ARstampRally202605/js-gallery.blade.php`: 全面書き換え（89行 → 138行）
+
+#### 動作確認済み項目
+- ✅ PHP構文エラーなし
+- ✅ markerLost→markerFound高速切り替えで再ロードが走らない（キャッシュ）
+- ✅ 初回のみ逐次ロード（500ms間隔）
+- ✅ 既存の捕獲・投擲機能への影響なし
+
+---
+
+### ARstampRally202605 - 「捕まえました！」モーダル自動クローズ 20260417
+
+**ボール命中後にモーダルが消えないことがある問題を修正:**
+
+#### 修正内容
+- `showCapturedMessage()` に1.5秒後の自動クローズタイマーを追加
+- 連続ヒット時は前のタイマーをキャンセルして1.5秒リセット
+
+#### 変更ファイル
+- `resources/views/ARstampRally202605/js-stamps.blade.php`: `showCapturedMessage` 関数に `setTimeout` 追加
+
+---
+
 ### ARstampRally202605 - 新規作成 (モジュール化リファクタリング)
 
 **ARstampRally202603をベースに2026年5月イベント向け新版を作成:**
