@@ -14,12 +14,51 @@
             var loadQueue     = [];        // 逐次ロード用キュー
             var loadingActive = false;
 
+            // --- Model_00 管理変数 ---
+            var model00Entity      = null;
+            var model00Mixer       = null;
+            var model00CurrentClip = null;
+            var model00Actions     = {};   // { clipName: action }
+
             var marker00 = document.getElementById('marker-00');
             if (!marker00) return;
+
+            // --- Model_00 初期化 ---
+            model00Entity = document.getElementById('model-00');
+            if (model00Entity) {
+                model00Entity.addEventListener('model-loaded', function () {
+                    var model = model00Entity.getObject3D('mesh');
+                    if (!model || !model.animations || model.animations.length === 0) return;
+
+                    model.traverse(function (node) {
+                        if (node.isMesh) node.frustumCulled = false;
+                    });
+
+                    model00Mixer = new THREE.AnimationMixer(model);
+                    galleryMixers.push(model00Mixer);
+                    window.galleryMixers = galleryMixers;
+
+                    ['anime01', 'anime02', 'anime03'].forEach(function (clipName, idx) {
+                        var clip = THREE.AnimationClip.findByName(model.animations, clipName)
+                                 || (model.animations.length > idx ? model.animations[idx] : null);
+                        if (clip) {
+                            var action = model00Mixer.clipAction(clip);
+                            action.setLoop(THREE.LoopRepeat, Infinity);
+                            action.stop();
+                            model00Actions[clipName] = action;
+                        }
+                    });
+
+                    // マーカーが既に見えていれば即再生
+                    if (markerVisible) updateModel00Animation();
+                });
+            }
 
             // --- markerFound（デバウンス付き） ---
             marker00.addEventListener('markerFound', function () {
                 markerVisible = true;
+                if (model00Entity) model00Entity.setAttribute('visible', 'true');
+                updateModel00Animation();
                 if (debounceTimer) clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(onMarkerConfirmed, DEBOUNCE_MS);
             });
@@ -133,11 +172,32 @@
                 setTimeout(loadNextModel, LOAD_INTERVAL_MS);
             }
 
+            // --- Model_00 アニメーション切替 ---
+            function updateModel00Animation() {
+                if (!model00Mixer || !model00Entity) return;
+                var captured = getCapturedAnimals202605();
+                var count = Object.keys(captured).filter(function (id) { return captured[id] === true; }).length;
+                var clipName = count >= 10 ? 'anime03' : count >= 5 ? 'anime02' : 'anime01';
+                if (clipName === model00CurrentClip) return;
+
+                // 現在のアクションを停止
+                if (model00CurrentClip && model00Actions[model00CurrentClip]) {
+                    model00Actions[model00CurrentClip].stop();
+                }
+                // 新しいアクションを再生
+                if (model00Actions[clipName]) {
+                    model00Actions[clipName].reset();
+                    model00Actions[clipName].play();
+                }
+                model00CurrentClip = clipName;
+            }
+
             // --- 全ギャラリーエンティティを非表示（破棄しない） ---
             function hideGallery() {
                 Object.keys(galleryCache).forEach(function (key) {
                     try { galleryCache[key].setAttribute('visible', 'false'); } catch (e) {}
                 });
+                if (model00Entity) model00Entity.setAttribute('visible', 'false');
             }
 
             // --- AnimationMixer更新ループ ---

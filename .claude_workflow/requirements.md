@@ -1,22 +1,38 @@
-# 要件定義: ARstampRally202605 新規作成
+# 要件定義: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
 
 ## 作成日時
-2026年4月15日
+2026年4月18日
 
 ## 参照
 `.claude_workflow/complete.md` を参照済み
 
 ## プロジェクト概要
-`ARstampRally202603.blade.php`（7291行）を参考に、ARスタンプラリー2026年5月版を新規作成する。  
-ファイルが1000行を超えるため、`resources/views/ARstampRally202605/` サブディレクトリにモジュール化して作成する。
+ARスタンプラリー202605のmarker-00（ギャラリー専用マーカー）にModel_00.glbを追加し、
+捕獲済みモデル数に応じたアニメーションを再生する。
 
 ## 現状把握
-- 202603版はマーカー数20個、7291行の単一ファイル
-- AR.js + A-Frame を用いたWebARアプリ
-- 既存APIエンドポイント（`/api/record-marker-scan`, `/api/exchange-prize`, `/api/check-prize-exchange`）を流用
-- 既存ダッシュボード（`admin/dashboard202603`）を参考に202605版を追加
+- marker-00は既にギャラリー機能を持つ（js-gallery.blade.php）
+- marker-00にはシリンダー+球体のオブジェクトが2組ある
+- Model_00.glbは`public/cg/202605/`に存在済み
+- Model_00.glbにはanime01, anime02, anime03の3アニメーションが含まれる想定
 
 ## 要件詳細
+1. marker-00検出時に`Model_00.glb`を`position="1 2 0.5"`に表示する
+2. 既存のシリンダー+球体はそのまま残す
+3. 捕獲済みモデル数に応じてアニメーションを切り替える:
+   - 0〜4個: anime01をループ再生
+   - 5〜9個: anime02をループ再生
+   - 10個: anime03をループ再生
+4. marker-00が見えなくなったら非表示にする
+5. scale/rotationは他モデルと同様（scale=1.1, rotation=-90 0 0）
+
+## 成功基準
+- marker-00を認識するとModel_00が表示される
+- 捕獲数0〜4個でanime01が再生される
+- 捕獲数5〜9個でanime02が再生される
+- 捕獲数10個でanime03が再生される
+- 既存のギャラリー機能に影響しない
+- 既存のシリンダー+球体がそのまま表示される
 
 ### 1. マーカー・モデル構成
 - **マーカー数**: 11個（maker00 ～ maker10）

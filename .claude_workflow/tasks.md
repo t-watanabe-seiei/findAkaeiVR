@@ -1,7 +1,7 @@
-# タスク化: ARstampRally202605 新規作成
+# タスク化: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
 
 ## 作成日時
-2026年4月16日
+2026年4月18日
 
 ## 前提
 `.claude_workflow/design.md` を読み込み済み
@@ -10,14 +10,22 @@
 
 ## タスク一覧
 
-### Task 1: サブディレクトリ作成 & エントリポイント作成
-- `resources/views/ARstampRally202605/` ディレクトリ作成
-- `resources/views/ARstampRally202605.blade.php` 作成（@includeエントリポイント）
-- **ステータス**: ⬜ 未着手
+### Task 1: scene.blade.phpにModel_00エンティティ追加
+- marker-00内にModel_00.glb用の`<a-entity>`を追加
+- `id="model-00"`, `gltf-model`, `position="1 2 0.5"`, `scale="1.1 1.1 1.1"`, `rotation="-90 0 0"`, `visible="false"`
+- **ステータス**: ✅ 完了
 
-### Task 2: head.blade.php 作成
-- `<head>` + CSS + グローバルJS（カメラ監視・エラーハンドラ等）
-- `ar-engine.min.js` / `ar-tracking.min.js` の読み込み
+### Task 2: js-gallery.blade.phpにModel_00アニメーション制御ロジック追加
+- IIFE内にModel_00管理変数を追加
+- model-loadedイベントでmixer初期化
+- onMarkerConfirmed()内でModel_00のvisible=true + アニメーション切替
+- hideGallery()でModel_00も非表示
+- markerFoundでModel_00をvisible=true
+- **ステータス**: ✅ 完了
+
+### Task 3: 動作確認
+- php -l でシンタックスチェック → エラーなし
+- **ステータス**: ✅ 完了
 - Android `video` ズーム防止CSS（`object-fit: contain`）
 - **ステータス**: ⬜ 未着手
 

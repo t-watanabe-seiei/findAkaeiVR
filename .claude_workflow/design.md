@@ -1,23 +1,58 @@
-# 設計: ARstampRally202605 新規作成
+# 設計: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
 
 ## 作成日時
-2026年4月16日
+2026年4月18日
 
 ## 前提
 `.claude_workflow/requirements.md` を読み込み済み
 
 ---
 
-## ファイル構成設計
+## アプローチ
 
-ファイルを1000行以内に収めるため、`resources/views/ARstampRally202605/` 以下に分割する。
+### 変更方針
+既存のjs-gallery.blade.phpのIIFE内にModel_00専用のロジックを追加する。
+ギャラリーのmarkerFound/markerLostイベントに相乗りし、Model_00を管理する。
+
+### 変更ファイル
+
+#### 1. `resources/views/ARstampRally202605/scene.blade.php`
+- marker-00内に`Model_00.glb`用の`<a-entity>`を追加
+- `id="model-00"`, `position="1 2 0.5"`, `scale="1.1 1.1 1.1"`, `rotation="-90 0 0"`
+- `visible="false"`（JSで制御）
+- 既存のシリンダー+球体はそのまま残す
+
+#### 2. `resources/views/ARstampRally202605/js-gallery.blade.php`
+- `onMarkerConfirmed()`内の先頭でModel_00のアニメーション切替処理を追加
+- 捕獲数を取得し、適切なアニメーションクリップを選択:
+  - 0〜4個 → 'anime01'
+  - 5〜9個 → 'anime02' 
+  - 10個 → 'anime03'
+- Model_00のmixer/actionをキャッシュし、捕獲数変化時のみ切替
+- `hideGallery()`でModel_00も非表示にする
+- markerFound時にModel_00をvisible=trueにする
+
+### 設計詳細
 
 ```
-resources/views/
-├── ARstampRally202605.blade.php   ← エントリポイント（@includeを呼ぶだけ）
-└── ARstampRally202605/
-    ├── head.blade.php             ← <head>タグ・CSS・初期グローバル変数
-    ├── aframe-components.blade.php ← AFRAME.registerComponent群
+Model_00管理変数:
+  model00Entity  = document.getElementById('model-00')
+  model00Mixer   = null  (model-loaded後に生成)
+  model00CurrentClip = null  (現在再生中のクリップ名)
+
+処理フロー:
+  1. markerFound → onMarkerConfirmed()
+  2. model00Entity.visible = true
+  3. capturedCount = Object.keys(getCapturedAnimals202605()).filter(v => v === true).length
+  4. clipName = capturedCount >= 10 ? 'anime03' : capturedCount >= 5 ? 'anime02' : 'anime01'
+  5. clipNameが前回と異なれば、現在のactionを停止→新clipを再生
+  6. markerLost → model00Entity.visible = false
+```
+
+### 問題点・考慮事項
+- Model_00はscene.blade.phpで静的に配置するため、lazy-modelは不要（marker-00内の子要素はmarker検出時にまとめて表示される）
+- ただしgltf-modelの読み込みタイミングでmodel-loadedイベントを使ってmixer初期化が必要
+- galleryMixersにModel_00のmixerも追加し、既存のtickGalleryMixers()で更新されるようにする
     ├── scene.blade.php            ← <a-scene>全体（マーカー・モデルのHTML）
     ├── ui.blade.php               ← UI HTML（モーダル・ボタン等）
     ├── js-stamps.blade.php        ← STAMPS定数・LocalStorage管理・スタンプ帳ロジック

@@ -35,6 +35,15 @@
         <a-cylinder color="#ffffff" height="2" radius="0.05" position="0.65 1 1"></a-cylinder>
          <a-sphere color="#00ff00" radius="0.1" position="0.65 2 1"></a-sphere>
 
+        <a-entity
+            id="model-00"
+            gltf-model="{{ asset('cg/202605/Model_00.glb') }}"
+            position="1 2 0.5"
+            scale="1.1 1.1 1.1"
+            rotation="-90 0 0"
+            visible="false">
+        </a-entity>
+
     </a-marker>
 
     <!-- maker01 ～ maker10: 捕獲対象マーカー -->
