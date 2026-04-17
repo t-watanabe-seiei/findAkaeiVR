@@ -49,7 +49,11 @@
                     if (galleryCache[stampId]) {
                         // 既にキャッシュ済み → 位置更新してvisible=true
                         var entity = galleryCache[stampId];
-                        entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
+                        if(index <= 5) {
+                            entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
+                        } else {
+                            entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 1');
+                        }
                         entity.setAttribute('visible', 'true');
                     } else {
                         newIds.push({ stampId: stampId, index: index });
@@ -87,7 +91,12 @@
 
                 var modelUrl = '{{ asset("cg") }}/' + modelPath;
                 var entity = document.createElement('a-entity');
-                entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
+                if(index <= 5) {
+                    entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
+                } else {
+                    entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 1');
+                }
+                
                 entity.setAttribute('scale', '0.6 0.6 0.6');
                 entity.setAttribute('rotation', '0 90 0');
                 entity.setAttribute('visible', markerVisible ? 'true' : 'false');
