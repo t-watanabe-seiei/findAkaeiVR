@@ -52,7 +52,7 @@
                         if(index < 5) {
                             entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                         } else {
-                            entity.setAttribute('position', '0 ' + (4.0 - index * GALLERY_Y_SPACING) + ' 1');
+                            entity.setAttribute('position', '0 ' + (3.6 - index * GALLERY_Y_SPACING) + ' 1');
                         }
                         entity.setAttribute('visible', 'true');
                     } else {
@@ -94,7 +94,7 @@
                 if(index < 5) {
                     entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                 } else {
-                    entity.setAttribute('position', '0 ' + (4.0 - index * GALLERY_Y_SPACING) + ' 1');
+                    entity.setAttribute('position', '0 ' + (3.6 - index * GALLERY_Y_SPACING) + ' 1');
                 }
                 
                 entity.setAttribute('scale', '0.6 0.6 0.6');
