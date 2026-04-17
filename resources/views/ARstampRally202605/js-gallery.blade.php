@@ -49,7 +49,7 @@
                     if (galleryCache[stampId]) {
                         // 既にキャッシュ済み → 位置更新してvisible=true
                         var entity = galleryCache[stampId];
-                        if(index <= 5) {
+                        if(index < 5) {
                             entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                         } else {
                             entity.setAttribute('position', '0 ' + (4.0 - index * GALLERY_Y_SPACING) + ' 1');
@@ -91,7 +91,7 @@
 
                 var modelUrl = '{{ asset("cg") }}/' + modelPath;
                 var entity = document.createElement('a-entity');
-                if(index <= 5) {
+                if(index < 5) {
                     entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                 } else {
                     entity.setAttribute('position', '0 ' + (4.0 - index * GALLERY_Y_SPACING) + ' 1');
