@@ -29,7 +29,7 @@
         smoothCount="10"
         smoothTolerance="0.01"
         smoothThreshold="5">
-        <a-cylinder color="#ffffff" height="4" radius="0.05" position="0.6 1.5 0"></a-cylinder>
+        <a-cylinder color="#ffffff" height="4" radius="0.05" position="0.65 1.5 0"></a-cylinder>
          <a-sphere color="#ffea00" radius="0.1" position="0.6 3.5 0"></a-sphere>
     </a-marker>
 
