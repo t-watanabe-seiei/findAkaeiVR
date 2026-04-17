@@ -158,9 +158,9 @@
             });
         }
 
-        // ========== 景品交換機能 (閾値: 6個) ==========
+        // ========== 景品交換機能 (閾値: 5個) ==========
 
-        var PRIZE_EXCHANGE_THRESHOLD = 6;
+        var PRIZE_EXCHANGE_THRESHOLD = 5;
 
         function checkPrizeExchangeStatus() {
             var csrfMeta = document.querySelector('meta[name="csrf-token"]');
