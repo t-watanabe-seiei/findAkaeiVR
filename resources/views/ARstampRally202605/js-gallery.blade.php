@@ -3,7 +3,7 @@
         // 修正: キャッシュ＋デバウンス＋逐次ロードでiPhone SEフリーズ対策
 
         (function () {
-            var GALLERY_Y_SPACING = 0.4;
+            var GALLERY_Y_SPACING = 0.35;
             var DEBOUNCE_MS       = 300;   // markerFound デバウンス
             var LOAD_INTERVAL_MS  = 500;   // 逐次ロード間隔
 
