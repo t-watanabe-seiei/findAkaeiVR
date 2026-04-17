@@ -49,7 +49,7 @@
                     if (galleryCache[stampId]) {
                         // 既にキャッシュ済み → 位置更新してvisible=true
                         var entity = galleryCache[stampId];
-                        entity.setAttribute('position', '0 ' + (3.2 - index * GALLERY_Y_SPACING) + ' 0');
+                        entity.setAttribute('position', '0 ' + (3.4 - index * GALLERY_Y_SPACING) + ' 0');
                         entity.setAttribute('visible', 'true');
                     } else {
                         newIds.push({ stampId: stampId, index: index });
