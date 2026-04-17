@@ -441,8 +441,8 @@ class AdminController extends Controller
     // ARstampRally202605用のダッシュボード
     public function dashboard202605(Request $request)
     {
-        // 2026年5月の日付範囲（JST→UTC変換）
-        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-05-01 00:00:00', 'Asia/Tokyo')
+        // 2026年4月17日以降〜5月31日の日付範囲（JST→UTC変換）
+        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-04-17 00:00:00', 'Asia/Tokyo')
                            ->setTimezone('UTC');
         $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-05-31 23:59:59', 'Asia/Tokyo')
                            ->setTimezone('UTC');
