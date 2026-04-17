@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var guideLangJPBtn = document.getElementById('lang-jp');
     var guideLangENBtn = document.getElementById('lang-en');
     var closeGuideBtn  = document.getElementById('close-guide');
+    var closeGuideTopBtn = document.getElementById('close-guide-top');
     var guideModal     = document.getElementById('guide-modal');
 
     function setGuideLanguage(lang) {
@@ -232,6 +233,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (closeGuideBtn) {
         closeGuideBtn.addEventListener('click', function () {
             closeGuideBtn.blur();
+            if (guideModal) {
+                guideModal.style.display = 'none';
+                guideModal.setAttribute('aria-hidden', 'true');
+            }
+            onGuideModalClosed();
+        }, false);
+    }
+
+    if (closeGuideTopBtn) {
+        closeGuideTopBtn.addEventListener('click', function () {
+            closeGuideTopBtn.blur();
             if (guideModal) {
                 guideModal.style.display = 'none';
                 guideModal.setAttribute('aria-hidden', 'true');

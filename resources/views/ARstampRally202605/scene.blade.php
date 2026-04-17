@@ -29,8 +29,8 @@
         smoothCount="10"
         smoothTolerance="0.01"
         smoothThreshold="5">
-        <a-cylinder color="#ffffff" height="4" radius="0.05" position="1.1 1 0"></a-cylinder>
-         <a-sphere color="#ffea00" radius="0.1" position="1.1 3 0"></a-sphere>
+        <a-cylinder color="#ffffff" height="4" radius="0.05" position="0.7 1.5 0"></a-cylinder>
+         <a-sphere color="#ffea00" radius="0.1" position="0.7 3.5 0"></a-sphere>
     </a-marker>
 
     <!-- maker01 ～ maker10: 捕獲対象マーカー -->
