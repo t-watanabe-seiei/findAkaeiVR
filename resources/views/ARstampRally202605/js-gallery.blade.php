@@ -44,6 +44,7 @@
                         if (clip) {
                             var action = model00Mixer.clipAction(clip);
                             action.setLoop(THREE.LoopRepeat, Infinity);
+                            action.timeScale = 0.5;
                             action.stop();
                             model00Actions[clipName] = action;
                         }
