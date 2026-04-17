@@ -332,14 +332,14 @@
             marker.addEventListener('markerFound', function () {
                 if (modelCaptured) {
                     el.setAttribute('visible', 'false');
-                    if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId);
+                    // if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId);
                     return;
                 }
                 const isCaptured = typeof isAnimalCaptured === 'function' && isAnimalCaptured(stampId);
                 if (isCaptured) {
                     el.setAttribute('visible', 'false');
                     modelCaptured = true;
-                    if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId);
+                    // if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId);
                     return;
                 }
                 el.setAttribute('visible', 'true');

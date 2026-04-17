@@ -3,7 +3,7 @@
         // 修正: キャッシュ＋デバウンス＋逐次ロードでiPhone SEフリーズ対策
 
         (function () {
-            var GALLERY_Y_SPACING = 0.6;
+            var GALLERY_Y_SPACING = 0.4;
             var DEBOUNCE_MS       = 300;   // markerFound デバウンス
             var LOAD_INTERVAL_MS  = 500;   // 逐次ロード間隔
 
@@ -88,7 +88,7 @@
                 var modelUrl = '{{ asset("cg") }}/' + modelPath;
                 var entity = document.createElement('a-entity');
                 entity.setAttribute('position', '0 ' + (index * GALLERY_Y_SPACING) + ' 0');
-                entity.setAttribute('scale', '1.1 1.1 1.1');
+                entity.setAttribute('scale', '0.6 0.6 0.6');
                 entity.setAttribute('rotation', '0 90 0');
                 entity.setAttribute('visible', markerVisible ? 'true' : 'false');
 
