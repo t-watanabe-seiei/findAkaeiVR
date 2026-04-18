@@ -378,3 +378,25 @@ Task 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9（順番に実施。エ�
 - [x] Task 1: js-gallery.blade.php を全面書き換え（キャッシュ＋デバウンス＋逐次ロード）
 - [x] Task 2: PHP lint 確認
 - [x] Task 3: 動作確認（ブラウザでアクセス可能か確認）
+
+---
+
+# タスク化11: スタンプ帳閉じた時にギャラリー表示が更新されない問題
+
+## 前段階のmdファイルを読み込みました
+`.claude_workflow/design.md` の最終セクション「スタンプ帳閉じた時にギャラリー表示が更新されない問題」を参照
+
+## タスク一覧
+
+### Task 1: onMarkerConfirmedをwindow.refreshGalleryとして公開（js-gallery.blade.php）
+- hideGallery関数の後、IIFE末尾の`})();`の前に `window.refreshGallery = onMarkerConfirmed;` を追加
+- **ステータス**: ✅ 完了
+
+### Task 2: スタンプ帳閉じるハンドラにrefreshGallery呼び出し追加（js-init.blade.php）
+- closeStampBookクリックハンドラに `if (typeof window.refreshGallery === 'function') window.refreshGallery();` 追加
+- stampBookModalの背景クリックハンドラにも同じ行を追加
+- **ステータス**: ✅ 完了
+
+### Task 3: php -l 構文チェック
+- 変更した2ファイルの構文チェック
+- **ステータス**: ✅ 完了

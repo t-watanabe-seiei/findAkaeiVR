@@ -966,3 +966,66 @@ setTimeout(() => {
 | 5 | 逐次ロードキュー | loadNextModel再帰関数 |
 | 6 | AnimationMixerの更新ループ | requestAnimationFrameで全mixer一括update |
 
+---
+
+# 設計: スタンプ帳閉じた時にギャラリー表示が更新されない問題
+
+## 作成日時
+2026年4月18日
+
+## 前段階のmdファイルを読み込みました
+requirements.md の最終セクション「スタンプ帳閉じた時にギャラリー表示が更新されない問題」を参照
+
+## アプローチ
+
+`onMarkerConfirmed()`をIIFEの外から呼べるようにし、スタンプ帳を閉じるタイミングで呼び出す。
+
+### 変更1: js-gallery.blade.php
+
+`onMarkerConfirmed`を`window.refreshGallery`として公開する。
+
+```javascript
+// IIFE末尾（hideGallery関数の後）に追加:
+window.refreshGallery = onMarkerConfirmed;
+```
+
+`onMarkerConfirmed()`は冒頭で`if (!markerVisible) return;`のガードがあるため、マーカーが見えていない場合は安全にno-opとなる。また`debounceTimer = null`の行があるが、スタンプ帳閉じる際はデバウンス中ではないため問題ない。
+
+### 変更2: js-init.blade.php
+
+スタンプ帳を閉じる2箇所のハンドラに`window.refreshGallery()`呼び出しを追加する。
+
+```javascript
+// closeStampBook click (L447-452):
+closeStampBook.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (stampBookModal) stampBookModal.style.display = 'none';
+    if (typeof window.refreshGallery === 'function') window.refreshGallery();
+    setTimeout(function () { resumeCamera(); }, 100);
+}, false);
+
+// stampBookModal background click (L455-462):
+stampBookModal.addEventListener('click', function (e) {
+    if (e.target === stampBookModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        stampBookModal.style.display = 'none';
+        if (typeof window.refreshGallery === 'function') window.refreshGallery();
+        setTimeout(function () { resumeCamera(); }, 100);
+    }
+});
+```
+
+## 安全性確認
+
+| 懸念事項 | 結論 |
+|----------|------|
+| マーカー非表示時の呼び出し | `if (!markerVisible) return;`で即リターン → 安全 |
+| デバウンスタイマーとの競合 | `debounceTimer = null`にするが、スタンプ帳操作中にmarkerFound/Lostは発生しうる。ただしデバウンスタイマーが走っていてもrefreshGalleryはキャッシュ参照のみで軽量 → 問題なし |
+| 二重ロード | `loadingActive`フラグで制御済み、`galleryCache`で二重チェック済み → 問題なし |
+| window汚染 | `refreshGallery`1つのみ。`startGalleryMixerLoop`/`stopGalleryMixerLoop`と同パターン → 許容範囲 |
+
+## 変更量
+- js-gallery.blade.php: +1行
+- js-init.blade.php: +2行（2箇所に各1行）
+

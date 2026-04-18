@@ -447,6 +447,7 @@ document.addEventListener('DOMContentLoaded', function () {
         closeStampBook.addEventListener('click', function (e) {
             e.stopPropagation();
             if (stampBookModal) stampBookModal.style.display = 'none';
+            if (typeof window.refreshGallery === 'function') window.refreshGallery();
             setTimeout(function () { resumeCamera(); }, 100);
         }, false);
     }
@@ -457,6 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 e.stopPropagation();
                 stampBookModal.style.display = 'none';
+                if (typeof window.refreshGallery === 'function') window.refreshGallery();
                 setTimeout(function () { resumeCamera(); }, 100);
             }
         });

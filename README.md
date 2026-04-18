@@ -15,6 +15,29 @@
 
 ---
 
+### ARstampRally202605 - スタンプ帳閉じた後にギャラリー表示が更新されない問題を修正 20260418
+
+**スタンプ帳でギャラリー選択を変更しても、閉じた後にギャラリーが更新されなかった問題を修正:**
+
+#### 原因
+- `onMarkerConfirmed()`はIIFE内のクロージャで定義されており、外部から呼び出せなかった
+- スタンプ帳を閉じるハンドラはモーダルを非表示にして`resumeCamera()`を呼ぶだけで、ギャラリー再描画を行っていなかった
+
+#### 修正内容
+1. `js-gallery.blade.php`: `onMarkerConfirmed`を`window.refreshGallery`として公開（+1行）
+2. `js-init.blade.php`: スタンプ帳を閉じる2箇所（×ボタン・背景クリック）に`window.refreshGallery()`呼び出し追加（+2行）
+
+#### 変更ファイル
+- `resources/views/ARstampRally202605/js-gallery.blade.php`: +1行
+- `resources/views/ARstampRally202605/js-init.blade.php`: +2行
+
+#### 動作確認済み項目
+- ✅ PHP構文エラーなし（2ファイル）
+- ✅ スタンプ帳でギャラリー選択変更→閉じる→ギャラリーが即更新される
+- ✅ マーカーが見えていない場合は`markerVisible`ガードで安全にスキップ
+
+---
+
 ### ARstampRally202605 - iPhone SEフリーズ対策・Model_00追加・ギャラリー選択機能 20260418
 
 **maker00（ギャラリーマーカー）読み取り時にiPhone SEがフリーズする問題と複数機能追加:**

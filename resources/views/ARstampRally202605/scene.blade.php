@@ -32,8 +32,8 @@
         <a-cylinder color="#ffffff" height="2" radius="0.05" position="0.65 1 0"></a-cylinder>
          <a-sphere color="#ffea00" radius="0.1" position="0.65 2 0"></a-sphere>
 
-        <a-cylinder color="#ffffff" height="2" radius="0.05" position="0.65 1 1"></a-cylinder>
-         <a-sphere color="#00ff00" radius="0.1" position="0.65 2 1"></a-sphere>
+        <!-- <a-cylinder color="#ffffff" height="2" radius="0.05" position="0.65 1 1"></a-cylinder>
+         <a-sphere color="#00ff00" radius="0.1" position="0.65 2 1"></a-sphere> -->
 
         <a-entity
             id="model-00"

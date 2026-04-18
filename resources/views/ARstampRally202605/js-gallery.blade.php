@@ -214,5 +214,8 @@
                 if (model00Entity) model00Entity.setAttribute('visible', 'false');
             }
 
+            // --- 外部からギャラリー再描画を呼べるように公開 ---
+            window.refreshGallery = onMarkerConfirmed;
+
             // --- AnimationMixer更新はjs-init.blade.phpのupdateGalleryMixersに一本化 ---
         })();
