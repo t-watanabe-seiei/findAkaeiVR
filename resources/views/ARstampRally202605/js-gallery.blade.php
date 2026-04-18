@@ -191,7 +191,7 @@
                 if (!model00Mixer || !model00Entity) return;
                 var captured = getCapturedAnimals202605();
                 var count = Object.keys(captured).filter(function (id) { return captured[id] === true; }).length;
-                var clipName = count >= 10 ? 'anime03' : count >= 5 ? 'anime02' : 'anime01';
+                var clipName = count >= 5 ? 'anime03' : count >= 2 ? 'anime02' : 'anime01';
                 if (clipName === model00CurrentClip) return;
 
                 // 現在のアクションを停止
