@@ -63,6 +63,52 @@
             return captured[stampId] === true;
         }
 
+        // ========== ギャラリー表示選択管理 ==========
+
+        var GALLERY_SELECTION_KEY = 'ar-gallery-selection-202605';
+        var GALLERY_MAX_DISPLAY   = 5;
+
+        function getGallerySelection() {
+            var stored = localStorage.getItem(GALLERY_SELECTION_KEY);
+            var selection = null;
+            if (stored) {
+                try { selection = JSON.parse(stored); } catch (e) { selection = null; }
+            }
+            // 保存済みがあれば、捕獲済みかつ最大5匹にフィルタ
+            if (selection && Array.isArray(selection)) {
+                var captured = getCapturedAnimals202605();
+                selection = selection.filter(function (id) { return captured[id] === true; });
+                return selection.slice(0, GALLERY_MAX_DISPLAY);
+            }
+            // 未設定: 捕獲順で先着5匹を自動選択
+            var stamps = getCollectedStamps();
+            var sorted = Object.keys(stamps).sort(function (a, b) {
+                return (stamps[a].collectedAt || '') < (stamps[b].collectedAt || '') ? -1 : 1;
+            });
+            return sorted.slice(0, GALLERY_MAX_DISPLAY);
+        }
+
+        function saveGallerySelection(arr) {
+            localStorage.setItem(GALLERY_SELECTION_KEY, JSON.stringify(arr));
+        }
+
+        function toggleGallerySelection(stampId) {
+            var selection = getGallerySelection();
+            var idx = selection.indexOf(stampId);
+            if (idx !== -1) {
+                selection.splice(idx, 1);
+                saveGallerySelection(selection);
+                return false; // OFF
+            }
+            if (selection.length >= GALLERY_MAX_DISPLAY) {
+                alert('ギャラリーに表示できるのは最大' + GALLERY_MAX_DISPLAY + '匹までです。\n他を外してから選択してください。');
+                return null; // 変更なし
+            }
+            selection.push(stampId);
+            saveGallerySelection(selection);
+            return true; // ON
+        }
+
         // ========== スタンプ登録 ==========
 
         function collectStamp(stampId, screenshot) {
@@ -252,6 +298,7 @@
 
             var keys  = Object.keys(STAMPS);
             var total = TOTAL_STAMP_SLOTS;
+            var gallerySelection = getGallerySelection();
 
             for (var i = 0; i < total; i++) {
                 var item = document.createElement('div');
@@ -259,7 +306,8 @@
                     var sid = keys[i];
                     var s   = STAMPS[sid];
                     var collected = stamps[sid] !== undefined;
-                    item.className = 'stamp-item ' + (collected ? 'collected' : 'not-collected');
+                    var inGallery = gallerySelection.indexOf(sid) !== -1;
+                    item.className = 'stamp-item ' + (collected ? 'collected' : 'not-collected') + (inGallery ? ' gallery-selected' : '');
 
                     var iconContent = collected && stamps[sid].screenshot
                         ? '<img src="' + stamps[sid].screenshot + '" alt="' + s.name + '" style="width:100%;height:100%;object-fit:contain;">'
@@ -270,7 +318,18 @@
                         var d = new Date(stamps[sid].collectedAt);
                         dateText = '<div class="stamp-date">' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + '</div>';
                     }
-                    item.innerHTML = '<div class="stamp-icon">' + iconContent + '</div><div class="stamp-name">' + nameText + '</div>' + dateText;
+                    var checkMark = collected ? '<div class="gallery-check' + (inGallery ? ' active' : '') + '">✓</div>' : '';
+                    item.innerHTML = '<div class="stamp-icon">' + iconContent + '</div><div class="stamp-name">' + nameText + '</div>' + dateText + checkMark;
+
+                    // 捕獲済みのみタップでギャラリー選択切替
+                    if (collected) {
+                        (function (stampId, itemEl) {
+                            itemEl.addEventListener('click', function () {
+                                var result = toggleGallerySelection(stampId);
+                                if (result !== null) showStampBook(); // UI再描画
+                            });
+                        })(sid, item);
+                    }
                 } else {
                     item.className = 'stamp-item not-collected';
                     item.innerHTML = '<div class="stamp-icon">🐾</div><div class="stamp-name">？？？</div>';

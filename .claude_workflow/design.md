@@ -1,4 +1,4 @@
-# 設計: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
+# 設計: marker-00パフォーマンス改善＋ギャラリー表示数制限
 
 ## 作成日時
 2026年4月18日
@@ -8,51 +8,74 @@
 
 ---
 
-## アプローチ
+## 変更ファイル一覧
 
-### 変更方針
-既存のjs-gallery.blade.phpのIIFE内にModel_00専用のロジックを追加する。
-ギャラリーのmarkerFound/markerLostイベントに相乗りし、Model_00を管理する。
+| ファイル | 修正内容 |
+|----------|----------|
+| js-gallery.blade.php | 修正1,2,3,4すべて |
+| js-init.blade.php | 修正3（rAFループ停止/再開制御） |
+| js-stamps.blade.php | 修正2（スタンプ帳のギャラリー選択UI） |
+| scene.blade.php | 修正4（Model_00をlazy-model化） |
+| head.blade.php | 修正2（選択チェックマークのCSS追加） |
 
-### 変更ファイル
+---
 
-#### 1. `resources/views/ARstampRally202605/scene.blade.php`
-- marker-00内に`Model_00.glb`用の`<a-entity>`を追加
-- `id="model-00"`, `position="1 2 0.5"`, `scale="1.1 1.1 1.1"`, `rotation="-90 0 0"`
-- `visible="false"`（JSで制御）
-- 既存のシリンダー+球体はそのまま残す
+## 修正1: rAFループ重複排除
 
-#### 2. `resources/views/ARstampRally202605/js-gallery.blade.php`
-- `onMarkerConfirmed()`内の先頭でModel_00のアニメーション切替処理を追加
-- 捕獲数を取得し、適切なアニメーションクリップを選択:
-  - 0〜4個 → 'anime01'
-  - 5〜9個 → 'anime02' 
-  - 10個 → 'anime03'
-- Model_00のmixer/actionをキャッシュし、捕獲数変化時のみ切替
-- `hideGallery()`でModel_00も非表示にする
-- markerFound時にModel_00をvisible=trueにする
+### js-gallery.blade.php
+- `tickGalleryMixers` 関数と `requestAnimationFrame(tickGalleryMixers)` を**削除**
+- js-init.blade.php側の `updateGalleryMixers` に一本化（変更なし）
 
-### 設計詳細
+---
 
-```
-Model_00管理変数:
-  model00Entity  = document.getElementById('model-00')
-  model00Mixer   = null  (model-loaded後に生成)
-  model00CurrentClip = null  (現在再生中のクリップ名)
+## 修正2: ギャラリーモデル同時表示数を最大5体に制限
 
-処理フロー:
-  1. markerFound → onMarkerConfirmed()
-  2. model00Entity.visible = true
-  3. capturedCount = Object.keys(getCapturedAnimals202605()).filter(v => v === true).length
-  4. clipName = capturedCount >= 10 ? 'anime03' : capturedCount >= 5 ? 'anime02' : 'anime01'
-  5. clipNameが前回と異なれば、現在のactionを停止→新clipを再生
-  6. markerLost → model00Entity.visible = false
-```
+### データ管理（js-stamps.blade.php）
+- LocalStorageキー: `ar-gallery-selection-202605`
+- 保存形式: 配列 `["model_01","model_03",...]`（順序付き、最大5要素）
+- 新関数:
+  - `getGallerySelection()` — 選択済みIDの配列を返す。未設定なら捕獲済み先着5匹
+  - `saveGallerySelection(arr)` — 選択状態をlocalStorageに保存
+  - `toggleGallerySelection(stampId)` — ON/OFF切替。5匹超えたらalert
 
-### 問題点・考慮事項
-- Model_00はscene.blade.phpで静的に配置するため、lazy-modelは不要（marker-00内の子要素はmarker検出時にまとめて表示される）
-- ただしgltf-modelの読み込みタイミングでmodel-loadedイベントを使ってmixer初期化が必要
-- galleryMixersにModel_00のmixerも追加し、既存のtickGalleryMixers()で更新されるようにする
+### スタンプ帳UI（js-stamps.blade.php の showStampBook）
+- 捕獲済みスタンプアイテムにチェックマーク（✓）を表示
+- 捕獲済みをタップ → `toggleGallerySelection(sid)` を呼ぶ
+- 選択中: 緑チェック表示 + border強調
+- 未選択: チェックなし
+- 未捕獲: タップ不可
+
+### ギャラリーロジック（js-gallery.blade.php の onMarkerConfirmed）
+- `getGallerySelection()` で選択済み5匹のみを取得
+- 選択されていないモデルはロードしない＋既にキャッシュ済みならvisible=false
+
+### CSS（head.blade.php）
+- `.gallery-check` スタイル追加（チェックマークバッジ）
+
+---
+
+## 修正3: markerLost時にrAFループ停止
+
+### js-init.blade.php
+- `updateGalleryMixers` を `window.startGalleryMixerLoop` / `window.stopGalleryMixerLoop` として公開
+- `stopGalleryMixerLoop`: `cancelAnimationFrame(_galleryRAFId)` で停止
+- `startGalleryMixerLoop`: 停止中なら再開
+
+### js-gallery.blade.php
+- `markerFound`: `window.startGalleryMixerLoop()` を呼ぶ
+- `markerLost`: `window.stopGalleryMixerLoop()` を呼ぶ
+
+---
+
+## 修正4: Model_00をlazy-model化
+
+### scene.blade.php
+- `gltf-model="..."` → `lazy-model="src: ..."` に変更
+
+### js-gallery.blade.php
+- Model_00の`model-loaded`イベントリスナーはそのまま（lazy-modelがgltf-modelを設定した後に発火するため互換性あり）
+- ただし`lazy-model`はmarkerLost 5秒後にアンロードするので、Model_00のmixer/actionsをリセットするハンドラを追加
+- `model-unloaded`イベントをリッスンし、model00Mixer/model00Actions/model00CurrentClipをnull化
     ├── scene.blade.php            ← <a-scene>全体（マーカー・モデルのHTML）
     ├── ui.blade.php               ← UI HTML（モーダル・ボタン等）
     ├── js-stamps.blade.php        ← STAMPS定数・LocalStorage管理・スタンプ帳ロジック

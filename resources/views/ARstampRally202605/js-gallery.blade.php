@@ -53,11 +53,24 @@
                     // マーカーが既に見えていれば即再生
                     if (markerVisible) updateModel00Animation();
                 });
+
+                // lazy-modelアンロード時にmixer/actionsをリセット
+                model00Entity.addEventListener('model-unloaded', function () {
+                    if (model00Mixer) {
+                        var idx = galleryMixers.indexOf(model00Mixer);
+                        if (idx !== -1) galleryMixers.splice(idx, 1);
+                        window.galleryMixers = galleryMixers;
+                    }
+                    model00Mixer = null;
+                    model00Actions = {};
+                    model00CurrentClip = null;
+                });
             }
 
             // --- markerFound（デバウンス付き） ---
             marker00.addEventListener('markerFound', function () {
                 markerVisible = true;
+                if (window.startGalleryMixerLoop) window.startGalleryMixerLoop();
                 if (model00Entity) model00Entity.setAttribute('visible', 'true');
                 updateModel00Animation();
                 if (debounceTimer) clearTimeout(debounceTimer);
@@ -72,6 +85,7 @@
                 loadQueue = [];
                 loadingActive = false;
                 hideGallery();
+                if (window.stopGalleryMixerLoop) window.stopGalleryMixerLoop();
             });
 
             // --- デバウンス後に呼ばれる本処理 ---
@@ -79,9 +93,16 @@
                 debounceTimer = null;
                 if (!markerVisible) return;
 
-                var captured = getCapturedAnimals202605();
-                var ids = Object.keys(captured).filter(function (id) { return captured[id] === true; });
+                // 選択済み5匹のみ表示
+                var ids = (typeof getGallerySelection === 'function') ? getGallerySelection() : [];
                 if (ids.length === 0) return;
+
+                // キャッシュ済みで選択外のモデルは非表示にする
+                Object.keys(galleryCache).forEach(function (key) {
+                    if (ids.indexOf(key) === -1) {
+                        try { galleryCache[key].setAttribute('visible', 'false'); } catch (e) {}
+                    }
+                });
 
                 // キャッシュ済みエンティティを再表示
                 var newIds = [];
@@ -89,11 +110,7 @@
                     if (galleryCache[stampId]) {
                         // 既にキャッシュ済み → 位置更新してvisible=true
                         var entity = galleryCache[stampId];
-                        if(index < 5) {
-                            entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
-                        } else {
-                            entity.setAttribute('position', '0 ' + (3.6 - index * GALLERY_Y_SPACING) + ' 1');
-                        }
+                        entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                         entity.setAttribute('visible', 'true');
                     } else {
                         newIds.push({ stampId: stampId, index: index });
@@ -131,11 +148,7 @@
 
                 var modelUrl = '{{ asset("cg") }}/' + modelPath;
                 var entity = document.createElement('a-entity');
-                if(index < 5) {
-                    entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
-                } else {
-                    entity.setAttribute('position', '0 ' + (3.6 - index * GALLERY_Y_SPACING) + ' 1');
-                }
+                entity.setAttribute('position', '0 ' + (0.4 + index * GALLERY_Y_SPACING) + ' 0');
                 
                 entity.setAttribute('scale', '0.6 0.6 0.6');
                 entity.setAttribute('rotation', '0 90 0');
@@ -201,16 +214,5 @@
                 if (model00Entity) model00Entity.setAttribute('visible', 'false');
             }
 
-            // --- AnimationMixer更新ループ ---
-            var prevTime = 0;
-            function tickGalleryMixers(time) {
-                requestAnimationFrame(tickGalleryMixers);
-                if (galleryMixers.length === 0) return;
-                var dt = prevTime ? Math.min((time - prevTime) / 1000, 0.1) : 0.016;
-                prevTime = time;
-                for (var i = 0; i < galleryMixers.length; i++) {
-                    try { galleryMixers[i].update(dt); } catch (e) {}
-                }
-            }
-            requestAnimationFrame(tickGalleryMixers);
+            // --- AnimationMixer更新はjs-init.blade.phpのupdateGalleryMixersに一本化 ---
         })();

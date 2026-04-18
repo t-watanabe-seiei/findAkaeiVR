@@ -9,9 +9,62 @@
 　・model_01〜model_10 の GLBファイルを `public/cg/202605/Model_01.glb` 〜 `Model_10.glb` に配置すること
 　・マーカーパターンファイルを `public/cg/202605/` に配置すること (pattern-maker00.patt, pattern-maker01.patt 〜 pattern-maker10.patt)
 　・STAMPS オブジェクトのモデル名・アイコンを実際のキャラクター名に合わせて更新すること (`resources/views/ARstampRally202605/js-stamps.blade.php`)
-　・景品交換閾値: 6 (PRIZE_EXCHANGE_THRESHOLD = 6)
-　・ギャラリー(maker00): 捕獲済みモデルをY軸方向に並べて表示 (GALLERY_Y_SPACING = 0.6)
+　・景品交換閾値: 5 (PRIZE_EXCHANGE_THRESHOLD = 5) ← 6から変更済み
+　・ギャラリー(maker00): 捕獲済み選択モデル最大5体をY軸方向に並べて表示 (GALLERY_Y_SPACING = 0.35)
 　・投げ方式: タップ即投げ（HUDスワイプなし）
+
+---
+
+### ARstampRally202605 - iPhone SEフリーズ対策・Model_00追加・ギャラリー選択機能 20260418
+
+**maker00（ギャラリーマーカー）読み取り時にiPhone SEがフリーズする問題と複数機能追加:**
+
+#### 主な変更点
+
+1. **景品交換閾値を6→5に変更**
+   - `PRIZE_EXCHANGE_THRESHOLD = 5`（`js-prize.blade.php`）
+
+2. **Model_00 追加・アニメーション切替**
+   - `scene.blade.php`: marker-00内にModel_00エンティティ（id="model-00", position="1.1 0 0.5", scale="0.6 0.6 0.6"）を追加
+   - `gltf-model`ではなく`lazy-model`を使用（maker00検出時のみロード）
+   - 捕獲数に応じてアニメーション自動切替: 0〜4体→anime01、5〜9体→anime02、10体→anime03
+   - アニメーション再生スピードを通常の半分（timeScale=0.5）に設定
+
+3. **rAFループ最適化（iPhone SEフリーズ根本修正）**
+   - js-gallery.blade.php の独立rAFループを削除（js-initのループと二重になっていた）
+   - `window.startGalleryMixerLoop()` / `window.stopGalleryMixerLoop()` をjs-initで公開
+   - maker00 markerFound時に起動、markerLost時に完全停止（CPU負荷ゼロ）
+
+4. **Model_00のlazy-model化**
+   - marker-00未検出時はGLBをメモリにロードしない
+   - `model-unloaded`イベントでmixer/actions/currentClipを完全クリーンアップ
+
+5. **ギャラリー表示を最大5体に制限**
+   - `onMarkerConfirmed()`が`getGallerySelection()`を参照（全捕獲済みではなく選択済みのみ）
+   - 未選択モデルはロード/表示しない。キャッシュ済みの未選択モデルはvisible=false
+
+6. **ギャラリー選択機能（スタンプ帳）**
+   - LocalStorageキー `ar-gallery-selection-202605` で最大5体の選択IDを管理
+   - `getGallerySelection()`: 選択済み最大5体を返す（未設定時は捕獲日時順の先頭5体にフォールバック）
+   - `saveGallerySelection()` / `toggleGallerySelection()`: 選択の保存・ON/OFFトグル
+   - スタンプ帳の捕獲済みスタンプをタップしてギャラリー表示するモデルを選択可能
+   - 選択中のスタンプには緑のボーダー＋チェックマーク（✓）バッジを表示
+
+#### 変更ファイル
+- `resources/views/ARstampRally202605/js-prize.blade.php`: PRIZE_EXCHANGE_THRESHOLD 6→5
+- `resources/views/ARstampRally202605/scene.blade.php`: Model_00エンティティ追加（lazy-model）
+- `resources/views/ARstampRally202605/js-gallery.blade.php`: 全面改修（rAFループ削除、Model_00管理、ギャラリー5体制限）
+- `resources/views/ARstampRally202605/js-init.blade.php`: startGalleryMixerLoop/stopGalleryMixerLoop公開
+- `resources/views/ARstampRally202605/js-stamps.blade.php`: ギャラリー選択関数3つ追加、showStampBook修正
+- `resources/views/ARstampRally202605/head.blade.php`: `.gallery-check` / `.gallery-selected` CSS追加
+
+#### 動作確認済み項目
+- ✅ PHP構文エラーなし（全6ファイル）
+- ✅ rAFループ重複なし（markerLost時にCPU負荷0）
+- ✅ ギャラリーは選択済み最大5体のみ表示
+- ✅ スタンプ帳でギャラリー表示モデルを選択可能
+- ✅ Model_00がanime01/02/03を捕獲数に応じて切替
+- ✅ 景品交換閾値5個で動作
 
 ---
 

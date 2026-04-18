@@ -595,7 +595,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // ===== 16. galleryMixers アニメーション更新 =====
     var _galleryRAFId = null;
     var _lastGalleryTime = 0;
+    var _galleryLoopRunning = false;
     function updateGalleryMixers(timestamp) {
+        if (!_galleryLoopRunning) { _galleryRAFId = null; return; }
         _galleryRAFId = requestAnimationFrame(updateGalleryMixers);
         if (!_lastGalleryTime) { _lastGalleryTime = timestamp; return; }
         var delta = (timestamp - _lastGalleryTime) / 1000;
@@ -608,7 +610,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
-    _galleryRAFId = requestAnimationFrame(updateGalleryMixers);
+    window.startGalleryMixerLoop = function () {
+        if (_galleryLoopRunning) return;
+        _galleryLoopRunning = true;
+        _lastGalleryTime = 0;
+        _galleryRAFId = requestAnimationFrame(updateGalleryMixers);
+    };
+    window.stopGalleryMixerLoop = function () {
+        _galleryLoopRunning = false;
+        if (_galleryRAFId) { cancelAnimationFrame(_galleryRAFId); _galleryRAFId = null; }
+    };
 
     // ===== 17. 初期化 =====
     if (typeof updateStampBadge === 'function') updateStampBadge();

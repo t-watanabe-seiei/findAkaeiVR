@@ -1,4 +1,4 @@
-# タスク化: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
+# タスク化: marker-00パフォーマンス改善＋ギャラリー表示数制限
 
 ## 作成日時
 2026年4月18日
@@ -10,120 +10,47 @@
 
 ## タスク一覧
 
-### Task 1: scene.blade.phpにModel_00エンティティ追加
-- marker-00内にModel_00.glb用の`<a-entity>`を追加
-- `id="model-00"`, `gltf-model`, `position="1 2 0.5"`, `scale="1.1 1.1 1.1"`, `rotation="-90 0 0"`, `visible="false"`
+### Task 1: rAFループ重複排除（js-gallery.blade.php）
+- `tickGalleryMixers`関数と`requestAnimationFrame(tickGalleryMixers)`呼び出しを削除
 - **ステータス**: ✅ 完了
 
-### Task 2: js-gallery.blade.phpにModel_00アニメーション制御ロジック追加
-- IIFE内にModel_00管理変数を追加
-- model-loadedイベントでmixer初期化
-- onMarkerConfirmed()内でModel_00のvisible=true + アニメーション切替
-- hideGallery()でModel_00も非表示
-- markerFoundでModel_00をvisible=true
+### Task 2: rAFループ停止/再開制御（js-init.blade.php）
+- `updateGalleryMixers`を`window.startGalleryMixerLoop`/`window.stopGalleryMixerLoop`として公開
+- 初期状態は停止（markerFoundで起動するため）
 - **ステータス**: ✅ 完了
 
-### Task 3: 動作確認
-- php -l でシンタックスチェック → エラーなし
+### Task 3: markerFound/Lost時のrAFループ制御追加（js-gallery.blade.php）
+- markerFound: `window.startGalleryMixerLoop()` 呼び出し追加
+- markerLost: `window.stopGalleryMixerLoop()` 呼び出し追加
 - **ステータス**: ✅ 完了
-- Android `video` ズーム防止CSS（`object-fit: contain`）
-- **ステータス**: ⬜ 未着手
 
-### Task 3: aframe-components.blade.php 作成
-- `pokeball-throwable` コンポーネント（202603から流用）
-- `hitbox` コンポーネント（202603から流用）
-- `lazy-model` コンポーネント（202603から流用）
-- `click-animation` コンポーネント（anime03対応を追加）
-- **ステータス**: ⬜ 未着手
+### Task 4: Model_00をlazy-model化（scene.blade.php）
+- `gltf-model` → `lazy-model` に変更
+- **ステータス**: ✅ 完了
 
-### Task 4: scene.blade.php 作成
-- `<a-scene>` 全体
-- maker00（ギャラリーマーカー・モデルなし）
-- maker01〜maker10（Bladeループで生成）
-- **ステータス**: ⬜ 未着手
+### Task 5: Model_00のmodel-unloadedハンドラ追加（js-gallery.blade.php）
+- `model-unloaded`リッスンでmixer/actions/currentClipをリセット
+- galleryMixersからmodel00Mixerを除去
+- **ステータス**: ✅ 完了
 
-### Task 5: ui.blade.php 作成
-- スタンプ帳ボタン・モーダル
-- ガイドボタン・モーダル
-- 写真・動画・カメラ切り替えボタン
-- 確認ダイアログ
-- カメラエラーUI
-- **ステータス**: ⬜ 未着手
+### Task 6: ギャラリー選択データ管理関数追加（js-stamps.blade.php）
+- `getGallerySelection()`, `saveGallerySelection()`, `toggleGallerySelection()` 追加
+- LocalStorageキー: `ar-gallery-selection-202605`
+- **ステータス**: ✅ 完了
 
-### Task 6: js-stamps.blade.php 作成
-- `STAMPS` オブジェクト定義（model_01〜model_10）
-- LocalStorage管理関数（getCollectedStamps, saveCollectedStamps等）
-- スタンプ帳表示（showStampBook）
-- バッジ更新
-- パーティクルエフェクト
-- collectStamp, collectAndMarkWithRetry
-- **ステータス**: ⬜ 未着手
+### Task 7: スタンプ帳UIにギャラリー選択チェックマーク追加（js-stamps.blade.php + head.blade.php）
+- `showStampBook()`にチェックマーク表示＋タップハンドラ追加
+- head.blade.phpに`.gallery-check` CSS追加
+- **ステータス**: ✅ 完了
 
-### Task 7: js-prize.blade.php 作成
-- UUID生成・ユーザーID管理（IndexedDB, Cookie, LocalStorage）
-- `generateFingerprint()`, `collectDeviceInfo()`
-- `recordMarkerScan()`, `recordMarkerDetection()`
-- `exchangePrize()`（閾値6個）
-- `updatePrizeButton()`（閾値6個）
-- `showPrizeCode()`, `showRedeemedPrizeInfo()`
-- **ステータス**: ⬜ 未着手
+### Task 8: ギャラリーロジックを選択済み5匹のみに制限（js-gallery.blade.php）
+- `onMarkerConfirmed()`で`getGallerySelection()`から取得
+- 未選択モデルはロードしない＋キャッシュ済みならvisible=false
+- **ステータス**: ✅ 完了
 
-### Task 8: js-throw.blade.php 作成
-- タップ投げロジック（touchstart/touchend）
-- `isUIButton()` 関数
-- `throwPokeballToCenter()` 関数
-- PC用 mousedown/mouseup 対応
-- **ステータス**: ⬜ 未着手
-
-### Task 9: js-gallery.blade.php 作成
-- maker00 markerFound/markerLost イベントハンドラ
-- 捕獲済みモデルを動的に `<a-entity>` として追加
-- Y軸1.0間隔で縦並び（X=0, Z=0）
-- anime03ループ再生
-- galleryEntitiesのmixerをsceneのtickで更新
-- **ステータス**: ⬜ 未着手
-
-### Task 10: js-camera.blade.php 作成
-- 写真撮影機能（cameraButton）
-- 動画撮影機能（videoButton）
-- カメラ切り替え（switchCameraButton）
-- 写真プレビュー・ダウンロード
-- **ステータス**: ⬜ 未着手
-
-### Task 11: js-init.blade.php 作成
-- DOMContentLoaded ハンドラ
-- Android AR.js 解像度オーバーライド
-- マーカーイベントハンドラ（maker01〜10の markerFound/markerLost）
-- スタンプ帳モーダルのopen/close
-- ガイドモーダルのopen/close（日英切り替え）
-- カメラ権限チェック（`checkCameraPermissions()`）
-- ピンチズーム（拡大縮小）
-- ヒットエフェクト（`showHitEffect()`）
-- resumeCamera()
-- 初期化（バッジ更新、guideModal初期表示）
-- scene tick ハンドラ（galleryEntitiesのmixerを更新）
-- **ステータス**: ⬜ 未着手
-
-### Task 12: routes/web.php にルート追加
-- `/stamp202605` → `ARstampRally202605` ビュー
-- `admin` グループ内に `/dashboard202605` ルート
-- **ステータス**: ⬜ 未着手
-
-### Task 13: AdminController に dashboard202605() 追加
-- dashboard202603() をベースに日付範囲・animals配列・return viewを変更
-- **ステータス**: ⬜ 未着手
-
-### Task 14: admin/dashboard202605.blade.php 作成
-- dashboard202603.blade.php をコピーし、202605用に調整（タイトル・日付範囲表示等）
-- **ステータス**: ⬜ 未着手
-
-### Task 15: PHP構文チェック & エラー修正
-- `php -l` で全変更PHPファイルをチェック
-- **ステータス**: ⬜ 未着手
-
-### Task 16: README.md 追記
-- ARstampRally202605 の機能概要を追記
-- **ステータス**: ⬜ 未着手
+### Task 9: 動作確認
+- 全変更対象ファイルのphp -lチェック → エラーなし
+- **ステータス**: ✅ 完了
 
 ---
 

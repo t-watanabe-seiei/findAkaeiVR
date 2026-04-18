@@ -276,6 +276,16 @@
         #stamp-book-content .stamp-item .stamp-icon img { max-width: 100%; max-height: 100%; object-fit: contain; }
         #stamp-book-content .stamp-item .stamp-name { font-size: 11px; font-weight: bold; color: #333; }
         #stamp-book-content .stamp-item .stamp-date { font-size: 8px; color: #666; margin-top: 2px; }
+        #stamp-book-content .stamp-item { position: relative; cursor: default; }
+        #stamp-book-content .stamp-item.collected { cursor: pointer; }
+        #stamp-book-content .stamp-item.gallery-selected { border-color: #2e7d32; box-shadow: 0 0 0 2px #4CAF50, 0 4px 8px rgba(0,0,0,0.2); }
+        .gallery-check {
+            position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+            border-radius: 50%; background: #ccc; color: white; font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; line-height: 1; pointer-events: none;
+        }
+        .gallery-check.active { background: #4CAF50; }
 
         .button-row { display: flex; gap: 10px; margin-top: 15px; }
         #close-stamp-book {

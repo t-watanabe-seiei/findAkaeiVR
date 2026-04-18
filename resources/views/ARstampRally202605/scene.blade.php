@@ -37,7 +37,7 @@
 
         <a-entity
             id="model-00"
-            gltf-model="{{ asset('cg/202605/Model_00.glb') }}"
+            lazy-model="src: {{ asset('cg/202605/Model_00.glb') }}"
             position="1.1 0 0.5"
             scale="0.6 0.6 0.6"
             rotation="0 0 0"

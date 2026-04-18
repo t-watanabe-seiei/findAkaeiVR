@@ -1,4 +1,4 @@
-# 要件定義: marker-00にModel_00.glb追加（捕獲数連動アニメーション）
+# 要件定義: marker-00パフォーマンス改善＋ギャラリー表示数制限
 
 ## 作成日時
 2026年4月18日
@@ -7,32 +7,44 @@
 `.claude_workflow/complete.md` を参照済み
 
 ## プロジェクト概要
-ARスタンプラリー202605のmarker-00（ギャラリー専用マーカー）にModel_00.glbを追加し、
-捕獲済みモデル数に応じたアニメーションを再生する。
+iPhone SE等の古い端末でmarker-00（ギャラリー）を読み込むとフリーズする問題を修正する。
 
 ## 現状把握
-- marker-00は既にギャラリー機能を持つ（js-gallery.blade.php）
-- marker-00にはシリンダー+球体のオブジェクトが2組ある
-- Model_00.glbは`public/cg/202605/`に存在済み
-- Model_00.glbにはanime01, anime02, anime03の3アニメーションが含まれる想定
+- marker-00検出時、捕獲済みモデルをGLBで動的ロード＋anime03ループ再生
+- Model_00.glbが`gltf-model`で常時メモリ常駐（lazy-modelでない）
+- `galleryMixers`が2つのrAFループ（js-gallery + js-init）から二重更新
+- rAFループがmarkerLost後も永久稼働
+- 6体捕獲→7つのGLB同時表示→iPhone SEフリーズ
 
 ## 要件詳細
-1. marker-00検出時に`Model_00.glb`を`position="1 2 0.5"`に表示する
-2. 既存のシリンダー+球体はそのまま残す
-3. 捕獲済みモデル数に応じてアニメーションを切り替える:
-   - 0〜4個: anime01をループ再生
-   - 5〜9個: anime02をループ再生
-   - 10個: anime03をループ再生
-4. marker-00が見えなくなったら非表示にする
-5. scale/rotationは他モデルと同様（scale=1.1, rotation=-90 0 0）
+
+### 修正1: rAFループ重複排除
+- js-gallery.blade.phpの`tickGalleryMixers`を削除
+- js-init.blade.phpの`updateGalleryMixers`に一本化
+
+### 修正2: ギャラリーモデルの同時表示数を最大5体に制限
+- 捕獲済みモデルのうち、ギャラリーに表示するモデルを最大5体に制限
+- スタンプ帳で捕獲済みスタンプをタップしてON/OFF切替（チェックマーク表示）
+- 最大5匹まで選択可能（6匹目を選ぼうとしたら警告）
+- 初期状態: 先に捕獲した5匹が自動選択
+- 選択状態はlocalStorageに保存
+- ギャラリー表示時は選択されたモデルのみロード＋表示
+
+### 修正3: markerLost時にrAFループ停止
+- markerLost時にgalleryMixers更新ループを`cancelAnimationFrame`で停止
+- markerFound時に再開
+
+### 修正4: Model_00をlazy-model化
+- scene.blade.phpの`gltf-model`を`lazy-model`に変更
+- js-gallery.blade.phpのModel_00初期化をlazy-model対応に調整
 
 ## 成功基準
-- marker-00を認識するとModel_00が表示される
-- 捕獲数0〜4個でanime01が再生される
-- 捕獲数5〜9個でanime02が再生される
-- 捕獲数10個でanime03が再生される
-- 既存のギャラリー機能に影響しない
-- 既存のシリンダー+球体がそのまま表示される
+- 6体以上捕獲してmarker-00を読んでもフリーズしない
+- ギャラリーに同時表示されるのは最大5体
+- スタンプ帳でギャラリー表示モデルを選択できる
+- rAFループが二重更新されない
+- markerLost後はrAFループが停止する
+- Model_00がmarker-00検出時のみロードされる
 
 ### 1. マーカー・モデル構成
 - **マーカー数**: 11個（maker00 ～ maker10）
