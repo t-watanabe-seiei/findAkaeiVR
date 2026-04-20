@@ -10,13 +10,13 @@
     embedded
     arjs="sourceWidth: {{ $_srcW }}; sourceHeight: {{ $_srcH }}; displayWidth: {{ $_dispW }}; displayHeight: {{ $_dispH }}; trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 30;"
     vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; antialias: true;"
+    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: false; antialias: true;"
     loading-screen="dotsColor: white; backgroundColor: black;">
 
     <a-assets timeout="10000"></a-assets>
 
     <!-- ライト -->
-    <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+    <a-light type="ambient" color="#ffffff" intensity="1.0"></a-light>
     <a-light type="directional" color="#ffffff" intensity="0.6" position="1 2 0"></a-light>
 
     <!-- カメラ -->
