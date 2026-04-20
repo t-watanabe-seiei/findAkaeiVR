@@ -2,11 +2,13 @@
     $_arjsIsAndroid = stripos(request()->header('User-Agent', ''), 'android') !== false;
     $_srcW = $_arjsIsAndroid ? 640 : 1280;
     $_srcH = $_arjsIsAndroid ? 480 : 720;
+    $_dispW = $_arjsIsAndroid ? 640 : 1280;
+    $_dispH = $_arjsIsAndroid ? 480 : 720;
 @endphp
 <a-scene
     id="ar-scene"
     embedded
-    arjs="sourceWidth: {{ $_srcW }}; sourceHeight: {{ $_srcH }}; displayWidth: 1280; displayHeight: 720; trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 30;"
+    arjs="sourceWidth: {{ $_srcW }}; sourceHeight: {{ $_srcH }}; displayWidth: {{ $_dispW }}; displayHeight: {{ $_dispH }}; trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 30;"
     vr-mode-ui="enabled: false"
     renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; antialias: true;"
     loading-screen="dotsColor: white; backgroundColor: black;">

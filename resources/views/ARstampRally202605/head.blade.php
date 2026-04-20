@@ -6,7 +6,7 @@
     <script>
         window.activeBalls = 0;
         window.allHitboxes = [];
-        window.guideModalOpen = true;
+        window.guideModalOpen = false;
         window._pendingCameraHelpArgs = null;
         window._pendingCameraError = false;
         window.galleryMixers = []; // maker00ギャラリー用mixerリスト

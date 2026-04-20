@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (/Android/i.test(navigator.userAgent)) {
         var _scene = document.getElementById('ar-scene');
         if (_scene) {
-            _scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 12;');
+            _scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480; detectionMode: mono; maxDetectionRate: 12;');
         }
     }
 
@@ -262,12 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 起動時にガイドモーダルを表示
-    if (guideModal) {
-        guideModal.style.display = 'block';
-        guideModal.setAttribute('aria-hidden', 'false');
-        window.guideModalOpen = true;
-    }
+    // ガイドモーダルは起動時に非表示（ガイドボタンから手動で開く）
 
     // ===== 6. カメラ権限ヘルプモーダル =====
     var cameraHelpModal = document.getElementById('camera-help-modal');
