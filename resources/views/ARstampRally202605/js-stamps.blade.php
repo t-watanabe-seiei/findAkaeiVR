@@ -109,6 +109,20 @@
             return true; // ON
         }
 
+        // ========== ギャラリー自動追加 ==========
+
+        function autoAddToGallerySelection(stampId) {
+            var selection = getGallerySelection();
+            if (selection.indexOf(stampId) !== -1) return;
+            if (selection.length < GALLERY_MAX_DISPLAY) {
+                selection.push(stampId);
+            } else {
+                selection.shift();
+                selection.push(stampId);
+            }
+            saveGallerySelection(selection);
+        }
+
         // ========== スタンプ登録 ==========
 
         function collectStamp(stampId, screenshot) {
@@ -153,6 +167,7 @@
                 var stamps = getCollectedStamps();
                 if (stamps && stamps[stampId]) {
                     try { markAnimalCaptured(stampId); } catch (e) {}
+                    try { autoAddToGallerySelection(stampId); } catch (e) {}
                     try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
                     return true;
                 }
@@ -164,6 +179,7 @@
                         var ss = getCollectedStamps();
                         if (ss && ss[stampId]) {
                             try { markAnimalCaptured(stampId); } catch (e) {}
+                            try { autoAddToGallerySelection(stampId); } catch (e) {}
                             try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
                             clearInterval(handle);
                         }
