@@ -1,80 +1,73 @@
-# 設計: /stamp202605 Androidズーム未解決問題（案1: 最小修正）
+# 設計: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
 
 ## 前段階ファイル読込
 前段階のmdファイルを読み込みました（`.claude_workflow/requirements.md`）。
 
 ## 設計方針
-- 変更は `resources/views/ARstampRally202605/` 配下のみに限定する。
-- 端末特化（moto g64y 固有分岐）は行わず、汎用的に効く最小修正を採用する。
-- 既存の iPhone / Android の機能（モデル表示・投擲・ギャラリー・撮影）を壊さない。
+- 最小変更で「投げたらGET」を実現する。
+- 既存の投擲演出（ボール飛行）を維持する。
+- 全端末（Android / iPhone / PC）で同一仕様にする。
+- マーカー検出中（`activeModel` 存在時）のみ自動GETを有効化する。
 
----
+## 現状ロジック整理
+- 投擲入力: `resources/views/ARstampRally202605/js-throw.blade.php`
+  - `touchend` / `mouseup` で方向計算して `throwPokeballInDirection()` 実行
+- 命中判定: `resources/views/ARstampRally202605/aframe-components.blade.php`
+  - `pokeball-throwable.tick()` で `window.allHitboxes` へレイ判定
+- GET確定: `resources/views/ARstampRally202605/js-stamps.blade.php`
+  - `collectAndMarkWithRetry(stampId, ...)` が通知・保存・捕獲表示まで一元処理
 
-## 第1フェーズ 根本原因（解決済み 2026-04-21）
-1. AR.js設定の二重適用 → `js-init.blade.php` から Android 再設定ブロックを削除済み
-2. ズーム対策CSSの適用先不足 → `head.blade.php` に `a-scene canvas` ルール追加済み
-3. ピンチズームハンドラが残存 → `js-init.blade.php` の touchstart/touchmove/touchend を削除済み
+## 解決案（ユーザー選択用）
 
----
+### 案A: 投擲直後に `activeModel` を即GET（最小変更・推奨）
+- 変更箇所: `js-throw.blade.php` の `touchend` / `mouseup` の末尾
+- 方法:
+  1. ボール投擲（既存）をそのまま実行
+  2. `activeModel` と `currentMarkerStampId` が存在する場合だけ `collectAndMarkWithRetry(currentMarkerStampId, null, 3, 2000)` を呼ぶ
+  3. 二重実行防止として短時間クールダウン（例: 500ms）を追加
+- メリット:
+  - 変更範囲が小さい（1ファイル）
+  - 現在の命中判定ロジックを壊さない
+  - 失敗時も既存の命中判定が保険として残る
+- デメリット:
+  - 物理命中前にGETが成立するため、厳密な命中感は弱まる
 
-## 第2フェーズ 根本原因（新規確定 2026-04-21）
+### 案B: `pokeball-throwable` に自動GETモード追加（中変更）
+- 変更箇所: `aframe-components.blade.php`（`throw` 時に対象stampIdを保持し、`tick` 冒頭で即GET）
+- メリット:
+  - 投擲コンポーネントにロジック集約できる
+  - 入力経路（タッチ/マウス）を問わず共通化される
+- デメリット:
+  - 既存の当たり判定ロジックへ触るためリスク増
+  - 影響範囲が広く、最小変更要件にやや反する
 
-### 根本原因A（ボール方向）: `look-controls` の自動付加
-- A-Frame は `<a-entity camera>` に `look-controls` を自動付加する
-- Android Chrome では DeviceOrientationEvent（ジャイロ）を許可なく受信
-- `scene.camera.quaternion` がジャイロ値で上書きされ、ボール投げ方向がARと無関係になる
-- iPhone は iOS13以降 DeviceOrientationEvent に許可が必要 → 未起動 → 問題なし
+### 案C: グローバルフラグ方式（低変更だが保守性低）
+- 変更箇所: `js-throw.blade.php` で `window._forceCaptureStampId` を設定し、`aframe-components.blade.php` 側で参照
+- メリット:
+  - 実装速度が速い
+- デメリット:
+  - グローバル状態依存が増え、将来不具合の温床になりやすい
+  - 推奨しない
 
-### 根本原因B（ページズーム）: `look-controls` のタッチハンドラが伝搬を遮断
-- `look-controls` の touchstart/touchmove が document への伝搬を止める
-- `gesturestart/gesturechange/gestureend` は Android Chrome 非対応（iOS Safari 専用）
-- `user-scalable=no` は Android Chrome 65以降でアクセシビリティ理由により**無視される**
-- document レベルのズーム防止ハンドラに 2本指タッチが届かず、ページズームが発生
+## 推奨案
+- **案A**（最小変更・低リスク・要件適合）
 
-### 結論: 両問題の原因は `look-controls` の自動付加 → 1行変更で両方解消
+## 変更対象（案A採用時）
+- `resources/views/ARstampRally202605/js-throw.blade.php` のみ
 
----
+## 実施ステップ（案A）
+1. `touchend` の投擲処理末尾に「`activeModel` がある時だけ自動GET」処理を追加
+2. `mouseup` の投擲処理末尾にも同等処理を追加
+3. 二重GET防止のクールダウン変数を追加（短時間）
+4. `php -l resources/views/ARstampRally202605/js-throw.blade.php` を実行
 
-## 採用する解決案（案1: ユーザー選択）
+## リスクと対策（案A）
+- リスク: 連打時に同一対象へGET処理が複数回走る可能性
+  - 対策: クールダウンと既存 `collectStamp` の重複防止に依存
+- リスク: マーカー見失い直前の境界タイミング
+  - 対策: `activeModel` と `currentMarkerStampId` の両方存在チェック
 
-### 変更内容
-**ファイル**: `resources/views/ARstampRally202605/scene.blade.php`  
-**変更量**: 1行のみ（属性を1つ追加）
-
-```html
-<!-- 変更前 -->
-<a-entity camera></a-entity>
-
-<!-- 変更後 -->
-<a-entity camera look-controls="enabled: false"></a-entity>
-```
-
-### 効果
-- `look-controls` が無効化され DeviceOrientationEvent 受信が停止
-- `camera.quaternion` が AR.js のマーカー追跡値のみで制御される
-- ボールが正しく AR キャラクターの方向に飛ぶ
-- look-controls のタッチハンドラが消え、ピンチズーム防止ハンドラが document に届く
-
-### 副次確認（追加変更なし）
-- 前回追加した `a-scene canvas { object-fit: contain }` は canvas に object-fit は効かないため**削除しない**（最小変更の原則）
-- ただし視覚的なズレが今後問題になれば案2として対応可能
-
-## 変更対象ファイル
-- `resources/views/ARstampRally202605/scene.blade.php` （1行のみ）
-
-## 非変更（維持）
-- `head.blade.php`: 前回追加のCSS維持
-- `js-init.blade.php`: 前回の削除内容維持
-- `scene.blade.php`: Android向け 640x480 設定、arjs属性の内容は維持
-
-## リスクと対策
-- リスク: look-controls 無効化でカメラ回転制御が完全に AR.js 依存になる
-  - 対策: AR.js はもともとマーカー追跡でカメラを制御するため問題なし
-- リスク: PC での操作に影響する可能性
-  - 対策: PCでは元々 look-controls を使っていない（mousedown でドラッグ操作していない）
-
-## 検証観点
-- Android (moto g64y): ページズームが出なくなるか
-- Android (moto g64y): ボールがキャラクター方向に飛ぶか
-- iPhone SE: マーカー検出・モデル表示・投擲が継続するか
-- PC: マーカー検出・モデル表示・投擲が継続するか
+## 検証観点（案A）
+- Android: ズームが残っていても、マーカー検出中に投げれば捕獲できること
+- iPhone / PC: 従来の投擲演出が維持され、捕獲処理が壊れないこと
+- 重複防止: 同一対象へ連打してもデータ破損しないこと

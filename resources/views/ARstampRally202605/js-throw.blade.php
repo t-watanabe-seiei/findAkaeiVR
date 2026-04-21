@@ -5,6 +5,18 @@
         var _isThrowing   = false;
         var _tapStartTime = 0;
 
+        function getActiveVisibleStampId() {
+            if (!window.allHitboxes || !Array.isArray(window.allHitboxes)) return '';
+            for (var i = 0; i < window.allHitboxes.length; i++) {
+                var hb = window.allHitboxes[i];
+                if (!hb || !hb.el || !hb.el.object3D) continue;
+                if (!hb.el.object3D.visible) continue;
+                if (hb.el.parentElement && hb.el.parentElement.object3D && !hb.el.parentElement.object3D.visible) continue;
+                if (hb.data && hb.data.stampId) return hb.data.stampId;
+            }
+            return '';
+        }
+
         // UIボタン上のタップは投げ判定から除外する
         function isUIButton(element) {
             if (!element) return false;
@@ -26,7 +38,7 @@
         }
 
         // 画面指定方向へポケボールを投げる
-        function throwPokeballInDirection(forwardDir, speed) {
+        function throwPokeballInDirection(forwardDir, speed, autoGetStampId) {
             var scene = document.getElementById('ar-scene');
             if (!scene || !scene.camera) return;
 
@@ -36,7 +48,9 @@
             var pokeball = document.createElement('a-entity');
             pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
             pokeball.setAttribute('scale', '0.15 0.15 0.15');
-            pokeball.setAttribute('pokeball-throwable', '');
+            var throwableConfig = 'autoGetDelayMs: 1000';
+            if (autoGetStampId) throwableConfig += '; autoGetStampId: ' + autoGetStampId;
+            pokeball.setAttribute('pokeball-throwable', throwableConfig);
             pokeball.setAttribute('position', cameraPos.x + ' ' + cameraPos.y + ' ' + cameraPos.z);
 
             scene.appendChild(pokeball);
@@ -138,7 +152,8 @@
             var holdMs = Date.now() - _tapStartTime;
             var speed  = Math.min(15 + holdMs / 100, 25);
 
-            throwPokeballInDirection(dir, speed);
+            var autoGetStampId = getActiveVisibleStampId();
+            throwPokeballInDirection(dir, speed, autoGetStampId);
         }, { passive: true });
 
         // PC マウスクリックでも投げられるようにする（タップと同じ動き）
@@ -182,7 +197,8 @@
                 }
                 var holdMs = Date.now() - _mouseDownTime;
                 var speed  = Math.min(15 + holdMs / 100, 25);
-                throwPokeballInDirection(dir, speed);
+                var autoGetStampId = getActiveVisibleStampId();
+                throwPokeballInDirection(dir, speed, autoGetStampId);
             });
         })();
 

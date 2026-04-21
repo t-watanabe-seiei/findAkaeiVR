@@ -75,3 +75,37 @@
 ## 進捗管理（第2フェーズ）
 - [x] Task 5
 - [x] Task 6
+
+---
+
+## 第3フェーズ タスク（2026-04-21）
+
+### Task 7: 案Bの1秒遅延自動GET実装
+- 対象: `resources/views/ARstampRally202605/aframe-components.blade.php`
+- 作業:
+  - `pokeball-throwable` に `schema` 追加（`autoGetStampId`, `autoGetDelayMs`）
+  - 投擲後1秒で `tryAutoGet()` を実行
+  - 命中時には遅延タイマーを停止し、二重処理を防止
+- 目的: 投げて1秒後に自動GET（演出は維持）
+- 状態: **完了**
+
+### Task 8: 投擲側から対象スタンプIDを連携
+- 対象: `resources/views/ARstampRally202605/js-throw.blade.php`
+- 作業:
+  - 可視ヒットボックスから `stampId` を取得する関数を追加
+  - `throwPokeballInDirection` へ `autoGetStampId` を渡す
+  - `pokeball-throwable` に `autoGetDelayMs: 1000` を設定
+- 目的: マーカー検出中のみ自動GETを有効化
+- 状態: **完了**
+
+### Task 9: 構文チェック
+- 対象:
+  - `resources/views/ARstampRally202605/aframe-components.blade.php`
+  - `resources/views/ARstampRally202605/js-throw.blade.php`
+- 結果: No syntax errors detected
+- 状態: **完了**
+
+## 進捗管理（第3フェーズ）
+- [x] Task 7
+- [x] Task 8
+- [x] Task 9

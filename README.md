@@ -15,6 +15,26 @@
 
 ---
 
+### ARstampRally202605 - 投擲1秒後の自動GET（案B） 20260421
+
+**ズーム問題が残る端末でも捕獲を成立させるため、投擲から1秒後に自動GETする仕様を追加:**
+
+#### 仕様
+- ボールを投げる演出は従来どおり維持
+- マーカー検出中の対象がいる場合のみ、投擲1秒後に自動GET
+- 実ヒットが先に発生した場合は、遅延自動GETをキャンセルして二重処理を防止
+
+#### 変更内容（案B）
+- `resources/views/ARstampRally202605/aframe-components.blade.php`
+   - `pokeball-throwable` に `autoGetStampId` / `autoGetDelayMs` を追加
+   - `throw()` 内で1秒タイマーを設定し `tryAutoGet()` を実行
+   - `handleHit()` でタイマーを停止して競合を回避
+- `resources/views/ARstampRally202605/js-throw.blade.php`
+   - 可視ヒットボックスから `stampId` を取得する `getActiveVisibleStampId()` を追加
+   - 投擲時に `autoGetDelayMs: 1000` と `autoGetStampId` を `pokeball-throwable` へ連携
+
+---
+
 ### ARstampRally202605 - look-controls 無効化（Androidボール方向ずれ・ページズーム修正）20260421
 
 **Android（moto g64y 5G）でボールが明後日の方向に飛ぶ問題・ページ全体がズームされる問題を修正:**

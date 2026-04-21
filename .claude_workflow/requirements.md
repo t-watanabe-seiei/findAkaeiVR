@@ -1,64 +1,40 @@
-# 要件定義: /stamp202605 Androidズーム未解決問題（moto g64y 5G）
+# 要件定義: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
 
 ## 作成日時
 2026-04-21
 
-## 更新日時（第2フェーズ）
-2026-04-21
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/complete.md` / 既存 `requirements.md`）。
 
-## 目的（更新）
-`/stamp202605` で Android（moto g64y 5G）において以下2問題を解消する。
-1. **ページ全体がズームされる**（ピンチ操作で広がった状態になる）
-2. **ボールが明後日の方向に飛ぶ**（キャラクターにまったく当たらない）
+## 背景
+- Android（moto g64y 5G）でズーム問題が未解消。
+- ボールが飛ぶこと自体は見えるが、ズームにより着弾位置が把握しづらく捕獲しにくい。
+- 既存端末を壊さないため、最小限変更で回避策を入れたい。
 
----
+## 目的
+- 画面タップでボールを投げた際、**マーカー検出中の対象を自動GET** できるようにする。
+- 既存の投擲演出（ボールが飛ぶ表示）は維持する。
 
-## ユーザー確認（第2フェーズ 2026-04-21）
-- ズームの種類: ページ全体がズームされる（ピンチ操作で広がった状態）
-- ボールの挙動: 飛ぶ方向がおかしい（明後日の方向に飛ぶ）
-- 他端末: iPhoneは正常。Androidのみ問題あり
-- 前回変更との関連: 不明（改善したかどうかは分からない）
+## ユーザー確認（2026-04-21）
+- 適用範囲: **全端末（Android / iPhone / PC）**
+- 自動GET条件: **マーカー検出中のみ（activeModel がある時だけ）**
+- 演出: **ボールは従来どおり飛ばしつつ、同時に自動GET**
 
----
+## 現状実装の確認結果
+- 投擲入力は `js-throw.blade.php` の `touchend` / `mouseup` で処理。
+- 実際の当たり判定・GETは `aframe-components.blade.php` の `pokeball-throwable` 内 `tick()` と `handleHit()` で処理。
+- GET確定処理は `collectAndMarkWithRetry(stampId, ...)`（`js-stamps.blade.php`）で一元化済み。
 
-## 根本原因の特定（コード解析結果）
-
-### 根本原因A: ボール方向がおかしい
-
-**原因**: `<a-entity camera>` に `look-controls` が自動付加される
-
-A-Frame は `<a-entity camera>` を設定すると `look-controls` コンポーネントを自動付加する。  
-`look-controls` は Android Chrome では **DeviceOrientationEvent**（ジャイロセンサー）を無条件に受信し、
-物理的なデバイスの向きでカメラを回転させる。
-
-- `scene.camera.quaternion` = デバイスの物理的な向き（AR追跡結果ではない）
-- ボール投げ方向 = `camera.quaternion` から計算 → **物理方向に飛ぶ = 明後日の方向**
-- iPhone は iOS 13以降 DeviceOrientationEvent に許可が必要 → 自動起動しない → 問題が出ない
-
-**証拠**: `ar-tracking.min.js` を解析した結果、AR.js は look-controls を無効化していない。
-
-### 根本原因B: ページがズームされる
-
-**原因**: look-controls のタッチイベントハンドラが `e.stopPropagation()` を呼ぶ可能性が高い
-
-- look-controls は 2本指タッチイベントを拾う（ピンチでカメラを動かすため）
-- これにより document レベルの `touchmove` ハンドラ（ズーム防止）が発火しない
-- `gesturestart/gesturechange/gestureend` は **Android Chromeで未対応**（iOSSafari専用）
-- `user-scalable=no` は Android Chrome 65以降で**アクセシビリティ理由により無視される**
-- 結果: ページレベルのピンチズームが止められない
-
-**追加調査（ar-tracking.min.js 解析結果）**:  
-AR.js は `copyElementSizeTo()` で縦持ち時に **4:3 固定比率** を使用する。  
-moto g64y 5G（20:9 画面）では canvas が 1220px 幅にスタイリングされ、  
-−404px marginLeft で画面外にはみ出す。この canvas のはみ出しが  
-ブラウザのビューポート幅計算に影響し、ズーム状態を引き起こしている可能性がある。
-
----
+## 成功基準
+1. タップ投擲時、`activeModel` が存在する場合は当たり判定なしで該当 `stampId` をGETできる。
+2. `activeModel` がない時は従来どおり（何もGETしない）。
+3. 既存の命中時処理（パーティクル、通知、スタンプ帳反映）との整合性が崩れない。
+4. `php -l` で変更ファイルの構文エラーがない。
 
 ## 制約
-- 現在動作している iPhone SE などへの影響は最小限にとどめること
-- コード変更は最小限かつ可逆的であること
-- 第1フェーズで行った変更（arjs二重設定削除・ピンチズームハンドラ削除）は維持する
+- 最小変更を最優先（既存ロジックの大規模改修は行わない）。
+- 既存端末で動作中の機能を壊さない。
+- 仕様追加は `/stamp202605` のみ。
 
 ## 調査対象（全読了）
 - `routes/web.php`

@@ -4,6 +4,11 @@
     // ---- ポケボール投擲コンポーネント ----
     if (!AFRAME.components['pokeball-throwable'])
     AFRAME.registerComponent('pokeball-throwable', {
+        schema: {
+            autoGetStampId: { type: 'string', default: '' },
+            autoGetDelayMs: { type: 'number', default: 1000 }
+        },
+
         init: function () {
             this.velocity = new THREE.Vector3();
             this.gravity = -4.5;
@@ -11,10 +16,16 @@
             this.lifetime = 0;
             this.maxLifetime = 8;
             this.prevPosition = new THREE.Vector3();
+            this.autoGetTimer = null;
+            this.autoGetTriggered = false;
             window.activeBalls = (window.activeBalls || 0) + 1;
         },
 
         remove: function () {
+            if (this.autoGetTimer) {
+                clearTimeout(this.autoGetTimer);
+                this.autoGetTimer = null;
+            }
             window.activeBalls = Math.max(0, (window.activeBalls || 1) - 1);
         },
 
@@ -24,6 +35,43 @@
             this.isThrown = true;
             this.lifetime = 0;
             this.prevPosition.copy(this.el.object3D.position);
+
+            if (this.autoGetTimer) {
+                clearTimeout(this.autoGetTimer);
+                this.autoGetTimer = null;
+            }
+            this.autoGetTriggered = false;
+
+            if (this.data.autoGetStampId) {
+                var self = this;
+                var delay = Math.max(0, parseInt(this.data.autoGetDelayMs, 10) || 1000);
+                this.autoGetTimer = setTimeout(function () {
+                    self.autoGetTimer = null;
+                    self.tryAutoGet();
+                }, delay);
+            }
+        },
+
+        tryAutoGet: function () {
+            if (this.autoGetTriggered) return;
+            this.autoGetTriggered = true;
+
+            var stampId = this.data.autoGetStampId;
+            if (!stampId) return;
+
+            try {
+                if (typeof collectAndMarkWithRetry === 'function') {
+                    collectAndMarkWithRetry(stampId, null, 3, 2000);
+                }
+
+                var modelId = stampId.replace('model_', 'model-');
+                var hitModel = document.getElementById(modelId);
+                if (hitModel) {
+                    try { hitModel.setAttribute('visible', 'false'); } catch (e) {}
+                    try { if (typeof hitModel.setCapturedState === 'function') hitModel.setCapturedState(true); } catch (e) {}
+                }
+                try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch (e) {}
+            } catch (e) {}
         },
 
         tick: function (time, deltaTime) {
@@ -80,6 +128,12 @@
         },
 
         handleHit: function (hitbox) {
+            if (this.autoGetTimer) {
+                clearTimeout(this.autoGetTimer);
+                this.autoGetTimer = null;
+            }
+            this.autoGetTriggered = true;
+
             const stampId = hitbox.data.stampId;
             const hitModel = hitbox.el;
 
