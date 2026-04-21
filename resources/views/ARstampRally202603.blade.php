@@ -11,7 +11,7 @@
         window.allHitboxes = []; // グローバルでヒットボックスを管理
 
         // ガイドモーダル表示中フラグ（カメラヘルプ・camera-errorの早期表示を防止）
-        window.guideModalOpen = true;
+        window.guideModalOpen = false;
         window._pendingCameraHelpArgs = null;
         window._pendingCameraError = false;
 
@@ -347,6 +347,10 @@
     <script>
         // ポケボール投擲コンポーネント
         AFRAME.registerComponent('pokeball-throwable', {
+            schema: {
+                autoGetStampId: { type: 'string', default: '' },
+                autoGetDelayMs: { type: 'number', default: 1000 }
+            },
             init: function() {
                 this.velocity = new THREE.Vector3();
                 this.gravity = -4.5; // 重力を弱めて遠くまで飛ぶように
@@ -354,6 +358,8 @@
                 this.lifetime = 0;
                 this.maxLifetime = 8; // 8秒後に消滅（より長く）
                 this.prevPosition = new THREE.Vector3(); // 前フレームの位置（すり抜け防止用）
+                this.autoGetTimer = null;
+                this.autoGetTriggered = false;
                 
                 // アクティブなボール数をカウントアップ
                 window.activeBalls = (window.activeBalls || 0) + 1;
@@ -361,6 +367,7 @@
             },
             
             remove: function() {
+                if (this.autoGetTimer) { clearTimeout(this.autoGetTimer); this.autoGetTimer = null; }
                 // アクティブなボール数をカウントダウン
                 window.activeBalls = Math.max(0, (window.activeBalls || 1) - 1);
                 // console.log('Active balls:', window.activeBalls);
@@ -374,6 +381,27 @@
                 this.lifetime = 0;
                 this.prevPosition.copy(this.el.object3D.position); // 初期位置を記録
                 console.log('Pokeball thrown with velocity:', this.velocity);
+                if (this.autoGetTimer) { clearTimeout(this.autoGetTimer); this.autoGetTimer = null; }
+                this.autoGetTriggered = false;
+                if (this.data.autoGetStampId) {
+                    var self = this;
+                    var delay = Math.max(0, parseInt(this.data.autoGetDelayMs, 10) || 1000);
+                    this.autoGetTimer = setTimeout(function() {
+                        self.autoGetTimer = null;
+                        self.tryAutoGet();
+                    }, delay);
+                }
+            },
+
+            tryAutoGet: function() {
+                if (this.autoGetTriggered) return;
+                this.autoGetTriggered = true;
+                var stampId = this.data.autoGetStampId;
+                if (!stampId) return;
+                try {
+                    if (typeof collectAndMarkWithRetry === 'function') collectAndMarkWithRetry(stampId, null, 3, 2000);
+                    try { if (typeof showCapturedMessage === 'function') showCapturedMessage(stampId); } catch(e) {}
+                } catch(e) { console.warn('tryAutoGet failed', e); }
             },
             
             tick: function(time, deltaTime) {
@@ -458,6 +486,8 @@
             },
 
             handleHit: function(hitbox) {
+                if (this.autoGetTimer) { clearTimeout(this.autoGetTimer); this.autoGetTimer = null; }
+                this.autoGetTriggered = true;
                 const stampId = hitbox.data.stampId;
                 console.log('✓ Hit!', stampId);
                 
@@ -1114,6 +1144,17 @@
         a-scene {
             touch-action: none; /* ARシーン内では全てのデフォルトタッチ動作を無効化 */
         }
+
+        /* ========== Androidカメラズーム防止 ========== */
+        video {
+            object-fit: contain !important;
+        }
+        a-scene canvas {
+            object-fit: contain !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
         .arjs-loader {
             height: 100%;
             width: 100%;
@@ -1132,95 +1173,24 @@
             color: white;
         }
         
-        /* カメラボタンのスタイル */
-        #camera-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 70px;
-            height: 70px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 3px solid #333;
-            border-radius: 50%;
-            cursor: pointer;
+        /* ========== 左上ボタン列 ========== */
+        #top-left-buttons {
+            position: fixed; top: 12px; left: 12px;
+            display: flex; flex-direction: row; gap: 8px;
             z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 35px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        #top-left-buttons button {
+            width: 56px; height: 56px;
+            background-color: rgba(255,255,255,0.9); border: 2px solid #333; border-radius: 50%;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             transition: transform 0.1s, background-color 0.2s;
+            position: relative;
         }
-        
-        #camera-button:active {
-            transform: scale(0.9);
-            background-color: rgba(200, 200, 200, 0.9);
-        }
-        
-        #camera-button:hover {
-            background-color: rgba(240, 240, 240, 0.9);
-        }
-        
-        /* カメラ切り替えボタン */
-        #switch-camera-button {
-            position: fixed;
-            top: 30px;
-            left: 30px;
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 3px solid #333;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: transform 0.1s, background-color 0.2s;
-        }
-        
-        #switch-camera-button:active {
-            transform: scale(0.9) rotate(180deg);
-            background-color: rgba(200, 200, 200, 0.9);
-        }
-        
-        #switch-camera-button:hover {
-            background-color: rgba(240, 240, 240, 0.9);
-        }
-        
-        /* 動画撮影ボタン */
-        #video-button {
-            position: fixed;
-            bottom: 110px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 3px solid #333;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: transform 0.1s, background-color 0.2s;
-        }
-        
-        #video-button:active {
-            transform: scale(0.9);
-        }
-        
-        #video-button:hover {
-            background-color: rgba(240, 240, 240, 0.9);
-        }
+        #top-left-buttons button:active { transform: scale(0.9); background-color: rgba(200,200,200,0.9); }
 
-        /* 投げるボタン（下中央） - 非表示にして新しい操作方法へ移行 */
+        /* 投げるボタン（下中央） */
         #throw-button {
-            display: none !important;
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -1336,35 +1306,7 @@
             opacity: 0.8;
         }
         
-        /* スタンプ帳ボタン */
-        #stamp-book-button {
-            position: fixed;
-            top: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 3px solid #333;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: transform 0.1s, background-color 0.2s;
-        }
-        
-        #stamp-book-button:active {
-            transform: scale(0.9);
-            background-color: rgba(200, 200, 200, 0.9);
-        }
-        
-        #stamp-book-button:hover {
-            background-color: rgba(240, 240, 240, 0.9);
-        }
-        
+        /* スタンプ帳ボタン バッジ */
         #stamp-book-button .badge {
             position: absolute;
             top: -5px;
@@ -1382,29 +1324,6 @@
             border: 2px solid white;
         }
 
-        /* 操作説明ボタン */
-        #guide-button {
-            position: fixed;
-            top: 30px;
-            right: 100px; /* stamp-book-button の少し左 */
-            width: 56px;
-            height: 56px;
-            background-color: rgba(255, 255, 255, 0.92);
-            border: 2px solid #333;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-            transition: transform 0.1s, background-color 0.2s;
-        }
-
-        #guide-button:active { transform: scale(0.95); }
-        #guide-button:hover { background-color: rgba(245,245,245,0.95); }
-        
         /* 捕まえるボタン（廃止） */
         #catch-button {
             display: none;
@@ -2053,17 +1972,6 @@
         </div>
     </div>
     
-    <!-- スタンプ帳ボタン -->
-    <button id="stamp-book-button" type="button" title="コレクションを見る">
-        <div class="icon">🎁</div>
-        <span class="badge">0</span>
-    </button>
-    
-    <!-- 操作説明ボタン (ガイド) -->
-    <button id="guide-button" type="button" title="操作説明" aria-label="操作説明">
-        <div class="icon">❓</div>
-    </button>
-    
     <!-- 捕まえるボタン -->
     <button id="catch-button" type="button" title="タップで捕獲モード">
         <div class="icon">⚾</div>
@@ -2162,14 +2070,18 @@
         </p>
     </div>
     
-    <!-- カメラ切り替えボタン -->
-    <button id="switch-camera-button" type="button" title="カメラを切り替え">🔄</button>
-    
-    <!-- 動画撮影ボタン -->
-    <button id="video-button" type="button" title="動画を撮る">📹</button>
-    
-    <!-- カメラボタン -->
-    <button id="camera-button" type="button" title="写真を撮る">📷</button>
+    <!-- 左上ボタン群 -->
+    <div id="top-left-buttons">
+        <button id="stamp-book-button" type="button" title="コレクションを見る">
+            <div class="icon">🎁</div>
+            <span class="badge">0</span>
+        </button>
+        <button id="guide-button" type="button" title="操作説明" aria-label="操作説明">
+            <div class="icon">❓</div>
+        </button>
+        <button id="camera-button" type="button" title="写真を撮る">📷</button>
+        <button id="video-button" type="button" title="動画を撮る">📹</button>
+    </div>
 
     <!-- 投げるボタン（画面下中央、スマホ向け） -->
     <button id="throw-button" type="button" title="投げる" aria-label="投げるボタン">
@@ -2216,7 +2128,7 @@
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: mediump;">
         
-        <a-entity camera="near: 0.2; far: 800;">
+        <a-entity camera="near: 0.2; far: 800;" look-controls="enabled: false">
             <!-- 手持ちのポケボール (HUD) -->
             <a-entity 
                 id="holding-pokeball"
@@ -3713,7 +3625,6 @@
         
         // 画面タップでアニメーションを再生
         let sceneReady = false;
-        let currentFacingMode = 'environment'; // 'environment' = アウトカメラ, 'user' = インカメラ
         
         // 拡大縮小用の変数
         let currentScale = 1; // 1〜3 のスケール倍率（UIはモデルの baseScale 1.1 に乗算 → 1.1〜3.3）
@@ -3752,7 +3663,6 @@
             let activeModel = null; // 現在アクティブなモデル
             const cameraButton = document.getElementById('camera-button');
             const videoButton = document.getElementById('video-button');
-            const switchCameraButton = document.getElementById('switch-camera-button');
             const flash = document.getElementById('flash');
             const photoPreview = document.getElementById('photo-preview');
             const previewImage = document.getElementById('preview-image');
@@ -3965,13 +3875,6 @@
 
                         // initialize content
                         setGuideLanguage(guideLang);
-
-                        // Show guide modal on startup
-                        const startupGuideModal = document.getElementById('guide-modal');
-                        if (startupGuideModal) {
-                            startupGuideModal.style.display = 'block';
-                            startupGuideModal.setAttribute('aria-hidden', 'false');
-                        }
 
                         // --- Camera permission detection & help modal ---
                         const cameraHelpModal = document.getElementById('camera-help-modal');
@@ -4322,7 +4225,10 @@
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15'); // サイズを小さく（1.5x bigger than before）
-                pokeball.setAttribute('pokeball-throwable', '');
+                var _autoGetId1 = getActiveVisibleStampId();
+                var _throwConf1 = 'autoGetDelayMs: 1000';
+                if (_autoGetId1) _throwConf1 += '; autoGetStampId: ' + _autoGetId1;
+                pokeball.setAttribute('pokeball-throwable', _throwConf1);
                 
                 // カメラの位置から開始
                 const cameraPos = camera.getWorldPosition(new THREE.Vector3());
@@ -4531,14 +4437,12 @@
                     element.id === 'camera-button' ||
                     element.id === 'throw-button' ||
                     element.id === 'video-button' ||
-                    element.id === 'switch-camera-button' ||
                     element.id === 'guide-button' ||
                     // element.id === 'rotate-up' ||
                     // element.id === 'rotate-down' ||
                     element.closest('#stamp-book-button') ||
                     element.closest('#camera-button') ||
                     element.closest('#video-button') ||
-                    element.closest('#switch-camera-button') ||
                     element.closest('#throw-button') ||
                     element.closest('#guide-button') ||
                     // element.closest('#rotate-up') ||
@@ -4644,6 +4548,19 @@
                 if (e.cancelable) e.preventDefault();
             }, { passive: false });
             
+            // 現在表示中のヒットボックスのstampIdを返す
+            function getActiveVisibleStampId() {
+                if (!window.allHitboxes || !Array.isArray(window.allHitboxes)) return '';
+                for (var i = 0; i < window.allHitboxes.length; i++) {
+                    var hb = window.allHitboxes[i];
+                    if (!hb || !hb.el || !hb.el.object3D) continue;
+                    if (!hb.el.object3D.visible) continue;
+                    if (hb.el.parentElement && hb.el.parentElement.object3D && !hb.el.parentElement.object3D.visible) continue;
+                    if (hb.data && hb.data.stampId) return hb.data.stampId;
+                }
+                return '';
+            }
+
             // 画面中央方向にポケボールを投げる（タップ時間で速度調整）
             function throwPokeballToCenter(speed) {
                 const camera = scene.camera;
@@ -4656,7 +4573,10 @@
                 const pokeball = document.createElement('a-entity');
                 pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
                 pokeball.setAttribute('scale', '0.15 0.15 0.15');
-                pokeball.setAttribute('pokeball-throwable', '');
+                var _autoGetId2 = getActiveVisibleStampId();
+                var _throwConf2 = 'autoGetDelayMs: 1000';
+                if (_autoGetId2) _throwConf2 += '; autoGetStampId: ' + _autoGetId2;
+                pokeball.setAttribute('pokeball-throwable', _throwConf2);
                 pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
                 
                 scene.appendChild(pokeball);
@@ -6510,55 +6430,6 @@
             
             // 初期化：バッジを更新
             updateStampBadge();
-            
-            // カメラ切り替え機能
-            switchCameraButton.addEventListener('click', async function(e) {
-                e.stopPropagation();
-                console.log('Switching camera...');
-                
-                try {
-                    // 現在のビデオストリームを停止
-                    const video = document.querySelector('video');
-                    if (video && video.srcObject) {
-                        const tracks = video.srcObject.getTracks();
-                        tracks.forEach(track => track.stop());
-                    }
-                    
-                    // カメラの向きを切り替え
-                    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-                    console.log('New facing mode:', currentFacingMode);
-                    
-                    // 新しいカメラストリームを取得
-                    const constraints = {
-                        video: {
-                            facingMode: currentFacingMode,
-                            width: { ideal: 1280 },
-                            height: { ideal: 960 }
-                        }
-                    };
-                    
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    
-                    // ビデオ要素に新しいストリームを設定
-                    if (video) {
-                        video.srcObject = stream;
-                        await video.play();
-                        console.log('Camera switched successfully to:', currentFacingMode);
-                    }
-                    
-                    // AR.jsを再初期化（必要に応じて）
-                    if (scene.systems['arjs']) {
-                        const arjsSystem = scene.systems['arjs'];
-                        if (arjsSystem.onVideoCanPlay) {
-                            arjsSystem.onVideoCanPlay();
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.error('Error switching camera:', error);
-                    alert('カメラの切り替えに失敗しました。\n' + error.message);
-                }
-            });
             
             // 動画撮影機能
             videoButton.addEventListener('click', function(e) {

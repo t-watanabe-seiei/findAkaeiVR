@@ -1,5 +1,81 @@
 # 要件定義: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
 
+---
+
+# 要件定義: /stamp202603 UI改修・自動GET実装（2026-04-22）
+
+## 作成日時
+2026-04-22
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（既存 `requirements.md`, `design.md`, `tasks.md`）。
+
+## 背景
+- `/stamp202603` は `/stamp202605` に先行するバージョン。
+- `/stamp202605` で導入した以下の改善を `/stamp202603` にも反映したい。
+
+## 目的・仕様（ユーザー確定済み）
+
+### 1. ガイド初期非表示
+- `window.guideModalOpen = true` → `false` に変更し、起動時にガイドモーダルを自動表示しない。
+- ガイドボタンは残し、手動で開けるようにする。
+
+### 2. Android Zoom修正
+- 案B採用: 202605 の CSS・イベント一式をポート。
+  - `video { object-fit: contain !important; }`
+  - `a-scene canvas { object-fit: contain !important; width: 100% !important; height: 100% !important; }`
+  - `gesturestart/change/end` preventDefault イベント追加
+  - `touchmove` 2本指防止、`touchend` ダブルタップ防止イベント追加
+  - `<a-entity camera look-controls="enabled: false">` 追加
+
+### 3. UI左上集約
+- 案A採用: `#top-left-buttons` コンテナを追加し、以下4ボタンを横並びに集約。
+  - `#stamp-book-button`, `#guide-button`, `#camera-button`, `#video-button`
+- 各ボタンの個別 `position: fixed` CSS は削除し、コンテナ内のスタイルに統一。
+- `#throw-button` は現状位置のまま維持。
+
+### 4. カメラ切替ボタン削除
+- HTML から `<button id="switch-camera-button">` を削除。
+- CSS から `#switch-camera-button` スタイルを削除。
+- JS から `switchCameraButton.addEventListener(...)` イベントハンドラを削除。
+- `isUIButton()` 内の `switch-camera-button` 参照を削除。
+
+### 5. 投擲演出維持（案C: 両方残す）
+- `#throw-button` → `throwPokeballToCenter(speed)` は従来どおり維持。
+- 新規: `document.addEventListener('touchstart/touchend')` でどこでもタップで方向投げを追加。
+- 新規: `document.addEventListener('mousedown/mouseup')` で PC マウスでも投げられるように追加。
+
+### 6. マーカー検出中の自動GET（投擲1秒後）
+- `pokeball-throwable` コンポーネントに `schema: { autoGetStampId, autoGetDelayMs }` 追加。
+- `throw()` 実行時に `autoGetStampId` が設定されていれば、`autoGetDelayMs`（1000ms）後に `tryAutoGet()` を呼ぶ。
+- `tryAutoGet()` は `collectAndMarkWithRetry(stampId, ...)` を呼ぶ。
+- 実ヒットが先に発生した場合（`handleHit()` 内）は `autoGetTimer` をキャンセルして二重処理を防止。
+- `getActiveVisibleStampId()` 関数を追加し、可視ヒットボックスから stampId を取得。
+- 投擲時（ボタン・タップどちらも）に `getActiveVisibleStampId()` を取得して pokeball に渡す。
+
+## 現状把握
+- 対象ファイル: `resources/views/ARstampRally202603.blade.php`（7291行の単一ファイル）
+- 参考ファイル: `resources/views/ARstampRally202605/` 配下の各サブファイル
+- `pokeball-throwable` は line 349 付近。schema なし。
+- `throwPokeballToCenter()` は line 4659 付近。
+- `#switch-camera-button` CSS は line 1165 付近、イベントハンドラは line 6515 付近。
+- ガイド初期フラグは line 14。
+- UI ボタン HTML は line 2166 付近。
+
+## 成功基準
+1. ガイドモーダルが起動時に自動表示されない。ガイドボタンで手動表示は可能。
+2. Android でのカメラ映像ズームが抑制される（`object-fit: contain !important` + look-controls 無効）。
+3. UIボタン4個が左上にまとまって表示される。カメラ切替ボタンが消える。
+4. 画面どこでもタップでも、下部ボタンでも投げられる。演出（ボール飛行）が維持される。
+5. マーカー検出中に投げたとき、1秒後に自動GETが発動する。
+6. 実ヒットが先に発生した場合、自動GETはキャンセルされる。
+7. `php -l` で構文エラーがない。
+
+## 制約
+- 変更は `ARstampRally202603.blade.php` のみ。
+- 既存の命中判定（tick/handleHit）ロジックを壊さない。
+- iPhone・PC などの既存正常端末の動作を維持する。
+
 ## 作成日時
 2026-04-21
 

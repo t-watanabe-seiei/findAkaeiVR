@@ -5,6 +5,43 @@
 　・https://seiei.tech/dx-2025　へのリンク（活動を紹介）
 　・
 
+---
+
+### ARstampRally202603 - Androidズーム修正・UI左上集約・カメラ切替削除・任意タップ投げ・投擲後自動GET 20260501
+
+**ARstampRally202605 で実施した改善内容を ARstampRally202603 単一ファイル版にも適用:**
+
+#### 変更内容
+
+**1. ガイドモーダルを起動時に非表示**
+- `window.guideModalOpen = false;` に変更（起動時モーダル表示ブロックを削除）
+
+**2. Androidズーム修正**
+- `video { object-fit: contain !important; }` と `a-scene canvas { object-fit: contain !important; width: 100% !important; height: 100% !important; }` を CSS に追加
+- `<a-entity camera>` → `<a-entity camera look-controls="enabled: false">` に変更
+
+**3. UIボタン配置変更（左上集約）・カメラ切替削除**
+- カメラ切替ボタン（🔄）を HTML・CSS・JS すべてから削除
+- スタンプ帳・ガイド・静止画撮影・動画撮影の4ボタンを `#top-left-buttons` フレックスコンテナ（画面左上横並び）に集約
+- 各ボタンの個別 `position: fixed` CSS ブロックを削除し、共通スタイル（`#top-left-buttons button`）に一本化
+- 投げボタン（`#throw-button`）の `display: none !important;` を削除（表示を復元）
+
+**4. 任意タップ投げ（ボタン＋どこでもタップ両対応）**
+- 既存のスワイプ/タップ投げロジックをそのまま維持
+- 投げるボタンを復活させ、ボタンタップでも投げられるように
+
+**5. 投擲1秒後に自動GET（マーカー検出時のみ）**
+- `pokeball-throwable` コンポーネントに `autoGetStampId` / `autoGetDelayMs` スキーマを追加
+- `throw()` 内で1秒タイマーを設定、`tryAutoGet()` で `collectAndMarkWithRetry` / `showCapturedMessage` を実行
+- `handleHit()` でタイマーをキャンセルして二重処理を防止
+- `getActiveVisibleStampId()` 関数を追加し、可視ヒットボックスの `stampId` を取得して投擲属性に渡す
+
+#### 変更ファイル
+- `resources/views/ARstampRally202603.blade.php`（単一ファイル、7000行超）
+
+#### 動作確認
+- `php -l` 構文エラーなし
+
 # ARstampRally202605 にかかわるTodo
 　・model_01〜model_10 の GLBファイルを `public/cg/202605/Model_01.glb` 〜 `Model_10.glb` に配置すること
 　・マーカーパターンファイルを `public/cg/202605/` に配置すること (pattern-maker00.patt, pattern-maker01.patt 〜 pattern-maker10.patt)
