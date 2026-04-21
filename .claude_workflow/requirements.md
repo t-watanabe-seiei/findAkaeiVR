@@ -3,11 +3,62 @@
 ## 作成日時
 2026-04-21
 
-## 参照
-`.claude_workflow/complete.md` を参照済み
+## 更新日時（第2フェーズ）
+2026-04-21
 
-## 目的
-`http://127.0.0.1:8000/stamp202605` で、Android（moto g64y 5G）において「モデルは表示されるが画面がズームされて使いにくい」問題を解消する。
+## 目的（更新）
+`/stamp202605` で Android（moto g64y 5G）において以下2問題を解消する。
+1. **ページ全体がズームされる**（ピンチ操作で広がった状態になる）
+2. **ボールが明後日の方向に飛ぶ**（キャラクターにまったく当たらない）
+
+---
+
+## ユーザー確認（第2フェーズ 2026-04-21）
+- ズームの種類: ページ全体がズームされる（ピンチ操作で広がった状態）
+- ボールの挙動: 飛ぶ方向がおかしい（明後日の方向に飛ぶ）
+- 他端末: iPhoneは正常。Androidのみ問題あり
+- 前回変更との関連: 不明（改善したかどうかは分からない）
+
+---
+
+## 根本原因の特定（コード解析結果）
+
+### 根本原因A: ボール方向がおかしい
+
+**原因**: `<a-entity camera>` に `look-controls` が自動付加される
+
+A-Frame は `<a-entity camera>` を設定すると `look-controls` コンポーネントを自動付加する。  
+`look-controls` は Android Chrome では **DeviceOrientationEvent**（ジャイロセンサー）を無条件に受信し、
+物理的なデバイスの向きでカメラを回転させる。
+
+- `scene.camera.quaternion` = デバイスの物理的な向き（AR追跡結果ではない）
+- ボール投げ方向 = `camera.quaternion` から計算 → **物理方向に飛ぶ = 明後日の方向**
+- iPhone は iOS 13以降 DeviceOrientationEvent に許可が必要 → 自動起動しない → 問題が出ない
+
+**証拠**: `ar-tracking.min.js` を解析した結果、AR.js は look-controls を無効化していない。
+
+### 根本原因B: ページがズームされる
+
+**原因**: look-controls のタッチイベントハンドラが `e.stopPropagation()` を呼ぶ可能性が高い
+
+- look-controls は 2本指タッチイベントを拾う（ピンチでカメラを動かすため）
+- これにより document レベルの `touchmove` ハンドラ（ズーム防止）が発火しない
+- `gesturestart/gesturechange/gestureend` は **Android Chromeで未対応**（iOSSafari専用）
+- `user-scalable=no` は Android Chrome 65以降で**アクセシビリティ理由により無視される**
+- 結果: ページレベルのピンチズームが止められない
+
+**追加調査（ar-tracking.min.js 解析結果）**:  
+AR.js は `copyElementSizeTo()` で縦持ち時に **4:3 固定比率** を使用する。  
+moto g64y 5G（20:9 画面）では canvas が 1220px 幅にスタイリングされ、  
+−404px marginLeft で画面外にはみ出す。この canvas のはみ出しが  
+ブラウザのビューポート幅計算に影響し、ズーム状態を引き起こしている可能性がある。
+
+---
+
+## 制約
+- 現在動作している iPhone SE などへの影響は最小限にとどめること
+- コード変更は最小限かつ可逆的であること
+- 第1フェーズで行った変更（arjs二重設定削除・ピンチズームハンドラ削除）は維持する
 
 ## 調査対象（全読了）
 - `routes/web.php`

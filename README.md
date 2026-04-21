@@ -15,6 +15,23 @@
 
 ---
 
+### ARstampRally202605 - look-controls 無効化（Androidボール方向ずれ・ページズーム修正）20260421
+
+**Android（moto g64y 5G）でボールが明後日の方向に飛ぶ問題・ページ全体がズームされる問題を修正:**
+
+#### 根本原因
+A-Frame は `<a-entity camera>` に `look-controls` コンポーネントを自動付加する。  
+Android Chrome では `look-controls` が DeviceOrientationEvent（ジャイロセンサー）を無許可で受信し、  
+`scene.camera.quaternion` をデバイスの物理的な向きで上書きしていた。
+
+- **ボール方向ずれ**: ボール投げ方向の計算が `camera.quaternion` に依存するため、AR追跡と無関係な方向に飛ぶ
+- **ページズーム**: `look-controls` のタッチハンドラが 2本指タッチイベントの伝搬を遮断し、document 側のズーム防止ハンドラが機能しなかった
+
+#### 変更内容
+- `resources/views/ARstampRally202605/scene.blade.php`: `<a-entity camera>` → `<a-entity camera look-controls="enabled: false">` （1行変更）
+
+---
+
 ### ARstampRally202605 - Androidズーム修正・UI左上集約・カメラ切替削除 20260421
 
 **Androidカメラ映像ズーム問題（moto g64y 5G）の修正とUI配置変更:**

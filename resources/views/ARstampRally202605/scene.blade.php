@@ -19,8 +19,8 @@
     <a-light type="ambient" color="#ffffff" intensity="1.0"></a-light>
     <a-light type="directional" color="#ffffff" intensity="0.6" position="1 2 0"></a-light>
 
-    <!-- カメラ -->
-    <a-entity camera></a-entity>
+    <!-- カメラ: look-controls 無効化（AndroidでのDeviceOrientationEvent誤介入を防止） -->
+    <a-entity camera look-controls="enabled: false"></a-entity>
 
     <!-- maker00: ギャラリー専用マーカー（モデルなし・js-gallery.blade.php で動的生成） -->
     <a-marker

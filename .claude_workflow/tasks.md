@@ -48,8 +48,30 @@
 3. Task 3
 4. Task 4
 
-## 進捗管理
+## 進捗管理（第1フェーズ）
 - [x] Task 1
 - [x] Task 2
 - [x] Task 3
 - [x] Task 4
+
+---
+
+## 第2フェーズ タスク（2026-04-21）
+
+### Task 5: look-controls 無効化
+- 対象: `resources/views/ARstampRally202605/scene.blade.php`
+- 作業: `<a-entity camera>` → `<a-entity camera look-controls="enabled: false">`
+- 目的: Android DeviceOrientationEvent 誤介入によるボール方向ずれ・ページズームを解消
+- 完了条件:
+  - `look-controls="enabled: false"` が設定されている
+  - `php -l` 構文エラーなし
+- 状態: **完了**
+
+### Task 6: php -l 構文チェック
+- 対象: `scene.blade.php`
+- 結果: No syntax errors detected
+- 状態: **完了**
+
+## 進捗管理（第2フェーズ）
+- [x] Task 5
+- [x] Task 6
