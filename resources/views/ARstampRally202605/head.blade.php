@@ -169,10 +169,14 @@
         a-scene { touch-action: none; }
 
         /* ========== Androidカメラズーム防止 ========== */
-        /* AR.jsが生成するvideo要素に object-fit:contain を強制し
-           カメラ映像がズームされて見える問題を修正 */
+        /* AR.jsが生成するvideo要素と最終描画canvasの双方に contain を適用 */
         video {
             object-fit: contain !important;
+        }
+        a-scene canvas {
+            object-fit: contain !important;
+            width: 100% !important;
+            height: 100% !important;
         }
 
         .arjs-loader {
@@ -182,52 +186,28 @@
         }
         .arjs-loader div { text-align: center; font-size: 1.25em; color: white; }
 
-        #camera-button {
-            position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
-            background-color: rgba(255,255,255,0.9); border: 3px solid #333; border-radius: 50%;
-            cursor: pointer; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            font-size: 35px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s, background-color 0.2s;
+        /* ========== 左上ボタン列 ========== */
+        #top-left-buttons {
+            position: fixed; top: 12px; left: 12px;
+            display: flex; flex-direction: row; gap: 8px;
+            z-index: 1000;
         }
-        #camera-button:active { transform: scale(0.9); background-color: rgba(200,200,200,0.9); }
-
-        #switch-camera-button {
-            position: fixed; top: 30px; left: 30px; width: 60px; height: 60px;
-            background-color: rgba(255,255,255,0.9); border: 3px solid #333; border-radius: 50%;
-            cursor: pointer; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s, background-color 0.2s;
+        #top-left-buttons button {
+            width: 56px; height: 56px;
+            background-color: rgba(255,255,255,0.9); border: 2px solid #333; border-radius: 50%;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background-color 0.2s;
+            position: relative;
         }
-        #switch-camera-button:active { transform: scale(0.9) rotate(180deg); background-color: rgba(200,200,200,0.9); }
-
-        #video-button {
-            position: fixed; bottom: 110px; right: 30px; width: 60px; height: 60px;
-            background-color: rgba(255,255,255,0.9); border: 3px solid #333; border-radius: 50%;
-            cursor: pointer; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s, background-color 0.2s;
-        }
-        #video-button:active { transform: scale(0.9); }
-        #video-button.recording { background-color: rgba(255,100,100,0.9); animation: pulse 1s infinite; }
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-
-        #stamp-book-button {
-            position: fixed; top: 30px; right: 30px; width: 60px; height: 60px;
-            background-color: rgba(255,255,255,0.9); border: 3px solid #333; border-radius: 50%;
-            cursor: pointer; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s, background-color 0.2s;
-        }
-        #stamp-book-button:active { transform: scale(0.9); background-color: rgba(200,200,200,0.9); }
+        #top-left-buttons button:active { transform: scale(0.9); background-color: rgba(200,200,200,0.9); }
         #stamp-book-button .badge {
             position: absolute; top: -5px; right: -5px; background-color: #ff4444; color: white;
-            border-radius: 50%; width: 24px; height: 24px; font-size: 12px; font-weight: bold;
+            border-radius: 50%; width: 22px; height: 22px; font-size: 11px; font-weight: bold;
             display: flex; justify-content: center; align-items: center; border: 2px solid white;
         }
-
-        #guide-button {
-            position: fixed; top: 30px; right: 100px; width: 56px; height: 56px;
-            background-color: rgba(255,255,255,0.92); border: 2px solid #333; border-radius: 50%;
-            cursor: pointer; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            font-size: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.25); transition: transform 0.1s, background-color 0.2s;
-        }
-        #guide-button:active { transform: scale(0.95); }
+        #video-button.recording { background-color: rgba(255,100,100,0.9) !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
         .captured-message {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);

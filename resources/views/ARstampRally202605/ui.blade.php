@@ -6,23 +6,16 @@
         </div>
     </div>
 
-    <!-- スタンプ帳ボタン -->
-    <button id="stamp-book-button" type="button" title="コレクションを見る" aria-label="コレクション">
-        🎯
-        <span class="badge" id="stamp-badge" style="display:none;">0</span>
-    </button>
-
-    <!-- ガイドボタン -->
-    <button id="guide-button" type="button" title="遊び方を見る" aria-label="遊び方">❓</button>
-
-    <!-- カメラ切り替えボタン -->
-    <button id="switch-camera-button" type="button" title="カメラを切り替え" aria-label="カメラ切り替え">🔄</button>
-
-    <!-- 動画撮影ボタン -->
-    <button id="video-button" type="button" title="動画を撮る" aria-label="動画撮影">📹</button>
-
-    <!-- カメラボタン（写真） -->
-    <button id="camera-button" type="button" title="写真を撮る" aria-label="写真撮影">📷</button>
+    <!-- 左上ボタン列: スタンプ帳・ガイド・動画・写真 -->
+    <div id="top-left-buttons">
+        <button id="stamp-book-button" type="button" title="コレクションを見る" aria-label="コレクション">
+            🎯
+            <span class="badge" id="stamp-badge" style="display:none;">0</span>
+        </button>
+        <button id="guide-button" type="button" title="遊び方を見る" aria-label="遊び方">❓</button>
+        <button id="video-button" type="button" title="動画を撮る" aria-label="動画撮影">📹</button>
+        <button id="camera-button" type="button" title="写真を撮る" aria-label="写真撮影">📷</button>
+    </div>
 
     <!-- スタンプ帳モーダル -->
     <div id="stamp-book-modal" role="dialog" aria-labelledby="stamp-book-title" aria-modal="true">

@@ -1,402 +1,55 @@
-# タスク化: marker-00パフォーマンス改善＋ギャラリー表示数制限
+# タスク化: /stamp202605 Androidズーム未解決問題（案1）
 
-## 作成日時
-2026年4月18日
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
 
-## 前提
-`.claude_workflow/design.md` を読み込み済み
+## 実行タスク一覧
 
----
+### Task 1: AR.js設定重複の解消
+- 対象: `resources/views/ARstampRally202605/js-init.blade.php`
+- 作業: Android 640x480 の `setAttribute('arjs', ...)` 上書きブロックを削除
+- 目的: `scene.blade.php` の設定を単一ソース化
+- 完了条件:
+  - Android上書きブロックが削除されている
+  - 他の初期化処理に影響がない
+- 状態: 完了
 
-## タスク一覧
+### Task 2: AR描画キャンバス向けズーム抑制CSS追加
+- 対象: `resources/views/ARstampRally202605/head.blade.php`
+- 作業: `a-scene canvas` を対象に `object-fit` / サイズ制御を追加
+- 目的: `video` のみ指定では不足する端末差異を補完
+- 完了条件:
+  - `video` と `canvas` の両方に必要な表示制御がある
+  - 既存UI（ボタン・モーダル）の重なり順が維持される
+- 状態: 完了
 
-### Task 1: rAFループ重複排除（js-gallery.blade.php）
-- `tickGalleryMixers`関数と`requestAnimationFrame(tickGalleryMixers)`呼び出しを削除
-- **ステータス**: ✅ 完了
+### Task 3: シーン内ピンチズーム機能の無効化
+- 対象: `resources/views/ARstampRally202605/js-init.blade.php`
+- 作業: `scene` に登録しているピンチ関連 `touchstart/touchmove/touchend` を削除
+- 目的: 要件「ピンチ無効化」を満たす
+- 完了条件:
+  - ピンチでモデル縮尺が変化しない
+  - PCホイール操作は維持される
+- 状態: 完了
 
-### Task 2: rAFループ停止/再開制御（js-init.blade.php）
-- `updateGalleryMixers`を`window.startGalleryMixerLoop`/`window.stopGalleryMixerLoop`として公開
-- 初期状態は停止（markerFoundで起動するため）
-- **ステータス**: ✅ 完了
-
-### Task 3: markerFound/Lost時のrAFループ制御追加（js-gallery.blade.php）
-- markerFound: `window.startGalleryMixerLoop()` 呼び出し追加
-- markerLost: `window.stopGalleryMixerLoop()` 呼び出し追加
-- **ステータス**: ✅ 完了
-
-### Task 4: Model_00をlazy-model化（scene.blade.php）
-- `gltf-model` → `lazy-model` に変更
-- **ステータス**: ✅ 完了
-
-### Task 5: Model_00のmodel-unloadedハンドラ追加（js-gallery.blade.php）
-- `model-unloaded`リッスンでmixer/actions/currentClipをリセット
-- galleryMixersからmodel00Mixerを除去
-- **ステータス**: ✅ 完了
-
-### Task 6: ギャラリー選択データ管理関数追加（js-stamps.blade.php）
-- `getGallerySelection()`, `saveGallerySelection()`, `toggleGallerySelection()` 追加
-- LocalStorageキー: `ar-gallery-selection-202605`
-- **ステータス**: ✅ 完了
-
-### Task 7: スタンプ帳UIにギャラリー選択チェックマーク追加（js-stamps.blade.php + head.blade.php）
-- `showStampBook()`にチェックマーク表示＋タップハンドラ追加
-- head.blade.phpに`.gallery-check` CSS追加
-- **ステータス**: ✅ 完了
-
-### Task 8: ギャラリーロジックを選択済み5匹のみに制限（js-gallery.blade.php）
-- `onMarkerConfirmed()`で`getGallerySelection()`から取得
-- 未選択モデルはロードしない＋キャッシュ済みならvisible=false
-- **ステータス**: ✅ 完了
-
-### Task 9: 動作確認
-- 全変更対象ファイルのphp -lチェック → エラーなし
-- **ステータス**: ✅ 完了
-
----
-
-# タスク化: shooting3Dterrer3 VRゴーグル処理落ち修正
-
-## 作成日時
-2026年3月18日
-
-## 前提
-`.claude_workflow/design.md` を読み込み済み
-
----
-
-## タスク一覧
-
-### Task 1: aframe-physics-system スクリプトタグ削除
-**目的**: 未使用の物理エンジンを読み込まなくし、毎フレームのCPU/GPU負荷を除去  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: line 11 の `<script src="{{ asset('js/aframe-physics-system.min.js') }}"></script>` を1行削除  
-**ステータス**: ✅ 完了
-
-### Task 2: `<a-scene>` の physics 属性削除
-**目的**: 物理エンジン属性を除去してシーン初期化負荷を排除  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: line 3255 の `physics="gravity: -9.8"` 行を削除  
-**ステータス**: ✅ 完了
-
-### Task 3: restartGame のシーン全体 dispose ブロック削除
-**目的**: リスタート時にスカイボックス・ライト・UIなど全オブジェクトを破棄してしまう箇所を削除し、WebGLクラッシュを防止  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: lines 1223〜1283 の `// 🚀🚀 強化: THREE.jsの完全なGPUリソース解放` コメント〜`if (sceneEl && sceneEl.renderer) { ... }` ブロック全体を削除  
-**ステータス**: ✅ 完了
-
-### Task 4: anisotropy を 16 → 2 に変更（4箇所）
-**目的**: モバイルGPU（Snapdragon XR2）に適正な値に変更し、テクスチャフィルタリングの過負荷を除去  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: enhance-materials コンポーネント内の `anisotropy = 16` を全4箇所 `anisotropy = 2` に変更  
-**ステータス**: ✅ 完了
-
-### Task 5: restartGame の allModels traverse+dispose ブロック削除
-**目的**: リスタート時の各モデル削除で共有GLBリソースを dispose しないようにする  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: `// THREE.jsレベルのクリーンアップ` コメント〜`if (model.object3D) { ... }` ブロックを削除  
-**ステータス**: ✅ 完了
-
-### Task 6: ボールヒット時の traverse+dispose ブロック削除
-**目的**: ヒット時のアニメーション終了後にボールGLBを dispose しないようにする  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: registerTimeout コールバック内の `// 🚀 メモリ解放` ブロック（lines 1855〜1872）を削除  
-**ステータス**: ✅ 完了
-
-### Task 7: ボール落下/タイムアウト時の traverse+dispose ブロック削除
-**目的**: ボールが落下・射程外になった時の dispose を削除  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: `// 🚀 メモリ解放` ブロック（lines 1911〜1927）を削除  
-**ステータス**: ✅ 完了
-
-### Task 8: despawnAndRespawn の traverse+dispose ブロック削除
-**目的**: ゾンビデスポーン時の共有GLBリソース dispose を削除  
-**対象ファイル**: `resources/views/shooting3Dterrer3.blade.php`  
-**変更**: `// 🚀 改善: 削除前にメモリを解放` ブロック（lines 2354〜2374）を削除  
-**ステータス**: ✅ 完了
-
----
+### Task 4: 構文チェックと影響確認
+- 対象: 変更ファイル2件
+- 作業:
+  - `php -l resources/views/ARstampRally202605/head.blade.php`
+  - `php -l resources/views/ARstampRally202605/js-init.blade.php`
+- 目的: Blade/PHP構文の安全性担保
+- 完了条件:
+  - 構文エラー・警告なし
+- 状態: 完了
 
 ## 実行順序
-Task 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8（すべて独立。同時適用可）
+1. Task 1
+2. Task 2
+3. Task 3
+4. Task 4
 
----
-
-# タスク化: ARstampRally202603 Android (moto g64y) バグ修正
-
-## 作成日時
-2026年3月18日
-
-## 前提
-`.claude_workflow/design.md` を読み込み済み
-
----
-
-## タスク一覧
-
-### Task 1: throwBall() の `loaded` → `model-loaded` + フォールバック修正
-**目的**: Android でボールが表示されない・投げられない問題を解消  
-**対象ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: 7184 付近（`newBall.addEventListener('loaded', () => {` の部分）
-
-**変更前**:
-```js
-// コンポーネントが初期化されたら投げる
-newBall.addEventListener('loaded', () => {
-    // マテリアル調整（既存コードと同様）
-    const model = newBall.getObject3D('mesh');
-    if (model) {
-        model.traverse(function(node) {
-            if (node.isMesh) {
-                if (node.geometry) node.geometry.computeVertexNormals();
-                if (node.material) {
-                    const materials = Array.isArray(node.material) ? node.material : [node.material];
-                    materials.forEach(mat => {
-                        mat.side = THREE.DoubleSide;
-                        mat.depthWrite = true;
-                        mat.depthTest = true;
-                        mat.flatShading = false;
-                        mat.transparent = false;
-                        mat.opacity = 1.0;
-                        mat.needsUpdate = true;
-                    });
-                }
-                node.frustumCulled = false;
-            }
-        });
-    }
-    
-    // 投げる処理を実行（当たり判定はコンポーネント内で行うため、ここでのsetIntervalは削除）
-    newBall.components['pokeball-throwable'].throw(direction, speed);
-});
-```
-
-**変更後**:
-```js
-// コンポーネントが初期化されたら投げる
-// model-loaded を使用（GLB が確実にロードされたタイミング）
-// Android ではキャッシュ済みの場合 loaded より前に発火するためフォールバック追加
-let throwCalled = false;
-function doThrowSetup() {
-    if (throwCalled) return;
-    throwCalled = true;
-    // マテリアル調整
-    const model = newBall.getObject3D('mesh');
-    if (model) {
-        model.traverse(function(node) {
-            if (node.isMesh) {
-                if (node.geometry) node.geometry.computeVertexNormals();
-                if (node.material) {
-                    const materials = Array.isArray(node.material) ? node.material : [node.material];
-                    materials.forEach(mat => {
-                        mat.side = THREE.DoubleSide;
-                        mat.depthWrite = true;
-                        mat.depthTest = true;
-                        mat.flatShading = false;
-                        mat.transparent = false;
-                        mat.opacity = 1.0;
-                        mat.needsUpdate = true;
-                    });
-                }
-                node.frustumCulled = false;
-            }
-        });
-    }
-    // 投げる処理を実行
-    newBall.components['pokeball-throwable'].throw(direction, speed);
-}
-newBall.addEventListener('model-loaded', doThrowSetup);
-// フォールバック: model-loaded が来なかった場合 (Android キャッシュ済みモデル等)
-setTimeout(doThrowSetup, 500);
-```
-
-**完了条件**: `php -l` エラーなし
-
----
-
-### Task 2: Android 向け AR.js カメラ解像度動的調整
-**目的**: moto g64y ポートレートモードのカメラズーム問題を解消  
-**対象ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: 3699 の `DOMContentLoaded` コールバック冒頭 (行 3700: `const scene = ...` の直前)
-
-**追加するコード**:
-```js
-// Android 判定: カメラ解像度を 640×480 (4:3) に変更してポートレート表示のズームを防止
-(function() {
-    if (!/Android/i.test(navigator.userAgent)) return;
-    const _scene = document.querySelector('a-scene');
-    if (!_scene) return;
-    _scene.setAttribute('arjs',
-        'sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; detectionMode: mono; maxDetectionRate: 15;'
-    );
-    console.log('[Android fix] AR.js source size overridden to 640x480');
-})();
-```
-
-**挿入位置**: `document.addEventListener('DOMContentLoaded', function() {` の次の行（`const scene = ...` の前）
-
-**完了条件**: `php -l` エラーなし
-
----
-
-### Task 3: PHP lint 確認
-**目的**: 修正によって PHP 構文エラーが発生していないことを確認  
-**コマンド**: `php -l resources/views/ARstampRally202603.blade.php`  
-**完了条件**: `No syntax errors detected` が表示される
-
----
-
-## 実行順序
-1. Task 1 (throwBall 修正)
-2. Task 2 (Android カメラ解像度)
-3. Task 3 (PHP lint)
-
-## ステータス
-- [x] Task 1: loaded → model-loaded + フォールバック
-- [x] Task 2: Android カメラ解像度調整
-- [x] Task 3: PHP lint 確認
-
----
-
-# タスクリスト: ARstampRally202603 HUDポケボール DOM オーバーレイ化（パターン2）
-
-## 作成日時
-2026年4月6日
-
-## 前提
-`.claude_workflow/design.md` を読み込み済み
-
----
-
-## Task 1: CSS追加 — `#hud-pokeball` スタイル
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: `</style>` タグ直前（~2003行目）  
-**内容**: `#hud-pokeball` および `#hud-pokeball img` のスタイル定義を追加  
-**完了条件**: CSS が追加されている  
-- [ ] Task 1 完了
-
----
-
-## Task 2: HTML追加 — `<div id="hud-pokeball">` 挿入
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: `<button id="throw-button">` の閉じタグ直後（~2172行目）  
-**内容**: `<div id="hud-pokeball"><img src="{{ asset('cg/pokeball_image.png') }}" alt="pokeball"></div>` を追加  
-**完了条件**: DOM要素が追加されている  
-- [ ] Task 2 完了
-
----
-
-## Task 3: HTML変更 — `#holding-pokeball` を非表示化
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: ~2201行目  
-**内容**: `visible="true"` → `visible="false"`  
-**完了条件**: A-Frame エンティティが非表示設定になっている  
-- [ ] Task 3 完了
-
----
-
-## Task 4: JS変更 — `captureModelScreenshot()` 非表示処理
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: ~3371〜3376行目（hide部分）、~3400,3415,3421行目（restore部分×3）  
-**内容**: `holding-pokeball` の `display` 操作 → `hud-pokeball` の `visibility` 操作に変更  
-**完了条件**: スクリーンショット時にHUDボールが非表示になる  
-- [ ] Task 4 完了
-
----
-
-## Task 5: JS変更 — IIFE先頭 `hudEl` 変数追加・`applyHoldingBallFix` 削除
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: ~7028〜7074行目  
-**内容**:  
-1. `let hudEl = document.getElementById('hud-pokeball');` を `ballEntity` 宣言の直後に追加  
-2. `applyHoldingBallFix()` 関数定義・`addEventListener`・`setTimeout` × 2 を全て削除  
-**完了条件**: `hudEl` が宣言されており、`applyHoldingBallFix` 関連コードがすべて存在しない  
-- [ ] Task 5 完了
-
----
-
-## Task 6: JS変更 — タッチ/マウスイベント ハンドラ書き換え
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象箇所（6か所）**:  
-- touchstart ~7096: `ballEntity.setAttribute('position',...)` → `hudEl.style.transform`  
-- touchend ~7131: `ballEntity.setAttribute('visible','false')` 等 → `hudEl.style.visibility='hidden'`  
-- touchcancel ~7139: reset position → `hudEl.style.transform + visibility` リセット  
-- mousedown ~7155: touchstart と同様  
-- mouseup ~7169: touchend と同様  
-**完了条件**: `ballEntity.setAttribute` によるHUD操作がすべて `hudEl.style.*` に置換されている  
-- [ ] Task 6 完了
-
----
-
-## Task 7: JS変更 — `throwBall()` 初期位置計算を代替式に変更
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: ~7183〜7185行目  
-**内容**: `ballEntity.object3D.getWorldPosition(worldPos)` → カメラ位置 + quaternion offset  
-**完了条件**: `getWorldPosition` の呼び出しがなくなり、camera位置ベースの計算になっている  
-- [ ] Task 7 完了
-
----
-
-## Task 8: JS変更 — `restoreBall()` 復元処理を `hudEl.style.*` に変更
-**ファイル**: `resources/views/ARstampRally202603.blade.php`  
-**対象行**: ~7255〜7259行目  
-**内容**: `ballEntity.setAttribute('visible','true')` → `hudEl.style.visibility='visible'` + transform リセット  
-**完了条件**: `restoreBall` が `hudEl` を復元するようになっている  
-- [ ] Task 8 完了
-
----
-
-## Task 9: PHP lint 確認
-**コマンド**: `php -l resources/views/ARstampRally202603.blade.php`  
-**完了条件**: `No syntax errors detected` が表示される  
-- [ ] Task 9 完了
-
----
-
-## 実行順序
-Task 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9（順番に実施。エラーが出たら解決してから次へ）
-
-## ステータス
-- [x] Task 1: CSS追加
-- [x] Task 2: HTML追加
-- [x] Task 3: `#holding-pokeball` 非表示化
-- [x] Task 4: captureModelScreenshot 修正
-- [x] Task 5: hudEl追加 + applyHoldingBallFix削除
-- [x] Task 6: タッチ/マウスイベント書き換え
-- [x] Task 7: throwBall 初期位置計算変更
-- [x] Task 8: restoreBall 復元処理変更
-- [x] Task 9: PHP lint 確認
-
----
-
-# タスク化10: ギャラリーマーカー（maker00）iPhone SEフリーズ修正
-
-## 前段階のmdファイルを読み込みました
-`.claude_workflow/design.md` の設計10を参照
-
-## タスク一覧
-
-- [x] Task 1: js-gallery.blade.php を全面書き換え（キャッシュ＋デバウンス＋逐次ロード）
-- [x] Task 2: PHP lint 確認
-- [x] Task 3: 動作確認（ブラウザでアクセス可能か確認）
-
----
-
-# タスク化11: スタンプ帳閉じた時にギャラリー表示が更新されない問題
-
-## 前段階のmdファイルを読み込みました
-`.claude_workflow/design.md` の最終セクション「スタンプ帳閉じた時にギャラリー表示が更新されない問題」を参照
-
-## タスク一覧
-
-### Task 1: onMarkerConfirmedをwindow.refreshGalleryとして公開（js-gallery.blade.php）
-- hideGallery関数の後、IIFE末尾の`})();`の前に `window.refreshGallery = onMarkerConfirmed;` を追加
-- **ステータス**: ✅ 完了
-
-### Task 2: スタンプ帳閉じるハンドラにrefreshGallery呼び出し追加（js-init.blade.php）
-- closeStampBookクリックハンドラに `if (typeof window.refreshGallery === 'function') window.refreshGallery();` 追加
-- stampBookModalの背景クリックハンドラにも同じ行を追加
-- **ステータス**: ✅ 完了
-
-### Task 3: php -l 構文チェック
-- 変更した2ファイルの構文チェック
-- **ステータス**: ✅ 完了
+## 進捗管理
+- [x] Task 1
+- [x] Task 2
+- [x] Task 3
+- [x] Task 4

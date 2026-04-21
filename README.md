@@ -15,6 +15,29 @@
 
 ---
 
+### ARstampRally202605 - Androidズーム修正・UI左上集約・カメラ切替削除 20260421
+
+**Androidカメラ映像ズーム問題（moto g64y 5G）の修正とUI配置変更:**
+
+#### 変更内容
+
+**1. Androidズーム修正（最小修正案）**
+- AR.js設定の二重適用を解消: `js-init.blade.php` 冒頭の Android 向け `setAttribute('arjs', ...)` 上書きブロックを削除し、`scene.blade.php` の設定を唯一のソースに一本化
+- AR最終描画（canvas）へのズーム抑制CSS追加: `video` のみだった `object-fit: contain` を `a-scene canvas` にも追加
+- ピンチズーム機能を無効化: `scene` に登録していた `touchstart/touchmove/touchend` によるモデル拡縮処理を削除（PCホイールは維持）
+
+**2. UIボタン配置変更**
+- カメラ切替ボタン（🔄）を削除
+- スタンプ帳・ガイド・動画撮影・静止画撮影の4ボタンを画面左上に横並びで表示
+- 個別の `position: fixed` を廃止し `#top-left-buttons` フレックスコンテナに集約
+
+#### 変更ファイル
+- `resources/views/ARstampRally202605/js-init.blade.php`: Android arjs 上書き削除・ピンチ処理削除（ホイールのみ維持）
+- `resources/views/ARstampRally202605/head.blade.php`: `a-scene canvas` ズーム抑制CSS追加・ボタンCSS左上横並びに再構成
+- `resources/views/ARstampRally202605/ui.blade.php`: カメラ切替ボタン削除・4ボタンを `#top-left-buttons` コンテナにまとめ順序変更
+
+---
+
 ### ARstampRally202605 - スタンプ帳閉じた後にギャラリー表示が更新されない問題を修正 20260418
 
 **スタンプ帳でギャラリー選択を変更しても、閉じた後にギャラリーが更新されなかった問題を修正:**

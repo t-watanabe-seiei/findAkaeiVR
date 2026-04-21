@@ -1,30 +1,12 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ===== 1. Android 640x480 上書き =====
-    if (/Android/i.test(navigator.userAgent)) {
-        var _scene = document.getElementById('ar-scene');
-        if (_scene) {
-            _scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480; detectionMode: mono; maxDetectionRate: 12;');
-        }
-    }
-
-    // ===== 2. 変数 =====
+    // ===== 1. 変数 =====
     var scene = document.getElementById('ar-scene');
     var activeModel = null;
     var currentMarkerStampId = null;
     var currentScale = 1;
-    var isPinching = false;
-    var pinchStartDistance = 0;
-    var pinchInitialScale = 1;
     var guideLang = 'jp';
-
-    // ===== 3. ヘルパー: ピンチズーム =====
-    function getTouchesDistance(t0, t1) {
-        var dx = t0.clientX - t1.clientX;
-        var dy = t0.clientY - t1.clientY;
-        return Math.hypot(dx, dy);
-    }
 
     function setBaseScaleIfMissing(el) {
         if (!el) return;
@@ -388,35 +370,8 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
     @endfor
 
-    // ===== 9. ピンチズームイベント (scene) =====
+    // ===== 9. ホイールズーム（PC向け） =====
     if (scene) {
-        scene.addEventListener('touchstart', function (event) {
-            if (event.touches && event.touches.length >= 2) {
-                isPinching = true;
-                pinchStartDistance = getTouchesDistance(event.touches[0], event.touches[1]);
-                pinchInitialScale = currentScale;
-                if (event.cancelable) event.preventDefault();
-                return;
-            }
-        }, { passive: false });
-
-        scene.addEventListener('touchmove', function (event) {
-            if (!isPinching) return;
-            if (!(event.touches && event.touches.length >= 2)) return;
-            var d = getTouchesDistance(event.touches[0], event.touches[1]);
-            if (pinchStartDistance <= 0) return;
-            var factor = d / pinchStartDistance;
-            currentScale = Math.max(1, Math.min(3, pinchInitialScale * factor));
-            applyCurrentScaleTo(activeModel);
-            if (event.cancelable) event.preventDefault();
-        }, { passive: false });
-
-        scene.addEventListener('touchend', function (event) {
-            if (isPinching && (!event.touches || event.touches.length < 2)) {
-                isPinching = false;
-            }
-        }, { passive: true });
-
         scene.addEventListener('wheel', function (e) {
             var step = -e.deltaY * 0.0018;
             currentScale = Math.max(1, Math.min(3, currentScale + step));
