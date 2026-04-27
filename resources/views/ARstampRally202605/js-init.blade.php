@@ -587,6 +587,22 @@ document.addEventListener('DOMContentLoaded', function () {
             window.arjsVideoReady = true;
             hideArjsLoader();
             try { var chm = document.getElementById('camera-help-modal'); if (chm) { chm.style.display = 'none'; chm.setAttribute('aria-hidden','true'); } } catch (e) {}
+
+            // 縦長カメラストリーム対策（Samsung Galaxy 等で 480x640 が返る場合）
+            try {
+                var vid = document.querySelector('video');
+                if (vid && vid.videoWidth > 0 && vid.videoHeight > 0 && vid.videoWidth < vid.videoHeight) {
+                    // ポートレートストリームを検知: sourceWidth/sourceHeight を実際のサイズに合わせて更新
+                    var vw = vid.videoWidth, vh = vid.videoHeight;
+                    console.warn('[AR202605] Portrait video detected (' + vw + 'x' + vh + '). Updating arjs params.');
+                    scene.setAttribute('arjs',
+                        'sourceWidth: ' + vw + '; sourceHeight: ' + vh + ';' +
+                        ' displayWidth: ' + vw + '; displayHeight: ' + vh + ';' +
+                        ' trackingMethod: best; sourceType: webcam; debugUIEnabled: false;' +
+                        ' detectionMode: mono; maxDetectionRate: 30;'
+                    );
+                }
+            } catch (e) {}
         });
     }
 

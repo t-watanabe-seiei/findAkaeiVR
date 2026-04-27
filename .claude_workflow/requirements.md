@@ -1,3 +1,56 @@
+# 要件定義: /stamp202605 Galaxy S20+ 縦長カメラ・マーカー非認識バグ修正（2026-04-28）
+
+## 作成日時
+2026-04-28
+
+## 前段階ファイル読込
+既存 `requirements.md`, `design.md`, `tasks.md`, `complete.md` を読み込みました。
+
+## 背景
+- `/stamp202605` を Galaxy S20+（縦向き使用）で開くと、カメラ映像が縦長表示になる。
+- マーカーが認識されず、3D モデルが表示されない。
+- 以前に `arjs-video-loaded` イベント内で portrait 検出→ `setAttribute('arjs', ...)` という修正を行ったが、効果が出ていない可能性がある。
+
+## コード分析による根本原因
+
+### 判明した動作フロー（Samsung Galaxy S20+ 縦向き）
+1. `ar-tracking.min.js` が `displayWidth`/`displayHeight` をもとに video 要素の inline style に `width` / `height` を px 指定する
+2. `ar-engine.min.js` は `window.screen.width/height × devicePixelRatio` を使って表示サイズを計算し、縦向き時はビデオを縦型サイズ（例: 412×915 CSS px）に設定する
+3. 一方 `scene.blade.php` の `sourceWidth: 640, sourceHeight: 480` はカメラを横型で要求する
+4. Samsung は `{ width: { ideal: 640 }, height: { ideal: 480 } }` を無視し、縦型のストリーム（480×640）を返す場合がある
+5. 結果: 横型を想定した tracking canvas と、縦型の video 表示の間でアスペクト比不一致が発生し、マーカーを認識できない
+6. 既存の `arjs-video-loaded` 内での `setAttribute` による修正は A-Frame 初期化後の変更であり、AR.js のトラッキングコンテキストが再初期化されない可能性がある
+
+### 現在の CSS の問題
+- `video { object-fit: cover !important; }` は content の fitting のみ制御し、**要素自体のサイズは変更しない**
+- AR.js が設定した `style.width/height` が残るため、video が画面を覆わない場合がある
+
+## 目的
+- Galaxy S20+（縦向き）でカメラ映像が正常に全画面表示され、マーカーが認識できるようにする
+- 既存動作端末（iPhone/非Samsung Android/PC）への影響をゼロにする
+
+## 確認済みユーザー回答
+- 使用向き: **縦向き（ポートレート）のみ**
+- 現在正常動作中: **iPhone(iOS)・非Samsung Android・PC**
+
+## 変更対象ファイル候補
+- `resources/views/ARstampRally202605/head.blade.php`（CSS / `getUserMedia` override）
+- `resources/views/ARstampRally202605/scene.blade.php`（arjs 属性値・同期スクリプト追加）
+- `resources/views/ARstampRally202605/js-init.blade.php`（既存 portrait 検出コードの改良）
+
+## 成功基準
+1. Galaxy S20+（縦向き）でカメラ映像が全画面に正しく表示される
+2. Galaxy S20+（縦向き）でマーカーを検出し、3D モデルが表示される
+3. iPhone・非Samsung Android・PC での既存動作が維持される
+4. 変更ファイルに `php -l` エラーがない
+
+## 制約
+- 最小限の変更
+- `ar-engine.min.js` / `ar-tracking.min.js` は変更しない（minified ファイル）
+- Samsung 端末専用の分岐を入れる場合は UA 文字列を使用（`samsung` / `SM-[A-Z]`）
+
+---
+
 # 要件定義: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
 
 ---

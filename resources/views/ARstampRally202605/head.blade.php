@@ -169,12 +169,12 @@
         a-scene { touch-action: none; }
 
         /* ========== Androidカメラズーム防止 ========== */
-        /* AR.jsが生成するvideo要素と最終描画canvasの双方に contain を適用 */
+        /* AR.jsが生成するvideo要素と最終描画canvasの双方に cover を適用 */
         video {
-            object-fit: contain !important;
+            object-fit: cover !important;
         }
         a-scene canvas {
-            object-fit: contain !important;
+            object-fit: cover !important;
             width: 100% !important;
             height: 100% !important;
         }

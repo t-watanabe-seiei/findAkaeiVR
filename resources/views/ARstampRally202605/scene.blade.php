@@ -73,3 +73,23 @@
     @endfor
 
 </a-scene>
+<script>
+// Samsung Galaxy 縦向き対策:
+// A-Frame の DOMContentLoaded 初期化より先に同期実行し、
+// arjs の sourceWidth/sourceHeight を縦型寸法（480x640）に上書きする。
+// 非 Samsung 端末・横向き使用時にはスキップするため既存端末への影響なし。
+(function () {
+    var ua = navigator.userAgent;
+    if (!/android/i.test(ua)) return;
+    if (!/samsung|SM-[A-Z]/i.test(ua)) return;
+    if (window.innerWidth >= window.innerHeight) return; // 横向きはスキップ
+    var scene = document.getElementById('ar-scene');
+    if (!scene) return;
+    scene.setAttribute('arjs',
+        'sourceWidth: 480; sourceHeight: 640; displayWidth: 480; displayHeight: 640;' +
+        ' trackingMethod: best; sourceType: webcam; debugUIEnabled: false;' +
+        ' detectionMode: mono; maxDetectionRate: 30;'
+    );
+    console.log('[AR202605] Samsung portrait: arjs set to 480x640.');
+}());
+</script>
