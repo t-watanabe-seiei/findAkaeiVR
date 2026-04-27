@@ -4,7 +4,7 @@
             'model_02': { name: '緑', icon: '🐾', model: '202605/Model_02.glb' },
             'model_03': { name: '桃', icon: '🐾', model: '202605/Model_03.glb' },
             'model_04': { name: '水色', icon: '🐾', model: '202605/Model_04.glb' },
-            'model_05': { name: '翠', icon: '🐾', model: '202605/Model_05.glb' },
+            'model_05': { name: '蒼', icon: '🐾', model: '202605/Model_05.glb' },
             'model_06': { name: '紅白', icon: '🐾', model: '202605/Model_06.glb' },
             'model_07': { name: '錦', icon: '🐾', model: '202605/Model_07.glb' },
             'model_08': { name: '金', icon: '🐾', model: '202605/Model_08.glb' },

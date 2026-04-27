@@ -477,7 +477,7 @@ class AdminController extends Controller
             'model_02' => '緑',
             'model_03' => '桃',
             'model_04' => '水色',
-            'model_05' => '翠',
+            'model_05' => '蒼',
             'model_06' => '紅白',
             'model_07' => '錦',
             'model_08' => '金',
