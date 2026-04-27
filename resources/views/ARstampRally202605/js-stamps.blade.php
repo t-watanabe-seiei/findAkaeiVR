@@ -1,15 +1,15 @@
         // ========== スタンプ定義 ==========
         const STAMPS = {
-            'model_01': { name: 'モデル01', icon: '🐾', model: '202605/Model_01.glb' },
-            'model_02': { name: 'モデル02', icon: '🐾', model: '202605/Model_02.glb' },
-            'model_03': { name: 'モデル03', icon: '🐾', model: '202605/Model_03.glb' },
-            'model_04': { name: 'モデル04', icon: '🐾', model: '202605/Model_04.glb' },
-            'model_05': { name: 'モデル05', icon: '🐾', model: '202605/Model_05.glb' },
-            'model_06': { name: 'モデル06', icon: '🐾', model: '202605/Model_06.glb' },
-            'model_07': { name: 'モデル07', icon: '🐾', model: '202605/Model_07.glb' },
-            'model_08': { name: 'モデル08', icon: '🐾', model: '202605/Model_08.glb' },
-            'model_09': { name: 'モデル09', icon: '🐾', model: '202605/Model_09.glb' },
-            'model_10': { name: 'モデル10', icon: '🐾', model: '202605/Model_10.glb' }
+            'model_01': { name: '赤', icon: '🐾', model: '202605/Model_01.glb' },
+            'model_02': { name: '緑', icon: '🐾', model: '202605/Model_02.glb' },
+            'model_03': { name: '桃', icon: '🐾', model: '202605/Model_03.glb' },
+            'model_04': { name: '水色', icon: '🐾', model: '202605/Model_04.glb' },
+            'model_05': { name: '翠', icon: '🐾', model: '202605/Model_05.glb' },
+            'model_06': { name: '紅白', icon: '🐾', model: '202605/Model_06.glb' },
+            'model_07': { name: '錦', icon: '🐾', model: '202605/Model_07.glb' },
+            'model_08': { name: '金', icon: '🐾', model: '202605/Model_08.glb' },
+            'model_09': { name: '銀', icon: '🐾', model: '202605/Model_09.glb' },
+            'model_10': { name: '橙', icon: '🐾', model: '202605/Model_10.glb' }
         };
 
         const TOTAL_STAMP_SLOTS = 10;

@@ -31,7 +31,7 @@
             <div class="button-row">
                 <button id="close-stamp-book" type="button">閉じる</button>
                 <button id="exchange-prize-button" type="button">景品と交換する</button>
-                <button id="clear-stamps" type="button">動物たちを逃がす</button>
+                <button id="clear-stamps" type="button">コイを逃がす</button>
             </div>
         </div>
     </div>
@@ -71,7 +71,7 @@
         <h2>🎉 捕まえました！ 🎉</h2>
         <div class="animal-name" id="captured-animal-name"></div>
         <p style="margin-top:15px;font-size:14px;color:#ccc;">
-            コレクションの「動物たちを逃がす」ボタンで<br>全てリセットできます
+            コレクションの「コイを逃がす」ボタンで<br>全てリセットできます
         </p>
     </div>
 

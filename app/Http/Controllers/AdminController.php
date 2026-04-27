@@ -473,16 +473,16 @@ class AdminController extends Controller
 
         // 全モデルのリスト（ARstampRally202605.blade.phpのSTAMPSと同じ順序）
         $animals = [
-            'model_01' => 'モデル01',
-            'model_02' => 'モデル02',
-            'model_03' => 'モデル03',
-            'model_04' => 'モデル04',
-            'model_05' => 'モデル05',
-            'model_06' => 'モデル06',
-            'model_07' => 'モデル07',
-            'model_08' => 'モデル08',
-            'model_09' => 'モデル09',
-            'model_10' => 'モデル10',
+            'model_01' => '赤',
+            'model_02' => '緑',
+            'model_03' => '桃',
+            'model_04' => '水色',
+            'model_05' => '翠',
+            'model_06' => '紅白',
+            'model_07' => '錦',
+            'model_08' => '金',
+            'model_09' => '銀',
+            'model_10' => '橙',
         ];
 
         // 各モデルの統計を収集

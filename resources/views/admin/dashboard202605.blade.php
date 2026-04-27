@@ -296,7 +296,7 @@
                     <td class="ball-hit">{{ $stat['ball_hit_count'] }}</td>
                     <td><strong>{{ $stat['total_count'] }}</strong></td>
                     <td>{{ $stat['unique_users'] }}</td>
-                    <td>{{ $stat['last_scan'] ? $stat['last_scan']->format('Y/m/d H:i') : '-' }}</td>
+                    <td>{{ $stat['last_scan'] ? $stat['last_scan']->tz('Asia/Tokyo')->format('Y/m/d H:i') : '-' }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -319,7 +319,7 @@
             <tbody>
                 @forelse($recentScans as $scan)
                 <tr>
-                    <td>{{ $scan->scanned_at->format('Y/m/d H:i:s') }}</td>
+                    <td>{{ $scan->scanned_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') }}</td>
                     <td>{{ $scan->marker_name }}</td>
                     <td>
                         <span class="badge {{ $scan->capture_type === 'marker_scan' ? 'marker' : 'ball' }}">
@@ -387,7 +387,7 @@
                     @forelse($recentExchanges as $exchange)
                     <tr>
                         <td class="prize-code">{{ $exchange->prize_code }}</td>
-                        <td>{{ $exchange->exchanged_at->format('Y/m/d H:i:s') }}</td>
+                        <td>{{ $exchange->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') }}</td>
                         <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
                         <td>
                             <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
@@ -423,9 +423,9 @@
                     @forelse($redeemedPrizes as $prize)
                     <tr>
                         <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
-                        <td style="font-size: 13px;">{{ $prize->exchanged_at->format('Y/m/d H:i') }}</td>
+                        <td style="font-size: 13px;">{{ $prize->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i') }}</td>
                         <td style="font-size: 13px; color: #28a745;">
-                            {{ $prize->redeemed_at ? $prize->redeemed_at->format('Y/m/d H:i') : '-' }}
+                            {{ $prize->redeemed_at ? $prize->redeemed_at->tz('Asia/Tokyo')->format('Y/m/d H:i') : '-' }}
                         </td>
                         <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
                     </tr>
