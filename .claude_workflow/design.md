@@ -1,3 +1,27 @@
+# 設計: ARstampRally202606 ギャラリー選択モデルスケール縮小（2026-05-21）
+
+## 前段階ファイル読込
+`requirements.md` を読み込みました。
+
+## 変更ファイル
+- `resources/views/ARstampRally202606/js-gallery.blade.php` のみ
+
+## 変更箇所
+`loadNextModel()` 内の以下1行：
+```diff
+- entity.setAttribute('scale', '0.6 0.6 0.6');
++ entity.setAttribute('scale', '0.48 0.48 0.48');
+```
+
+## 影響範囲
+- 新規ロード時のみスケールが設定されるため、キャッシュ済みエンティティの再表示（`onMarkerConfirmed`）には影響なし
+  → ただしキャッシュ済みエンティティは既にスケールが `0.6` で生成済みのため、**セッション中に初めてロードされる際に `0.48` が適用される**（LocalStorageがリセットされた初回ロード時にも同様）
+- `scene.blade.php` の `#model-00`（Model_00.glb）は変更なし
+- アニメーション・hitbox・配置位置への影響なし
+- ピンチズーム（`setBaseScaleIfMissing`）はギャラリーエンティティには適用されないため影響なし
+
+---
+
 # 設計: ARstampRally202606 新規作成（2026-05-20）
 
 ## 前段階ファイル読込

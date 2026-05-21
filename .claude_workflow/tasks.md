@@ -1,3 +1,17 @@
+# タスク化: ARstampRally202606 ギャラリー選択モデルスケール縮小（2026-05-21）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task A-1: js-gallery.blade.php のスケール値変更
+- 作業: `loadNextModel()` 内の `entity.setAttribute('scale', '0.6 0.6 0.6')` を `'0.48 0.48 0.48'` に変更
+- 完了条件: php -l で構文エラーなし
+- 状態: 完了
+
+---
+
 # タスク化: ARstampRally202606 新規作成（2026-05-20）
 
 ## 前段階ファイル読込

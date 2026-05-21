@@ -167,7 +167,7 @@
                 var modelUrl = '{{ asset("cg") }}/' + modelPath;
                 var entity   = document.createElement('a-entity');
                 entity.setAttribute('position', pos.x + ' ' + pos.y + ' ' + pos.z);
-                entity.setAttribute('scale', '0.6 0.6 0.6');
+                entity.setAttribute('scale', '0.48 0.48 0.48');
                 entity.setAttribute('rotation', '0 0 0');
                 entity.setAttribute('visible', markerVisible ? 'true' : 'false');
 
