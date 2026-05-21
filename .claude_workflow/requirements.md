@@ -1,4 +1,76 @@
-# 要件定義: /stamp202605 Galaxy S20+ 縦長カメラ・マーカー非認識バグ修正（2026-04-28）
+# 要件定義: ARstampRally202606 新規作成（2026-05-20）
+
+## 作成日時
+2026-05-20
+
+---
+
+## ARstampRally202606 要件
+
+### 1. 概要
+ARstampRally202605を参考に、ARstampRally202606を新規作成する。
+1ファイル1,000行超を避けるためサブディレクトリ方式でモジュール化する。
+
+### 2. ファイル構成
+```
+resources/views/ARstampRally202606.blade.php
+resources/views/ARstampRally202606/
+    head.blade.php, ui.blade.php, scene.blade.php,
+    aframe-components.blade.php, js-stamps.blade.php,
+    js-prize.blade.php, js-throw.blade.php,
+    js-gallery.blade.php, js-camera.blade.php, js-init.blade.php
+resources/views/admin/dashboard202606.blade.php
+```
+
+### 3. マーカー・モデル
+- マーカー: 21個 (maker00〜maker20)、maker00はギャラリー専用
+- 捕獲対象: maker01〜maker20（20種）
+- CGパス: `public/cg/202606/`
+- モデル: Model_00.glb〜Model_20.glb（各anime01/02/03付き）
+
+### 4. アニメーション仕様
+- ヒット前: anime01ループ
+- ヒット時: anime02一度再生 → モデル非表示（捕獲完了）
+- ギャラリーヒット時: anime02一度再生 → anime01ループに戻る（スタンプ取得なし）
+
+### 5. 投擲: 画面タップ（HUDスワイプなし）202605と同じ
+
+### 6. スタンプ帳
+- 対象: model_01〜model_20（20種）
+- 名前: キャラクター01〜キャラクター20（仮）
+- TOTAL_STAMP_SLOTS: 20
+- LocalStorageキー: `ar-stamp-rally-202606`, `ar-captured-animals-202606`
+- リセットボタン: 「キャラクターを逃がす」
+
+### 7. 景品交換
+- 閾値: 10匹以上（202605の5匹から変更）
+
+### 8. ギャラリー（maker00）
+- **Model_00.glb**: 常に (0,0,0) に固定表示（選択対象外）
+- **捕獲済み選択モデル最大4体**: スタンプ帳で選択した4体を (0,0,1),(0,0,-1),(1,0,0),(-1,0,0) に表示
+- 合計最大5体（Model_00固定 + 選択4体）、すべてY=0
+- anime01ループ、ヒット時anime02→anime01（スタンプ取得なし）
+- hitboxコンポーネント付き（Model_00・選択4体ともに）
+- スタンプ帳の選択上限: 4体（GALLERY_MAX_DISPLAY = 4）
+
+### 9. 管理ダッシュボード（/admin/dashboard202606）
+- 期間: 2026-05-20 00:00:00 〜 2026-06-10 23:59:59 (JST)
+- 集計: model_01〜model_20の20種、202605ダッシュボードと同形式
+
+### 10. 差分まとめ（202605との比較）
+| 項目 | 202605 | 202606 |
+|------|--------|--------|
+| 捕獲対象数 | 10種 | 20種 |
+| 景品交換閾値 | 5匹 | 10匹 |
+| ギャラリー配置 | Y軸方向等間隔 | 固定XZ（Y=0） |
+| ギャラリーアニメ | anime03 | anime01（ヒット時anime02→anime01） |
+| ギャラリーhitbox | なし | あり |
+| リセットボタン | コイを逃がす | キャラクターを逃がす |
+| CGパス | cg/202605/ | cg/202606/ |
+
+---
+
+# 旧要件定義: /stamp202605 Galaxy S20+ 縦長カメラ・マーカー非認識バグ修正（2026-04-28）
 
 ## 作成日時
 2026-04-28

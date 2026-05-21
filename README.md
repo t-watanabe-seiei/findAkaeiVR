@@ -231,6 +231,94 @@ Android Chrome では `look-controls` が DeviceOrientationEvent（ジャイロ�
 
 ---
 
+# ARstampRally202606 にかかわるTodo
+　・model_00〜model_20 の GLBファイルを `public/cg/202606/Model_00.glb` 〜 `Model_20.glb` に配置すること
+　・マーカーパターンファイルを `public/cg/202606/` に配置すること (pattern-maker00.patt, pattern-maker01.patt 〜 pattern-maker20.patt)
+　・STAMPS オブジェクトのモデル名・アイコンを実際のキャラクター名に合わせて更新すること (`resources/views/ARstampRally202606/js-stamps.blade.php`)
+　・景品交換閾値: 10 (PRIZE_EXCHANGE_THRESHOLD = 10)
+　・ギャラリー(maker00): Model_00固定表示 + 捕獲済み選択モデル最大4体を東西南北4方向に配置
+　・投げ方式: タップ即投げ（ARstampRally202605と同じ）
+
+---
+
+### ARstampRally202606 - 新規作成 (ARstampRally202605ベース) 20260520
+
+**ARstampRally202605をベースに2026年6月イベント向け新版を作成:**
+
+#### 主な変更点（202605との差分）
+
+**1. スタンプ数: 10種 → 20種**
+- `STAMPS`: `model_01` 〜 `model_20`（20種）
+- `TOTAL_STAMP_SLOTS = 20`
+- マーカー: marker-01〜marker-20（scene.blade.phpのループ上限を10→20に変更）
+
+**2. ギャラリー仕様変更（大幅変更）**
+- 202605: 捕獲済み5体をY軸方向に並べて表示（`GALLERY_Y_SPACING`）
+- 202606: **Model_00を(0,0,0)に固定表示** + 捕獲済み選択4体を東西南北に配置
+  ```
+  GALLERY_POSITIONS = [
+      { x:0, y:0, z:1 },   // 南
+      { x:0, y:0, z:-1 },  // 北
+      { x:1, y:0, z:0 },   // 東
+      { x:-1, y:0, z:0 }   // 西
+  ]
+  ```
+- `GALLERY_MAX_DISPLAY = 4`（202605は5）
+
+**3. gallery-hitbox コンポーネント（新規）**
+- 202605の`hitbox`はスタンプ取得フローに直結していたため、ギャラリー専用コンポーネントを新設
+- `window.allGalleryHitboxes[]` に登録・除去（`window.allHitboxes`とは独立）
+- `pokeball-throwable`のtick()でallGalleryHitboxesをループ → `handleGalleryHit()` → `window.playGalleryHitAnimation()` を呼ぶのみ（スタンプ取得なし）
+
+**4. ギャラリーヒットアニメーション（window.playGalleryHitAnimation）**
+- anime01停止 → anime02一度再生 → 完了後anime01ループに戻す
+- AnimationMixer の `finished` イベント + タイムアウト保険で確実にanime01へ復帰
+
+**5. 景品交換閾値: 5 → 10**
+- `PRIZE_EXCHANGE_THRESHOLD = 10`
+- ガイドテキスト: 「6種類以上」→「11種類以上」
+
+**6. LocalStorage/Cookieキーをすべて202606に変更**
+- `ar-stamp-rally-202606`
+- `ar-captured-animals-202606`
+- `ar-gallery-selection-202606`
+- `ar-user-id-202606` / `ar_user_id_202606`（Cookie）
+- `ar-prize-exchanged-202606`
+- `ar-prize-code-202606`
+- `marker-scan-cache-202606-*`
+
+**7. IndexedDB/UUID/Cookieクラス名を202606に変更**
+- `UserIdDB202606` / `CookieHelper202606` / `generateUUID202606()` / `getUserId202606()`
+- DBname: `ARStampRallyDB202606`
+
+**8. 管理ダッシュボード集計期間**
+- `2026-05-20 00:00:00 JST` 〜 `2026-06-10 23:59:59 JST`
+
+#### 新規作成ファイル（11ファイル）
+- `resources/views/ARstampRally202606.blade.php`: エントリポイント（`@include`で10モジュール読込）
+- `resources/views/ARstampRally202606/head.blade.php`: HEADタグ・CSS・グローバル変数（`window.allGalleryHitboxes = []` 追加）
+- `resources/views/ARstampRally202606/ui.blade.php`: モーダル・ボタン等HTML（`total-slots`初期値20）
+- `resources/views/ARstampRally202606/scene.blade.php`: a-sceneとマーカー定義（maker00+maker01-20）、`id="model-00"` エンティティ追加
+- `resources/views/ARstampRally202606/aframe-components.blade.php`: `gallery-hitbox`コンポーネント追加、`pokeball-throwable`に`handleGalleryHit`追加
+- `resources/views/ARstampRally202606/js-stamps.blade.php`: STAMPS 20種定義、ギャラリー選択4体管理
+- `resources/views/ARstampRally202606/js-prize.blade.php`: 景品交換（閾値10）、202606固有キー
+- `resources/views/ARstampRally202606/js-throw.blade.php`: ARstampRally202605と同一（コピー）
+- `resources/views/ARstampRally202606/js-gallery.blade.php`: ギャラリー機能（4方向配置、Model_00固定、playGalleryHitAnimation）
+- `resources/views/ARstampRally202606/js-camera.blade.php`: ARstampRally202605と同一（コピー）
+- `resources/views/ARstampRally202606/js-init.blade.php`: DOMContentLoaded初期化（ループ上限20、202606キー、ガイドテキスト更新）
+
+#### 変更ファイル（3ファイル）
+- `app/Http/Controllers/AdminController.php`: `dashboard202606()`メソッド追加（model_01〜model_20の20種、集計期間202606）
+- `resources/views/admin/dashboard202606.blade.php`: dashboard202605.blade.phpをベースに「202605」→「202606」に変更
+- `routes/web.php`: `GET /stamp202606` と `GET /admin/dashboard202606` を追加
+
+#### 動作確認済み項目
+- ✅ PHP構文エラーなし（AdminController.php, routes/web.php）
+- ✅ 202605の機能に影響なし（キー・クラス名がすべて独立）
+- ✅ gallery-hitboxはallHitboxesと完全分離
+
+---
+
 ### ARstampRally202605 - 新規作成 (モジュール化リファクタリング)
 
 **ARstampRally202603をベースに2026年5月イベント向け新版を作成:**

@@ -560,4 +560,136 @@ class AdminController extends Controller
             'redeemedPrizes'
         ));
     }
+
+    public function dashboard202606(Request $request)
+    {
+        // 2026年5月20日00:00:00 JST 〜 2026年6月10日23:59:59 JST（UTC変換）
+        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-05-20 00:00:00', 'Asia/Tokyo')
+                           ->setTimezone('UTC');
+        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-06-10 23:59:59', 'Asia/Tokyo')
+                           ->setTimezone('UTC');
+
+        // 景品交換の統計
+        $totalExchanges = PrizeExchange::whereBetween('exchanged_at', [$startDate, $endDate])
+            ->count();
+        $redeemedExchanges = PrizeExchange::where('is_redeemed', true)
+            ->whereBetween('exchanged_at', [$startDate, $endDate])
+            ->count();
+        $pendingExchanges = $totalExchanges - $redeemedExchanges;
+
+        // 最近の景品交換（未使用のみ）- ページネーション
+        $q = $request->query('q');
+        $recentExchangesQuery = PrizeExchange::where('is_redeemed', false)
+            ->whereBetween('exchanged_at', [$startDate, $endDate]);
+        if ($q) {
+            $recentExchangesQuery->where('prize_code', 'like', '%' . strtoupper($q) . '%');
+        }
+        $recentExchanges = $recentExchangesQuery->orderBy('exchanged_at', 'desc')
+            ->paginate(20, ['*'], 'exchanges_page')->appends(['q' => $q]);
+
+        // 使用済み景品交換 - ページネーション
+        $redeemedPrizes = PrizeExchange::where('is_redeemed', true)
+            ->whereBetween('exchanged_at', [$startDate, $endDate])
+            ->orderBy('redeemed_at', 'desc')
+            ->paginate(10, ['*'], 'redeemed_page');
+
+        // 全モデルのリスト（ARstampRally202606.blade.phpのSTAMPSと同じ順序）
+        $animals = [
+            'model_01' => 'キャラクター01',
+            'model_02' => 'キャラクター02',
+            'model_03' => 'キャラクター03',
+            'model_04' => 'キャラクター04',
+            'model_05' => 'キャラクター05',
+            'model_06' => 'キャラクター06',
+            'model_07' => 'キャラクター07',
+            'model_08' => 'キャラクター08',
+            'model_09' => 'キャラクター09',
+            'model_10' => 'キャラクター10',
+            'model_11' => 'キャラクター11',
+            'model_12' => 'キャラクター12',
+            'model_13' => 'キャラクター13',
+            'model_14' => 'キャラクター14',
+            'model_15' => 'キャラクター15',
+            'model_16' => 'キャラクター16',
+            'model_17' => 'キャラクター17',
+            'model_18' => 'キャラクター18',
+            'model_19' => 'キャラクター19',
+            'model_20' => 'キャラクター20',
+        ];
+
+        // 各モデルの統計を収集
+        $animalStats = [];
+        foreach ($animals as $markerId => $markerName) {
+            $markerScanCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'marker_scan')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->count();
+
+            $ballHitCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'ball_hit')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->count();
+
+            $totalCount = $markerScanCount + $ballHitCount;
+
+            $uniqueUsers = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->distinct('fingerprint')
+                ->count();
+
+            $lastScan = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->orderBy('scanned_at', 'desc')
+                ->first();
+
+            $animalStats[] = [
+                'marker_id'        => $markerId,
+                'marker_name'      => $markerName,
+                'marker_scan_count'=> $markerScanCount,
+                'ball_hit_count'   => $ballHitCount,
+                'total_count'      => $totalCount,
+                'unique_users'     => $uniqueUsers,
+                'last_scan'        => $lastScan ? $lastScan->scanned_at : null,
+            ];
+        }
+
+        // 最近のスキャン履歴
+        $recentScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
+            ->orderBy('scanned_at', 'desc')
+            ->paginate(30, ['*'], 'recent_scans_page');
+
+        // 日別統計
+        $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
+            ->selectRaw('COUNT(*) as count')
+            ->whereBetween('scanned_at', [$startDate, $endDate])
+            ->groupBy('date', 'capture_type')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $dailyStats = $dailyStatsRaw->groupBy('date');
+
+        // 日別個別ユーザー数統計
+        $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
+            ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+            ->whereBetween('scanned_at', [$startDate, $endDate])
+            ->groupBy('date', 'capture_type')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+
+        return view('admin.dashboard202606', compact(
+            'animalStats',
+            'recentScans',
+            'dailyStats',
+            'dailyUniqueUsers',
+            'totalExchanges',
+            'redeemedExchanges',
+            'pendingExchanges',
+            'recentExchanges',
+            'redeemedPrizes'
+        ));
+    }
 }

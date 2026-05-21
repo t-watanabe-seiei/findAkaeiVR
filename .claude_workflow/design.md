@@ -1,4 +1,254 @@
-# 設計: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
+# 設計: ARstampRally202606 新規作成（2026-05-20）
+
+## 前段階ファイル読込
+`requirements.md` を読み込みました。
+
+---
+
+## 1. ファイル別設計
+
+### 1-1. ARstampRally202606.blade.php（エントリポイント）
+202605と同構造。`@include` でサブファイルを組み込む。
+```php
+// 変更点: 全 202605 → 202606
+// @include('ARstampRally202606.xxx') に変更
+```
+
+---
+
+### 1-2. head.blade.php
+202605 の head.blade.php をベースにコピーして以下を変更：
+- タイトル: `AR Stamp Rally 202606`
+- `ar-camera-reload-202605` キー → `ar-camera-reload-202606`
+- CSS は変更なし
+
+---
+
+### 1-3. ui.blade.php
+202605 の ui.blade.php をベースにコピーして以下を変更：
+- `total-slots` の初期値: 10 → 20（JS で上書きされるが念のため）
+- 「コイを逃がす」ボタンテキスト → 「キャラクターを逃がす」
+- ガイドの景品交換説明: 「6種類以上」 → 「11種類以上」（10+1でOK、実際は10以上）
+
+---
+
+### 1-4. scene.blade.php
+202605 との差分：
+- CGパス: `cg/202605/` → `cg/202606/`
+- maker00: ギャラリー専用マーカー
+  - **`Model_00` エンティティをシーンに定義（position="0 0 0"）**
+  - `click-animation` + `hitbox` はなし（ギャラリー用のため js-gallery で管理）
+  - `lazy-model` でロード
+- maker01〜maker20: `@for ($i = 1; $i <= 20)` にループ拡大
+  - `click-animation="clip: anime01"` + `hitbox` コンポーネント付き
+  - position/scale/rotation は 202605 と同じ
+
+---
+
+### 1-5. aframe-components.blade.php
+202605 からの変更点：
+- `pokeball-throwable` の `tick()` に **ギャラリーhitboxチェック** を追加
+  - `window.allGalleryHitboxes` を別配列で管理
+  - ヒット時: `playGalleryHitAnimation(entity)` を呼ぶ（スタンプ取得なし）
+- **`gallery-hitbox` コンポーネント** を新規登録（シンプルなBBox当たり判定）
+  - `window.allGalleryHitboxes` に自身を登録/除去
+  - `entity` プロパティで対象エンティティを参照
+
+**gallery-hitbox スキーマ:**
+```javascript
+schema: {
+    width:  { type: 'number', default: 1 },
+    height: { type: 'number', default: 1 },
+    depth:  { type: 'number', default: 1 }
+}
+```
+
+**pokeball-throwable のtick()追加ロジック（ギャラリー用）:**
+```
+for each ghb in allGalleryHitboxes:
+    if ghb.el.object3D.visible AND parentVisible:
+        if collision detected:
+            playGalleryHitAnimation(ghb.el)
+            break
+```
+
+**playGalleryHitAnimation(entity):**
+1. `_galleryActions.anime01` を stop
+2. `_galleryActions.anime02` を reset → play（LoopOnce）
+3. mixer.addEventListener('finished') で anime01.reset().play() に戻す
+   - タイムアウト保険（clip.duration + 120ms）
+
+- `click-animation` コンポーネント: 変更なし（202605流用）
+- `lazy-model` / `hitbox` コンポーネント: 変更なし（202605流用）
+
+---
+
+### 1-6. js-stamps.blade.php
+202605 との差分：
+```javascript
+// STAMPSを20種に拡張
+const STAMPS = {
+    'model_01': { name: 'キャラクター01', icon: '🐾', model: '202606/Model_01.glb' },
+    ...
+    'model_20': { name: 'キャラクター20', icon: '🐾', model: '202606/Model_20.glb' }
+};
+const TOTAL_STAMP_SLOTS = 20;
+const GALLERY_MAX_DISPLAY = 4;   // 202605の5→4に変更
+const LOCAL_STORAGE_KEY = 'ar-stamp-rally-202606';
+const CAPTURED_KEY = 'ar-captured-animals-202606';
+const GALLERY_SELECTION_KEY = 'ar-gallery-selection-202606';
+```
+- `getCapturedAnimals202606()` / `saveCapturedAnimals202606()` に関数名変更
+- `recordMarkerScan()` 内の URL は変更なし（共通API流用）
+
+---
+
+### 1-7. js-prize.blade.php
+202605 との差分：
+```javascript
+const PRIZE_EXCHANGE_THRESHOLD = 10;  // 5 → 10
+```
+- `UserIdDB202606`: dbName/storeName を `202606` サフィックスに
+- `CookieHelper202606`: クッキー名を `202606` サフィックスに
+- `generateUUID202606()`, `getUserId202606()`: 関数名変更
+- `CAPTURED_KEY` は `ar-prize-exchanged-202606`, `ar-prize-code-202606`
+- localStorage キーを `202606` サフィックスに変更
+
+---
+
+### 1-8. js-throw.blade.php
+変更なし（202605と完全同一でよい）。
+※ `getActiveVisibleStampId()` は `allHitboxes` を参照するため、
+  ギャラリー内モデルのhitboxは `allGalleryHitboxes` で管理するため競合しない。
+
+---
+
+### 1-9. js-gallery.blade.php
+202605 との大幅差分：
+```
+【202605】
+  - ギャラリーモデルを Y軸方向に並べて表示（anime03ループ）
+  - Model_00 は捕獲数に応じて anime01/02/03 を切り替え
+  - hitbox なし
+
+【202606】
+  - Model_00: 常に (0,0,0) Y=0 に固定表示
+    - anime01ループ再生
+    - gallery-hitbox コンポーネント付き（anime02→anime01）
+  - 選択4体: (0,0,1),(0,0,-1),(1,0,0),(-1,0,0) Y=0 に動的配置
+    - anime01ループ再生
+    - gallery-hitbox コンポーネント付き（anime02→anime01）
+```
+
+**ギャラリーエンティティの positions 定義:**
+```javascript
+var GALLERY_POSITIONS = [
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -1 },
+    { x: 1, y: 0, z: 0 },
+    { x: -1, y: 0, z: 0 }
+];
+```
+
+**Model_00の扱い:**
+- `scene.blade.php` で `id="model-00"` として `lazy-model` で定義
+- js-gallery.blade.php で `model-loaded` イベントを受けてanime01再生 + gallery-hitbox付与
+- markerFound/Lost で visible 切替
+
+**選択4体モデルの逐次ロード:**
+- 202605のキャッシュ＋逐次ロード方式を継承
+- `LOAD_INTERVAL_MS = 500ms` で1体ずつロード
+- ロード後に `gallery-hitbox` コンポーネントを付与
+
+**アニメーション管理:**
+- 各ギャラリーエンティティに `_galleryMixer`, `_galleryAction01`, `_galleryAction02` を保持
+- `model-loaded` 時に anime01/anime02 を準備して anime01 を再生
+- `playGalleryHitAnimation(entity)` を `window.playGalleryHitAnimation` として公開
+
+**galleryMixers の更新:**
+- 202605と同じく `window.galleryMixers` + `startGalleryMixerLoop/stopGalleryMixerLoop` で管理
+
+---
+
+### 1-10. js-camera.blade.php
+変更なし（202605と完全同一）。
+
+---
+
+### 1-11. js-init.blade.php
+202605 との差分：
+```javascript
+// marker イベント登録ループ
+@for ($i = 1; $i <= 20; $i++)  // 10 → 20
+
+// リセット処理
+for (var i = 1; i <= 20; i++) { ... }  // 10 → 20
+
+// LocalStorage クリア
+localStorage.removeItem('ar-stamp-rally-202606');
+localStorage.removeItem('ar-captured-animals-202606');
+
+// ガイドテキスト（景品交換）
+'10種類以上のキャラクターを捕まえると景品と交換できます。'
+```
+
+---
+
+## 2. 管理ダッシュボード設計
+
+### AdminController.php
+`dashboard202606()` メソッドを追加：
+- 期間: `2026-05-20 00:00:00` 〜 `2026-06-10 23:59:59` (JST→UTC)
+- `$animals`: model_01〜model_20 の20種
+- 202605の `dashboard202605()` を参考にほぼ同一実装
+
+### dashboard202606.blade.php
+202605の `dashboard202605.blade.php` をベースにコピーして以下を変更：
+- タイトル: `管理ダッシュボード202606`
+- 「ARスタンプラリー202606」に変更
+- 動物リスト部分: 20種に変更
+
+### routes/web.php への追加
+```php
+// public route
+Route::match(['get', 'head'], '/stamp202606', function () {
+    return view('ARstampRally202606');
+})->name('stamp202606.index');
+
+// admin middleware group 内
+Route::get('/dashboard202606', [AdminController::class, 'dashboard202606'])
+    ->name('admin.dashboard202606');
+```
+
+---
+
+## 3. アーキテクチャ上の重要判断
+
+### gallery-hitbox vs hitbox の分離理由
+- `hitbox` コンポーネントは `window.allHitboxes` に登録 → `pokeball-throwable` の `handleHit` でスタンプ取得が発動
+- ギャラリーモデルでスタンプ取得が発動すると不整合（既に捕獲済みのため）
+- → `gallery-hitbox` コンポーネントは `window.allGalleryHitboxes` に登録し、`handleHit` と分離
+- `pokeball-throwable.tick()` でギャラリー hitbox を別ループでチェック
+
+### Model_00 のscene.blade.php内定義
+- 202605 では `model-00` エンティティが `scene.blade.php` に定義済み
+- 202606 でも同様に `<a-entity id="model-00" lazy-model="..." position="0 0 0">` として定義
+- js-gallery.blade.php から `document.getElementById('model-00')` で参照
+
+---
+
+## 4. 成功基準
+1. `/stamp202606` でAR正常起動
+2. maker01〜maker20 でモデルが表示され、ボールヒットでスタンプ取得
+3. maker00 でギャラリー表示（Model_00固定 + 選択4体）
+4. ギャラリーモデルにボールをヒットしてもスタンプ取得なし（anime02→anime01のみ）
+5. 10匹以上で景品交換ボタン有効化
+6. `/admin/dashboard202606` で統計データ表示
+7. `php -l` でPHPファイルの構文エラーなし
+
+---
+
+# 旧設計: /stamp202605 投擲時自動GET化（ズーム継続時の運用回避）
 
 ---
 

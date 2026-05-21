@@ -1,4 +1,134 @@
-# タスク化: /stamp202605 Androidズーム未解決問題（案1）
+# タスク化: ARstampRally202606 新規作成（2026-05-20）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+---
+
+## タスク一覧
+
+### Task 1: ARstampRally202606.blade.php（エントリポイント作成）
+- 作業: 202605エントリポイントをベースに `@include('ARstampRally202606.xxx')` で10モジュールを読み込む
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 2: ARstampRally202606/head.blade.php 作成
+- 作業: 202605/head.blade.php をベースにキー・タイトルを202606に変更
+  - タイトル → `AR Stamp Rally 202606`
+  - `ar-camera-reload-202605` → `ar-camera-reload-202606`
+  - `window.allGalleryHitboxes = []` を初期化コードに追加
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 3: ARstampRally202606/ui.blade.php 作成
+- 作業: 202605/ui.blade.php をベースに変更
+  - 「コイを逃がす」→「キャラクターを逃がす」
+  - ガイド説明内の景品条件文言 → 「10種類以上」
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 4: ARstampRally202606/scene.blade.php 作成
+- 作業: 202605/scene.blade.php をベースに変更
+  - CGパス `cg/202605/` → `cg/202606/`
+  - maker00: Model_00エンティティを `id="model-00"` + `lazy-model` + `position="0 0 0"` で定義（click-animation/hitboxなし）
+  - ループ `$i = 1; $i <= 10` → `$i = 1; $i <= 20`
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 5: ARstampRally202606/aframe-components.blade.php 作成
+- 作業: 202605/aframe-components.blade.php をベースに変更
+  - `gallery-hitbox` コンポーネントを新規追加（`window.allGalleryHitboxes[]` に登録）
+  - `pokeball-throwable` の `tick()` にギャラリーhitboxチェック追加（`allGalleryHitboxes` ループ）
+  - ヒット時 `window.playGalleryHitAnimation(entity)` 呼び出し（スタンプ取得なし）
+  - 他コンポーネント（lazy-model, hitbox, click-animation）は変更なし
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 6: ARstampRally202606/js-stamps.blade.php 作成
+- 作業: 202605/js-stamps.blade.php をベースに変更
+  - `STAMPS`: model_01〜model_20 に20種拡張
+  - `TOTAL_STAMP_SLOTS = 20`
+  - `GALLERY_MAX_DISPLAY = 4`（5→4）
+  - キー類を `202606` サフィックスに変更
+  - `getCapturedAnimals` / `saveCapturedAnimals` 関数名変更
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 7: ARstampRally202606/js-prize.blade.php 作成
+- 作業: 202605/js-prize.blade.php をベースに変更
+  - `PRIZE_EXCHANGE_THRESHOLD = 10`（5→10）
+  - `UserIdDB202606`, `CookieHelper202606` に変更
+  - `generateUUID202606()`, `getUserId202606()` に変更
+  - LocalStorage/Cookieキーを `202606` サフィックスに変更
+  - `CAPTURED_KEY` → `ar-prize-exchanged-202606`, `ar-prize-code-202606`
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 8: ARstampRally202606/js-throw.blade.php 作成
+- 作業: 202605/js-throw.blade.php をそのままコピー（変更なし）
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 9: ARstampRally202606/js-gallery.blade.php 作成
+- 作業: 202605/js-gallery.blade.php を大幅変更
+  - `GALLERY_POSITIONS` 配列定義: (0,0,1),(0,0,-1),(1,0,0),(-1,0,0)
+  - Model_00 (`id="model-00"`): markerFound時にanime01ループ＋gallery-hitbox付与、markerLost時に非表示
+  - 選択4体の逐次ロード: GALLERY_POSITIONS に配置、anime01ループ＋gallery-hitbox付与
+  - `window.playGalleryHitAnimation(entity)`: anime02再生→完了後anime01ループに戻る
+  - `window.galleryMixers` + RAF ループ管理（202605踏襲）
+  - anime03 に関するコードは削除（202606では不使用）
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 10: ARstampRally202606/js-camera.blade.php 作成
+- 作業: 202605/js-camera.blade.php をそのままコピー（変更なし）
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 11: ARstampRally202606/js-init.blade.php 作成
+- 作業: 202605/js-init.blade.php をベースに変更
+  - markerイベントループ: `$i <= 10` → `$i <= 20`
+  - リセット時ループ: `i <= 10` → `i <= 20`
+  - LocalStorageキー: `202606` サフィックスに変更
+  - ガイドテキスト: `10種類以上のキャラクターを捕まえると景品と交換できます。`
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 12: AdminController.php への dashboard202606() 追加
+- 作業: `dashboard202605()` メソッドを参考に `dashboard202606()` を追加
+  - 期間: `2026-05-20 00:00:00` 〜 `2026-06-10 23:59:59` (JST → UTC換算: `2026-05-19 15:00:00` 〜 `2026-06-10 14:59:59`)
+  - `$animals`: model_01〜model_20 の20種配列
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 13: resources/views/admin/dashboard202606.blade.php 作成
+- 作業: `dashboard202605.blade.php` をベースにコピー・変更
+  - タイトル → `管理ダッシュボード202606`
+  - 「ARスタンプラリー202606」
+  - 動物リスト部分: 10種 → 20種に変更
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 14: routes/web.php への追加
+- 作業: 以下2ルートを追加
+  1. `Route::match(['get', 'head'], '/stamp202606', ...)` をpublicルートに追加
+  2. `Route::get('/dashboard202606', [..., 'dashboard202606'])` をadmin middlewareグループに追加
+- 完了条件: php -l で構文エラーなし
+- 状態: 未着手
+
+### Task 15: php -l による最終構文チェック
+- 作業: 作成・変更した全PHPファイルを `php -l` でチェック
+- 完了条件: 全ファイルでエラーなし
+- 状態: 未着手
+
+---
+
+## 実行順序
+Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7 → Task 8 → Task 9 → Task 10 → Task 11 → Task 12 → Task 13 → Task 14 → Task 15
+
+---
+
+# 旧タスク化: /stamp202605 Androidズーム未解決問題（案1）
 
 ---
 
