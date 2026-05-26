@@ -23,6 +23,10 @@ Route::match(['get', 'head'], '/cute3', function () {
     return view('shooting3DModel3');
 })->name('home.index');
 
+Route::match(['get', 'head'], '/cute4', function () {
+    return view('shooting3DModel4');
+})->name('home.index');
+
 Route::match(['get', 'head'], '/stamp', function () {
     return view('ARstampRally');
 })->name('stamp.index');
