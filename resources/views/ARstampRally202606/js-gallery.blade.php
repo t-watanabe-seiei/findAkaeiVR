@@ -6,10 +6,10 @@
 
         (function () {
             var GALLERY_POSITIONS = [
-                { x: 0, y: 0, z:  1 },
-                { x: 0, y: 0, z: -1 },
-                { x:  1, y: 0, z: 0 },
-                { x: -1, y: 0, z: 0 }
+                { x: 0, y: 0, z:  0.5 },
+                { x: 0, y: 0, z: -0.5 },
+                { x:  0.5, y: 0, z: 0 },
+                { x: -0.5, y: 0, z: 0 }
             ];
             var DEBOUNCE_MS      = 300;
             var LOAD_INTERVAL_MS = 500;
