@@ -3143,7 +3143,7 @@
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit02.mp3') }} preload="auto" crossorigin="anonymous"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm10.mp3') }} preload="auto" crossorigin="anonymous"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm06.mp3') }} preload="auto" crossorigin="anonymous"></audio>
             <audio id="sound_alert" src={{ asset('cg/sound_alert.mp3') }} preload="auto" loop crossorigin="anonymous"></audio>
             <audio id="sound_zombie_appear" src={{ asset('cg/sound_zombie_appear.mp3') }} preload="auto" crossorigin="anonymous"></audio>
             <audio id="sound_zombie_die" src={{ asset('cg/sound_zombie_die.mp3') }} preload="auto" crossorigin="anonymous"></audio>
