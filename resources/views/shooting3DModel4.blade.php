@@ -2895,7 +2895,7 @@
 
             <!-- サウンド -->
             <audio id="sound_hit" src={{ asset('cg/sound_hit01.mp3') }} preload="auto"></audio>
-            <audio id="sound_bgm" src={{ asset('cg/sound_bgm07.mp3') }} preload="auto"></audio>
+            <audio id="sound_bgm" src={{ asset('cg/sound_bgm12.mp3') }} preload="auto"></audio>
             
             <!-- 背景画像 -->
             <img id="sky02" src={{ asset('cg/202606/IMG_20260329_445(1).jpg') }} crossorigin="anonymous" >
