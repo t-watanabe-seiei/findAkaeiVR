@@ -367,6 +367,10 @@
             this.el.sceneEl.addEventListener('markerLost', function (e) {
                 if (e.target === this.el.parentElement) this.onMarkerLost();
             }.bind(this));
+
+            // バックグラウンド pre-fetch: ブラウザ HTTP キャッシュに GLB を登録
+            // オンラインで一度ページを開くと、以降オフラインでもモデルが表示される
+            if (this.data.src) { fetch(this.data.src, { cache: 'default' }).catch(function () {}); }
         },
 
         onMarkerFound: function () {

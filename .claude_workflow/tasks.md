@@ -1,3 +1,25 @@
+# タスク化: ARstampRally202606 オフライン GLB 表示対応（2026-05-30）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task C-1: aframe-components.blade.php — lazy-model init() に pre-fetch 追加
+- 作業: `lazy-model` の `init()` 末尾（markerLost リスナー登録の直後）に以下を追加
+  ```js
+  if (this.data.src) { fetch(this.data.src, { cache: 'default' }).catch(function () {}); }
+  ```
+- 完了条件: コード追加後 php -l で構文エラーなし
+- 状態: 完了
+
+### Task C-2: php -l 構文確認
+- 作業: `php -l resources/views/ARstampRally202606/aframe-components.blade.php`
+- 完了条件: `No syntax errors detected` を確認
+- 状態: 完了
+
+---
+
 # タスク化: ARstampRally202606 ギャラリー選択モデルスケール縮小（2026-05-21）
 
 ## 前段階ファイル読込

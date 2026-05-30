@@ -1,4 +1,53 @@
-# 設計: ARstampRally202606 ギャラリー選択モデルスケール縮小（2026-05-21）
+# 設計: ARstampRally202606 オフライン GLB 表示対応（2026-05-30）
+
+## 前段階ファイル読込
+`requirements.md` を読み込みました。
+
+## 変更ファイル
+- `resources/views/ARstampRally202606/aframe-components.blade.php` のみ
+
+## 変更箇所
+`lazy-model` コンポーネントの `init()` 関数内、既存コードの末尾に1行追加：
+
+```diff
+  init: function () {
+      this.timer = null;
+      this.isLoaded = false;
+
+      this.el.sceneEl.addEventListener('markerFound', function (e) {
+          if (e.target === this.el.parentElement) this.onMarkerFound();
+      }.bind(this));
+
+      this.el.sceneEl.addEventListener('markerLost', function (e) {
+          if (e.target === this.el.parentElement) this.onMarkerLost();
+      }.bind(this));
++
++     // バックグラウンド pre-fetch: ブラウザ HTTP キャッシュに GLB を登録
++     // オンラインで一度ページを開くと、以降オフラインでもモデルが表示される
++     if (this.data.src) { fetch(this.data.src, { cache: 'default' }).catch(function () {}); }
+  },
+```
+
+## 設計判断
+
+### なぜ `fetch(url, { cache: 'default' })` か
+- `cache: 'default'` = ブラウザ標準キャッシュ動作。既にキャッシュあれば再 fetch しない
+- `cache: 'force-cache'` は古いキャッシュを使い続けるためモデル更新時に困る
+- `cache: 'no-cache'` は毎回再検証が入り通信量が増える
+- `default` が最適：初回だけ fetch・2回目以降はキャッシュ利用
+
+### なぜ init() か
+- `lazy-model` は全マーカーの `<a-entity>` に付与されており、ページロード直後に全エンティティの `init()` が呼ばれる
+- つまり Model_00〜Model_20 の 21 本が自動的に並列バックグラウンド fetch される
+
+### 影響範囲
+- `onMarkerFound` / `onMarkerLost` の動作に変化なし
+- レスポンスボディは `.catch()` だけで捨てるため、余分なメモリ消費なし
+- fetch 失敗（オフライン起動時など）は `.catch(function(){})` で無視
+
+---
+
+# 設計: ARstampRally202606 Android パフォーマンス改善（2026-05-28）
 
 ## 前段階ファイル読込
 `requirements.md` を読み込みました。
