@@ -259,6 +259,88 @@
         </div>
     </div>
 
+    <!-- 【新規追加】景品交換セクション -->
+    <div class="prizes-grid">
+        <!-- 未使用の景品交換 -->
+        <div class="card">
+            <h2>🎁 未使用の景品交換</h2>
+            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
+                <form method="GET" action="{{ route('admin.dashboard202606') }}" style="display:flex; gap:8px; align-items:center;">
+                    <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.dashboard202606') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
+                    @endif
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>フィンガープリント</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentExchanges as $exchange)
+                    <tr>
+                        <td class="prize-code">{{ $exchange->prize_code }}</td>
+                        <td>{{ $exchange->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') }}</td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
+                        <td>
+                            <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
+                                使用済みにする
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $recentExchanges->links() }}
+            </div>
+        </div>
+
+        <!-- 使用済み景品交換 -->
+        <div class="card">
+            <h2>✅ 使用済み景品交換</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>景品コード</th>
+                        <th>交換日時</th>
+                        <th>使用日時</th>
+                        <th>フィンガープリント</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($redeemedPrizes as $prize)
+                    <tr>
+                        <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
+                        <td style="font-size: 13px;">{{ $prize->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i') }}</td>
+                        <td style="font-size: 13px; color: #28a745;">
+                            {{ $prize->redeemed_at ? $prize->redeemed_at->tz('Asia/Tokyo')->format('Y/m/d H:i') : '-' }}
+                        </td>
+                        <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div class="pagination-wrapper">
+                {{ $redeemedPrizes->links() }}
+            </div>
+        </div>
+    </div>
+
     <!-- 【新規追加】景品交換統計カード -->
     <div class="stats-grid">
         <div class="stat-card">
@@ -357,88 +439,6 @@
         <h2>👥 日別個別ユーザー数（2026年5月）</h2>
         <div class="chart-container">
             <canvas id="uniqueUsersChart"></canvas>
-        </div>
-    </div>
-
-    <!-- 【新規追加】景品交換セクション -->
-    <div class="prizes-grid">
-        <!-- 未使用の景品交換 -->
-        <div class="card">
-            <h2>🎁 未使用の景品交換</h2>
-            <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
-                <form method="GET" action="{{ route('admin.dashboard202606') }}" style="display:flex; gap:8px; align-items:center;">
-                    <input type="search" name="q" placeholder="景品コードで検索 (例: AB123)" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
-                    <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
-                    @if(request('q'))
-                        <a href="{{ route('admin.dashboard202606') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
-                    @endif
-                </form>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>景品コード</th>
-                        <th>交換日時</th>
-                        <th>フィンガープリント</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($recentExchanges as $exchange)
-                    <tr>
-                        <td class="prize-code">{{ $exchange->prize_code }}</td>
-                        <td>{{ $exchange->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') }}</td>
-                        <td style="font-size: 12px; color: #666;">{{ Str::limit($exchange->fingerprint, 20) }}</td>
-                        <td>
-                            <button class="redeem-btn" onclick="redeemPrize({{ $exchange->id }})">
-                                使用済みにする
-                            </button>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            <div class="pagination-wrapper">
-                {{ $recentExchanges->links() }}
-            </div>
-        </div>
-
-        <!-- 使用済み景品交換 -->
-        <div class="card">
-            <h2>✅ 使用済み景品交換</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>景品コード</th>
-                        <th>交換日時</th>
-                        <th>使用日時</th>
-                        <th>フィンガープリント</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($redeemedPrizes as $prize)
-                    <tr>
-                        <td class="prize-code" style="color: #999;">{{ $prize->prize_code }}</td>
-                        <td style="font-size: 13px;">{{ $prize->exchanged_at->tz('Asia/Tokyo')->format('Y/m/d H:i') }}</td>
-                        <td style="font-size: 13px; color: #28a745;">
-                            {{ $prize->redeemed_at ? $prize->redeemed_at->tz('Asia/Tokyo')->format('Y/m/d H:i') : '-' }}
-                        </td>
-                        <td style="font-size: 12px; color: #666;">{{ Str::limit($prize->fingerprint, 20) }}</td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: #999;">データがありません</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            <div class="pagination-wrapper">
-                {{ $redeemedPrizes->links() }}
-            </div>
         </div>
     </div>
 

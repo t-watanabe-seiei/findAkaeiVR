@@ -1,3 +1,37 @@
+# タスク化: admin/dashboard202606 景品交換セクションを最上部へ移動（2026-05-31）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task B-1: prizes-grid ブロックをヘッダー直後に移動
+- **ファイル**: `resources/views/admin/dashboard202606.blade.php`
+- **作業**: ページ末尾の `<!-- 【新規追加】景品交換セクション -->` ～ prizes-grid 閉じ `</div>` を削除し、ヘッダー `</div>` 直後に挿入
+- **ステータス**: ✅ 完了
+
+---
+
+# タスク化: admin/dashboard202606 動物別統計の動物名表示修正（2026-05-31）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task A-1: AdminController.php の $animals 配列を実際の動物名に更新
+- **ファイル**: `app/Http/Controllers/AdminController.php`
+- **メソッド**: `dashboard202606()`
+- **作業**: `$animals` 配列の値（キャラクター01〜20）を実際の動物名に書き換え
+- **優先度**: 高（唯一のタスク）
+- **ステータス**: ✅ 完了
+
+### Task A-2: php -l で構文チェック
+- **コマンド**: `php -l app/Http/Controllers/AdminController.php`
+- **ステータス**: ✅ 完了（No syntax errors detected）
+
+---
+
 # タスク化: ARstampRally202606 オフライン GLB 表示対応（2026-05-30）
 
 ## 前段階ファイル読込
