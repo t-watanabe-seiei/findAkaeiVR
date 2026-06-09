@@ -1072,7 +1072,7 @@
             const startPos = position.clone().add(direction.clone().multiplyScalar(0.3));
             ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
             sceneEl.appendChild(ball);
-            window.activeBalls.push({ ball, startPos, velocity: direction.clone().multiplyScalar(40), direction, startTime: Date.now(), hasHit: false, frameCount: 0 });
+            window.activeBalls.push({ ball, startPos, velocity: direction.clone().multiplyScalar(20), direction, startTime: Date.now(), hasHit: false, frameCount: 0 });
         }
     });
 
@@ -1314,7 +1314,7 @@
                                 window.registerTimeout(() => {
                                     this.respawnModel(modelId, gltfSrc);
                                     delete window.respawningModels[modelId];
-                                }, 4000);
+                                }, 5000);
                             }
                         }, 500);
                     }
@@ -1338,16 +1338,16 @@
         createNewModel: function(modelId, gltfSrc, sceneEl) {
             if (window.gameEnded || !window.gameStarted) return;
             const pats = [
-                { startPos: {x:-3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 0,y:0,z:-4}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 4,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 5,y:0,z: 3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-6,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 0,y:0,z: 4}, speed:0.15, useCamera:true, waitTime:4000 },
-                { startPos: {x: 3,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-4,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-7,y:0,z: 2}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x: 0,y:0,z:-4}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x: 3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x: 4,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x: 5,y:0,z: 3}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x:-6,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x: 0,y:0,z: 4}, speed:0.15, useCamera:true, waitTime:5000 },
+                { startPos: {x: 3,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x:-4,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x:-7,y:0,z: 2}, speed:0.25, useCamera:true, waitTime:5000 },
             ];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
             const { pattern: p } = window.getAvailablePattern(pats, modelId);

@@ -1,3 +1,31 @@
+## terrer4に関するメモ
+発射ポケボールの速度はここです。
+_components.blade.php:1075
+
+multiplyScalar(40) の 40 が初速です。
+例えば速くするなら 50、遅くするなら 30 にします。
+あわせて、弾道の落下量はここです。
+_components.blade.php:956
+
+- 2.45 * elapsedTime * elapsedTime の 2.45 が重力係数です。
+ここを大きくすると早く落ち、小さくするとまっすぐ飛びやすくなります。
+
+
+
+
+
+敵の再生成間隔は主に2か所です。
+
+撃破後の再生成待ち時間（今は4秒）
+_components.blade.php:1317
+ここが }, 4000); になっていて、倒してから再生成までの待機です。
+approach-camera の待機時間パラメータ（waitTime）
+判定実行: _components.blade.php:1109
+初期スポーン時の設定値（4秒）: _components.blade.php:576
+再生成時の設定値（4秒）: _components.blade.php:1341
+実際に体感に効くのはまず _components.blade.php:1317 です。ここを増やすと再生成が遅くなります。
+
+
 ## shooting3Dterrer4 更新（2026-06-09）
 
 - ゲーム中でも Grip / A / B ボタンで武器切替できるように変更
