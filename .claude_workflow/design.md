@@ -1,3 +1,76 @@
+# 設計: shooting3Dterrer4 ゲーム性拡張（2026-06-09）
+
+## 前段階ファイル読込
+`requirements.md` を読み込みました。
+
+## 変更ファイル
+- `resources/views/shooting3Dterrer4/_components.blade.php`
+- `resources/views/shooting3Dterrer4/_scene.blade.php`
+- `README.md`
+
+## 設計方針
+- 既存構造（`start-menu` / `shoot` / `hit-box` / `result-menu`）を維持し、最小変更で機能を追加する。
+- 新規状態は `window` 変数へ追加し、既存更新タイミング（開始時、射撃時、撃破時、遷移時）にフックする。
+
+## 変更設計
+
+### 1) ゲーム中の武器切替
+- `start-menu` の `switchGun()` から `window.gameStarted` による禁止条件を除去。
+- `gripdown/abuttondown/bbuttondown` のハンドラもゲーム中に動作するよう変更。
+- 切替後に右コントローラモデルとUI（武器表示・残弾表示）を即時更新。
+
+### 2) Stage2 GameOver 時の VR 解除
+- `result-menu.handleGameOver()` は「終了」ではなく VR 解除専用へ変更。
+- 既存の `performClose()` は、`scene.exitVR()` 実行後にフェードを戻して画面維持。
+- 連打防止フラグは残すが、ページ終了処理（close/blank）は削除。
+
+### 3) ステージ時間変更
+- `STAGE_CONFIG.timeLimit` を
+  - Stage1: 100
+  - Stage2: 80
+  に変更。
+- ボス出現条件 `gameTimeLeft === 15` は既存維持。
+- `_scene` の初期タイマー文言は Stage1 に合わせ `TIME: 100s` に変更。
+
+### 4) 残弾システム
+- `window.ammoByGun = { 1: 20, 2: 20 }` を追加。
+- 共通関数:
+  - `window.updateAmmoDisplay()`
+  - `window.tryConsumeAmmo(gunNo)`
+  - `window.addAmmoToInactiveGun(amount)`
+- `shoot.shoot()` 開始時に `tryConsumeAmmo(selectedGun)` を実行し、失敗なら発射中断。
+- 切替可否は残弾に関係なく許可（要求仕様）。
+
+### 5) 残弾 HUD（常時表示）
+- `_scene` の `<a-camera>` 配下に HUD を追加し、視線追従で常時視認可能にする。
+- アイコンは
+  - `public/cg/pokeball_icon05.png`
+  - `public/cg/pokeball_icon06.png`
+  を `<a-assets><img>` として登録して利用。
+
+### 6) 特定ゾンビ撃破時の補給演出
+- `hit-box` の撃破確定時に `gltfSrc` を判定:
+  - `#model_s1_01` なら +5
+  - `#model_s2_01` なら +10
+- 補給ボール演出は撃破位置からカメラ付近へ移動アニメーション。
+- `animationcomplete__toCamera` を受けて到達とみなし、未使用側武器へ加算。
+
+## 影響範囲と安全策
+- スコア、ボス出現、敵リスポーン、ランキング保存ロジックには手を入れない。
+- 新規処理は null チェックを必須化し、DOM未生成時でも落ちないようにする。
+
+## 検証計画
+1. `php -l resources/views/shooting3Dterrer4/_components.blade.php`
+2. `php -l resources/views/shooting3Dterrer4/_scene.blade.php`
+3. 手動確認
+   - ゲーム中に Grip/A/B で武器切替
+   - Stage1=100秒, Stage2=80秒, ボス残15秒
+   - 残弾0で発射不可、切替は可能
+   - 01/06 撃破で補給ボール到達後に未使用側へ加算
+   - Stage2 GameOver 押下で VR 解除されページは維持
+
+---
+
 # 設計: admin/dashboard202606 景品交換セクションを最上部へ移動（2026-05-31）
 
 ## 前段階ファイル読込

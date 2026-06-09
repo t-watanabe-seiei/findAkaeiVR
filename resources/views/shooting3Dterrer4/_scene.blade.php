@@ -32,6 +32,8 @@
         <!-- 背景画像 -->
         <img id="sky_s1" src="{{ asset('cg/R0010143a.JPG') }}" crossorigin="anonymous">
         <img id="sky_s2" src="{{ asset('cg/R0010131a.JPG') }}" crossorigin="anonymous">
+        <img id="pokeball_icon_05" src="{{ asset('cg/pokeball_icon05.png') }}" crossorigin="anonymous">
+        <img id="pokeball_icon_06" src="{{ asset('cg/pokeball_icon06.png') }}" crossorigin="anonymous">
     </a-assets>
 
     <!-- ─ ライティング ─ -->
@@ -100,7 +102,7 @@
 
     <!-- ─ タイマー・スコア表示 ─ -->
     <a-entity id="timerDisplay" position="0 2.0 -3" visible="false">
-        <a-text id="timerText"    value="TIME: 90s"   position="-0.9 0 0" align="center" color="#FFFF00" width="4" font="roboto" shader="msdf"></a-text>
+                <a-text id="timerText"    value="TIME: 100s"  position="-0.9 0 0" align="center" color="#FFFF00" width="4" font="roboto" shader="msdf"></a-text>
         <a-text id="currentScore" value="SCORE: 0.0"  position=" 0.9 0 0" align="center" color="#00FF00" width="4" font="roboto" shader="msdf"></a-text>
     </a-entity>
 
@@ -215,6 +217,16 @@
 
     <!-- ─ カメラ ─ -->
     <a-camera id="my_camera" shoot>
+                <a-entity id="ammoHud" position="0.62 -0.38 -1.1" scale="0.58 0.58 0.58">
+                        <a-plane position="0 0 0" width="2.15" height="0.9" color="#000000" opacity="0.45" material="transparent: true"></a-plane>
+
+                        <a-image src="#pokeball_icon_05" position="-0.73 0.2 0.01" width="0.25" height="0.25"></a-image>
+                        <a-text id="ammoTextGun1" value="GUN1: 20" position="-0.3 0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+
+                        <a-image src="#pokeball_icon_06" position="-0.73 -0.2 0.01" width="0.25" height="0.25"></a-image>
+                        <a-text id="ammoTextGun2" value="GUN2: 20" position="-0.3 -0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+                </a-entity>
+
         <a-entity id="fadeOverlay" visible="false">
             <a-plane width="200" height="200" position="0 0 -0.5"
                      color="#000000" opacity="0"

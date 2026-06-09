@@ -15,6 +15,7 @@
     window.lastBallHit = false;
     window.bossSpawned = false;
     window.respawningModels = {};
+    window.ammoByGun = { 1: 20, 2: 20 };
 
     // ステージ・武器管理
     window.currentStage = 1;
@@ -23,7 +24,7 @@
     // ステージ設定
     window.STAGE_CONFIG = {
         1: {
-            timeLimit: 90,
+            timeLimit: 100,
             bgmId: 'sound_bgm_s1',
             skyId: 'sky_s1',
             models: [
@@ -42,7 +43,7 @@
             resultTitle: 'STAGE 1 CLEAR',
         },
         2: {
-            timeLimit: 90,
+            timeLimit: 80,
             bgmId: 'sound_bgm_s2',
             skyId: 'sky_s2',
             models: [
@@ -65,7 +66,7 @@
     // 武器設定
     window.GUN_CONFIG = {
         1: { ball: 'cg/poke_ball_05.glb',      modelSrc: 'cg/gun_01.glb' },
-        2: { ball: 'cg/poke_ball_seieiv.glb',   modelSrc: 'cg/gun_02.glb' }
+        2: { ball: 'cg/poke_ball_06.glb',   modelSrc: 'cg/gun_02.glb' }
     };
 
     // THREE.jsキャッシュ
@@ -107,6 +108,71 @@
         if (el) el.setAttribute('value', `${new Date().toLocaleTimeString()}: ${message}`);
     };
 
+    window.updateAmmoDisplay = function() {
+        const gun1El = document.getElementById('ammoTextGun1');
+        const gun2El = document.getElementById('ammoTextGun2');
+        const weaponText = document.getElementById('weaponText');
+        const selected = window.selectedGun || 1;
+
+        if (gun1El) {
+            gun1El.setAttribute('value', `GUN1: ${window.ammoByGun[1]}`);
+            gun1El.setAttribute('color', selected === 1 ? '#FFFF00' : '#FFFFFF');
+        }
+        if (gun2El) {
+            gun2El.setAttribute('value', `GUN2: ${window.ammoByGun[2]}`);
+            gun2El.setAttribute('color', selected === 2 ? '#FFFF00' : '#FFFFFF');
+        }
+        if (weaponText) {
+            weaponText.setAttribute('value', `WEAPON: Gun ${selected} (${window.ammoByGun[selected]})`);
+        }
+    };
+
+    window.tryConsumeAmmo = function(gunNo) {
+        if (!window.ammoByGun[gunNo] || window.ammoByGun[gunNo] <= 0) return false;
+        window.ammoByGun[gunNo] -= 1;
+        window.updateAmmoDisplay();
+        return true;
+    };
+
+    window.addAmmoToInactiveGun = function(amount) {
+        const inactiveGun = window.selectedGun === 1 ? 2 : 1;
+        window.ammoByGun[inactiveGun] = (window.ammoByGun[inactiveGun] || 0) + amount;
+        window.updateAmmoDisplay();
+    };
+
+    window.spawnAmmoPickupToCamera = function(fromPos, amount) {
+        const sceneEl = document.querySelector('a-scene');
+        const camEl = sceneEl && sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+        if (!sceneEl || !camEl || !fromPos) {
+            window.addAmmoToInactiveGun(amount);
+            return;
+        }
+
+        const target = new THREE.Vector3();
+        camEl.object3D.getWorldPosition(target);
+        target.z -= 0.5;
+
+        const pickup = document.createElement('a-entity');
+        const inactiveGun = window.selectedGun === 1 ? 2 : 1;
+        pickup.setAttribute('gltf-model', window.GUN_CONFIG[inactiveGun].ball);
+        pickup.setAttribute('position', `${fromPos.x} ${fromPos.y + 1.0} ${fromPos.z}`);
+        pickup.setAttribute('scale', '0.11 0.11 0.11');
+        pickup.setAttribute('animation__spin', { property: 'rotation', to: '0 720 0', dur: 900, easing: 'linear' });
+        pickup.setAttribute('animation__toCamera', {
+            property: 'position',
+            to: `${target.x} ${target.y} ${target.z}`,
+            dur: 900,
+            easing: 'easeInQuad'
+        });
+
+        pickup.addEventListener('animationcomplete__toCamera', () => {
+            window.addAmmoToInactiveGun(amount);
+            if (pickup.parentNode) pickup.parentNode.removeChild(pickup);
+        }, { once: true });
+
+        sceneEl.appendChild(pickup);
+    };
+
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
         if (!audioEl) {
             if (typeof onComplete === 'function') onComplete();
@@ -139,6 +205,8 @@
             }
         }, stepMs);
     };
+
+    window.updateAmmoDisplay();
 
     // ─────────────────────────────────────────
     // enhance-materials コンポーネント
@@ -205,7 +273,7 @@
                 weaponDisplay.addEventListener('click', this.switchGun);
                 weaponDisplay.addEventListener('touchstart', (e) => { e.preventDefault(); this.switchGun(); }, { passive: false });
             }
-            this._gripHandler = () => { if (!window.gameStarted) this.switchGun(); };
+            this._gripHandler = () => { this.switchGun(); };
             const leftCtrl  = document.getElementById('leftController');
             const rightCtrl = document.getElementById('rightController');
             const evts = ['gripdown', 'abuttondown', 'bbuttondown'];
@@ -216,15 +284,13 @@
         },
 
         switchGun: function() {
-            if (window.gameStarted) return;
             window.selectedGun = window.selectedGun === 1 ? 2 : 1;
             const rightCtrl = document.getElementById('rightController');
             if (rightCtrl) {
                 const gunEntity = rightCtrl.querySelector('#controllerGunModel');
                 if (gunEntity) gunEntity.setAttribute('gltf-model', window.GUN_CONFIG[window.selectedGun].modelSrc);
             }
-            const weaponText = document.getElementById('weaponText');
-            if (weaponText) weaponText.setAttribute('value', `WEAPON: Gun ${window.selectedGun}`);
+            window.updateAmmoDisplay();
         },
 
         tick: function(time) {
@@ -318,8 +384,11 @@
 
             const timerDisplay = document.getElementById('timerDisplay');
             if (timerDisplay) timerDisplay.setAttribute('visible', true);
+            const timerText = document.getElementById('timerText');
+            if (timerText) timerText.setAttribute('value', `TIME: ${window.gameTimeLeft}s`);
             const scoreText = document.getElementById('currentScore');
             if (scoreText) scoreText.setAttribute('value', 'SCORE: 0.0');
+            window.updateAmmoDisplay();
 
             this.startTimer();
         },
@@ -711,6 +780,7 @@
                 const startMenuEl = document.getElementById('startMenu');
                 if (startMenuEl && startMenuEl.components['start-menu']) {
                     const sm = startMenuEl.components['start-menu'];
+                    window.updateAmmoDisplay();
                     sm.activateModels(sceneEl);
                     window.registerTimeout(() => sm.startTimer(), 200);
                 }
@@ -749,26 +819,18 @@
         performClose: function() {
             const sceneEl = document.querySelector('a-scene');
             const isVR = sceneEl && sceneEl.is('vr-mode');
-            const doClose = () => {
-                try {
-                    window.open('', '_self');
-                    window.close();
-                    window.registerTimeout(() => {
-                        if (!window.closed) {
-                            window.location.replace('about:blank');
-                        }
-                    }, 500);
-                } catch (e) {
-                    try {
-                        window.location.replace('about:blank');
-                    } catch (_) {
-                        const msg = document.getElementById('closeMessage');
-                        if (msg) msg.setAttribute('visible', true);
-                    }
-                }
+            const finish = () => {
+                this._fadeOverlayOut();
+                window.registerTimeout(() => {
+                    window.__closingInProgress = false;
+                }, 200);
             };
-            if (isVR) { sceneEl.exitVR().then(() => window.registerTimeout(doClose, 500)).catch(doClose); }
-            else doClose();
+
+            if (isVR) {
+                sceneEl.exitVR().then(() => window.registerTimeout(finish, 300)).catch(finish);
+            } else {
+                finish();
+            }
         }
     });
 
@@ -902,6 +964,7 @@
             if (event && event.stopPropagation) event.stopPropagation();
             if (event && event.preventDefault) event.preventDefault();
             if (!window.gameStarted || window.gameEnded || window.activeBalls.length >= 2) return;
+            if (!window.tryConsumeAmmo(window.selectedGun)) return;
             this.lastShootTime = Date.now();
 
             const sceneEl = this.el.sceneEl;
@@ -1102,6 +1165,13 @@
                 const finalScore = baseScore * mult;
                 window.totalScore += finalScore;
                 if (window.comboCount > window.maxComboCount) window.maxComboCount = window.comboCount;
+
+                let ammoReward = 0;
+                if (gltfSrc === '#model_s1_01') ammoReward = 5;
+                else if (gltfSrc === '#model_s2_01') ammoReward = 10;
+                if (ammoReward > 0) {
+                    window.spawnAmmoPickupToCamera(modelGroup.object3D.position.clone(), ammoReward);
+                }
 
                 const cst = document.getElementById('currentScore');
                 if (cst) cst.setAttribute('value', `SCORE: ${window.totalScore.toFixed(1)}`);

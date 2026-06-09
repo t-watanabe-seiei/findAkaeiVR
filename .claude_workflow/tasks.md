@@ -1,3 +1,42 @@
+# タスク化: shooting3Dterrer4 ゲーム性拡張（2026-06-09）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task D-1: ステージ時間の更新
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`, `resources/views/shooting3Dterrer4/_scene.blade.php`
+- 作業: Stage1=100秒、Stage2=80秒、初期タイマー文言更新
+- ステータス: ✅ 完了
+
+### Task D-2: ゲーム中武器切替の解放
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: Grip/A/B と switchGun の制限解除、切替時UI同期
+- ステータス: ✅ 完了
+
+### Task D-3: 残弾システム + HUD 実装
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`, `resources/views/shooting3Dterrer4/_scene.blade.php`
+- 作業: Gun1/Gun2 初期20、常時HUD、発射時消費、残弾0時発射不可
+- ステータス: ✅ 完了
+
+### Task D-4: 01/06撃破時の補給演出と加算
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: 補給ボール飛来、到達時に未使用武器へ +5 / +10
+- ステータス: ✅ 完了
+
+### Task D-5: Stage2 GameOver の VR解除仕様化
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: close/blank を廃止し、VR解除のみ実行
+- ステータス: ✅ 完了
+
+### Task D-6: README 追記 + 構文チェック
+- ファイル: `README.md`, 変更Bladeファイル
+- 作業: 新機能追記、`php -l` 実行
+- ステータス: ✅ 完了
+
+---
+
 # タスク化: admin/dashboard202606 景品交換セクションを最上部へ移動（2026-05-31）
 
 ## 前段階ファイル読込
