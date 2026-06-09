@@ -77,6 +77,8 @@
 
     // ボール・タイマー管理
     window.activeBalls = [];
+    window.ballPoolByGun = { 1: [], 2: [] };
+    window.maxBallPoolPerGun = 4;
     window.activeTimers = [];
     window._cachedModelPos = new THREE.Vector3();
     window._cachedCameraPos = new THREE.Vector3();
@@ -240,6 +242,51 @@
         if (!entity) return;
         window.disposeEntityResources(entity);
         if (entity.parentNode) entity.parentNode.removeChild(entity);
+    };
+
+    window.createBallEntity = function(gunNo) {
+        const ball = document.createElement('a-entity');
+        ball.setAttribute('gltf-model', window.GUN_CONFIG[gunNo].ball);
+        ball.setAttribute('scale', '0.1 0.1 0.1');
+        ball.setAttribute('visible', 'false');
+        ball.addEventListener('model-loaded', () => {
+            const mesh = ball.getObject3D('mesh');
+            if (!mesh) return;
+            mesh.traverse(n => {
+                if (n.isMesh && n.material) {
+                    if (window.cachedBallEmissiveColor) n.material.emissive = window.cachedBallEmissiveColor;
+                    n.material.emissiveIntensity = 0.1;
+                    n.material.needsUpdate = true;
+                }
+            });
+        }, { once: true });
+        return ball;
+    };
+
+    window.acquireBallEntity = function(gunNo, sceneEl) {
+        const pool = window.ballPoolByGun[gunNo] || (window.ballPoolByGun[gunNo] = []);
+        const ball = pool.length > 0 ? pool.pop() : window.createBallEntity(gunNo);
+        if (!ball.parentNode && sceneEl) sceneEl.appendChild(ball);
+        ball.removeAttribute('animation__fade');
+        ball.removeAttribute('animation__spin');
+        ball.setAttribute('visible', 'true');
+        ball.setAttribute('scale', '0.1 0.1 0.1');
+        return ball;
+    };
+
+    window.releaseBallEntity = function(ball, gunNo) {
+        if (!ball) return;
+        const pool = window.ballPoolByGun[gunNo] || (window.ballPoolByGun[gunNo] = []);
+        ball.removeAttribute('animation__fade');
+        ball.removeAttribute('animation__spin');
+        ball.setAttribute('visible', 'false');
+        ball.setAttribute('position', '0 -999 0');
+        ball.setAttribute('scale', '0.0001 0.0001 0.0001');
+        if (pool.length < window.maxBallPoolPerGun) {
+            pool.push(ball);
+            return;
+        }
+        window.disposeAndRemoveEntity(ball);
     };
 
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
@@ -586,8 +633,9 @@
             ];
             const colors = ['blue','green','red','yellow','cyan'];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
+            const modelsToSpawn = window.currentStage === 2 ? cfg.models.slice(0, 4) : cfg.models;
 
-            cfg.models.forEach((m, i) => {
+            modelsToSpawn.forEach((m, i) => {
                 window.registerTimeout(() => {
                     const p = initPats[i % initPats.length];
                     const rot = p.useCamera
@@ -820,7 +868,7 @@
 
                 // ボール削除
                 window.activeBalls.forEach(bd => {
-                    if (bd && bd.ball) window.disposeAndRemoveEntity(bd.ball);
+                    if (bd && bd.ball) window.releaseBallEntity(bd.ball, bd.gunNo || window.selectedGun || 1);
                 });
                 window.activeBalls = [];
 
@@ -889,6 +937,12 @@
                 window.activeTimers.forEach(t => clearTimeout(t));
                 window.activeTimers = [];
             }
+            if (window.activeBalls) {
+                window.activeBalls.forEach(bd => {
+                    if (bd && bd.ball) window.releaseBallEntity(bd.ball, bd.gunNo || window.selectedGun || 1);
+                });
+                window.activeBalls = [];
+            }
 
             const currentBgmCfg = window.STAGE_CONFIG[window.currentStage];
             if (currentBgmCfg) {
@@ -947,7 +1001,11 @@
             const now = Date.now();
             for (let i = cnt - 1; i >= 0; i--) {
                 const bd = window.activeBalls[i];
-                if (bd && bd.ball && bd.ball.parentNode) this.updateBallPosition(bd, now);
+                if (!bd || bd.inactive) {
+                    window.activeBalls.splice(i, 1);
+                    continue;
+                }
+                if (bd.ball && bd.ball.parentNode) this.updateBallPosition(bd, now);
                 else window.activeBalls.splice(i, 1);
             }
         },
@@ -1000,12 +1058,13 @@
 
                 if (dx * dx + dz * dz < mi.radius * mi.radius) {
                     ballData.hasHit = true;
+                    ballData.inactive = true;
                     hb.emit('ball-hit');
                     ball.removeAttribute('animation__spin');
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) mesh.traverse(n => { if (n.isMesh && n.material) { if (window.cachedHitEmissiveColor) n.material.emissive = window.cachedHitEmissiveColor; n.material.emissiveIntensity = 1.5; } });
                     ball.setAttribute('animation__fade', { property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad' });
-                    window.registerTimeout(() => window.disposeAndRemoveEntity(ball), 300);
+                    window.registerTimeout(() => window.releaseBallEntity(ball, ballData.gunNo), 300);
                     return;
                 }
             }
@@ -1013,8 +1072,9 @@
             const ddx = cp.x - startPos.x, ddy = cp.y - startPos.y, ddz = cp.z - startPos.z;
             if (cp.y < -2 || elapsedTime > 3 || ddx*ddx+ddy*ddy+ddz*ddz > 400) {
                 if (!ballData.hasHit) { window.comboCount = 0; window.lastBallHit = false; }
-                window.disposeAndRemoveEntity(ball);
+                window.releaseBallEntity(ball, ballData.gunNo);
                 ballData.hasHit = true;
+                ballData.inactive = true;
             }
         },
 
@@ -1053,13 +1113,8 @@
             this.lastShootTime = Date.now();
 
             const sceneEl = this.el.sceneEl;
-            const ball = document.createElement('a-entity');
-            ball.setAttribute('gltf-model', window.GUN_CONFIG[window.selectedGun].ball);
-            ball.setAttribute('scale', '0.1 0.1 0.1');
-            ball.addEventListener('model-loaded', () => {
-                const mesh = ball.getObject3D('mesh');
-                if (mesh) mesh.traverse(n => { if (n.isMesh && n.material) { if (window.cachedBallEmissiveColor) n.material.emissive = window.cachedBallEmissiveColor; n.material.emissiveIntensity = 0.1; n.material.needsUpdate = true; } });
-            }, { once: true });
+            const gunNo = window.selectedGun;
+            const ball = window.acquireBallEntity(gunNo, sceneEl);
             ball.setAttribute('animation__spin', { property: 'rotation', to: '-1080 0 0', dur: 1000, loop: true, easing: 'linear' });
 
             let position = new THREE.Vector3();
@@ -1078,8 +1133,7 @@
 
             const startPos = position.clone().add(direction.clone().multiplyScalar(0.3));
             ball.setAttribute('position', `${startPos.x} ${startPos.y} ${startPos.z}`);
-            sceneEl.appendChild(ball);
-            window.activeBalls.push({ ball, startPos, velocity: direction.clone().multiplyScalar(20), direction, startTime: Date.now(), hasHit: false, frameCount: 0 });
+            window.activeBalls.push({ ball, gunNo, startPos, velocity: direction.clone().multiplyScalar(20), direction, startTime: Date.now(), hasHit: false, frameCount: 0, inactive: false });
         }
     });
 

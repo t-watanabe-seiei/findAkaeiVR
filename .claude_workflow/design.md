@@ -1,3 +1,34 @@
+# 設計: shooting3Dterrer4 VR負荷改善（2026-06-09）
+
+## 前段階ファイル読込
+`requirements.md` を読み込みました。
+
+## 変更ファイル
+- `resources/views/shooting3Dterrer4/_components.blade.php`
+- `README.md`
+
+## 設計方針
+- 既存ロジックを維持しつつ、生成回数の削減と同時存在数の抑制を最小差分で行う。
+
+## 変更設計
+
+### 1) Stage2同時出現上限4
+- `start-menu.activateModels()` 内で `cfg.models` をそのまま使わず、Stage2のみ `slice(0, 4)` した配列をスポーン対象にする。
+- これにより通常敵の同時存在を4体に固定する。
+
+### 2) ボール簡易プール
+- グローバルに `ballPoolByGun` を追加し、Gun1/Gun2ごとに再利用キューを持つ。
+- `acquireBallEntity(gunNo, sceneEl)` で取得（なければ作成）、`releaseBallEntity(ball, gunNo)` で返却。
+- `shoot.shoot()` は `document.createElement` を直接使わず、プール取得に置換。
+- 命中時・寿命切れ時・ステージ遷移時・GameOver時の弾処理を返却関数へ統一する。
+
+## 検証計画
+1. `php -l resources/views/shooting3Dterrer4/_components.blade.php`
+2. Stage2開始直後に通常敵が4体のみ存在することを確認
+3. 連射時にボールが再利用されること（挙動維持）を確認
+
+---
+
 # 設計: shooting3Dterrer4 ゲーム性拡張（2026-06-09）
 
 ## 前段階ファイル読込

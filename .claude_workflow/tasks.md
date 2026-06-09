@@ -1,3 +1,32 @@
+# タスク化: shooting3Dterrer4 VR負荷改善（2026-06-09）
+
+## 前段階ファイル読込
+前段階のmdファイルを読み込みました（`.claude_workflow/design.md`）。
+
+## タスク一覧
+
+### Task E-1: Stage2通常敵の同時出現を4体に制限
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: `activateModels()` のスポーン対象をStage2のみ4体化
+- ステータス: ✅ 完了
+
+### Task E-2: ボール簡易オブジェクトプール化
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: acquire/release関数追加、shoot処理を再利用方式へ変更
+- ステータス: ✅ 完了
+
+### Task E-3: 遷移/終了時のボール返却統一
+- ファイル: `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: Next Stage・GameOver時の弾処理をプール返却へ統一
+- ステータス: ✅ 完了
+
+### Task E-4: README追記 + 構文チェック
+- ファイル: `README.md`, `resources/views/shooting3Dterrer4/_components.blade.php`
+- 作業: 変更内容をREADMEへ記載、`php -l` 実行
+- ステータス: ✅ 完了
+
+---
+
 # タスク化: shooting3Dterrer4 ゲーム性拡張（2026-06-09）
 
 ## 前段階ファイル読込

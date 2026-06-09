@@ -1,3 +1,28 @@
+# 要件定義: shooting3Dterrer4 VR負荷改善（2026-06-09）
+
+## 作成日時
+2026-06-09
+
+## 対象ファイル
+- `resources/views/shooting3Dterrer4/_components.blade.php`
+- `README.md`
+
+## 背景
+- VRゴーグル実機で Stage2 の途中から処理落ちが発生する。
+- 敵再生成と弾の生成/破棄が継続するため、フレーム安定化の追加対策が必要。
+
+## 要件
+1. Stage2 の通常敵（`modelGroup_01`〜`modelGroup_05`）の同時出現数を 4 体に制限する。
+2. ボールを毎回生成/破棄する方式をやめ、簡易オブジェクトプール方式へ変更する。
+3. 既存のスコア、弾数、武器切替、ボス出現仕様は変更しない。
+
+## 成功基準
+- Stage2開始時の通常敵同時出現が4体である。
+- ボール発射時にプールから再利用し、不要な再生成を抑制できる。
+- `php -l resources/views/shooting3Dterrer4/_components.blade.php` でエラーなし。
+
+---
+
 # 要件定義: shooting3Dterrer4 ゲーム性拡張（2026-06-09）
 
 ## 作成日時
