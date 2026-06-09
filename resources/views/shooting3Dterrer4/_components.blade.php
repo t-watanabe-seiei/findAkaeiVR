@@ -231,10 +231,15 @@
         modelIds.forEach(id => {
             sceneEl.querySelectorAll(`#${id}`).forEach(model => {
                 if (model.components && model.components['approach-camera']) model.removeAttribute('approach-camera');
-                window.disposeEntityResources(model);
-                if (model.parentNode) model.parentNode.removeChild(model);
+                window.disposeAndRemoveEntity(model);
             });
         });
+    };
+
+    window.disposeAndRemoveEntity = function(entity) {
+        if (!entity) return;
+        window.disposeEntityResources(entity);
+        if (entity.parentNode) entity.parentNode.removeChild(entity);
     };
 
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
@@ -814,7 +819,9 @@
                 }
 
                 // ボール削除
-                window.activeBalls.forEach(bd => { if (bd.ball && bd.ball.parentNode) bd.ball.parentNode.removeChild(bd.ball); });
+                window.activeBalls.forEach(bd => {
+                    if (bd && bd.ball) window.disposeAndRemoveEntity(bd.ball);
+                });
                 window.activeBalls = [];
 
                 // タイマークリア
@@ -998,7 +1005,7 @@
                     const mesh = ball.getObject3D('mesh');
                     if (mesh) mesh.traverse(n => { if (n.isMesh && n.material) { if (window.cachedHitEmissiveColor) n.material.emissive = window.cachedHitEmissiveColor; n.material.emissiveIntensity = 1.5; } });
                     ball.setAttribute('animation__fade', { property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad' });
-                    window.registerTimeout(() => { if (ball.parentNode) ball.parentNode.removeChild(ball); }, 300);
+                    window.registerTimeout(() => window.disposeAndRemoveEntity(ball), 300);
                     return;
                 }
             }
@@ -1006,7 +1013,7 @@
             const ddx = cp.x - startPos.x, ddy = cp.y - startPos.y, ddz = cp.z - startPos.z;
             if (cp.y < -2 || elapsedTime > 3 || ddx*ddx+ddy*ddy+ddz*ddz > 400) {
                 if (!ballData.hasHit) { window.comboCount = 0; window.lastBallHit = false; }
-                if (ball.parentNode) ball.parentNode.removeChild(ball);
+                window.disposeAndRemoveEntity(ball);
                 ballData.hasHit = true;
             }
         },
@@ -1148,7 +1155,7 @@
             mg.setAttribute('animation__fadeout', { property: 'scale', to: '0 0 0', dur: 500, easing: 'easeInQuad' });
             window.registerTimeout(() => {
                 if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) delete window.usedPatterns[modelId];
-                if (mg.parentNode) mg.parentNode.removeChild(mg);
+                window.disposeAndRemoveEntity(mg);
                 if (window.respawnModelGlobal) window.respawnModelGlobal(modelId, src);
             }, 500);
         },
@@ -1306,7 +1313,7 @@
                         modelGroup.setAttribute('animation__modelfadeout', { property: 'scale', to: '0 0 0', dur: 500, easing: 'easeInQuad' });
                         window.registerTimeout(() => {
                             if (modelGroup.parentNode) {
-                                modelGroup.parentNode.removeChild(modelGroup);
+                                window.disposeAndRemoveEntity(modelGroup);
                                 if (window.usedPatterns && window.usedPatterns[modelId] !== undefined) delete window.usedPatterns[modelId];
                                 if (!window.respawningModels) window.respawningModels = {};
                                 if (window.respawningModels[modelId]) return;
@@ -1327,8 +1334,7 @@
             const sceneEl = document.querySelector('a-scene');
             const existing = document.getElementById(modelId);
             if (existing) {
-                if (existing.object3D) existing.object3D.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) { if (Array.isArray(n.material)) n.material.forEach(m => m.dispose()); else n.material.dispose(); } });
-                if (existing.parentNode) existing.parentNode.removeChild(existing);
+                window.disposeAndRemoveEntity(existing);
                 window.registerTimeout(() => this.createNewModel(modelId, gltfSrc, sceneEl), 100);
                 return;
             }
