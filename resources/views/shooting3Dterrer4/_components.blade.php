@@ -309,6 +309,14 @@
         window.disposeAndRemoveEntity(ball);
     };
 
+    window.setupStage2MusicReload = function(audioEl) {
+        if (!audioEl || audioEl.dataset.stage2ReloadBound === '1') return;
+        audioEl.dataset.stage2ReloadBound = '1';
+        audioEl.addEventListener('ended', () => {
+            if (window.currentStage === 2) window.location.reload();
+        }, { once: true });
+    };
+
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
         if (!audioEl) {
             if (typeof onComplete === 'function') onComplete();
@@ -500,7 +508,12 @@
 
             const cfg = window.STAGE_CONFIG[window.currentStage];
             const bgm = document.getElementById(cfg.bgmId);
-            if (bgm) { bgm.volume = 0.7; bgm.currentTime = 0; bgm.play().catch(() => {}); }
+            if (bgm) {
+                bgm.volume = 0.7;
+                bgm.currentTime = 0;
+                window.setupStage2MusicReload(bgm);
+                bgm.play().catch(() => {});
+            }
 
             if (window.gameTimer) { clearInterval(window.gameTimer); window.gameTimer = null; }
             window.gameStarted   = true;
@@ -913,7 +926,12 @@
                 if (sky) sky.setAttribute('src', '#sky_s2');
                 window.fadeOutAndStopAudio(prevBgm, 5000, () => {
                     const bgm = document.getElementById('sound_bgm_s2');
-                    if (bgm) { bgm.volume = 0.7; bgm.currentTime = 0; bgm.play().catch(() => {}); }
+                    if (bgm) {
+                        bgm.volume = 0.7;
+                        bgm.currentTime = 0;
+                        window.setupStage2MusicReload(bgm);
+                        bgm.play().catch(() => {});
+                    }
                 });
 
                 // スコアリセット
