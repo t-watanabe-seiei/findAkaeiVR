@@ -134,12 +134,12 @@
         popupEl.removeAttribute('animation__rise');
         popupEl.removeAttribute('animation__fade');
         popupEl.setAttribute('value', `+${amount}`);
-        popupEl.setAttribute('position', gunNo === 1 ? '0.3 0.2 0.02' : '0.3 -0.2 0.02');
+        popupEl.setAttribute('position', gunNo === 1 ? '-0.1 0.2 0.02' : '-0.1 -0.2 0.02');
         popupEl.setAttribute('visible', 'true');
         popupEl.setAttribute('opacity', 1);
         popupEl.setAttribute('animation__rise', {
             property: 'position',
-            to: gunNo === 1 ? '0.36 0.28 0.02' : '0.36 -0.12 0.02',
+            to: gunNo === 1 ? '-0.1 0.28 0.02' : '-0.1 -0.12 0.02',
             dur: 5000,
             easing: 'easeOutQuad'
         });
