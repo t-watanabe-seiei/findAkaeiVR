@@ -430,3 +430,217 @@ resources/views/admin/dashboard202606.blade.php
 3. 端末特化対応: 「できれば避ける（汎用対応優先）」
 4. 修正範囲: 「ARstampRally202605 配下のみ」
 
+
+---
+
+# 要件定義: shooting3Dterrer4 VRシューティングゲーム 2ステージ構成（2026-06-09）
+
+## 作成日時
+2026-06-09
+
+## 背景
+- shooting3Dterrer3.blade.php（3508行）を参考にした新規VRシューティングゲーム
+- 2ステージ制・武器選択・コントローラーモデル切り替えを追加
+- 1ファイル1000行超になるためモジュール化（3ファイル構成）
+
+## 対象ファイル（新規作成）
+- `resources/views/shooting3Dterrer4/index.blade.php`（メインエントリー、~50行）
+- `resources/views/shooting3Dterrer4/_components.blade.php`（A-Frameコンポーネント定義JS、~1800行）
+- `resources/views/shooting3Dterrer4/_scene.blade.php`（a-scene内HTMLエンティティ、~700行）
+- `routes/web.php`（ルート追加）
+
+## 既存参照ファイル
+- `resources/views/shooting3Dterrer3.blade.php`（3508行）
+
+---
+
+## ゲーム仕様
+
+### 全体構成
+- ステージ制：ステージ1 → ステージ2 の順に進む（Level選択なし）
+- スタートメニューから直接ゲーム開始（START ボタン1つ）
+- 武器選択はゲーム開始前にグリップ/A/Bボタンで切り替え
+
+### 武器選択
+| 武器 | コントローラーモデル | 発射弾 |
+|------|------|------|
+| Gun 1（デフォルト） | cg/gun_01.glb | cg/poke_ball_05.glb |
+| Gun 2 | cg/gun_02.glb | cg/poke_ball_seieiv.glb |
+
+- VRモード: 左右コントローラーのグリップ/A/Bボタンで切り替え
+- 非VRモード: スタートメニューの武器表示をクリックで切り替え
+- スタートメニューに「Grip/A/B: Switch Weapon」アナウンスを表示
+- スタートメニューに現在の選択武器を表示（Gun 1 / Gun 2）
+- ゲーム開始後は武器ロック（変更不可）
+- 右コントローラーのモデルが選択武器に合わせて切り替わる
+
+---
+
+### ステージ1
+
+| 項目 | 値 |
+|------|------|
+| 制限時間 | 90秒 |
+| 背景 | cg/R0010143a.JPG |
+| BGM | cg/sound_bgm08.mp3 |
+| ゾンビモデル（通常） | cg/20260613/01.glb 〜 05.glb（5体同時出現） |
+| ボスモデル | cg/zombie_morishige4.glb |
+| 必要ヒット数（通常） | 1回 |
+| 必要ヒット数（ボス） | 15回 |
+| ボス出現タイミング | 残り15秒 |
+| スコアAPI game_mode | 'terrer4_s1' |
+
+#### ステージ1終了後
+- スコア表示（terrer3と同様）
+- ランキング表示（terrer4_s1 ランキング）
+- 最下部に「Next Stage」ボタン（緑色）
+- Restartボタンなし（Next Stageのみ）
+
+---
+
+### ステージ2
+
+| 項目 | 値 |
+|------|------|
+| 制限時間 | 90秒 |
+| 背景 | cg/R0010131a.JPG |
+| BGM | cg/sound_bgm06.mp3 |
+| ゾンビモデル（通常） | cg/20260613/06.glb 〜 10.glb（5体同時出現） |
+| ボスモデル | cg/zombie_fujii.glb |
+| 必要ヒット数（通常） | 2回 |
+| 必要ヒット数（ボス） | 15回 |
+| ボス出現タイミング | 残り15秒 |
+| スコアAPI game_mode | 'terrer4_s2' |
+
+#### ステージ2終了後
+- スコア表示（terrer3と同様）
+- ランキング表示（terrer4_s2 ランキング）
+- 最下部に「Game Over」ボタン（赤色）
+- Game Overボタン押下 → 画面が次第に暗くなる → 5秒後 window.close()
+- window.close()失敗時: 「このタブを閉じてください」メッセージ表示
+
+---
+
+### ステージ遷移（1→2）
+1. 「Next Stage」ボタンをクリック/トリガー
+2. 画面が次第に暗くなる（黒フェードアウト、1秒）
+3. ステージ2の初期化処理（背景・BGM・モデル切り替え）
+4. 画面が明るくなる（黒フェードイン、1秒）
+5. ステージ2スタートメニューは表示しない（直接ゲーム開始）
+
+#### 事前ロード（プリロード）
+- ステージ1プレイ中（ゲーム開始直後）にステージ2アセットをバックグラウンドでロード
+- a-assetsにステージ1・ステージ2の全モデル・サウンドを宣言（preload属性管理）
+- ステージ2の a-asset-item は src を空にして開始時に動的設定 → または全アセットを初期ロード
+
+---
+
+### UI要素
+#### スタートメニュー（ステージ1開始時のみ表示）
+- タイトル: "seieiVR SHOOTING GAME Stage 1"
+- 現在の武器表示: "WEAPON: Gun 1 [Switch: Grip/A/B]"
+- STARTボタン（水色）
+
+#### タイマー・スコア表示（ゲーム中）
+- terrer3と同様（TIME: / SCORE:）
+
+#### リザルト画面（ステージ1）
+- STAGE CLEAR
+- スコア・最大コンボ・コメント
+- ランキング（terrer4_s1）
+- Next Stage ボタン（緑）
+
+#### リザルト画面（ステージ2）
+- GAME OVER
+- スコア・最大コンボ・コメント
+- ランキング（terrer4_s2）
+- Game Over ボタン（赤）
+
+---
+
+## モジュール構成
+
+### index.blade.php (~50行)
+```
+<!DOCTYPE html>
+<html><head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token">
+  <title>seieiVR Terrer4</title>
+  <script> // ライブラリ読み込み </script>
+  @include('shooting3Dterrer4._components')
+</head>
+<body>
+  @include('shooting3Dterrer4._scene')
+</body>
+</html>
+```
+
+### _components.blade.php (~1800行)
+- window.DEBUG_MODE 等グローバル変数定義
+- ステージ管理変数（window.currentStage = 1）
+- AFRAME.registerComponent: enhance-materials
+- AFRAME.registerComponent: face-camera
+- AFRAME.registerComponent: start-menu
+- AFRAME.registerComponent: result-menu
+- AFRAME.registerComponent: shoot
+- AFRAME.registerComponent: approach-camera
+- AFRAME.registerComponent: hit-box
+- AFRAME.registerComponent: auto-enter-vr
+- AFRAME.registerComponent: vr-controller
+
+### _scene.blade.php (~700行)
+- a-assets（全ステージのモデル・サウンド・画像）
+- ライト設定
+- カーソル・コントローラー
+- スタートメニューHTML
+- タイマー・スコア表示
+- リザルト画面（ステージ1: STAGE CLEAR + Next Stage）
+- リザルト画面（ステージ2: GAME OVER + Game Over button）
+- モデルグループ×5
+- 背景（a-sky）
+- パーティクルエフェクト
+- カメラ
+
+---
+
+## ルーティング
+```php
+Route::match(['get', 'head'], '/terrer4', function () {
+    return view('shooting3Dterrer4.index');
+})->name('terrer4.index');
+```
+
+---
+
+## API
+既存の `/api/shooting-scores` エンドポイントをそのまま使用。
+- ステージ1スコア保存: `game_mode: 'terrer4_s1'`
+- ステージ2スコア保存: `game_mode: 'terrer4_s2'`
+- ランキング取得: `?level=1&game_mode=terrer4_s1` / `?level=1&game_mode=terrer4_s2`
+
+---
+
+## 差異（terrer3との比較）
+| 項目 | terrer3 | terrer4 |
+|------|---------|---------|
+| ステージ | 単一 | 2ステージ制 |
+| Level選択 | Level 1/2 | なし（ステージが難易度差を担う） |
+| 武器 | gun_01固定 | gun_01 / gun_02 選択可 |
+| 弾 | poke_ball_seiei.glb | gun1: poke_ball_05 / gun2: poke_ball_seieiv |
+| ゾンビモデル | zombie_* 6種 | 20260613/01-10 + boss各1体 |
+| BGM | bgm10 | ステージ1: bgm08 / ステージ2: bgm06 |
+| 背景 | R0010131a | ステージ1: R0010143a / ステージ2: R0010131a |
+| 終了 | Restart / ページリロード | Next Stage → Game Over → ブラウザ閉じる |
+| game_mode | terrer | terrer4_s1 / terrer4_s2 |
+
+---
+
+## 成功基準
+- PHP構文エラーなし（php -l で確認）
+- ステージ1 → ステージ2 がスムーズに遷移する
+- 武器切り替えが正常に動作する
+- スコアがステージ別に保存・表示される
+- VRゴーグルで正常に動作する
+- 各ファイルが1000行以内
+

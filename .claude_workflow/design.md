@@ -735,3 +735,385 @@ function getActiveVisibleStampId() {
 - Android: ズームが残っていても、マーカー検出中に投げれば捕獲できること
 - iPhone / PC: 従来の投擲演出が維持され、捕獲処理が壊れないこと
 - 重複防止: 同一対象へ連打してもデータ破損しないこと
+
+---
+
+# 設計: shooting3Dterrer4 VRシューティングゲーム 2ステージ構成（2026-06-09）
+
+## ファイル構成
+
+```
+resources/views/shooting3Dterrer4/
+├── index.blade.php        (~60行)  エントリーポイント
+├── _components.blade.php  (~900行) A-Frameコンポーネント定義（JS）
+└── _scene.blade.php       (~700行) a-scene内HTMLエンティティ
+```
+
+ルート追加:
+```
+routes/web.php: /terrer4 → shooting3Dterrer4.index
+```
+
+---
+
+## グローバル状態変数（window.*）
+
+### 追加変数（terrer3にない）
+```js
+window.currentStage    // 現在のステージ番号（1 or 2）
+window.selectedGun     // 選択中の武器（1 or 2）
+window.stageTotalScore // ステージ別スコア（{1: 0, 2: 0}）
+```
+
+### 変更変数
+```js
+window.gameTimeLeft    // ステージ1: 90秒、ステージ2: 90秒
+```
+
+### 削除変数
+```js
+window.gameLevel       // Level選択なし → 削除
+window.currentLevel    // Level概念なし → currentStageに置換
+```
+
+---
+
+## ステージ設定テーブル（STAGE_CONFIG）
+
+```js
+window.STAGE_CONFIG = {
+    1: {
+        timeLimit: 90,
+        bgm: 'sound_bgm_s1',         // #sound_bgm_s1 → sound_bgm08.mp3
+        sky: '#sky_s1',               // R0010143a.JPG
+        models: [                     // 通常ゾンビ5体
+            { id: 'modelGroup_01', gltf: '#model_s1_01' },
+            { id: 'modelGroup_02', gltf: '#model_s1_02' },
+            { id: 'modelGroup_03', gltf: '#model_s1_03' },
+            { id: 'modelGroup_04', gltf: '#model_s1_04' },
+            { id: 'modelGroup_05', gltf: '#model_s1_05' },
+        ],
+        bossModel: '#model_boss_s1',  // zombie_morishige4.glb
+        requiredHits: 1,              // 通常: 1ヒット
+        bossRequiredHits: 15,
+        gameMode: 'terrer4_s1',
+        resultTitle: 'STAGE 1 CLEAR',
+        nextButton: { label: 'Next Stage', color: '#00FF00', action: 'next_stage' }
+    },
+    2: {
+        timeLimit: 90,
+        bgm: 'sound_bgm_s2',         // #sound_bgm_s2 → sound_bgm06.mp3
+        sky: '#sky_s2',               // R0010131a.JPG
+        models: [
+            { id: 'modelGroup_01', gltf: '#model_s2_01' },
+            { id: 'modelGroup_02', gltf: '#model_s2_02' },
+            { id: 'modelGroup_03', gltf: '#model_s2_03' },
+            { id: 'modelGroup_04', gltf: '#model_s2_04' },
+            { id: 'modelGroup_05', gltf: '#model_s2_05' },
+        ],
+        bossModel: '#model_boss_s2',  // zombie_fujii.glb
+        requiredHits: 2,              // 通常: 2ヒット
+        bossRequiredHits: 15,
+        gameMode: 'terrer4_s2',
+        resultTitle: 'GAME OVER',
+        nextButton: { label: 'Game Over', color: '#FF0000', action: 'game_over' }
+    }
+};
+```
+
+---
+
+## 武器設定テーブル（GUN_CONFIG）
+
+```js
+window.GUN_CONFIG = {
+    1: { model: 'cg/gun_01.glb', ball: 'cg/poke_ball_05.glb' },
+    2: { model: 'cg/gun_02.glb', ball: 'cg/poke_ball_seieiv.glb' }
+};
+```
+
+---
+
+## コンポーネント設計
+
+### start-menu コンポーネント（変更）
+
+#### init()
+- gun切り替えイベントリスナー設定（VRコントローラー: gripdown/abuttondown/bbuttondown）
+- 非VRモード: メニュー内のweaponDisplay要素クリックで切り替え
+
+#### switchGun()
+- window.selectedGun をトグル（1↔2）
+- 右コントローラーのgltf-modelを更新
+- メニューのWEAPON表示テキストを更新
+
+#### startGame()
+- Level選択分岐を削除
+- currentStage=1固定で開始
+- モデルID: modelGroup_01〜05（5体のみ）
+- 必要ヒット数を STAGE_CONFIG[1].requiredHits から読む
+
+#### startTimer()
+- ステージ終了後: showResult() → ステージ別resultMenuを表示
+
+#### spawnBoss()
+- bossModelを STAGE_CONFIG[window.currentStage].bossModel から取得
+
+### result-menu コンポーネント（変更）
+
+#### init()
+- nextStageButton と gameOverButton 両方にイベント設定
+- ステージに応じてどちらを表示するかはHTML側で管理
+
+#### handleNextStage()
+- フェードアウト演出（黒overlay, 1秒）
+- ステージ2初期化
+- 既存モデル全削除
+- 背景・BGM切り替え
+- ステージ2モデル作成
+- フェードイン演出（1秒）
+- gameStarted=true でゲーム開始（スタートメニューなし）
+
+#### handleGameOver()
+- フェードアウト演出（黒overlay, 1秒）
+- 5秒待機
+- window.close() 試行
+- 失敗時: 「このタブを閉じてください」テキスト表示
+
+### shoot コンポーネント（変更）
+
+#### shoot()
+- `ball.setAttribute('gltf-model', window.GUN_CONFIG[window.selectedGun].ball)`
+
+#### updateBallPosition()
+- modelsList を5体（modelGroup_01〜05 + boss）に変更
+
+### hit-box コンポーネント（変更）
+
+#### 必要ヒット数判定
+```js
+// terrer3: const requiredHits = isBoss ? 15 : (window.currentLevel === 2 ? 2 : 1);
+// terrer4:
+const stageConfig = window.STAGE_CONFIG[window.currentStage];
+const requiredHits = isBoss ? stageConfig.bossRequiredHits : stageConfig.requiredHits;
+```
+
+#### saveScoreToDatabase() → result-menuに移動
+- game_mode を STAGE_CONFIG[window.currentStage].gameMode から読む
+
+#### fetchAndDisplayRankings()
+- game_mode を STAGE_CONFIG[window.currentStage].gameMode から読む
+
+### approach-camera コンポーネント（変更なし）
+- そのまま流用
+
+---
+
+## ステージ遷移フロー詳細
+
+### ステージ1 → ステージ2 遷移
+
+```
+1. Next Stageボタンクリック
+   ↓
+2. 黒overlay（a-plane）をフェードイン（opacity 0→1, 1秒）
+   ↓
+3. BGMフェードアウト・停止
+   ↓
+4. 全モデル削除（allModels=01〜05+boss）
+   ↓
+5. currentStage = 2
+6. gameStarted = false / gameEnded = false / スコアリセット
+   ↓
+7. 背景切り替え: a-sky の src を #sky_s2 に変更
+8. BGM切り替え: sound_bgm_s2 を再生
+   ↓
+9. ステージ2モデルを recreateInitialModels() で作成（STAGE_CONFIG[2]のgltf使用）
+   ↓
+10. 黒overlay フェードアウト（opacity 1→0, 1秒）
+    ↓
+11. gameStarted = true（直接ゲーム開始、スタートメニューなし）
+12. startTimer() 呼び出し
+```
+
+### ステージ2終了後 → Game Over
+
+```
+1. Game Overボタンクリック
+   ↓
+2. 黒overlay フェードイン（1秒）
+   ↓
+3. 5秒待機
+   ↓
+4. window.close() 試行
+   ↓ (失敗時)
+5. 「このタブを閉じてください」テキスト表示
+```
+
+---
+
+## プリロード設計
+
+### a-assets宣言（_scene.blade.php）
+
+```html
+<a-assets>
+  <!-- ステージ1 ゾンビ -->
+  <a-asset-item id="model_s1_01" src="{{ asset('cg/20260613/01.glb') }}"></a-asset-item>
+  ...（s1: 01〜05, boss_s1: zombie_morishige4.glb）
+  
+  <!-- ステージ2 ゾンビ（preload属性付き: 全アセットを初期にロード） -->
+  <a-asset-item id="model_s2_01" src="{{ asset('cg/20260613/06.glb') }}"></a-asset-item>
+  ...（s2: 06〜10, boss_s2: zombie_fujii.glb）
+  
+  <!-- 武器・弾 -->
+  <a-asset-item id="gun_model_1" src="{{ asset('cg/gun_01.glb') }}"></a-asset-item>
+  <a-asset-item id="gun_model_2" src="{{ asset('cg/gun_02.glb') }}"></a-asset-item>
+  
+  <!-- サウンド（全ステージ分） -->
+  <audio id="sound_bgm_s1" src="{{ asset('cg/sound_bgm08.mp3') }}" preload="auto"></audio>
+  <audio id="sound_bgm_s2" src="{{ asset('cg/sound_bgm06.mp3') }}" preload="auto"></audio>
+  
+  <!-- 背景（全ステージ分） -->
+  <img id="sky_s1" src="{{ asset('cg/R0010143a.JPG') }}" crossorigin="anonymous">
+  <img id="sky_s2" src="{{ asset('cg/R0010131a.JPG') }}" crossorigin="anonymous">
+</a-assets>
+```
+
+→ 全アセットをページロード時に一括取得。遷移時にロード待ちが発生しない。
+
+---
+
+## HTML構成（_scene.blade.php）
+
+```
+a-scene
+  a-assets
+    (全アセット)
+  
+  <!-- ライト -->
+  <!-- カーソル・コントローラー（右コントローラーはgun_01初期） -->
+  
+  <!-- スタートメニュー（ステージ1開始時のみ） -->
+  #startMenu
+    タイトル: "seieiVR SHOOTING GAME"
+    サブタイトル: "Stage 1"
+    武器表示: "WEAPON: Gun 1"
+    切替案内: "Grip/A/B: Switch Weapon"
+    STARTボタン（水色）
+  
+  <!-- タイマー・スコア（ゲーム中） -->
+  #timerDisplay
+  
+  <!-- リザルト画面ステージ1 -->
+  #resultMenu_s1 (visible=false)
+    "STAGE 1 CLEAR"
+    スコア / レベル / コンボ / コメント
+    ランキング表示エリア #rankingDisplay_s1
+    Next Stageボタン（緑） #nextStageButton
+  
+  <!-- リザルト画面ステージ2 -->
+  #resultMenu_s2 (visible=false)
+    "GAME OVER"
+    スコア / レベル / コンボ / コメント
+    ランキング表示エリア #rankingDisplay_s2
+    Game Overボタン（赤） #gameOverButton
+  
+  <!-- 黒フェードoverlay（ステージ遷移用） -->
+  #fadeOverlay (visible=false)
+    a-plane（黒、全画面を覆う位置）
+  
+  <!-- ゾンビモデル × 5 (初期非表示) -->
+  #modelGroup_01 〜 #modelGroup_05
+  
+  <!-- 背景 -->
+  #aSky (src="#sky_s1" 初期)
+  
+  <!-- パーティクル -->
+  <!-- カメラ + shoot component -->
+  #my_camera
+```
+
+---
+
+## 黒フェードoverlay設計
+
+```html
+<!-- カメラの子要素として配置（カメラと共に動く） -->
+<a-camera id="my_camera" shoot>
+  <a-entity id="fadeOverlay" visible="false">
+    <a-plane
+      width="100" height="100"
+      position="0 0 -0.5"
+      color="#000000"
+      opacity="0"
+      material="transparent: true; depthTest: false; side: double">
+    </a-plane>
+  </a-entity>
+</a-camera>
+```
+
+→ カメラの子要素にすることで常に視野内に表示される
+
+---
+
+## 武器切り替え設計
+
+### VRモード（ゲーム開始前のみ有効）
+```
+左コントローラー: gripdown → switchGun()
+右コントローラー: gripdown → switchGun()
+左コントローラー: abuttondown / bbuttondown → switchGun()
+```
+
+### 非VRモード（ゲーム開始前のみ有効）
+```
+#weaponDisplay (a-plane, clickable) クリック → switchGun()
+```
+
+### switchGun() 処理
+```js
+window.selectedGun = (window.selectedGun === 1) ? 2 : 1;
+// 右コントローラーのモデルを差し替え
+const rightController = document.getElementById('rightController');
+const gunEntity = rightController.querySelector('#controllerGunModel');
+gunEntity.setAttribute('gltf-model', window.GUN_CONFIG[window.selectedGun].model);
+// メニュー表示更新
+const weaponText = document.getElementById('weaponText');
+weaponText.setAttribute('value', `WEAPON: Gun ${window.selectedGun}`);
+```
+
+---
+
+## ルーティング
+
+```php
+// routes/web.php 追加箇所（terrer3ルートの直後）
+Route::match(['get', 'head'], '/terrer4', function () {
+    return view('shooting3Dterrer4.index');
+})->name('terrer4.index');
+```
+
+---
+
+## 行数見積もり
+
+| ファイル | 見積もり行数 |
+|------|------|
+| index.blade.php | ~60行 |
+| _components.blade.php | ~900行 |
+| _scene.blade.php | ~700行 |
+| 合計 | ~1660行 |
+
+（各ファイルが1000行以内であることを確認）
+
+---
+
+## 注意事項・リスク
+
+1. **GLBアニメーション名**: 20260613/01〜10.glbのアニメーション名が `anime01` / `anime02` であることを前提としている。実際にアニメーションが存在しない場合は animation-mixer をスキップ。
+2. **window.close()制限**: ユーザーが直接URLを入力して開いた場合はwindow.close()が失敗するブラウザあり。メッセージ表示でフォールバック。
+3. **respawnModelGlobal**: ステージ2ではモデルが差し替わるため、respawnModelGlobalを毎ステージ再登録する。
+4. **shootコンポーネントのキャッシュ**: ステージ遷移時にmodelsList / modelsCache / hitBoxCacheをクリアして再構築。
+5. **ボスモデルID**: ステージ共通の `modelGroup_boss` を使用。ステージ遷移時に削除・再生成。
+

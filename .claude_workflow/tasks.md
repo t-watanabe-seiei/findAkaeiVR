@@ -426,3 +426,106 @@ A → B → C → D → E → F → G → H → I
 - [x] Task 7
 - [x] Task 8
 - [x] Task 9
+
+---
+
+# タスク: shooting3Dterrer4 VRシューティングゲーム 2ステージ構成（2026-06-09）
+
+## 実行順序
+
+### Task T4-1: ディレクトリ作成 + index.blade.php 作成
+- `resources/views/shooting3Dterrer4/` ディレクトリを作成
+- `index.blade.php` を作成（HTMLヘッド + @includeのみ、~60行）
+- `php -l` で構文チェック
+- [ ] 完了
+
+### Task T4-2: _components.blade.php 作成（グローバル変数・ユーティリティ部）
+- `<script>` タグ開始
+- window.DEBUG_MODE, debugLog, gameStarted 等グローバル変数定義
+- window.currentStage, selectedGun, STAGE_CONFIG, GUN_CONFIG 定義
+- window.activeBalls, activeTimers, cachedXxx 等ユーティリティ定義
+- registerTimeout, getAvailablePattern, updateDebug ヘルパー関数
+- enhance-materials コンポーネント
+- face-camera コンポーネント
+- [ ] 完了
+
+### Task T4-3: _components.blade.php 追記（start-menu コンポーネント）
+- AFRAME.registerComponent('start-menu', ...) 全体
+- init(): gun切り替えイベントリスナー追加
+- switchGun() 新規追加
+- selectLevel() を削除、startGame() をステージ1固定に変更
+- startTimer(): ステージ別resultMenuを表示するよう変更
+- spawnBoss(): STAGE_CONFIG から bossModel 取得
+- showResult(), saveScoreToDatabase(), fetchAndDisplayRankings(), displayRankings()
+- recreateInitialModels(): 5体(01〜05)に変更、gltfをSTAGE_CONFIGから取得
+- restartGame() → ステージ2からステージ1へのリセットには使用しない（廃止）
+- [ ] 完了
+
+### Task T4-4: _components.blade.php 追記（result-menu コンポーネント）
+- AFRAME.registerComponent('result-menu', ...)
+- init(): nextStageButton / gameOverButton にイベント設定
+- handleNextStage(): フェードアウト→ステージ2初期化→フェードイン
+- handleGameOver(): フェードアウト→5秒待機→window.close()
+- performClose(): window.close()試行 + 失敗時メッセージ
+- [ ] 完了
+
+### Task T4-5: _components.blade.php 追記（shoot・approach-camera・hit-box コンポーネント）
+- AFRAME.registerComponent('shoot', ...)
+  - shoot(): GUN_CONFIG[selectedGun].ball を発射弾に使用
+  - updateBallPosition(): modelsList を5体+boss に変更
+  - setupControllerListeners(): gun切り替え用gripdown/abutton/bbuttonリスナーは start-menu 側で管理のためここでは変更なし
+- AFRAME.registerComponent('approach-camera', ...) ← terrer3 からほぼそのまま
+- AFRAME.registerComponent('hit-box', ...)
+  - requiredHits を STAGE_CONFIG[currentStage] から取得に変更
+  - saveScoreToDatabase の game_mode を STAGE_CONFIG から取得
+- [ ] 完了
+
+### Task T4-6: _components.blade.php 追記（auto-enter-vr・vr-controller + </script>）
+- AFRAME.registerComponent('auto-enter-vr', ...) ← terrer3 からほぼそのまま
+- AFRAME.registerComponent('vr-controller', ...) ← terrer3 からそのまま
+- `</script>` タグ終了
+- php -l で構文チェック
+- [ ] 完了
+
+### Task T4-7: _scene.blade.php 作成（a-assets + ライト + カーソル/コントローラー）
+- a-scene 開始（renderer属性付き）
+- a-assets: ステージ1・2全モデル、サウンド2系統、背景2枚、gun2種
+- ライト4灯
+- #mouseCursor, #leftController, #rightController（右コントローラーはgun_01初期 + #controllerGunModel）
+- [ ] 完了
+
+### Task T4-8: _scene.blade.php 追記（スタートメニュー + タイマー + デバッグ）
+- #startMenu: タイトル・武器表示・切替案内・STARTボタン
+- #timerDisplay: TIME / SCORE
+- #debugDisplay
+- [ ] 完了
+
+### Task T4-9: _scene.blade.php 追記（リザルトメニュー2系統 + フェードoverlay）
+- #resultMenu_s1: STAGE 1 CLEAR + Next Stageボタン（緑）
+- #resultMenu_s2: GAME OVER + Game Overボタン（赤）
+- #fadeOverlay（カメラ子要素として後でカメラタグ内に配置）
+- [ ] 完了
+
+### Task T4-10: _scene.blade.php 追記（モデルグループ + 背景 + パーティクル + カメラ）
+- #modelGroup_01 〜 #modelGroup_05（初期非表示）
+- #aSky（src="#sky_s1"初期）
+- パーティクル（particle-normal, tier1〜3, celebration）
+- #my_camera（shoot属性付き）＋ fadeOverlay を子要素として配置
+- a-scene 終了
+- php -l で構文チェック
+- [ ] 完了
+
+### Task T4-11: ルーティング追加
+- routes/web.php に `/terrer4` ルートを追加（terrer3の直後）
+- php -l で構文チェック
+- [ ] 完了
+
+### Task T4-12: 動作確認・修正
+- php -l で全ファイル構文チェック
+- ブラウザで /terrer4 にアクセスして表示確認
+- スタートメニュー表示確認
+- 武器切り替え表示確認
+- ゲーム開始・タイマー動作確認
+- ステージ1→2遷移確認
+- [ ] 完了
+

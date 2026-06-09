@@ -65,7 +65,11 @@ Route::match(['get', 'head'], '/terrer', function () {
 
 Route::match(['get', 'head'], '/terrer3', function () {
     return view('shooting3Dterrer3');
-})->name('terrer.index');
+})->name('terrer3.index');
+
+Route::match(['get', 'head'], '/terrer4', function () {
+    return view('shooting3Dterrer4.index');
+})->name('terrer4.index');
 
 Route::match(['get', 'head'], '/insect', function () {
     return view('shooting3DInsect');
