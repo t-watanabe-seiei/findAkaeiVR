@@ -180,7 +180,7 @@
                  position="0 -2.1 0.01" width="3.5" height="0.65"
                  color="#CC0000" opacity="0.92"
                  material="transparent: true"
-                 class="clickable"></a-plane>
+                 class="clickable collidable"></a-plane>
         <a-text value="&#10005; Game Over"
                 position="0 -2.1 0.02" align="center"
                 color="#FFFFFF" width="4"

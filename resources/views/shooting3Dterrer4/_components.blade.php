@@ -1390,7 +1390,7 @@
                                 window.registerTimeout(() => {
                                     this.respawnModel(modelId, gltfSrc);
                                     delete window.respawningModels[modelId];
-                                }, 5000);
+                                }, 4000);
                             }
                         }, 500);
                     }
@@ -1413,16 +1413,16 @@
         createNewModel: function(modelId, gltfSrc, sceneEl) {
             if (window.gameEnded || !window.gameStarted) return;
             const pats = [
-                { startPos: {x:-3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x: 0,y:0,z:-4}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x: 3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x: 4,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x: 5,y:0,z: 3}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x:-6,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x: 0,y:0,z: 4}, speed:0.15, useCamera:true, waitTime:5000 },
-                { startPos: {x: 3,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x:-4,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:5000 },
-                { startPos: {x:-7,y:0,z: 2}, speed:0.25, useCamera:true, waitTime:5000 },
+                { startPos: {x:-3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 0,y:0,z:-4}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 3,y:0,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 4,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 5,y:0,z: 3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-6,y:0,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 0,y:0,z: 4}, speed:0.15, useCamera:true, waitTime:4000 },
+                { startPos: {x: 3,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-4,y:0,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-7,y:0,z: 2}, speed:0.25, useCamera:true, waitTime:4000 },
             ];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
             const { pattern: p } = window.getAvailablePattern(pats, modelId);
