@@ -263,12 +263,31 @@
         return ball;
     };
 
+    window.resetBallAppearance = function(ball) {
+        if (!ball) return;
+        const mesh = ball.getObject3D('mesh');
+        if (!mesh) return;
+        mesh.traverse(n => {
+            if (!n.isMesh || !n.material) return;
+            const mats = Array.isArray(n.material) ? n.material : [n.material];
+            mats.forEach(mat => {
+                if (!mat) return;
+                if (window.cachedBallEmissiveColor && mat.emissive) mat.emissive = window.cachedBallEmissiveColor;
+                mat.emissiveIntensity = 0.1;
+                mat.opacity = 1;
+                mat.transparent = mat.opacity < 1;
+                mat.needsUpdate = true;
+            });
+        });
+    };
+
     window.acquireBallEntity = function(gunNo, sceneEl) {
         const pool = window.ballPoolByGun[gunNo] || (window.ballPoolByGun[gunNo] = []);
         const ball = pool.length > 0 ? pool.pop() : window.createBallEntity(gunNo);
         if (!ball.parentNode && sceneEl) sceneEl.appendChild(ball);
         ball.removeAttribute('animation__fade');
         ball.removeAttribute('animation__spin');
+        window.resetBallAppearance(ball);
         ball.setAttribute('visible', 'true');
         ball.setAttribute('scale', '0.1 0.1 0.1');
         return ball;
@@ -279,6 +298,7 @@
         const pool = window.ballPoolByGun[gunNo] || (window.ballPoolByGun[gunNo] = []);
         ball.removeAttribute('animation__fade');
         ball.removeAttribute('animation__spin');
+        window.resetBallAppearance(ball);
         ball.setAttribute('visible', 'false');
         ball.setAttribute('position', '0 -999 0');
         ball.setAttribute('scale', '0.0001 0.0001 0.0001');
@@ -958,12 +978,7 @@
         performClose: function() {
             const sceneEl = document.querySelector('a-scene');
             const isVR = sceneEl && sceneEl.is('vr-mode');
-            const finish = () => {
-                this._fadeOverlayOut();
-                window.registerTimeout(() => {
-                    window.__closingInProgress = false;
-                }, 200);
-            };
+            const finish = () => { window.location.reload(); };
 
             if (isVR) {
                 sceneEl.exitVR().then(() => window.registerTimeout(finish, 300)).catch(finish);
