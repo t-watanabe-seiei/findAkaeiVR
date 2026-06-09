@@ -115,16 +115,46 @@
         const selected = window.selectedGun || 1;
 
         if (gun1El) {
-            gun1El.setAttribute('value', `GUN1: ${window.ammoByGun[1]}`);
+            gun1El.setAttribute('value', `${window.ammoByGun[1]}`);
             gun1El.setAttribute('color', selected === 1 ? '#FFFF00' : '#FFFFFF');
         }
         if (gun2El) {
-            gun2El.setAttribute('value', `GUN2: ${window.ammoByGun[2]}`);
+            gun2El.setAttribute('value', `${window.ammoByGun[2]}`);
             gun2El.setAttribute('color', selected === 2 ? '#FFFF00' : '#FFFFFF');
         }
         if (weaponText) {
             weaponText.setAttribute('value', `WEAPON: Gun ${selected} (${window.ammoByGun[selected]})`);
         }
+    };
+
+    window.showAmmoPopup = function(gunNo, amount) {
+        const popupEl = document.getElementById(gunNo === 1 ? 'ammoPopupGun1' : 'ammoPopupGun2');
+        if (!popupEl) return;
+
+        popupEl.removeAttribute('animation__rise');
+        popupEl.removeAttribute('animation__fade');
+        popupEl.setAttribute('value', `+${amount}`);
+        popupEl.setAttribute('position', gunNo === 1 ? '0.3 0.2 0.02' : '0.3 -0.2 0.02');
+        popupEl.setAttribute('visible', 'true');
+        popupEl.setAttribute('opacity', 1);
+        popupEl.setAttribute('animation__rise', {
+            property: 'position',
+            to: gunNo === 1 ? '0.36 0.28 0.02' : '0.36 -0.12 0.02',
+            dur: 5000,
+            easing: 'easeOutQuad'
+        });
+        popupEl.setAttribute('animation__fade', {
+            property: 'text.opacity',
+            from: 1,
+            to: 0,
+            dur: 5000,
+            easing: 'linear'
+        });
+
+        window.registerTimeout(() => {
+            popupEl.setAttribute('visible', 'false');
+            popupEl.setAttribute('text.opacity', 1);
+        }, 5000);
     };
 
     window.tryConsumeAmmo = function(gunNo) {
@@ -140,11 +170,21 @@
         window.updateAmmoDisplay();
     };
 
-    window.spawnAmmoPickupToCamera = function(fromPos, amount) {
+    window.addAmmoToGun = function(gunNo, amount) {
+        if (gunNo !== 1 && gunNo !== 2) return;
+        window.ammoByGun[gunNo] = (window.ammoByGun[gunNo] || 0) + amount;
+        window.updateAmmoDisplay();
+        window.showAmmoPopup(gunNo, amount);
+    };
+
+    window.spawnAmmoPickupToCamera = function(fromPos, amount, targetGunNo) {
         const sceneEl = document.querySelector('a-scene');
         const camEl = sceneEl && sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
+        const targetGun = (targetGunNo === 1 || targetGunNo === 2)
+            ? targetGunNo
+            : (window.selectedGun === 1 ? 2 : 1);
         if (!sceneEl || !camEl || !fromPos) {
-            window.addAmmoToInactiveGun(amount);
+            window.addAmmoToGun(targetGun, amount);
             return;
         }
 
@@ -153,8 +193,7 @@
         target.z -= 0.5;
 
         const pickup = document.createElement('a-entity');
-        const inactiveGun = window.selectedGun === 1 ? 2 : 1;
-        pickup.setAttribute('gltf-model', window.GUN_CONFIG[inactiveGun].ball);
+        pickup.setAttribute('gltf-model', window.GUN_CONFIG[targetGun].ball);
         pickup.setAttribute('position', `${fromPos.x} ${fromPos.y + 1.0} ${fromPos.z}`);
         pickup.setAttribute('scale', '0.11 0.11 0.11');
         pickup.setAttribute('animation__spin', { property: 'rotation', to: '0 720 0', dur: 900, easing: 'linear' });
@@ -169,7 +208,7 @@
         const grantAmmo = () => {
             if (granted) return;
             granted = true;
-            window.addAmmoToInactiveGun(amount);
+            window.addAmmoToGun(targetGun, amount);
             if (pickup.parentNode) pickup.parentNode.removeChild(pickup);
         };
 
@@ -1199,10 +1238,16 @@
                 if (window.comboCount > window.maxComboCount) window.maxComboCount = window.comboCount;
 
                 let ammoReward = 0;
-                if (gltfSrc === '#model_s1_01') ammoReward = 5;
-                else if (gltfSrc === '#model_s2_01') ammoReward = 10;
+                const rewardTargetGun = window.selectedGun === 1 ? 2 : 1;
+
+                // gltf-modelの実体値差異を避けるため、ステージ + modelGroup_01で判定する。
+                if (modelId === 'modelGroup_01' && window.currentStage === 1) ammoReward = 5;
+                else if (modelId === 'modelGroup_01' && window.currentStage === 2) ammoReward = 10;
+                else if (typeof gltfSrc === 'string' && gltfSrc.includes('01_optimized.glb')) ammoReward = 5;
+                else if (typeof gltfSrc === 'string' && gltfSrc.includes('06_optimized.glb')) ammoReward = 10;
+
                 if (ammoReward > 0) {
-                    window.spawnAmmoPickupToCamera(modelGroup.object3D.position.clone(), ammoReward);
+                    window.spawnAmmoPickupToCamera(modelGroup.object3D.position.clone(), ammoReward, rewardTargetGun);
                 }
 
                 const cst = document.getElementById('currentScore');

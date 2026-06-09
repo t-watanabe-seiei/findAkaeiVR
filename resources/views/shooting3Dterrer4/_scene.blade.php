@@ -221,10 +221,12 @@
                         <a-plane position="0 0 0" width="2.15" height="0.9" color="#000000" opacity="0.45" material="transparent: true"></a-plane>
 
                         <a-image src="#pokeball_icon_05" position="-0.73 0.2 0.01" width="0.25" height="0.25"></a-image>
-                        <a-text id="ammoTextGun1" value="GUN1: 20" position="-0.3 0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+                        <a-text id="ammoTextGun1" value="20" position="-0.3 0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+                        <a-text id="ammoPopupGun1" value="" position="0.3 0.2 0.02" align="left" color="#7CFF7C" width="1.8" font="roboto" shader="msdf" visible="false"></a-text>
 
                         <a-image src="#pokeball_icon_06" position="-0.73 -0.2 0.01" width="0.25" height="0.25"></a-image>
-                        <a-text id="ammoTextGun2" value="GUN2: 20" position="-0.3 -0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+                        <a-text id="ammoTextGun2" value="20" position="-0.3 -0.2 0.01" align="left" color="#FFFFFF" width="2.1" font="roboto" shader="msdf"></a-text>
+                        <a-text id="ammoPopupGun2" value="" position="0.3 -0.2 0.02" align="left" color="#7CFF7C" width="1.8" font="roboto" shader="msdf" visible="false"></a-text>
                 </a-entity>
 
         <a-entity id="fadeOverlay" visible="false">
