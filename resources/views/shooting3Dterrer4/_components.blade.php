@@ -690,7 +690,7 @@
                             (window.lastSavedScoreId && item.id === window.lastSavedScoreId) ||
                             (Math.abs(item.score - window.totalScore) < 0.01 && item.name === 'noName')
                         );
-                        if (isTop5) this.celebrateTop5();
+                        if (isTop5 && window.currentStage === 2) this.celebrateTop5();
                     }
                 })
                 .catch(e => console.error('Ranking fetch error:', e));
