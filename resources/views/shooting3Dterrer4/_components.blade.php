@@ -178,49 +178,10 @@
     };
 
     window.spawnAmmoPickupToCamera = function(fromPos, amount, targetGunNo) {
-        const sceneEl = document.querySelector('a-scene');
-        const camEl = sceneEl && sceneEl.camera ? sceneEl.camera.el : document.querySelector('[camera]');
         const targetGun = (targetGunNo === 1 || targetGunNo === 2)
             ? targetGunNo
             : (window.selectedGun === 1 ? 2 : 1);
-        if (!sceneEl || !camEl || !fromPos) {
-            window.addAmmoToGun(targetGun, amount);
-            return;
-        }
-
-        const target = new THREE.Vector3();
-        camEl.object3D.getWorldPosition(target);
-        target.z -= 0.5;
-
-        const pickup = document.createElement('a-entity');
-        pickup.setAttribute('gltf-model', window.GUN_CONFIG[targetGun].ball);
-        pickup.setAttribute('position', `${fromPos.x} ${fromPos.y + 1.0} ${fromPos.z}`);
-        pickup.setAttribute('scale', '0.11 0.11 0.11');
-        pickup.setAttribute('animation__spin', { property: 'rotation', to: '0 720 0', dur: 900, easing: 'linear' });
-        pickup.setAttribute('animation__toCamera', {
-            property: 'position',
-            to: `${target.x} ${target.y} ${target.z}`,
-            dur: 900,
-            easing: 'easeInQuad'
-        });
-
-        let granted = false;
-        const grantAmmo = () => {
-            if (granted) return;
-            granted = true;
-            window.addAmmoToGun(targetGun, amount);
-            if (pickup.parentNode) pickup.parentNode.removeChild(pickup);
-        };
-
-        pickup.addEventListener('animationcomplete__toCamera', grantAmmo, { once: true });
-        pickup.addEventListener('animationcomplete', (evt) => {
-            if (!evt || !evt.detail || evt.detail.name === 'animation__toCamera') {
-                grantAmmo();
-            }
-        });
-        setTimeout(grantAmmo, 1200);
-
-        sceneEl.appendChild(pickup);
+        window.addAmmoToGun(targetGun, amount);
     };
 
     window.stopAllParticles = function() {
@@ -1286,7 +1247,7 @@
                 else if (typeof gltfSrc === 'string' && gltfSrc.includes('06_optimized.glb')) ammoReward = 10;
 
                 if (ammoReward > 0) {
-                    window.spawnAmmoPickupToCamera(modelGroup.object3D.position.clone(), ammoReward, rewardTargetGun);
+                    window.addAmmoToGun(rewardTargetGun, ammoReward);
                 }
 
                 const cst = document.getElementById('currentScore');
