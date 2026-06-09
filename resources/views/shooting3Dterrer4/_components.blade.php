@@ -165,12 +165,40 @@
             easing: 'easeInQuad'
         });
 
-        pickup.addEventListener('animationcomplete__toCamera', () => {
+        let granted = false;
+        const grantAmmo = () => {
+            if (granted) return;
+            granted = true;
             window.addAmmoToInactiveGun(amount);
             if (pickup.parentNode) pickup.parentNode.removeChild(pickup);
-        }, { once: true });
+        };
+
+        pickup.addEventListener('animationcomplete__toCamera', grantAmmo, { once: true });
+        pickup.addEventListener('animationcomplete', (evt) => {
+            if (!evt || !evt.detail || evt.detail.name === 'animation__toCamera') {
+                grantAmmo();
+            }
+        });
+        setTimeout(grantAmmo, 1200);
 
         sceneEl.appendChild(pickup);
+    };
+
+    window.stopAllParticles = function() {
+        const ids = ['particle-normal', 'particle-tier1', 'particle-tier2', 'particle-tier3', 'particle-celebration'];
+        ids.forEach(id => {
+            const root = document.getElementById(id);
+            if (!root) return;
+
+            if (root.components && root.components['particle-system']) {
+                root.components['particle-system'].stopParticles();
+            }
+            root.querySelectorAll('[particle-system]').forEach(node => {
+                const ps = node.components && node.components['particle-system'];
+                if (ps) ps.stopParticles();
+            });
+            root.setAttribute('visible', 'false');
+        });
     };
 
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
@@ -576,6 +604,10 @@
             window.registerTimeout(() => {
                 resultMenu.setAttribute('animation', { property: 'scale', to: '1 1 1', dur: 500, easing: 'easeOutBack' });
             }, 50);
+
+            if (stg === 1) {
+                window.registerTimeout(() => window.stopAllParticles(), 5000);
+            }
 
             this.saveScoreToDatabase(window.totalScore);
         },

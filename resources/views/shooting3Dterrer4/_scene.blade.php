@@ -217,7 +217,7 @@
 
     <!-- ─ カメラ ─ -->
     <a-camera id="my_camera" shoot>
-                <a-entity id="ammoHud" position="0.62 -0.38 -1.1" scale="0.28 0.28 0.28">
+                <a-entity id="ammoHud" position="0.62 -0.3 -1.1" scale="0.38 0.38 0.38">
                         <a-plane position="0 0 0" width="2.15" height="0.9" color="#000000" opacity="0.45" material="transparent: true"></a-plane>
 
                         <a-image src="#pokeball_icon_05" position="-0.73 0.2 0.01" width="0.25" height="0.25"></a-image>
