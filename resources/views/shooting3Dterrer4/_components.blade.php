@@ -88,7 +88,14 @@
     window.usedPatterns = {};
 
     window.registerTimeout = function(callback, delay) {
-        const id = setTimeout(callback, delay);
+        const id = setTimeout(() => {
+            try {
+                callback();
+            } finally {
+                const index = window.activeTimers.indexOf(id);
+                if (index !== -1) window.activeTimers.splice(index, 1);
+            }
+        }, delay);
         window.activeTimers.push(id);
         return id;
     };
