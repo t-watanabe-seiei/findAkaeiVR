@@ -240,6 +240,35 @@
         });
     };
 
+    window.disposeEntityResources = function(entity) {
+        if (!entity || !entity.object3D) return;
+        entity.object3D.traverse(node => {
+            if (node.geometry && typeof node.geometry.dispose === 'function') {
+                node.geometry.dispose();
+            }
+            if (!node.material) return;
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach(mat => {
+                if (!mat) return;
+                ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap', 'envMap'].forEach(key => {
+                    if (mat[key] && typeof mat[key].dispose === 'function') mat[key].dispose();
+                });
+                if (typeof mat.dispose === 'function') mat.dispose();
+            });
+        });
+    };
+
+    window.releaseModelsFromScene = function(modelIds, sceneEl) {
+        if (!sceneEl || !modelIds || !modelIds.length) return;
+        modelIds.forEach(id => {
+            sceneEl.querySelectorAll(`#${id}`).forEach(model => {
+                if (model.components && model.components['approach-camera']) model.removeAttribute('approach-camera');
+                window.disposeEntityResources(model);
+                if (model.parentNode) model.parentNode.removeChild(model);
+            });
+        });
+    };
+
     window.fadeOutAndStopAudio = function(audioEl, duration = 5000, onComplete = null) {
         if (!audioEl) {
             if (typeof onComplete === 'function') onComplete();
@@ -500,6 +529,23 @@
                     const timerDisplay = document.getElementById('timerDisplay');
                     if (timerDisplay) timerDisplay.setAttribute('visible', false);
 
+                    if (window.currentStage === 1) {
+                        window.registerTimeout(() => {
+                            const sceneEl = document.querySelector('a-scene');
+                            window.releaseModelsFromScene(
+                                ['modelGroup_01','modelGroup_02','modelGroup_03','modelGroup_04','modelGroup_05','modelGroup_boss'],
+                                sceneEl
+                            );
+
+                            const cam = document.getElementById('my_camera');
+                            if (cam && cam.components && cam.components['shoot']) {
+                                cam.components['shoot'].modelsList = null;
+                                cam.components['shoot'].modelsCache = {};
+                                cam.components['shoot'].hitBoxCache = {};
+                            }
+                        }, 2100);
+                    }
+
                     window.registerTimeout(() => {
                         const menuId = window.STAGE_CONFIG[window.currentStage].resultMenuId;
                         const resultMenu = document.getElementById(menuId);
@@ -644,9 +690,7 @@
                 resultMenu.setAttribute('animation', { property: 'scale', to: '1 1 1', dur: 500, easing: 'easeOutBack' });
             }, 50);
 
-            if (stg === 1) {
-                window.registerTimeout(() => window.stopAllParticles(), 5000);
-            }
+            window.registerTimeout(() => window.stopAllParticles(), 5000);
 
             this.saveScoreToDatabase(window.totalScore);
         },
@@ -791,12 +835,7 @@
 
                 // 全モデル削除
                 const sceneEl = document.querySelector('a-scene');
-                ['modelGroup_01','modelGroup_02','modelGroup_03','modelGroup_04','modelGroup_05','modelGroup_boss'].forEach(id => {
-                    sceneEl.querySelectorAll(`#${id}`).forEach(m => {
-                        if (m.components && m.components['approach-camera']) m.removeAttribute('approach-camera');
-                        if (m.parentNode) m.parentNode.removeChild(m);
-                    });
-                });
+                window.releaseModelsFromScene(['modelGroup_01','modelGroup_02','modelGroup_03','modelGroup_04','modelGroup_05','modelGroup_boss'], sceneEl);
 
                 // shootキャッシュクリア
                 const cam = document.getElementById('my_camera');
