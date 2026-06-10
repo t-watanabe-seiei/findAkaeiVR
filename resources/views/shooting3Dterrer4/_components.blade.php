@@ -15,7 +15,7 @@
     window.lastBallHit = false;
     window.bossSpawned = false;
     window.respawningModels = {};
-    window.ammoByGun = { 1: 20, 2: 20 };
+    window.ammoByGun = { 1: 30, 2: 30 };
 
     // ステージ・武器管理
     window.currentStage = 1;
@@ -666,7 +666,7 @@
             ];
             const colors = ['blue','green','red','yellow','cyan'];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
-            const modelsToSpawn = window.currentStage === 2 ? cfg.models.slice(0, 4) : cfg.models;
+            const modelsToSpawn = window.currentStage === 2 ? cfg.models.slice(0, 5) : cfg.models;
 
             modelsToSpawn.forEach((m, i) => {
                 window.registerTimeout(() => {
