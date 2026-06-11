@@ -43,7 +43,7 @@
             resultTitle: 'STAGE 1 CLEAR',
         },
         2: {
-            timeLimit: 80,
+            timeLimit: 85,
             bgmId: 'sound_bgm_s2',
             skyId: 'sky_s2',
             models: [

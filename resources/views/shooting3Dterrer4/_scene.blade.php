@@ -11,7 +11,7 @@
         <a-asset-item id="model_s1_03" src="{{ asset('cg/20260613/03_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s1_04" src="{{ asset('cg/20260613/04_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s1_05" src="{{ asset('cg/20260613/05_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_boss_s1" src="{{ asset('cg/zombie_morishige4.glb') }}"></a-asset-item>
+        <a-asset-item id="model_boss_s1" src="{{ asset('cg/20260613/boss001_optimized.glb') }}"></a-asset-item>
 
         <!-- ステージ2 ゾンビモデル -->
         <a-asset-item id="model_s2_01" src="{{ asset('cg/20260613/06_optimized.glb') }}"></a-asset-item>
@@ -19,7 +19,7 @@
         <a-asset-item id="model_s2_03" src="{{ asset('cg/20260613/08_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s2_04" src="{{ asset('cg/20260613/09_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s2_05" src="{{ asset('cg/20260613/10_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_boss_s2" src="{{ asset('cg/zombie_fujii.glb') }}"></a-asset-item>
+        <a-asset-item id="model_boss_s2" src="{{ asset('cg/20260613/boss002_optimized.glb') }}"></a-asset-item>
 
         <!-- サウンド -->
         <audio id="sound_hit"          src="{{ asset('cg/sound_hit02.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
@@ -30,8 +30,8 @@
         <audio id="sound_zombie_die"   src="{{ asset('cg/sound_zombie_die.mp3') }}"      preload="auto" crossorigin="anonymous"></audio>
 
         <!-- 背景画像 -->
-        <img id="sky_s1" src="{{ asset('cg/R0010143a.JPG') }}" crossorigin="anonymous">
-        <img id="sky_s2" src="{{ asset('cg/R0010131a.JPG') }}" crossorigin="anonymous">
+        <img id="sky_s1" src="{{ asset('cg/R0010191a.JPG') }}" crossorigin="anonymous">
+        <img id="sky_s2" src="{{ asset('cg/R0010034a.JPG') }}" crossorigin="anonymous">
         <img id="pokeball_icon_05" src="{{ asset('cg/pokeball_icon05.png') }}" crossorigin="anonymous">
         <img id="pokeball_icon_06" src="{{ asset('cg/pokeball_icon06.png') }}" crossorigin="anonymous">
     </a-assets>
