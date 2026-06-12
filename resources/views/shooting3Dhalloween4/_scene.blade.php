@@ -6,19 +6,19 @@
     <!-- ─ アセット ─ -->
     <a-assets>
         <!-- ステージ1 ゾンビモデル -->
-        <a-asset-item id="model_s1_01" src="{{ asset('cg/20260613/01_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s1_02" src="{{ asset('cg/20260613/02_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s1_03" src="{{ asset('cg/20260613/03_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s1_04" src="{{ asset('cg/20260613/04_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s1_05" src="{{ asset('cg/20260613/05_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s1_01" src="{{ asset('cg/20260613/11_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s1_02" src="{{ asset('cg/20260613/12_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s1_03" src="{{ asset('cg/20260613/13_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s1_04" src="{{ asset('cg/20260613/14_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s1_05" src="{{ asset('cg/20260613/15_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_boss_s1" src="{{ asset('cg/20260613/boss001_optimized.glb') }}"></a-asset-item>
 
         <!-- ステージ2 ゾンビモデル -->
-        <a-asset-item id="model_s2_01" src="{{ asset('cg/20260613/06_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s2_02" src="{{ asset('cg/20260613/07_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s2_03" src="{{ asset('cg/20260613/08_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s2_04" src="{{ asset('cg/20260613/09_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_s2_05" src="{{ asset('cg/20260613/10_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s2_01" src="{{ asset('cg/20260613/16_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s2_02" src="{{ asset('cg/20260613/17_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s2_03" src="{{ asset('cg/20260613/18_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s2_04" src="{{ asset('cg/20260613/19_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_s2_05" src="{{ asset('cg/20260613/20_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_boss_s2" src="{{ asset('cg/20260613/boss002_optimized.glb') }}"></a-asset-item>
 
         <!-- サウンド -->
