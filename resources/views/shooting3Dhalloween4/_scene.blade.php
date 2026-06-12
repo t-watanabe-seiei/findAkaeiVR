@@ -11,7 +11,7 @@
         <a-asset-item id="model_s1_03" src="{{ asset('cg/20260613/13_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s1_04" src="{{ asset('cg/20260613/14_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s1_05" src="{{ asset('cg/20260613/15_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_boss_s1" src="{{ asset('cg/20260613/boss001_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_boss_s1" src="{{ asset('cg/20260613/boss101_optimized.glb') }}"></a-asset-item>
 
         <!-- ステージ2 ゾンビモデル -->
         <a-asset-item id="model_s2_01" src="{{ asset('cg/20260613/16_optimized.glb') }}"></a-asset-item>
@@ -19,7 +19,7 @@
         <a-asset-item id="model_s2_03" src="{{ asset('cg/20260613/18_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s2_04" src="{{ asset('cg/20260613/19_optimized.glb') }}"></a-asset-item>
         <a-asset-item id="model_s2_05" src="{{ asset('cg/20260613/20_optimized.glb') }}"></a-asset-item>
-        <a-asset-item id="model_boss_s2" src="{{ asset('cg/20260613/boss002_optimized.glb') }}"></a-asset-item>
+        <a-asset-item id="model_boss_s2" src="{{ asset('cg/20260613/boss102_optimized.glb') }}"></a-asset-item>
 
         <!-- サウンド -->
         <audio id="sound_hit"          src="{{ asset('cg/sound_hit02.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
