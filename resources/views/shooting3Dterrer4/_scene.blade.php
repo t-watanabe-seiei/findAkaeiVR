@@ -30,7 +30,7 @@
         <audio id="sound_zombie_die"   src="{{ asset('cg/sound_zombie_die.mp3') }}"      preload="auto" crossorigin="anonymous"></audio>
 
         <!-- 背景画像 -->
-        <img id="sky_s1" src="{{ asset('cg/R0010234a.JPG') }}" crossorigin="anonymous">
+        <img id="sky_s1" src="{{ asset('cg/R0010239a.JPG') }}" crossorigin="anonymous">
         <img id="sky_s2" src="{{ asset('cg/R0010238a.JPG') }}" crossorigin="anonymous">
         <img id="pokeball_icon_05" src="{{ asset('cg/pokeball_icon05.png') }}" crossorigin="anonymous">
         <img id="pokeball_icon_06" src="{{ asset('cg/pokeball_icon06.png') }}" crossorigin="anonymous">
