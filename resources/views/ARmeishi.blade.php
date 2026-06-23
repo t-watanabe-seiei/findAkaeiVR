@@ -61,62 +61,6 @@
             font-weight: 500;
         }
         
-        /* フラッシュエフェクト */
-        #flash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 9998;
-            -webkit-transition: opacity 0.1s ease-out;
-            -moz-transition: opacity 0.1s ease-out;
-            -o-transition: opacity 0.1s ease-out;
-            transition: opacity 0.1s ease-out;
-        }
-        
-        #flash.active {
-            opacity: 0.8;
-        }
-        
-        /* ヒットパーティクル */
-        @-webkit-keyframes hitParticle {
-            0% {
-                -webkit-transform: translate(0, 0) scale(1);
-                transform: translate(0, 0) scale(1);
-                opacity: 1;
-            }
-            100% {
-                -webkit-transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
-                transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
-                opacity: 0;
-            }
-        }
-        @keyframes hitParticle {
-            0% {
-                -webkit-transform: translate(0, 0) scale(1);
-                transform: translate(0, 0) scale(1);
-                opacity: 1;
-            }
-            100% {
-                -webkit-transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
-                transform: translate(calc(var(--random-x) * 100px), calc(var(--random-y) * 1px)) scale(0.5);
-                opacity: 0;
-            }
-        }
-        
-        .hit-particle {
-            position: fixed;
-            font-size: 30px;
-            pointer-events: none;
-            z-index: 10000;
-            -webkit-animation: hitParticle 0.8s ease-out forwards;
-            animation: hitParticle 0.8s ease-out forwards;
-        }
-        
         /* A-Frameシーン */
         a-scene {
             position: fixed;
@@ -154,20 +98,12 @@
             object-fit: contain;
         }
         
-        /* Pokeball HUD element styling */
-        #holding-pokeball {
-            cursor: pointer;
-            touch-action: none;
-        }
     </style>
 </head>
 <body>
     <div class="arjs-loader">
         <div>カメラを起動中...</div>
     </div>
-    
-    <!-- フラッシュエフェクト -->
-    <div id="flash"></div>
     
     <a-scene
         embedded
@@ -176,19 +112,7 @@
         renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: lowp; powerPreference: low-power; colorManagement: false;"
         ar-aspect-fix>
         
-        <a-entity camera="near: 0.2; far: 800; fov: 65;">
-            <!-- 手持ちのポケボール (HUD) - クリック可能 -->
-            <a-entity 
-                id="holding-pokeball"
-                gltf-model="{{ asset('cg/poke_ball_05.glb') }}"
-                position="0 -0.24 -0.5"
-                scale="0.095 0.075 0.075"
-                rotation="0 0 0"
-                visible="true"
-                class="clickable"
-                pokeball-aspect-fix>
-            </a-entity>
-        </a-entity>
+        <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
         
         <!-- ライト -->
         <a-light type="ambient" intensity="1.5"></a-light>
@@ -277,44 +201,7 @@
             }
         });
         
-        // pokeball-aspect-fixコンポーネント: ポケボールを正円に保つ
-        AFRAME.registerComponent('pokeball-aspect-fix', {
-            init: function() {
-                this.updateAspect = this.updateAspect.bind(this);
-                this.updateAspect();
-                window.addEventListener('resize', this.updateAspect);
-            },
-            
-            updateAspect: function() {
-                // 画面のアスペクト比を取得
-                const aspect = window.innerWidth / window.innerHeight;
-                
-                // 基本スケール
-                const baseScale = 0.075;
-                
-                // アスペクト比が1より小さい（縦長画面）場合、横方向を補正
-                let scaleX, scaleY, scaleZ;
-                if (aspect < 1) {
-                    // 縦長画面の場合、横方向を拡大して正円に
-                    scaleX = baseScale / aspect;
-                    scaleY = baseScale;
-                    scaleZ = baseScale;
-                } else {
-                    // 横長画面の場合、そのまま
-                    scaleX = baseScale;
-                    scaleY = baseScale;
-                    scaleZ = baseScale;
-                }
-                
-                this.el.setAttribute('scale', `${scaleX} ${scaleY} ${scaleZ}`);
-            },
-            
-            remove: function() {
-                window.removeEventListener('resize', this.updateAspect);
-            }
-        });
-        
-        // meishi-animationコンポーネント: anime01ループ再生、ヒット時にanime02再生→2秒停止→anime01に戻る
+        // meishi-animationコンポーネント: anime01ループ再生、ダブルタップでanime02再生→anime01に戻る
         AFRAME.registerComponent('meishi-animation', {
             schema: {
                 clip: { type: 'string', default: 'anime01' }
@@ -325,6 +212,7 @@
                 this.actions = {};
                 this.currentAction = null;
                 this.isPlayingHitAnimation = false;
+                this.shouldPlayIdle = false;
                 this.model = null;
                 
                 this.el.addEventListener('model-loaded', () => {
@@ -347,25 +235,44 @@
                         console.log('Animation clip found:', clip.name);
                     });
                     
-                    // anime01をループ再生（180度回転）
-                    if (this.actions['anime01']) {
-                        this.actions['anime01'].setLoop(THREE.LoopRepeat);
-                        this.actions['anime01'].play();
-                        this.currentAction = this.actions['anime01'];
-                        this.setRotationForAnime01();
-                        console.log('Playing anime01 in loop with 180° rotation');
+                    if (this.shouldPlayIdle) {
+                        this.playIdleAnimation();
                     }
                 }
             },
             
             setRotationForAnime01: function() {
-                // anime01用の回転: Y軸180度
                 this.el.setAttribute('rotation', '0 180 0');
             },
             
             setRotationForAnime02: function() {
-                // anime02用の回転: 元の向き
                 this.el.setAttribute('rotation', '0 0 0');
+            },
+            
+            playIdleAnimation: function() {
+                this.shouldPlayIdle = true;
+                if (this.isPlayingHitAnimation) return;
+                if (!this.actions['anime01']) return;
+                
+                if (this.currentAction && this.currentAction !== this.actions['anime01']) {
+                    this.currentAction.stop();
+                }
+
+                const idle = this.actions['anime01'];
+                idle.setLoop(THREE.LoopRepeat);
+                idle.clampWhenFinished = false;
+                idle.reset();
+                idle.play();
+                this.currentAction = idle;
+                this.setRotationForAnime01();
+                console.log('Playing anime01 in loop with 180° rotation');
+            },
+            
+            stopIdleAnimation: function() {
+                this.shouldPlayIdle = false;
+                if (this.actions['anime01']) {
+                    this.actions['anime01'].stop();
+                }
             },
             
             playHitAnimation: function() {
@@ -375,46 +282,34 @@
                 this.isPlayingHitAnimation = true;
                 
                 return new Promise((resolve) => {
-                    // anime01を停止
                     if (this.actions['anime01']) {
                         this.actions['anime01'].stop();
                     }
                     
-                    // anime02を1回だけ再生（元の向きに回転）
                     this.setRotationForAnime02();
                     const anime02 = this.actions['anime02'];
                     anime02.setLoop(THREE.LoopOnce);
-                    anime02.clampWhenFinished = true; // 最終フレームで停止
+                    anime02.clampWhenFinished = true;
                     anime02.reset();
                     anime02.play();
                     this.currentAction = anime02;
                     
                     console.log('Playing anime02 (hit animation) with 0° rotation');
                     
-                    // anime02の長さを取得
                     const duration = anime02.getClip().duration;
                     
-                    // anime02再生完了後、1秒停止してからanime01に戻る
                     setTimeout(() => {
                         console.log('anime02 finished, waiting 1 seconds...');
                         
                         setTimeout(() => {
-                            console.log('Returning to anime01 loop with 180° rotation');
-                            
-                            // anime02を停止
+                            console.log('anime02 completed, returning to anime01 if marker visible');
                             anime02.stop();
-                            
-                            // anime01を再開（180度回転に戻す）
-                            if (this.actions['anime01']) {
-                                this.setRotationForAnime01();
-                                this.actions['anime01'].reset();
-                                this.actions['anime01'].play();
-                                this.currentAction = this.actions['anime01'];
-                            }
-                            
                             this.isPlayingHitAnimation = false;
+                            if (this.shouldPlayIdle) {
+                                this.playIdleAnimation();
+                            }
                             resolve();
-                        }, 1000); // 1秒停止
+                        }, 1000);
                     }, duration * 1000);
                 });
             },
@@ -465,48 +360,11 @@
             }
         });
         
-        // pokeball-throwableコンポーネント: ポケボールの物理挙動
-        AFRAME.registerComponent('pokeball-throwable', {
-            init: function() {
-                this.velocity = new THREE.Vector3();
-                this.gravity = -3.5; // 重力を弱く（元: -9.8）でふわっとした放物線に
-                this.isThrown = false;
-            },
-            
-            throw: function(direction, speed) {
-                // 上向きの成分を増やして放物線を描くように
-                const upwardBoost = new THREE.Vector3(0, 0.4, 0); // 上向きのブースト
-                const adjustedDirection = direction.clone().add(upwardBoost).normalize();
-                this.velocity.copy(adjustedDirection).multiplyScalar(speed);
-                this.isThrown = true;
-            },
-            
-            tick: function(time, deltaTime) {
-                if (!this.isThrown) return;
-                
-                const dt = deltaTime / 1000;
-                
-                // 重力を適用（ふわっとした動き）
-                this.velocity.y += this.gravity * dt;
-                
-                // 位置を更新
-                const position = this.el.object3D.position;
-                position.add(this.velocity.clone().multiplyScalar(dt));
-                
-                // 地面に落ちたら削除
-                if (position.y < -5) {
-                    this.el.parentNode.removeChild(this.el);
-                }
-            }
-        });
-        
         // ========== メインロジック ==========
         
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             const catModel = document.querySelector('#cat-model');
-            const holdingPokeball = document.querySelector('#holding-pokeball');
-            const flash = document.getElementById('flash');
             const marker = document.querySelector('#pattern-meishi-marker');
             
             let isMarkerVisible = false;
@@ -522,184 +380,129 @@
                 isMarkerVisible = false;
             });
             
-            // Pokeballクリック時の処理（タッチとクリック両方対応）
-            function handlePokeballThrow(e) {
-                if (!isMarkerVisible || !catModel) {
-                    console.log('Cannot throw: marker not visible or model not found');
-                    return;
-                }
-                
-                if (e.cancelable) e.preventDefault();
-                if (e.type === 'touchstart') e.stopPropagation();
-                
-                throwPokeballToModel();
-            }
-            
-            // タッチイベントを優先的に追加（モバイル対応）
-            holdingPokeball.addEventListener('touchstart', handlePokeballThrow, { passive: false });
-            holdingPokeball.addEventListener('click', handlePokeballThrow);
-            
-            // タッチ処理を確実にするためにシーンレベルでもハンドル
             let lastTapTime = 0;
-            scene.addEventListener('touchstart', function(e) {
-                if (!e.touches || e.touches.length !== 1) return;
-                
-                const now = Date.now();
-                // ダブルタップ防止（300ms以内の連続タップは無視）
-                if (now - lastTapTime < 300) return;
-                lastTapTime = now;
-                
-                // タッチ位置がPokeball HUD付近かチェック
-                const touch = e.touches[0];
-                const screenX = touch.clientX / window.innerWidth;
-                const screenY = touch.clientY / window.innerHeight;
-                
-                // 画面下部中央付近（Pokeball HUDの位置）
-                if (screenX > 0.3 && screenX < 0.7 && screenY > 0.6 && screenY < 0.95) {
-                    if (!isMarkerVisible || !catModel) {
-                        console.log('Cannot throw: marker not visible');
-                        return;
+            let tapTimeout = null;
+            let isPinching = false;
+            let pinchStartDistance = 0;
+            let pinchStartScale = new THREE.Vector3(1, 1, 1);
+
+            function getTouchDistance(touchA, touchB) {
+                const dx = touchA.clientX - touchB.clientX;
+                const dy = touchA.clientY - touchB.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            function getCurrentModelScale() {
+                const scale = new THREE.Vector3(1, 1, 1);
+                if (!catModel) return scale;
+
+                const currentScale = catModel.getAttribute('scale');
+                if (currentScale) {
+                    const parts = currentScale.split(' ').map(Number);
+                    if (parts.length === 3 && parts.every((n) => !Number.isNaN(n))) {
+                        scale.set(parts[0], parts[1], parts[2]);
                     }
-                    
+                }
+                return scale;
+            }
+
+            function setModelScale(scaleVector) {
+                if (!catModel) return;
+                const clampedX = Math.max(0.5, Math.min(2.5, scaleVector.x));
+                const clampedY = Math.max(0.5, Math.min(2.5, scaleVector.y));
+                const clampedZ = Math.max(0.5, Math.min(2.5, scaleVector.z));
+                catModel.setAttribute('scale', `${clampedX} ${clampedY} ${clampedZ}`);
+            }
+
+            function triggerDoubleTap() {
+                if (!isMarkerVisible || !catModel || !catModel.components['meishi-animation']) return;
+                catModel.components['meishi-animation'].playHitAnimation();
+            }
+
+            scene.addEventListener('touchstart', function(e) {
+                if (e.touches && e.touches.length === 2) {
+                    isPinching = true;
+                    pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                    pinchStartScale = getCurrentModelScale();
                     if (e.cancelable) e.preventDefault();
-                    e.stopPropagation();
-                    throwPokeballToModel();
+
+                    if (tapTimeout) {
+                        clearTimeout(tapTimeout);
+                        tapTimeout = null;
+                        lastTapTime = 0;
+                    }
                 }
             }, { passive: false });
-            
-            // モデル方向にPokeballを投げる
-            function throwPokeballToModel() {
-                const camera = scene.camera;
-                if (!camera) return;
-                
-                // カメラの位置
-                const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-                
-                // モデルの位置
-                const modelPos = catModel.object3D.getWorldPosition(new THREE.Vector3());
-                
-                // カメラからモデルへの方向ベクトル
-                const direction = new THREE.Vector3().subVectors(modelPos, cameraPos).normalize();
-                
-                console.log('Throwing pokeball to model. Camera:', cameraPos, 'Model:', modelPos, 'Direction:', direction);
-                
-                // Pokeballを生成
-                const pokeball = document.createElement('a-entity');
-                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_05.glb") }}');
-                pokeball.setAttribute('scale', '0.15 0.15 0.15');
-                pokeball.setAttribute('pokeball-throwable', '');
-                pokeball.setAttribute('position', `${cameraPos.x} ${cameraPos.y} ${cameraPos.z}`);
-                
-                scene.appendChild(pokeball);
-                
-                // ボールが読み込まれたら投げる
-                pokeball.addEventListener('loaded', function() {
-                    // マテリアル設定
-                    const model = pokeball.getObject3D('mesh');
-                    if (model) {
-                        model.traverse(function(node) {
-                            if (node.isMesh && node.material) {
-                                const materials = Array.isArray(node.material) ? node.material : [node.material];
-                                materials.forEach(mat => {
-                                    mat.side = THREE.DoubleSide;
-                                    mat.depthWrite = true;
-                                    mat.depthTest = true;
-                                    mat.needsUpdate = true;
-                                });
-                            }
-                        });
-                    }
-                    
-                    const speed = 8; // スピードを遅く（元: 15）でふわっとした軌道に
-                    pokeball.components['pokeball-throwable'].throw(direction, speed);
-                    
-                    // 当たり判定チェック
-                    let hasHit = false;
-                    const checkInterval = setInterval(() => {
-                        if (hasHit) return;
-                        
-                        const ballPos = pokeball.object3D.getWorldPosition(new THREE.Vector3());
-                        
-                        // ヒットボックスとの衝突判定
-                        if (catModel.components.hitbox && catModel.components.hitbox.checkCollision(ballPos)) {
-                            hasHit = true;
-                            console.log('✓ Hit!');
-                            
-                            // ヒットエフェクト
-                            showHitEffect(ballPos);
-                            
-                            // anime02を再生
-                            if (catModel.components['meishi-animation']) {
-                                catModel.components['meishi-animation'].playHitAnimation();
-                            }
-                            
-                            // ボールを削除
-                            pokeball.parentNode.removeChild(pokeball);
-                        }
-                    }, 16);
-                    
-                    // 8秒後にチェック終了
-                    setTimeout(() => {
-                        clearInterval(checkInterval);
-                        // ボールがまだ存在していたら削除
-                        if (pokeball.parentNode) {
-                            pokeball.parentNode.removeChild(pokeball);
-                        }
-                    }, 8000);
-                });
+
+            scene.addEventListener('touchmove', function(e) {
+                if (!isPinching || !e.touches || e.touches.length !== 2) return;
+                if (e.cancelable) e.preventDefault();
+
+                const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                if (pinchStartDistance <= 0) return;
+
+                const scaleRatio = currentDistance / pinchStartDistance;
+                const targetScale = pinchStartScale.clone().multiplyScalar(scaleRatio);
+                setModelScale(targetScale);
+            }, { passive: false });
+
+            function resetPinch() {
+                isPinching = false;
+                pinchStartDistance = 0;
             }
-            
-            // ヒットエフェクトを表示
-            function showHitEffect(ballPos) {
-                // 1. パーティクルエフェクト
-                const particleIcons = ['💥', '⭐', '✨', '💫', '🌟'];
-                
-                for (let i = 0; i < 10; i++) {
-                    setTimeout(() => {
-                        const particle = document.createElement('div');
-                        particle.className = 'hit-particle';
-                        particle.textContent = particleIcons[Math.floor(Math.random() * particleIcons.length)];
-                        
-                        const randomX = (Math.random() - 0.5) * 2;
-                        const randomY = -Math.random() * 150;
-                        
-                        particle.style.cssText = `
-                            position: fixed;
-                            font-size: 30px;
-                            pointer-events: none;
-                            z-index: 10000;
-                            --random-x: ${randomX};
-                            --random-y: ${randomY};
-                        `;
-                        
-                        // 3D座標を2D座標に変換
-                        const camera = scene.camera;
-                        const vector = ballPos.clone();
-                        vector.project(camera);
-                        
-                        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-                        const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
-                        
-                        particle.style.left = x + 'px';
-                        particle.style.top = y + 'px';
-                        
-                        document.body.appendChild(particle);
-                        
-                        setTimeout(() => {
-                            if (particle.parentNode) {
-                                document.body.removeChild(particle);
-                            }
-                        }, 800);
-                    }, i * 30);
+
+            scene.addEventListener('touchend', function(e) {
+                if (isPinching && e.touches.length < 2) {
+                    resetPinch();
                 }
-                
-                // 2. 画面フラッシュ
-                if (flash) {
-                    flash.classList.add('active');
-                    setTimeout(() => {
-                        flash.classList.remove('active');
-                    }, 100);
+
+                if (isPinching || !e.changedTouches || e.changedTouches.length !== 1 || e.touches.length > 0) return;
+
+                const now = Date.now();
+                if (lastTapTime && now - lastTapTime < 300) {
+                    if (tapTimeout) {
+                        clearTimeout(tapTimeout);
+                        tapTimeout = null;
+                    }
+                    lastTapTime = 0;
+                    triggerDoubleTap();
+                } else {
+                    lastTapTime = now;
+                    tapTimeout = setTimeout(() => {
+                        lastTapTime = 0;
+                        tapTimeout = null;
+                    }, 350);
                 }
+            }, { passive: false });
+
+            scene.addEventListener('touchcancel', function() {
+                resetPinch();
+            }, { passive: false });
+
+            scene.addEventListener('dblclick', function() {
+                if (!isPinching) {
+                    triggerDoubleTap();
+                }
+            });
+
+            marker.addEventListener('markerFound', function() {
+                if (catModel && catModel.components['meishi-animation']) {
+                    catModel.components['meishi-animation'].playIdleAnimation();
+                }
+            });
+
+            marker.addEventListener('markerLost', function() {
+                if (catModel && catModel.components['meishi-animation']) {
+                    catModel.components['meishi-animation'].stopIdleAnimation();
+                }
+            });
+
+            if (catModel) {
+                catModel.addEventListener('model-loaded', function() {
+                    if (isMarkerVisible && catModel.components['meishi-animation']) {
+                        catModel.components['meishi-animation'].playIdleAnimation();
+                    }
+                });
             }
         });
     </script>
