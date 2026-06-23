@@ -124,7 +124,7 @@
                 id="cat-model"
                 gltf-model="{{ asset('cg/202606/Model_05.glb') }}"
                 position="0 0 0"
-                scale="1.5 0.8 1.5"
+                scale="1.5 1.5 1.5"
                 rotation="0 0 0"
                 meishi-animation="clip: anime01"
                 hitbox="width: 1.6; height: 3.2; depth: 1.6">
