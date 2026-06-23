@@ -122,7 +122,7 @@
         <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi03.patt') }}" id="pattern-meishi-marker">
             <a-entity
                 id="cat-model"
-                gltf-model="{{ asset('cg/202606/10_snails.glb') }}"
+                gltf-model="{{ asset('cg/202606/Model_05.glb') }}"
                 position="0 0 0"
                 scale="1.5 0.8 1.5"
                 rotation="0 0 0"
