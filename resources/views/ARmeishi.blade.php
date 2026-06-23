@@ -242,7 +242,7 @@
             },
             
             setRotationForAnime01: function() {
-                this.el.setAttribute('rotation', '0 180 0');
+                this.el.setAttribute('rotation', '0 0 0');
             },
             
             setRotationForAnime02: function() {
