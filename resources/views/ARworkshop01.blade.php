@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="robots" content="noindex,nofollow">
     <title>AR Workshop 01</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=Promise%2CObject.assign%2CArray.from%2CArray.prototype.find%2CArray.prototype.includes%2CString.prototype.includes%2CNumber.isNaN"></script>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -55,6 +56,64 @@
             font-size: 18px;
             font-weight: 500;
         }
+        .passcode-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 11000;
+        }
+        .passcode-panel {
+            width: min(360px, 90%);
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: #111;
+            color: #fff;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        .passcode-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .passcode-input {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 18px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            background: #121212;
+            color: #fff;
+            outline: none;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+        .passcode-button {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            border: none;
+            border-radius: 12px;
+            background: #4a90e2;
+            color: #fff;
+            cursor: pointer;
+        }
+        .passcode-button:hover {
+            background: #5aa3f0;
+        }
+        .passcode-error {
+            margin-top: 10px;
+            color: #ff6666;
+            font-size: 0.95rem;
+            display: none;
+        }
         a-scene {
             position: fixed;
             top: 0;
@@ -93,6 +152,15 @@
         <div>カメラを起動中...</div>
     </div>
 
+    <div class="passcode-overlay">
+        <div class="passcode-panel">
+            <div class="passcode-title">6桁のパスコードを入力してください</div>
+            <input id="workshop-passcode" class="passcode-input" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]*" placeholder="123456" />
+            <button id="workshop-passcode-submit" class="passcode-button" type="button">確認</button>
+            <div class="passcode-error">パスコードが違います</div>
+        </div>
+    </div>
+
     <a-scene
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
@@ -108,7 +176,8 @@
         <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker00.patt') }}" id="marker-maker00">
             <a-entity
                 class="workshop-model"
-                gltf-model="{{ asset('cg/202606/Model_00.glb') }}"
+                visible="false"
+                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00081_.glb') }}"
                 position="0 0 0"
                 rotation="0 0 0"
                 scale="1.2 1.2 1.2"
@@ -120,7 +189,8 @@
             <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker' . sprintf('%02d', $i) . '.patt') }}" id="marker-maker{{ sprintf('%02d', $i) }}">
                 <a-entity
                     class="workshop-model"
-                    gltf-model="{{ asset('cg/202606/Model_' . sprintf('%02d', $i) . '.glb') }}"
+                    visible="false"
+                    gltf-model="{{ asset('cg/202606/AnimePistol_Textured_' . sprintf('%05d', 102 - $i) . '_.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
                     scale="1.2 1.2 1.2"
@@ -144,6 +214,47 @@
             const loader = document.querySelector('.arjs-loader');
             if (loader) loader.style.display = 'none';
         }, 3000);
+
+        function grantWorkshopAccess() {
+            const overlay = document.querySelector('.passcode-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+            document.querySelectorAll('.workshop-model').forEach((model) => {
+                model.setAttribute('visible', 'true');
+            });
+        }
+
+        function validateWorkshopPasscode() {
+            const input = document.querySelector('#workshop-passcode');
+            const error = document.querySelector('.passcode-error');
+            if (!input) return;
+            if (input.value.trim() === '385252') {
+                if (error) {
+                    error.style.display = 'none';
+                }
+                grantWorkshopAccess();
+                return;
+            }
+            if (error) {
+                error.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const submitButton = document.querySelector('#workshop-passcode-submit');
+            const input = document.querySelector('#workshop-passcode');
+            if (submitButton) {
+                submitButton.addEventListener('click', validateWorkshopPasscode);
+            }
+            if (input) {
+                input.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        validateWorkshopPasscode();
+                    }
+                });
+            }
+        });
 
         AFRAME.registerComponent('ar-aspect-fix', {
             init: function() {

@@ -52,6 +52,22 @@ approach-camera の待機時間パラメータ（waitTime）
    - 発射ごとの `create/remove` を抑制し、Gunごとに再利用
    - 命中時・寿命切れ・ステージ遷移・GameOver時はプール返却へ統一
 
+## ARworkshop01 更新（2026-06-25）
+
+- `resources/views/ARworkshop01.blade.php` を新規作成
+  - `/t-watanabe` でアクセス可能な AR 画面
+  - `cg/202606/pattern-maker00.patt` 〜 `pattern-maker20.patt` を認識し、対応する `AnimePistol_Textured_00081_.glb` 〜 `AnimePistol_Textured_00101_.glb` を表示
+  - 3D モデルは `anime01` / `anime02` を再生せず、表示のみ
+  - ピンチ操作で拡大縮小対応
+  - Z軸回転による自動回転を追加
+- 6桁のパスコード入力を追加
+  - 正しいコードは `385252`
+  - 誤入力の場合は 3D モデルを表示しない
+- 検索エンジン除外対策を追加
+  - `ARworkshop01` ページの `<meta name="robots" content="noindex,nofollow">` を追加
+  - `/t-watanabe` ルートに `X-Robots-Tag: noindex, nofollow` ヘッダーを付与
+  - `public/robots.txt` に `/t-watanabe` を Disallow 追加
+
 # ARstampRally202603 にかかわるTodo
 　・サンタクロース　→　キリン　（スタンプ帳が未対応）
 　・キリン以外はシークレット
