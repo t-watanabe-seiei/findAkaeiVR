@@ -80,7 +80,7 @@ Route::match(['get', 'head'], '/insect', function () {
 })->name('insect.index');
 
 Route::match(['get', 'head'], '/t-watanabe', function () {
-    return view('ARmeishi');
+    return view('ARworkshop01');
 })->name('insect.index');
 
 Route::get('/minion', function () {
