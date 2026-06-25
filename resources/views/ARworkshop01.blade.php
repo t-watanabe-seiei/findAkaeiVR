@@ -302,11 +302,8 @@
             const scene = document.querySelector('a-scene');
             let isPinching = false;
             let pinchStartDistance = 0;
-            let pinchStartScale = { x: 1.5, y: 0.8, z: 1.5 };
-            let isDragging = false;
-            let lastDragX = 0;
-            const minScale = 0.5;
-            const maxScale = 2.5;
+            const minScale = 1.0;
+            const maxScale = 3.0;
 
             function getTouchDistance(touchA, touchB) {
                 const dx = touchA.clientX - touchB.clientX;
@@ -327,43 +324,9 @@
                 };
             }
 
-            function rotateVisibleModels(deltaDegrees) {
-                document.querySelectorAll('.workshop-model').forEach((model) => {
-                    if (model.getAttribute('visible') !== 'true') return;
-                    const rotationAttr = model.getAttribute('rotation');
-                    let rotation = { x: 0, y: 0, z: 0 };
-                    if (typeof rotationAttr === 'string') {
-                        const parts = rotationAttr.split(' ').map(Number);
-                        rotation = {
-                            x: parts[0] || 0,
-                            y: parts[1] || 0,
-                            z: parts[2] || 0
-                        };
-                    } else if (rotationAttr && typeof rotationAttr === 'object') {
-                        rotation = rotationAttr;
-                    }
-                    rotation.y += deltaDegrees;
-                    model.setAttribute('rotation', `${rotation.x} ${rotation.y} ${rotation.z}`);
-                });
-            }
-
-            function beginDrag(clientX) {
-                isDragging = true;
-                lastDragX = clientX;
-            }
-
-            function updateDrag(clientX) {
-                const deltaX = clientX - lastDragX;
-                lastDragX = clientX;
-                if (Math.abs(deltaX) > 0) {
-                    rotateVisibleModels(deltaX * 0.3);
-                }
-            }
-
             function setModelScale(scaleFactor) {
                 const clamped = Math.max(minScale, Math.min(maxScale, scaleFactor));
                 document.querySelectorAll('.workshop-model').forEach((model) => {
-                    if (model.getAttribute('visible') !== 'true') return;
                     const base = model.dataset.pinchBaseScale ? model.dataset.pinchBaseScale.split(' ').map(Number) : [1.5, 0.8, 1.5];
                     model.setAttribute('scale', `${base[0] * clamped} ${base[1] * clamped} ${base[2] * clamped}`);
                 });
@@ -382,10 +345,6 @@
                     pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
                     captureBaseScale();
                     if (e.cancelable) e.preventDefault();
-                    return;
-                }
-                if (e.touches && e.touches.length === 1) {
-                    beginDrag(e.touches[0].clientX);
                 }
             }, { passive: false });
 
@@ -396,11 +355,6 @@
                     if (pinchStartDistance <= 0) return;
                     const ratio = currentDistance / pinchStartDistance;
                     setModelScale(ratio);
-                    return;
-                }
-                if (isDragging && e.touches && e.touches.length === 1) {
-                    if (e.cancelable) e.preventDefault();
-                    updateDrag(e.touches[0].clientX);
                 }
             }, { passive: false });
 
@@ -409,30 +363,12 @@
                     isPinching = false;
                     pinchStartDistance = 0;
                 }
-                if (isDragging && (!e.touches || e.touches.length === 0)) {
-                    isDragging = false;
-                }
             }, { passive: false });
 
             scene.addEventListener('touchcancel', function() {
                 isPinching = false;
                 pinchStartDistance = 0;
-                isDragging = false;
             }, { passive: false });
-
-            scene.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                lastDragX = e.clientX;
-            });
-
-            scene.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                updateDrag(e.clientX);
-            });
-
-            document.addEventListener('mouseup', function() {
-                isDragging = false;
-            });
         });
     </script>
 </body>
