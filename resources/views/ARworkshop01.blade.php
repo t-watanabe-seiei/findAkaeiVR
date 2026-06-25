@@ -180,8 +180,7 @@
                 gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00081_.glb') }}"
                 position="0 0 0"
                 rotation="0 0 0"
-                scale="1.2 1.2 1.2"
-                auto-rotate-z>
+                scale="1 1 1">
             </a-entity>
         </a-marker>
 
@@ -193,8 +192,7 @@
                     gltf-model="{{ asset('cg/202606/AnimePistol_Textured_' . sprintf('%05d', 102 - $i) . '_.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
-                    scale="1.2 1.2 1.2"
-                    auto-rotate-z>
+                    scale="1 1 1">
                 </a-entity>
             </a-marker>
         @endfor
@@ -299,17 +297,6 @@
             }
         });
 
-        AFRAME.registerComponent('auto-rotate-z', {
-            schema: {
-                speed: { type: 'number', default: 15 }
-            },
-            tick: function(time, deltaTime) {
-                if (!deltaTime) return;
-                const rotation = this.el.object3D.rotation;
-                const deltaRadians = this.data.speed * deltaTime / 1000 * (Math.PI / 180);
-                rotation.y += deltaRadians;
-            }
-        });
 
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
@@ -318,6 +305,31 @@
             let pinchStartScale = 1.2;
             const minScale = 0.5;
             const maxScale = 2.5;
+            let isDragging = false;
+            let lastDragX = 0;
+            let isMouseDragging = false;
+
+            function rotateVisibleModels(deltaDegrees) {
+                const deltaRadians = deltaDegrees * (Math.PI / 180);
+                document.querySelectorAll('.workshop-model').forEach((model) => {
+                    if (model.getAttribute('visible') !== 'true') return;
+                    if (!model.object3D) return;
+                    model.object3D.rotation.y += deltaRadians;
+                });
+            }
+
+            function beginDrag(clientX) {
+                isDragging = true;
+                lastDragX = clientX;
+            }
+
+            function updateDrag(clientX) {
+                const deltaX = clientX - lastDragX;
+                lastDragX = clientX;
+                if (Math.abs(deltaX) > 0) {
+                    rotateVisibleModels(deltaX * 0.35);
+                }
+            }
 
             function getTouchDistance(touchA, touchB) {
                 const dx = touchA.clientX - touchB.clientX;
@@ -337,33 +349,59 @@
                     isPinching = true;
                     pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
                     const model = document.querySelector('.workshop-model');
-                    const currentScale = model ? model.getAttribute('scale') : '1.2 1.2 1.2';
+                    const currentScale = model ? model.getAttribute('scale') : '1 1 1';
                     const parts = currentScale.split(' ').map(Number);
-                    pinchStartScale = parts[0] || 1.2;
+                    pinchStartScale = parts[0] || 1;
                     if (e.cancelable) e.preventDefault();
+                } else if (e.touches && e.touches.length === 1) {
+                    beginDrag(e.touches[0].clientX);
                 }
             }, { passive: false });
 
             scene.addEventListener('touchmove', function(e) {
-                if (!isPinching || !e.touches || e.touches.length !== 2) return;
-                if (e.cancelable) e.preventDefault();
-                const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                if (pinchStartDistance <= 0) return;
-                const ratio = currentDistance / pinchStartDistance;
-                setModelScale(pinchStartScale * ratio);
+                if (isPinching && e.touches && e.touches.length === 2) {
+                    if (e.cancelable) e.preventDefault();
+                    const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                    if (pinchStartDistance <= 0) return;
+                    const ratio = currentDistance / pinchStartDistance;
+                    setModelScale(pinchStartScale * ratio);
+                    return;
+                }
+                if (isDragging && e.touches && e.touches.length === 1) {
+                    if (e.cancelable) e.preventDefault();
+                    updateDrag(e.touches[0].clientX);
+                }
             }, { passive: false });
 
             scene.addEventListener('touchend', function(e) {
-                if (isPinching && e.touches.length < 2) {
+                if (isPinching && (!e.touches || e.touches.length < 2)) {
                     isPinching = false;
                     pinchStartDistance = 0;
+                }
+                if (isDragging && (!e.touches || e.touches.length === 0)) {
+                    isDragging = false;
                 }
             }, { passive: false });
 
             scene.addEventListener('touchcancel', function() {
                 isPinching = false;
                 pinchStartDistance = 0;
+                isDragging = false;
             }, { passive: false });
+
+            scene.addEventListener('mousedown', function(e) {
+                isMouseDragging = true;
+                beginDrag(e.clientX);
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isMouseDragging) return;
+                updateDrag(e.clientX);
+            });
+
+            window.addEventListener('mouseup', function() {
+                isMouseDragging = false;
+            });
         });
     </script>
 </body>
