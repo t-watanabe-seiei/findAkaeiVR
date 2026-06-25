@@ -180,7 +180,7 @@
                 gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00081_.glb') }}"
                 position="0 0 0"
                 rotation="0 0 0"
-                scale="1 1 1">
+                scale="1.5 0.8 1.5">
             </a-entity>
         </a-marker>
 
@@ -192,7 +192,7 @@
                     gltf-model="{{ asset('cg/202606/AnimePistol_Textured_' . sprintf('%05d', 102 - $i) . '_.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
-                    scale="1 1 1">
+                    scale="1.5 0.8 1.5">
                 </a-entity>
             </a-marker>
         @endfor
@@ -303,11 +303,16 @@
             let isPinching = false;
             let pinchStartDistance = 0;
             let pinchStartScale = 1.2;
-            const minScale = 0.5;
-            const maxScale = 2.5;
             let isDragging = false;
             let lastDragX = 0;
-            let isMouseDragging = false;
+            const minScale = 0.5;
+            const maxScale = 2.5;
+
+            function getTouchDistance(touchA, touchB) {
+                const dx = touchA.clientX - touchB.clientX;
+                const dy = touchA.clientY - touchB.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
 
             function rotateVisibleModels(deltaDegrees) {
                 const deltaRadians = deltaDegrees * (Math.PI / 180);
@@ -327,14 +332,8 @@
                 const deltaX = clientX - lastDragX;
                 lastDragX = clientX;
                 if (Math.abs(deltaX) > 0) {
-                    rotateVisibleModels(deltaX * 0.35);
+                    rotateVisibleModels(deltaX * 0.3);
                 }
-            }
-
-            function getTouchDistance(touchA, touchB) {
-                const dx = touchA.clientX - touchB.clientX;
-                const dy = touchA.clientY - touchB.clientY;
-                return Math.sqrt(dx * dx + dy * dy);
             }
 
             function setModelScale(scaleValue) {
@@ -353,8 +352,11 @@
                     const parts = currentScale.split(' ').map(Number);
                     pinchStartScale = parts[0] || 1;
                     if (e.cancelable) e.preventDefault();
-                } else if (e.touches && e.touches.length === 1) {
-                    beginDrag(e.touches[0].clientX);
+                    return;
+                }
+                if (e.touches && e.touches.length === 1) {
+                    isDragging = true;
+                    lastDragX = e.touches[0].clientX;
                 }
             }, { passive: false });
 
@@ -390,17 +392,17 @@
             }, { passive: false });
 
             scene.addEventListener('mousedown', function(e) {
-                isMouseDragging = true;
-                beginDrag(e.clientX);
+                isDragging = true;
+                lastDragX = e.clientX;
             });
 
             window.addEventListener('mousemove', function(e) {
-                if (!isMouseDragging) return;
+                if (!isDragging) return;
                 updateDrag(e.clientX);
             });
 
             window.addEventListener('mouseup', function() {
-                isMouseDragging = false;
+                isDragging = false;
             });
         });
     </script>
