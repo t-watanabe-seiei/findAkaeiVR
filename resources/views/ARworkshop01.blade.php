@@ -195,7 +195,8 @@
             tick: function(time, deltaTime) {
                 if (!deltaTime) return;
                 const rotation = this.el.object3D.rotation;
-                rotation.z += THREE.Math.degToRad(this.data.speed * deltaTime / 1000);
+                const deltaRadians = this.data.speed * deltaTime / 1000 * (Math.PI / 180);
+                rotation.y += deltaRadians;
             }
         });
 
