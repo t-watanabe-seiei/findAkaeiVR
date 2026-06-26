@@ -398,9 +398,44 @@
                 scene.renderer.premultipliedAlpha = false;
             }
 
+            function fixWorkshopModelMaterials(object3D) {
+                if (!object3D) {
+                    return;
+                }
+                object3D.traverse(function(node) {
+                    if (!node.isMesh || !node.material) {
+                        return;
+                    }
+                    const materials = Array.isArray(node.material) ? node.material : [node.material];
+                    materials.forEach(function(mat) {
+                        mat.transparent = false;
+                        mat.opacity = 1.0;
+                        mat.alphaTest = 0;
+                        mat.depthWrite = true;
+                        mat.depthTest = true;
+                        mat.polygonOffset = true;
+                        mat.polygonOffsetFactor = 1;
+                        mat.polygonOffsetUnits = 1;
+                        mat.needsUpdate = true;
+                    });
+                });
+            }
+
+            function initWorkshopModelFixes() {
+                document.querySelectorAll('.workshop-model').forEach(function(model) {
+                    model.addEventListener('model-loaded', function() {
+                        fixWorkshopModelMaterials(this.getObject3D('mesh'));
+                    });
+                    setTimeout(function() {
+                        fixWorkshopModelMaterials(model.getObject3D('mesh'));
+                    }, 500);
+                });
+            }
+
             if (scene) {
                 scene.addEventListener('renderstart', adjustRendererAlpha);
                 window.addEventListener('arjs-video-loaded', adjustRendererAlpha);
+                initWorkshopModelFixes();
             }
 
             scene.addEventListener('touchstart', function(e) {
