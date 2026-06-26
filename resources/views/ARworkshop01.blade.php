@@ -165,7 +165,7 @@
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; precision: lowp; powerPreference: low-power; colorManagement: false;"
+        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; premultipliedAlpha: false; precision: lowp; powerPreference: low-power; colorManagement: false;"
         ar-aspect-fix>
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
@@ -178,6 +178,17 @@
                 class="workshop-model"
                 visible="false"
                 gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00081_.glb') }}"
+                position="0 0 0"
+                rotation="0 0 0"
+                scale="1.5 0.8 1.5">
+            </a-entity>
+        </a-marker>
+
+        <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi03.patt') }}" id="marker-ar-meishi03">
+            <a-entity
+                class="workshop-model"
+                visible="false"
+                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00076_.glb') }}"
                 position="0 0 0"
                 rotation="0 0 0"
                 scale="1.5 0.8 1.5">
@@ -302,8 +313,12 @@
             const scene = document.querySelector('a-scene');
             let isPinching = false;
             let pinchStartDistance = 0;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartRotationY = 0;
             const minScale = 1.0;
             const maxScale = 3.0;
+            const rotationSpeed = 0.35; // degrees per pixel
 
             function getTouchDistance(touchA, touchB) {
                 const dx = touchA.clientX - touchB.clientX;
@@ -324,6 +339,43 @@
                 };
             }
 
+            function getModelRotationY(model) {
+                const rotation = model.getAttribute('rotation');
+                if (!rotation) {
+                    return 0;
+                }
+                if (typeof rotation === 'string') {
+                    return Number(rotation.split(' ')[1] || 0);
+                }
+                return Number(rotation.y || 0);
+            }
+
+            function setModelRotationY(y) {
+                document.querySelectorAll('.workshop-model').forEach((model) => {
+                    const currentRotation = model.getAttribute('rotation');
+                    let x = 0;
+                    let z = 0;
+
+                    if (currentRotation) {
+                        if (typeof currentRotation === 'string') {
+                            const parts = currentRotation.split(' ').map(Number);
+                            x = parts[0] || 0;
+                            z = parts[2] || 0;
+                        } else {
+                            x = currentRotation.x || 0;
+                            z = currentRotation.z || 0;
+                        }
+                    }
+
+                    model.setAttribute('rotation', `${x} ${y} ${z}`);
+                });
+            }
+
+            function captureCurrentRotationY() {
+                const first = document.querySelector('.workshop-model');
+                return first ? getModelRotationY(first) : 0;
+            }
+
             function setModelScale(scaleFactor) {
                 const clamped = Math.max(minScale, Math.min(maxScale, scaleFactor));
                 document.querySelectorAll('.workshop-model').forEach((model) => {
@@ -339,11 +391,32 @@
                 });
             }
 
+            function adjustRendererAlpha() {
+                if (!scene || !scene.renderer) {
+                    return;
+                }
+                scene.renderer.setClearColor(0x000000, 0);
+                scene.renderer.premultipliedAlpha = false;
+            }
+
+            if (scene) {
+                scene.addEventListener('renderstart', adjustRendererAlpha);
+                window.addEventListener('arjs-video-loaded', adjustRendererAlpha);
+            }
+
             scene.addEventListener('touchstart', function(e) {
                 if (e.touches && e.touches.length === 2) {
                     isPinching = true;
                     pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
                     captureBaseScale();
+                    if (e.cancelable) e.preventDefault();
+                    return;
+                }
+
+                if (e.touches && e.touches.length === 1) {
+                    isDragging = true;
+                    dragStartX = e.touches[0].clientX;
+                    dragStartRotationY = captureCurrentRotationY();
                     if (e.cancelable) e.preventDefault();
                 }
             }, { passive: false });
@@ -355,6 +428,13 @@
                     if (pinchStartDistance <= 0) return;
                     const ratio = currentDistance / pinchStartDistance;
                     setModelScale(ratio);
+                    return;
+                }
+
+                if (isDragging && e.touches && e.touches.length === 1) {
+                    if (e.cancelable) e.preventDefault();
+                    const deltaX = e.touches[0].clientX - dragStartX;
+                    setModelRotationY(dragStartRotationY + deltaX * rotationSpeed);
                 }
             }, { passive: false });
 
@@ -363,11 +443,15 @@
                     isPinching = false;
                     pinchStartDistance = 0;
                 }
+                if (isDragging && (!e.touches || e.touches.length === 0)) {
+                    isDragging = false;
+                }
             }, { passive: false });
 
             scene.addEventListener('touchcancel', function() {
                 isPinching = false;
                 pinchStartDistance = 0;
+                isDragging = false;
             }, { passive: false });
         });
     </script>
