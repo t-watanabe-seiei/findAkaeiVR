@@ -164,8 +164,7 @@
     <a-scene
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; premultipliedAlpha: false; precision: lowp; powerPreference: low-power; colorManagement: false;"
+        vr-mode-ui="enabled: false"        device-orientation-permission-ui="enabled: false"        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; premultipliedAlpha: false; precision: lowp; powerPreference: low-power; colorManagement: false;"
         ar-aspect-fix>
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
