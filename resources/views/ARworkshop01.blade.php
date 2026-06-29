@@ -164,7 +164,7 @@
     <a-scene
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
-        vr-mode-ui="enabled: false"        device-orientation-permission-ui="enabled: false"        renderer="logarithmicDepthBuffer: false; antialias: false; alpha: true; premultipliedAlpha: false; precision: lowp; powerPreference: low-power; colorManagement: false;"
+        vr-mode-ui="enabled: false"        device-orientation-permission-ui="enabled: false"        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; premultipliedAlpha: false; precision: highp; powerPreference: high-performance; colorManagement: false; sortObjects: true;"
         ar-aspect-fix>
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
@@ -396,6 +396,8 @@
                 }
                 scene.renderer.setClearColor(0x000000, 0);
                 scene.renderer.premultipliedAlpha = false;
+                scene.renderer.sortObjects = true;
+                scene.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             }
 
             function fixWorkshopModelMaterials(object3D) {
@@ -408,15 +410,21 @@
                     }
                     const materials = Array.isArray(node.material) ? node.material : [node.material];
                     materials.forEach(function(mat) {
-                        mat.transparent = false;
-                        mat.opacity = 1.0;
-                        mat.alphaTest = 0;
-                        mat.depthWrite = true;
-                        mat.depthTest = true;
-                        mat.polygonOffset = true;
-                        mat.polygonOffsetFactor = 1;
-                        mat.polygonOffsetUnits = 1;
-                        mat.needsUpdate = true;
+                        if (mat) {
+                            mat.side = THREE.FrontSide;
+                            mat.transparent = false;
+                            mat.opacity = 1.0;
+                            mat.alphaTest = 0.001;
+                            mat.depthWrite = true;
+                            mat.depthTest = true;
+                            mat.depthFunc = THREE.LessEqualDepth;
+                            mat.blending = THREE.NormalBlending;
+                            mat.premultipliedAlpha = false;
+                            mat.polygonOffset = true;
+                            mat.polygonOffsetFactor = 1;
+                            mat.polygonOffsetUnits = 1;
+                            mat.needsUpdate = true;
+                        }
                     });
                 });
             }
@@ -424,10 +432,15 @@
             function initWorkshopModelFixes() {
                 document.querySelectorAll('.workshop-model').forEach(function(model) {
                     model.addEventListener('model-loaded', function() {
-                        fixWorkshopModelMaterials(this.getObject3D('mesh'));
+                        const object3D = this.object3D || this.getObject3D('mesh');
+                        fixWorkshopModelMaterials(object3D);
+                        setTimeout(function() {
+                            fixWorkshopModelMaterials(object3D);
+                        }, 200);
                     });
                     setTimeout(function() {
-                        fixWorkshopModelMaterials(model.getObject3D('mesh'));
+                        const object3D = model.object3D || model.getObject3D('mesh');
+                        fixWorkshopModelMaterials(object3D);
                     }, 500);
                 });
             }
