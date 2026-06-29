@@ -187,7 +187,7 @@
             <a-entity
                 class="workshop-model"
                 visible="false"
-                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00076_.glb') }}"
+                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00104_.glb') }}"
                 position="0 0 0"
                 rotation="0 0 0"
                 scale="1.5 0.8 1.5">
