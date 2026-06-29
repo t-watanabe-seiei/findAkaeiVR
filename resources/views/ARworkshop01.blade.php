@@ -169,8 +169,9 @@
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
 
-        <a-light type="ambient" color="#d9d9d9" intensity="0.55"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.35" position="1 1 1"></a-light>
+        <a-light type="ambient" color="#d9d9d9" intensity="0.9"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.45" position="1 1 1"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.25" position="-1 0.5 -1"></a-light>
 
         <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker00.patt') }}" id="marker-maker00">
             <a-entity
