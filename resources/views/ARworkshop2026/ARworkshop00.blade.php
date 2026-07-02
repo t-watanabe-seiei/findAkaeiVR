@@ -184,6 +184,17 @@
             </a-entity>
         </a-marker>
 
+        <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker_katsuma000.patt') }}" id="marker-maker-katsuma000">
+            <a-entity
+                class="workshop-model"
+                visible="false"
+                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00088_.glb') }}"
+                position="0 0 0"
+                rotation="0 0 0"
+                scale="1.5 0.8 1.5">
+            </a-entity>
+        </a-marker>
+
     </a-scene>
 
     <script>
