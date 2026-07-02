@@ -83,6 +83,10 @@ Route::match(['get', 'head'], '/t-watanabe', function () {
     return response(view('ARworkshop01'))->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('insect.index');
 
+Route::get('/katsuma_ar_sample', function () {
+    return view('ARworkshop2026.ARworkshop00');
+});
+
 Route::get('/minion', function () {
     return view('findminion');
 });
