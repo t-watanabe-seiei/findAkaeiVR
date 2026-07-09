@@ -22,16 +22,16 @@
         <a-asset-item id="model_boss_s2" src="{{ asset('cg/20260613/boss102_optimized.glb') }}"></a-asset-item>
 
         <!-- サウンド -->
-        <audio id="sound_hit"          src="{{ asset('cg/sound_hit02.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
-        <audio id="sound_bgm_s1"       src="{{ asset('cg/sound_bgm08.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
-        <audio id="sound_bgm_s2"       src="{{ asset('cg/sound_bgm06.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
+        <audio id="sound_hit"          src="{{ asset('cg/sound_hit01.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
+        <audio id="sound_bgm_s1"       src="{{ asset('cg/sound_bgm13.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
+        <audio id="sound_bgm_s2"       src="{{ asset('cg/sound_bgm14.mp3') }}"          preload="auto" crossorigin="anonymous"></audio>
         <audio id="sound_alert"        src="{{ asset('cg/sound_alert.mp3') }}"           preload="auto" loop crossorigin="anonymous"></audio>
-        <audio id="sound_zombie_appear" src="{{ asset('cg/sound_zombie_appear.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
-        <audio id="sound_zombie_die"   src="{{ asset('cg/sound_zombie_die.mp3') }}"      preload="auto" crossorigin="anonymous"></audio>
+        <audio id="sound_zombie_appear" src="{{ asset('cg/sound_animal_appear.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
+        <audio id="sound_zombie_die"   src="{{ asset('cg/sound_animal_die.mp3') }}"      preload="auto" crossorigin="anonymous"></audio>
 
         <!-- 背景画像 -->
-        <img id="sky_s1" src="{{ asset('cg/R0010234a.JPG') }}" crossorigin="anonymous">
-        <img id="sky_s2" src="{{ asset('cg/R0010238a.JPG') }}" crossorigin="anonymous">
+        <img id="sky_s1" src="{{ asset('cg/202606/IMG_20260329_445(1).jpg') }}" crossorigin="anonymous">
+        <img id="sky_s2" src="{{ asset('cg/202606/IMG_20260329_442(1).jpg') }}" crossorigin="anonymous">
         <img id="pokeball_icon_05" src="{{ asset('cg/pokeball_icon05.png') }}" crossorigin="anonymous">
         <img id="pokeball_icon_06" src="{{ asset('cg/pokeball_icon06.png') }}" crossorigin="anonymous">
     </a-assets>
