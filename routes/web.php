@@ -79,9 +79,13 @@ Route::match(['get', 'head'], '/insect', function () {
     return view('shooting3DInsect');
 })->name('insect.index');
 
-Route::match(['get', 'head'], '/t-watanabe', function () {
+Route::match(['get', 'head'], '/ar_sample_code', function () {
     return response(view('ARworkshop01'))->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('insect.index');
+
+Route::get('/t-watanabe', function () {
+    return view('ARmeishi');
+});
 
 Route::get('/katsuma_ar_sample', function () {
     return view('ARworkshop2026.ARworkshop00');
