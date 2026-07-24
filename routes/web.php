@@ -80,7 +80,7 @@ Route::match(['get', 'head'], '/insect', function () {
 })->name('insect.index');
 
 Route::match(['get', 'head'], '/ar_sample_code', function () {
-    return response(view('ARworkshop01'))->header('X-Robots-Tag', 'noindex, nofollow');
+    return response(view('ARworkshop2026.ARworkshop01'))->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('insect.index');
 
 Route::get('/t-watanabe', function () {
