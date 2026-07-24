@@ -114,6 +114,31 @@
             font-size: 0.95rem;
             display: none;
         }
+        .rotation-controls {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 12000;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+        .rotation-control-btn {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(17, 17, 17, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+        }
+        .rotation-control-btn.active {
+            background: #4a90e2;
+            border-color: #4a90e2;
+        }
         a-scene {
             position: fixed;
             top: 0;
@@ -159,6 +184,12 @@
             <button id="workshop-passcode-submit" class="passcode-button" type="button">確認</button>
             <div class="passcode-error">パスコードが違います</div>
         </div>
+    </div>
+
+    <div class="rotation-controls" aria-label="回転操作">
+        <button type="button" class="rotation-control-btn active" data-role="rotation-mode" data-mode="y">Y軸回転</button>
+        <button type="button" class="rotation-control-btn" data-role="rotation-mode" data-mode="free">自由回転</button>
+        <button type="button" class="rotation-control-btn" data-role="reset">初期位置へ</button>
     </div>
 
     <a-scene
@@ -317,6 +348,8 @@
             let dragStartX = 0;
             let dragStartY = 0;
             let dragStartRotationStates = [];
+            let rotationMode = 'y';
+            let initialRotationStates = [];
             const minScale = 1.0;
             const maxScale = 3.0;
             const rotationSpeed = 0.35; // degrees per pixel
@@ -360,15 +393,35 @@
                 };
             }
 
-            function setModelFreeRotation(deltaX, deltaY) {
+            function captureInitialRotationStates() {
+                initialRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+            }
+
+            function resetModelsToInitialPosition() {
+                document.querySelectorAll('.workshop-model').forEach((model, index) => {
+                    const base = initialRotationStates[index] || { x: 0, y: 0, z: 0 };
+                    model.setAttribute('rotation', `${base.x} ${base.y} ${base.z}`);
+                });
+            }
+
+            function setRotationMode(mode) {
+                rotationMode = mode;
+                document.querySelectorAll('.rotation-control-btn[data-role="rotation-mode"]').forEach((button) => {
+                    button.classList.toggle('active', button.dataset.mode === mode);
+                });
+                resetModelsToInitialPosition();
+                dragStartRotationStates = [];
+            }
+
+            function setModelRotationByDrag(deltaX, deltaY) {
                 document.querySelectorAll('.workshop-model').forEach((model, index) => {
                     const startState = dragStartRotationStates[index];
                     if (!startState) {
                         return;
                     }
 
-                    const nextX = startState.x + deltaY * rotationSpeed;
-                    const nextY = startState.y + deltaX * rotationSpeed;
+                    const nextX = rotationMode === 'free' ? startState.x + deltaY * rotationSpeed : startState.x;
+                    const nextY = startState.y + (rotationMode === 'free' ? deltaX : deltaX) * rotationSpeed;
                     model.setAttribute('rotation', `${nextX} ${nextY} ${startState.z}`);
                 });
             }
@@ -449,6 +502,22 @@
                 initWorkshopModelFixes();
             }
 
+            captureInitialRotationStates();
+            setRotationMode(rotationMode);
+
+            document.querySelectorAll('.rotation-control-btn[data-role="rotation-mode"]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    setRotationMode(button.dataset.mode);
+                });
+            });
+
+            document.querySelectorAll('.rotation-control-btn[data-role="reset"]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    resetModelsToInitialPosition();
+                    dragStartRotationStates = [];
+                });
+            });
+
             scene.addEventListener('touchstart', function(e) {
                 if (e.touches && e.touches.length === 2) {
                     isPinching = true;
@@ -481,7 +550,7 @@
                     if (e.cancelable) e.preventDefault();
                     const deltaX = e.touches[0].clientX - dragStartX;
                     const deltaY = e.touches[0].clientY - dragStartY;
-                    setModelFreeRotation(deltaX, deltaY);
+                    setModelRotationByDrag(deltaX, deltaY);
                 }
             }, { passive: false });
 
