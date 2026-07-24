@@ -315,7 +315,8 @@
             let pinchStartDistance = 0;
             let isDragging = false;
             let dragStartX = 0;
-            let dragStartRotationY = 0;
+            let dragStartY = 0;
+            let dragStartRotationStates = [];
             const minScale = 1.0;
             const maxScale = 3.0;
             const rotationSpeed = 0.35; // degrees per pixel
@@ -339,41 +340,37 @@
                 };
             }
 
-            function getModelRotationY(model) {
+            function getModelRotation(model) {
                 const rotation = model.getAttribute('rotation');
                 if (!rotation) {
-                    return 0;
+                    return { x: 0, y: 0, z: 0 };
                 }
                 if (typeof rotation === 'string') {
-                    return Number(rotation.split(' ')[1] || 0);
+                    const parts = rotation.split(' ').map(Number);
+                    return {
+                        x: parts[0] || 0,
+                        y: parts[1] || 0,
+                        z: parts[2] || 0
+                    };
                 }
-                return Number(rotation.y || 0);
+                return {
+                    x: Number(rotation.x || 0),
+                    y: Number(rotation.y || 0),
+                    z: Number(rotation.z || 0)
+                };
             }
 
-            function setModelRotationY(y) {
-                document.querySelectorAll('.workshop-model').forEach((model) => {
-                    const currentRotation = model.getAttribute('rotation');
-                    let x = 0;
-                    let z = 0;
-
-                    if (currentRotation) {
-                        if (typeof currentRotation === 'string') {
-                            const parts = currentRotation.split(' ').map(Number);
-                            x = parts[0] || 0;
-                            z = parts[2] || 0;
-                        } else {
-                            x = currentRotation.x || 0;
-                            z = currentRotation.z || 0;
-                        }
+            function setModelFreeRotation(deltaX, deltaY) {
+                document.querySelectorAll('.workshop-model').forEach((model, index) => {
+                    const startState = dragStartRotationStates[index];
+                    if (!startState) {
+                        return;
                     }
 
-                    model.setAttribute('rotation', `${x} ${y} ${z}`);
+                    const nextX = startState.x + deltaY * rotationSpeed;
+                    const nextY = startState.y + deltaX * rotationSpeed;
+                    model.setAttribute('rotation', `${nextX} ${nextY} ${startState.z}`);
                 });
-            }
-
-            function captureCurrentRotationY() {
-                const first = document.querySelector('.workshop-model');
-                return first ? getModelRotationY(first) : 0;
             }
 
             function setModelScale(scaleFactor) {
@@ -464,7 +461,8 @@
                 if (e.touches && e.touches.length === 1) {
                     isDragging = true;
                     dragStartX = e.touches[0].clientX;
-                    dragStartRotationY = captureCurrentRotationY();
+                    dragStartY = e.touches[0].clientY;
+                    dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
                     if (e.cancelable) e.preventDefault();
                 }
             }, { passive: false });
@@ -482,7 +480,8 @@
                 if (isDragging && e.touches && e.touches.length === 1) {
                     if (e.cancelable) e.preventDefault();
                     const deltaX = e.touches[0].clientX - dragStartX;
-                    setModelRotationY(dragStartRotationY + deltaX * rotationSpeed);
+                    const deltaY = e.touches[0].clientY - dragStartY;
+                    setModelFreeRotation(deltaX, deltaY);
                 }
             }, { passive: false });
 
@@ -493,6 +492,7 @@
                 }
                 if (isDragging && (!e.touches || e.touches.length === 0)) {
                     isDragging = false;
+                    dragStartRotationStates = [];
                 }
             }, { passive: false });
 
@@ -500,6 +500,7 @@
                 isPinching = false;
                 pinchStartDistance = 0;
                 isDragging = false;
+                dragStartRotationStates = [];
             }, { passive: false });
         });
     </script>
