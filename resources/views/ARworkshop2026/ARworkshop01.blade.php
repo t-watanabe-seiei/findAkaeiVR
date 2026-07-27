@@ -351,8 +351,12 @@
             let rotationMode = 'y';
             let initialRotationStates = [];
             let workshopModels = [];
-            const minScale = 1.0;
-            const maxScale = 3.0;
+            // defaultModelScale は HTML の scale 属性値と一致させること
+            const defaultModelScale = [1.5, 0.8, 1.5];
+            const minScaleFactor = 0.3;  // デフォルトスケールの30%まで縮小可
+            const maxScaleFactor = 3.0;  // デフォルトスケールの300%まで拡大可
+            let currentScaleFactor = 1.0;   // 現在の拡大率 (デフォルト=1.0)
+            let pinchBaseScaleFactor = 1.0; // ピンチ開始時点の拡大率スナップショット
             const rotationSpeed = 0.35; // degrees per pixel
 
             // モデル一覧は毎回 DOM 検索せず、一度だけキャッシュして使い回す
@@ -365,30 +369,6 @@
                 const dx = touchA.clientX - touchB.clientX;
                 const dy = touchA.clientY - touchB.clientY;
                 return Math.sqrt(dx * dx + dy * dy);
-            }
-
-            function getScaleVector(model) {
-                const fallback = { x: 1.5, y: 0.8, z: 1.5 };
-                const scale = model.getAttribute('scale');
-                if (!scale) {
-                    return fallback;
-                }
-                // A-Frame の登録済みコンポーネントは getAttribute() が文字列ではなく
-                // {x, y, z} オブジェクトを返すため、両方のケースに対応する。
-                // さらに NaN/Infinity など不正な数値が紛れ込んだ場合はフォールバックする。
-                if (typeof scale === 'string') {
-                    const parts = scale.split(' ').map(Number);
-                    return {
-                        x: Number.isFinite(parts[0]) ? parts[0] : fallback.x,
-                        y: Number.isFinite(parts[1]) ? parts[1] : fallback.y,
-                        z: Number.isFinite(parts[2]) ? parts[2] : fallback.z
-                    };
-                }
-                return {
-                    x: Number.isFinite(scale.x) ? scale.x : fallback.x,
-                    y: Number.isFinite(scale.y) ? scale.y : fallback.y,
-                    z: Number.isFinite(scale.z) ? scale.z : fallback.z
-                };
             }
 
             function getModelRotation(model) {
@@ -437,7 +417,8 @@
                         ));
                     if (scaleBroken) {
                         model.setAttribute('scale', '1.5 0.8 1.5');
-                        delete model.dataset.pinchBaseScale;
+                        currentScaleFactor = 1.0;
+                        pinchBaseScaleFactor = 1.0;
                     }
                 });
             }
@@ -485,26 +466,25 @@
                 });
             }
 
-            function setModelScale(scaleFactor) {
-                // NaN/Infinity/0以下など不正な倍率が来た場合は無視して現状を維持する。
-                // (ここで壊れた値を書き込むと scale 属性そのものが破損し、
-                //  マーカーの再検出だけでは直らない固着状態になる)
-                if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
+            function setModelScale(ratio) {
+                // NaN/Infinity/0以下の比率は無視する。
+                // pinchBaseScaleFactor に ratio を掛けた絶対倍率でモデルを拡縮する。
+                // これにより縮小(ratio<1)も正しく反映され、「縮小できなくなる」問題を解消する。
+                if (!Number.isFinite(ratio) || ratio <= 0) {
                     return;
                 }
-                const clamped = Math.max(minScale, Math.min(maxScale, scaleFactor));
+                const newFactor = Math.max(minScaleFactor, Math.min(maxScaleFactor, pinchBaseScaleFactor * ratio));
+                currentScaleFactor = newFactor;
                 workshopModels.forEach((model) => {
-                    const parsedBase = model.dataset.pinchBaseScale ? model.dataset.pinchBaseScale.split(' ').map(Number) : null;
-                    const base = (parsedBase && parsedBase.length === 3 && parsedBase.every(Number.isFinite)) ? parsedBase : [1.5, 0.8, 1.5];
-                    model.setAttribute('scale', `${base[0] * clamped} ${base[1] * clamped} ${base[2] * clamped}`);
+                    model.setAttribute('scale',
+                        `${defaultModelScale[0] * newFactor} ${defaultModelScale[1] * newFactor} ${defaultModelScale[2] * newFactor}`
+                    );
                 });
             }
 
             function captureBaseScale() {
-                workshopModels.forEach((model) => {
-                    const base = getScaleVector(model);
-                    model.dataset.pinchBaseScale = `${base.x} ${base.y} ${base.z}`;
-                });
+                // ピンチ開始時の拡大率を記録する。次のピンチ開始まで変わらない。
+                pinchBaseScaleFactor = currentScaleFactor;
             }
 
             function adjustRendererAlpha() {
@@ -682,20 +662,15 @@
                 resetGestureState();
             }, { passive: false });
 
-            // タブが非表示になった/フォーカスを失った場合もジェスチャー状態を破棄する。
-            // (アプリ切り替え中に指を離さずに戻ってきた場合の固着を防ぐ)
-            window.addEventListener('blur', resetGestureState);
+            // タブが非表示になった場合のみジェスチャー状態を破棄する。
+            // blur は iOS で頻繁に誤発火するため使用しない。
+            // markerFound/markerLost は AR.js が追跡中に毎秒複数回発火するため、
+            // resetGestureState をフックすると進行中のジェスチャーを常に中断してしまう。
+            // タッチのキャンセルは touchcancel が担う。
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
                     resetGestureState();
                 }
-            });
-
-            // マーカーの検出/ロストが起きたタイミングでもジェスチャー状態を初期化する。
-            // (マーカーを外して読み直すと操作が復帰する、というユーザー報告への対策)
-            document.querySelectorAll('a-marker').forEach(function(marker) {
-                marker.addEventListener('markerFound', resetGestureState);
-                marker.addEventListener('markerLost', resetGestureState);
             });
         });
     </script>
