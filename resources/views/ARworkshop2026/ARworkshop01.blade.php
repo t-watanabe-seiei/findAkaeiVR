@@ -204,34 +204,12 @@
         <a-light type="directional" color="#ffffff" intensity="0.45" position="1 1 1"></a-light>
         <a-light type="directional" color="#ffffff" intensity="0.25" position="-1 0.5 -1"></a-light>
 
-        <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker00.patt') }}" id="marker-maker00">
-            <a-entity
-                class="workshop-model"
-                visible="false"
-                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00081_.glb') }}"
-                position="0 0 0"
-                rotation="0 0 0"
-                scale="1.5 0.8 1.5">
-            </a-entity>
-        </a-marker>
-
-        <a-marker type="pattern" url="{{ asset('cg/pattern-ar-meishi03.patt') }}" id="marker-ar-meishi03">
-            <a-entity
-                class="workshop-model"
-                visible="false"
-                gltf-model="{{ asset('cg/202606/AnimePistol_Textured_00105_.glb') }}"
-                position="0 0 0"
-                rotation="0 0 0"
-                scale="1.5 0.8 1.5">
-            </a-entity>
-        </a-marker>
-
-        @for ($i = 1; $i <= 20; $i++)
+        @for ($i = 1; $i <= 5; $i++)
             <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker' . sprintf('%02d', $i) . '.patt') }}" id="marker-maker{{ sprintf('%02d', $i) }}">
                 <a-entity
                     class="workshop-model"
                     visible="false"
-                    gltf-model="{{ asset('cg/202606/AnimePistol_Textured_' . sprintf('%05d', 102 - $i) . '_.glb') }}"
+                    gltf-model="{{ asset('cg/202607/AnimePistol_Textured_101' . sprintf('%02d', $i) . '.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
                     scale="1.5 0.8 1.5">
