@@ -350,9 +350,16 @@
             let dragStartRotationStates = [];
             let rotationMode = 'y';
             let initialRotationStates = [];
+            let workshopModels = [];
             const minScale = 1.0;
             const maxScale = 3.0;
             const rotationSpeed = 0.35; // degrees per pixel
+
+            // モデル一覧は毎回 DOM 検索せず、一度だけキャッシュして使い回す
+            // (タッチ中に何度もクエリするとパフォーマンスが悪化するため)。
+            function refreshWorkshopModelsCache() {
+                workshopModels = Array.from(document.querySelectorAll('.workshop-model'));
+            }
 
             function getTouchDistance(touchA, touchB) {
                 const dx = touchA.clientX - touchB.clientX;
@@ -361,49 +368,78 @@
             }
 
             function getScaleVector(model) {
+                const fallback = { x: 1.5, y: 0.8, z: 1.5 };
                 const scale = model.getAttribute('scale');
                 if (!scale) {
-                    return { x: 1.5, y: 0.8, z: 1.5 };
+                    return fallback;
                 }
                 // A-Frame の登録済みコンポーネントは getAttribute() が文字列ではなく
                 // {x, y, z} オブジェクトを返すため、両方のケースに対応する。
+                // さらに NaN/Infinity など不正な数値が紛れ込んだ場合はフォールバックする。
                 if (typeof scale === 'string') {
                     const parts = scale.split(' ').map(Number);
                     return {
-                        x: parts[0] || 1.5,
-                        y: parts[1] || 0.8,
-                        z: parts[2] || 1.5
+                        x: Number.isFinite(parts[0]) ? parts[0] : fallback.x,
+                        y: Number.isFinite(parts[1]) ? parts[1] : fallback.y,
+                        z: Number.isFinite(parts[2]) ? parts[2] : fallback.z
                     };
                 }
                 return {
-                    x: Number(scale.x || 1.5),
-                    y: Number(scale.y || 0.8),
-                    z: Number(scale.z || 1.5)
+                    x: Number.isFinite(scale.x) ? scale.x : fallback.x,
+                    y: Number.isFinite(scale.y) ? scale.y : fallback.y,
+                    z: Number.isFinite(scale.z) ? scale.z : fallback.z
                 };
             }
 
             function getModelRotation(model) {
+                const fallback = { x: 0, y: 0, z: 0 };
                 const rotation = model.getAttribute('rotation');
                 if (!rotation) {
-                    return { x: 0, y: 0, z: 0 };
+                    return fallback;
                 }
                 if (typeof rotation === 'string') {
                     const parts = rotation.split(' ').map(Number);
                     return {
-                        x: parts[0] || 0,
-                        y: parts[1] || 0,
-                        z: parts[2] || 0
+                        x: Number.isFinite(parts[0]) ? parts[0] : fallback.x,
+                        y: Number.isFinite(parts[1]) ? parts[1] : fallback.y,
+                        z: Number.isFinite(parts[2]) ? parts[2] : fallback.z
                     };
                 }
                 return {
-                    x: Number(rotation.x || 0),
-                    y: Number(rotation.y || 0),
-                    z: Number(rotation.z || 0)
+                    x: Number.isFinite(rotation.x) ? rotation.x : fallback.x,
+                    y: Number.isFinite(rotation.y) ? rotation.y : fallback.y,
+                    z: Number.isFinite(rotation.z) ? rotation.z : fallback.z
                 };
             }
 
             function captureInitialRotationStates() {
-                initialRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+                initialRotationStates = workshopModels.map((model) => getModelRotation(model));
+            }
+
+            // 実際に適用されている rotation/scale 属性そのものに NaN や 0以下の
+            // 不正値が入り込んでいないかを確認し、壊れていれば安全な値に戻す。
+            // (拡大縮小/回転中の丸め誤差や異常値でモデルが完全に動かなくなる問題への対策)
+            function sanitizeWorkshopModels() {
+                workshopModels.forEach((model, index) => {
+                    const rawRotation = model.getAttribute('rotation');
+                    const rotationBroken = !rawRotation ||
+                        (typeof rawRotation === 'object' && (!Number.isFinite(rawRotation.x) || !Number.isFinite(rawRotation.y) || !Number.isFinite(rawRotation.z)));
+                    if (rotationBroken) {
+                        const fallback = initialRotationStates[index] || { x: 0, y: 0, z: 0 };
+                        model.setAttribute('rotation', `${fallback.x} ${fallback.y} ${fallback.z}`);
+                    }
+
+                    const rawScale = model.getAttribute('scale');
+                    const scaleBroken = !rawScale ||
+                        (typeof rawScale === 'object' && (
+                            !Number.isFinite(rawScale.x) || !Number.isFinite(rawScale.y) || !Number.isFinite(rawScale.z) ||
+                            rawScale.x <= 0 || rawScale.y <= 0 || rawScale.z <= 0
+                        ));
+                    if (scaleBroken) {
+                        model.setAttribute('scale', '1.5 0.8 1.5');
+                        delete model.dataset.pinchBaseScale;
+                    }
+                });
             }
 
             // ピンチ/ドラッグの内部状態を強制的に初期化する。
@@ -414,10 +450,11 @@
                 isDragging = false;
                 pinchStartDistance = 0;
                 dragStartRotationStates = [];
+                sanitizeWorkshopModels();
             }
 
             function resetModelsToInitialPosition() {
-                document.querySelectorAll('.workshop-model').forEach((model, index) => {
+                workshopModels.forEach((model, index) => {
                     const base = initialRotationStates[index] || { x: 0, y: 0, z: 0 };
                     model.setAttribute('rotation', `${base.x} ${base.y} ${base.z}`);
                 });
@@ -433,7 +470,10 @@
             }
 
             function setModelRotationByDrag(deltaX, deltaY) {
-                document.querySelectorAll('.workshop-model').forEach((model, index) => {
+                if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY)) {
+                    return;
+                }
+                workshopModels.forEach((model, index) => {
                     const startState = dragStartRotationStates[index];
                     if (!startState) {
                         return;
@@ -446,15 +486,22 @@
             }
 
             function setModelScale(scaleFactor) {
+                // NaN/Infinity/0以下など不正な倍率が来た場合は無視して現状を維持する。
+                // (ここで壊れた値を書き込むと scale 属性そのものが破損し、
+                //  マーカーの再検出だけでは直らない固着状態になる)
+                if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
+                    return;
+                }
                 const clamped = Math.max(minScale, Math.min(maxScale, scaleFactor));
-                document.querySelectorAll('.workshop-model').forEach((model) => {
-                    const base = model.dataset.pinchBaseScale ? model.dataset.pinchBaseScale.split(' ').map(Number) : [1.5, 0.8, 1.5];
+                workshopModels.forEach((model) => {
+                    const parsedBase = model.dataset.pinchBaseScale ? model.dataset.pinchBaseScale.split(' ').map(Number) : null;
+                    const base = (parsedBase && parsedBase.length === 3 && parsedBase.every(Number.isFinite)) ? parsedBase : [1.5, 0.8, 1.5];
                     model.setAttribute('scale', `${base[0] * clamped} ${base[1] * clamped} ${base[2] * clamped}`);
                 });
             }
 
             function captureBaseScale() {
-                document.querySelectorAll('.workshop-model').forEach((model) => {
+                workshopModels.forEach((model) => {
                     const base = getScaleVector(model);
                     model.dataset.pinchBaseScale = `${base.x} ${base.y} ${base.z}`;
                 });
@@ -500,7 +547,7 @@
             }
 
             function initWorkshopModelFixes() {
-                document.querySelectorAll('.workshop-model').forEach(function(model) {
+                workshopModels.forEach(function(model) {
                     model.addEventListener('model-loaded', function() {
                         const object3D = this.object3D || this.getObject3D('mesh');
                         fixWorkshopModelMaterials(object3D);
@@ -514,6 +561,8 @@
                     }, 500);
                 });
             }
+
+            refreshWorkshopModelsCache();
 
             if (scene) {
                 scene.addEventListener('renderstart', adjustRendererAlpha);
@@ -554,7 +603,7 @@
                         isDragging = true;
                         dragStartX = e.touches[0].clientX;
                         dragStartY = e.touches[0].clientY;
-                        dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+                        dragStartRotationStates = workshopModels.map((model) => getModelRotation(model));
                         if (e.cancelable) e.preventDefault();
                     }
                 } catch (err) {
@@ -568,13 +617,19 @@
                     if (isPinching && e.touches && e.touches.length >= 2) {
                         if (e.cancelable) e.preventDefault();
                         const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                        if (!Number.isFinite(currentDistance) || currentDistance <= 0) {
+                            return;
+                        }
                         if (pinchStartDistance <= 0) {
                             // 異常値で固定されてしまった場合は現在の距離で基準を再取得し、
                             // ジェスチャーが二度と反応しなくなるのを防ぐ。
-                            pinchStartDistance = currentDistance || 1;
+                            pinchStartDistance = currentDistance;
                             return;
                         }
                         const ratio = currentDistance / pinchStartDistance;
+                        if (!Number.isFinite(ratio) || ratio <= 0) {
+                            return;
+                        }
                         setModelScale(ratio);
                         return;
                     }
@@ -612,7 +667,7 @@
                         isDragging = true;
                         dragStartX = e.touches[0].clientX;
                         dragStartY = e.touches[0].clientY;
-                        dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+                        dragStartRotationStates = workshopModels.map((model) => getModelRotation(model));
                         return;
                     }
 
