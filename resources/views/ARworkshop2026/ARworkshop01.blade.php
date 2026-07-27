@@ -365,11 +365,20 @@
                 if (!scale) {
                     return { x: 1.5, y: 0.8, z: 1.5 };
                 }
-                const parts = scale.split(' ').map(Number);
+                // A-Frame の登録済みコンポーネントは getAttribute() が文字列ではなく
+                // {x, y, z} オブジェクトを返すため、両方のケースに対応する。
+                if (typeof scale === 'string') {
+                    const parts = scale.split(' ').map(Number);
+                    return {
+                        x: parts[0] || 1.5,
+                        y: parts[1] || 0.8,
+                        z: parts[2] || 1.5
+                    };
+                }
                 return {
-                    x: parts[0] || 1.5,
-                    y: parts[1] || 0.8,
-                    z: parts[2] || 1.5
+                    x: Number(scale.x || 1.5),
+                    y: Number(scale.y || 0.8),
+                    z: Number(scale.z || 1.5)
                 };
             }
 
@@ -395,6 +404,16 @@
 
             function captureInitialRotationStates() {
                 initialRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+            }
+
+            // ピンチ/ドラッグの内部状態を強制的に初期化する。
+            // 例外発生時や、マーカーロスト/リカバリ、タブ非表示化など
+            // タッチシーケンスが正常に完了しない状況からの自己復旧に使う。
+            function resetGestureState() {
+                isPinching = false;
+                isDragging = false;
+                pinchStartDistance = 0;
+                dragStartRotationStates = [];
             }
 
             function resetModelsToInitialPosition() {
@@ -519,58 +538,110 @@
             });
 
             scene.addEventListener('touchstart', function(e) {
-                if (e.touches && e.touches.length === 2) {
-                    isPinching = true;
-                    pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                    captureBaseScale();
-                    if (e.cancelable) e.preventDefault();
-                    return;
-                }
+                try {
+                    if (e.touches && e.touches.length >= 2) {
+                        isDragging = false;
+                        isPinching = true;
+                        pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                        captureBaseScale();
+                        if (e.cancelable) e.preventDefault();
+                        return;
+                    }
 
-                if (e.touches && e.touches.length === 1) {
-                    isDragging = true;
-                    dragStartX = e.touches[0].clientX;
-                    dragStartY = e.touches[0].clientY;
-                    dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
-                    if (e.cancelable) e.preventDefault();
+                    if (e.touches && e.touches.length === 1) {
+                        isPinching = false;
+                        pinchStartDistance = 0;
+                        isDragging = true;
+                        dragStartX = e.touches[0].clientX;
+                        dragStartY = e.touches[0].clientY;
+                        dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+                        if (e.cancelable) e.preventDefault();
+                    }
+                } catch (err) {
+                    console.error('[workshop] touchstart error, resetting gesture state', err);
+                    resetGestureState();
                 }
             }, { passive: false });
 
             scene.addEventListener('touchmove', function(e) {
-                if (isPinching && e.touches && e.touches.length === 2) {
-                    if (e.cancelable) e.preventDefault();
-                    const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                    if (pinchStartDistance <= 0) return;
-                    const ratio = currentDistance / pinchStartDistance;
-                    setModelScale(ratio);
-                    return;
-                }
+                try {
+                    if (isPinching && e.touches && e.touches.length >= 2) {
+                        if (e.cancelable) e.preventDefault();
+                        const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                        if (pinchStartDistance <= 0) {
+                            // 異常値で固定されてしまった場合は現在の距離で基準を再取得し、
+                            // ジェスチャーが二度と反応しなくなるのを防ぐ。
+                            pinchStartDistance = currentDistance || 1;
+                            return;
+                        }
+                        const ratio = currentDistance / pinchStartDistance;
+                        setModelScale(ratio);
+                        return;
+                    }
 
-                if (isDragging && e.touches && e.touches.length === 1) {
-                    if (e.cancelable) e.preventDefault();
-                    const deltaX = e.touches[0].clientX - dragStartX;
-                    const deltaY = e.touches[0].clientY - dragStartY;
-                    setModelRotationByDrag(deltaX, deltaY);
+                    if (isDragging && e.touches && e.touches.length === 1) {
+                        if (e.cancelable) e.preventDefault();
+                        const deltaX = e.touches[0].clientX - dragStartX;
+                        const deltaY = e.touches[0].clientY - dragStartY;
+                        setModelRotationByDrag(deltaX, deltaY);
+                    }
+                } catch (err) {
+                    console.error('[workshop] touchmove error, resetting gesture state', err);
+                    resetGestureState();
                 }
             }, { passive: false });
 
             scene.addEventListener('touchend', function(e) {
-                if (isPinching && (!e.touches || e.touches.length < 2)) {
-                    isPinching = false;
-                    pinchStartDistance = 0;
-                }
-                if (isDragging && (!e.touches || e.touches.length === 0)) {
-                    isDragging = false;
-                    dragStartRotationStates = [];
+                try {
+                    const remaining = e.touches ? e.touches.length : 0;
+
+                    if (remaining >= 2) {
+                        // 3本指以上から1本減っただけなら、ピンチ基準距離だけ再取得して継続する。
+                        isPinching = true;
+                        isDragging = false;
+                        pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                        captureBaseScale();
+                        return;
+                    }
+
+                    if (remaining === 1) {
+                        // ピンチ(2本指)から1本指に減った場合、そのままドラッグへ引き継げるように
+                        // ドラッグ開始状態を今の指位置で再取得する。
+                        isPinching = false;
+                        pinchStartDistance = 0;
+                        isDragging = true;
+                        dragStartX = e.touches[0].clientX;
+                        dragStartY = e.touches[0].clientY;
+                        dragStartRotationStates = Array.from(document.querySelectorAll('.workshop-model')).map((model) => getModelRotation(model));
+                        return;
+                    }
+
+                    resetGestureState();
+                } catch (err) {
+                    console.error('[workshop] touchend error, resetting gesture state', err);
+                    resetGestureState();
                 }
             }, { passive: false });
 
             scene.addEventListener('touchcancel', function() {
-                isPinching = false;
-                pinchStartDistance = 0;
-                isDragging = false;
-                dragStartRotationStates = [];
+                resetGestureState();
             }, { passive: false });
+
+            // タブが非表示になった/フォーカスを失った場合もジェスチャー状態を破棄する。
+            // (アプリ切り替え中に指を離さずに戻ってきた場合の固着を防ぐ)
+            window.addEventListener('blur', resetGestureState);
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    resetGestureState();
+                }
+            });
+
+            // マーカーの検出/ロストが起きたタイミングでもジェスチャー状態を初期化する。
+            // (マーカーを外して読み直すと操作が復帰する、というユーザー報告への対策)
+            document.querySelectorAll('a-marker').forEach(function(marker) {
+                marker.addEventListener('markerFound', resetGestureState);
+                marker.addEventListener('markerLost', resetGestureState);
+            });
         });
     </script>
 </body>
