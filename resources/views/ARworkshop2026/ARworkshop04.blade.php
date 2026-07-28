@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="robots" content="noindex,nofollow">
-    <title>AR Workshop 101</title>
+    <title>AR Workshop 104</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=Promise%2CObject.assign%2CArray.from%2CArray.prototype.find%2CArray.prototype.includes%2CString.prototype.includes%2CNumber.isNaN"></script>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -207,7 +207,7 @@
                 <a-entity
                     class="workshop-model"
                     visible="false"
-                    gltf-model="{{ asset('cg/202607/AnimePistol_Textured_101' . sprintf('%02d', $i) . '.glb') }}"
+                    gltf-model="{{ asset('cg/202607/AnimePistol_Textured_104' . sprintf('%02d', $i) . '.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
                     scale="1.5 1.0 1.5">
