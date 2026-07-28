@@ -212,7 +212,7 @@
                     gltf-model="{{ asset('cg/202607/AnimePistol_Textured_102' . sprintf('%02d', $i) . '.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
-                    scale="1.5 1.0 1.5">
+                    scale="1.5 0.8 1.5">
                 </a-entity>
             </a-marker>
         @endfor
@@ -330,7 +330,7 @@
             let initialRotationStates = [];
             let workshopModels = [];
             // defaultModelScale は HTML の scale 属性値と一致させること
-            const defaultModelScale = [1.5, 1.0, 1.5];
+            const defaultModelScale = [1.5, 0.8, 1.5];
             const minScaleFactor = 0.3;  // デフォルトスケールの30%まで縮小可
             const maxScaleFactor = 3.0;  // デフォルトスケールの300%まで拡大可
             let currentScaleFactor = 1.0;   // 現在の拡大率 (デフォルト=1.0)
@@ -394,7 +394,7 @@
                             rawScale.x <= 0 || rawScale.y <= 0 || rawScale.z <= 0
                         ));
                     if (scaleBroken) {
-                        model.setAttribute('scale', '1.5 1.0 1.5');
+                        model.setAttribute('scale', '1.5 0.8 1.5');
                         currentScaleFactor = 1.0;
                         pinchBaseScaleFactor = 1.0;
                     }
