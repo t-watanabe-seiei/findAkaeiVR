@@ -79,8 +79,52 @@ Route::match(['get', 'head'], '/insect', function () {
     return view('shooting3DInsect');
 })->name('insect.index');
 
-Route::match(['get', 'head'], '/ar_sample_code', function () {
+Route::match(['get', 'head'], '/ar_work_101', function () {
     return response(view('ARworkshop2026.ARworkshop01'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_102', function () {
+    return response(view('ARworkshop2026.ARworkshop02'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_103', function () {
+    return response(view('ARworkshop2026.ARworkshop03'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_104', function () {
+    return response(view('ARworkshop2026.ARworkshop04'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_105', function () {
+    return response(view('ARworkshop2026.ARworkshop05'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_106', function () {
+    return response(view('ARworkshop2026.ARworkshop06'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_107', function () {
+    return response(view('ARworkshop2026.ARworkshop07'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_108', function () {
+    return response(view('ARworkshop2026.ARworkshop08'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_109', function () {
+    return response(view('ARworkshop2026.ARworkshop09'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_110', function () {
+    return response(view('ARworkshop2026.ARworkshop10'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_111', function () {
+    return response(view('ARworkshop2026.ARworkshop11'))->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('insect.index');
+
+Route::match(['get', 'head'], '/ar_work_112', function () {
+    return response(view('ARworkshop2026.ARworkshop12'))->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('insect.index');
 
 Route::get('/t-watanabe', function () {
