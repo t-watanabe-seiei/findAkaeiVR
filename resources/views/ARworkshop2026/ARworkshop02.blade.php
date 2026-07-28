@@ -188,8 +188,6 @@
 
     <div class="rotation-controls" aria-label="回転操作">
         <button type="button" class="rotation-control-btn active" data-role="rotation-mode" data-mode="y">Y軸回転</button>
-        <button type="button" class="rotation-control-btn" data-role="rotation-mode" data-mode="free">自由回転</button>
-        <button type="button" class="rotation-control-btn" data-role="reset">初期位置へ</button>
     </div>
 
     <a-scene
@@ -212,7 +210,7 @@
                     gltf-model="{{ asset('cg/202607/AnimePistol_Textured_102' . sprintf('%02d', $i) . '.glb') }}"
                     position="0 0 0"
                     rotation="0 0 0"
-                    scale="1.5 0.8 1.5">
+                    scale="1.5 1.0 1.5">
                 </a-entity>
             </a-marker>
         @endfor
@@ -326,11 +324,10 @@
             let dragStartX = 0;
             let dragStartY = 0;
             let dragStartRotationStates = [];
-            let rotationMode = 'y';
             let initialRotationStates = [];
             let workshopModels = [];
             // defaultModelScale は HTML の scale 属性値と一致させること
-            const defaultModelScale = [1.5, 0.8, 1.5];
+            const defaultModelScale = [1.5, 1.0, 1.5];
             const minScaleFactor = 0.3;  // デフォルトスケールの30%まで縮小可
             const maxScaleFactor = 3.0;  // デフォルトスケールの300%まで拡大可
             let currentScaleFactor = 1.0;   // 現在の拡大率 (デフォルト=1.0)
@@ -394,7 +391,7 @@
                             rawScale.x <= 0 || rawScale.y <= 0 || rawScale.z <= 0
                         ));
                     if (scaleBroken) {
-                        model.setAttribute('scale', '1.5 0.8 1.5');
+                        model.setAttribute('scale', '1.5 1.0 1.5');
                         currentScaleFactor = 1.0;
                         pinchBaseScaleFactor = 1.0;
                     }
@@ -412,22 +409,6 @@
                 sanitizeWorkshopModels();
             }
 
-            function resetModelsToInitialPosition() {
-                workshopModels.forEach((model, index) => {
-                    const base = initialRotationStates[index] || { x: 0, y: 0, z: 0 };
-                    model.setAttribute('rotation', `${base.x} ${base.y} ${base.z}`);
-                });
-            }
-
-            function setRotationMode(mode) {
-                rotationMode = mode;
-                document.querySelectorAll('.rotation-control-btn[data-role="rotation-mode"]').forEach((button) => {
-                    button.classList.toggle('active', button.dataset.mode === mode);
-                });
-                resetModelsToInitialPosition();
-                dragStartRotationStates = [];
-            }
-
             function setModelRotationByDrag(deltaX, deltaY) {
                 if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY)) {
                     return;
@@ -438,8 +419,8 @@
                         return;
                     }
 
-                    const nextX = rotationMode === 'free' ? startState.x + deltaY * rotationSpeed : startState.x;
-                    const nextY = startState.y + (rotationMode === 'free' ? deltaX : deltaX) * rotationSpeed;
+                    const nextX = startState.x;
+                    const nextY = startState.y + deltaX * rotationSpeed;
                     model.setAttribute('rotation', `${nextX} ${nextY} ${startState.z}`);
                 });
             }
@@ -529,19 +510,8 @@
             }
 
             captureInitialRotationStates();
-            setRotationMode(rotationMode);
-
             document.querySelectorAll('.rotation-control-btn[data-role="rotation-mode"]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    setRotationMode(button.dataset.mode);
-                });
-            });
-
-            document.querySelectorAll('.rotation-control-btn[data-role="reset"]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    resetModelsToInitialPosition();
-                    dragStartRotationStates = [];
-                });
+                button.classList.add('active');
             });
 
             scene.addEventListener('touchstart', function(e) {
