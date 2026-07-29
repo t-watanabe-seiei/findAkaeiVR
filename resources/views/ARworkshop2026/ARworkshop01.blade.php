@@ -193,15 +193,17 @@
     <a-scene
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
-        vr-mode-ui="enabled: false"        device-orientation-permission-ui="enabled: false"        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; premultipliedAlpha: false; precision: highp; powerPreference: high-performance; colorManagement: false; sortObjects: true;"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; premultipliedAlpha: false; precision: highp; powerPreference: high-performance; colorManagement: false; sortObjects: true; physicallyCorrectLights: true; outputEncoding: sRGB; exposure: 1.4; toneMapping: ACESFilmicToneMapping;"
         ar-aspect-fix>
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
 
-<a-light type="ambient" color="#ffffff" intensity="1.3"></a-light>
-<a-light type="directional" color="#ffffff" intensity="0.8" position="1 1 1"></a-light>
-<a-light type="directional" color="#ffffff" intensity="0.5" position="-1 0.5 -1"></a-light>
-<a-light type="point" color="#ffffff" intensity="2.0" distance="10" position="0 2 2"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="2.2"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1.4" position="2 3 4"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1.0" position="-2 1 -3"></a-light>
+        <a-light type="point" color="#ffffff" intensity="3.2" distance="12" position="0 2 2"></a-light>
 
         @for ($i = 1; $i <= 5; $i++)
             <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker' . sprintf('%02d', $i) . '.patt') }}" id="marker-maker{{ sprintf('%02d', $i) }}">
@@ -480,6 +482,24 @@
                             mat.polygonOffset = true;
                             mat.polygonOffsetFactor = 1;
                             mat.polygonOffsetUnits = 1;
+                            if (mat.color) {
+                                mat.color.multiplyScalar(1.25);
+                            }
+                            if (mat.emissive) {
+                                mat.emissive.setRGB(0.12, 0.12, 0.12);
+                            }
+                            if (typeof mat.emissiveIntensity !== 'undefined') {
+                                mat.emissiveIntensity = Math.max(mat.emissiveIntensity || 0, 0.35);
+                            }
+                            if (typeof mat.envMapIntensity !== 'undefined') {
+                                mat.envMapIntensity = Math.max(mat.envMapIntensity || 0, 1.2);
+                            }
+                            if (typeof mat.roughness !== 'undefined') {
+                                mat.roughness = Math.max(0.05, mat.roughness * 0.85);
+                            }
+                            if (typeof mat.metalness !== 'undefined') {
+                                mat.metalness = Math.max(0, Math.min(0.15, mat.metalness));
+                            }
                             mat.needsUpdate = true;
                         }
                     });
