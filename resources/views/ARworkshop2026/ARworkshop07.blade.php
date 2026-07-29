@@ -245,7 +245,7 @@
             const input = document.querySelector('#workshop-passcode');
             const error = document.querySelector('.passcode-error');
             if (!input) return;
-            if (input.value.trim() === '385252') {
+            if (input.value.trim() === '654321') {
                 if (error) {
                     error.style.display = 'none';
                 }
