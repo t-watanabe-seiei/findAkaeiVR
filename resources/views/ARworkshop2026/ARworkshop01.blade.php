@@ -483,22 +483,25 @@
                             mat.polygonOffsetFactor = 1;
                             mat.polygonOffsetUnits = 1;
                             if (mat.color) {
-                                mat.color.multiplyScalar(1.25);
+                                mat.color.multiplyScalar(1.12);
                             }
                             if (mat.emissive) {
-                                mat.emissive.setRGB(0.12, 0.12, 0.12);
+                                mat.emissive.setRGB(0.05, 0.05, 0.05);
                             }
                             if (typeof mat.emissiveIntensity !== 'undefined') {
-                                mat.emissiveIntensity = Math.max(mat.emissiveIntensity || 0, 0.35);
+                                mat.emissiveIntensity = Math.max(mat.emissiveIntensity || 0, 0.12);
                             }
                             if (typeof mat.envMapIntensity !== 'undefined') {
-                                mat.envMapIntensity = Math.max(mat.envMapIntensity || 0, 1.2);
+                                mat.envMapIntensity = Math.max(mat.envMapIntensity || 0, 0.8);
                             }
                             if (typeof mat.roughness !== 'undefined') {
-                                mat.roughness = Math.max(0.05, mat.roughness * 0.85);
+                                mat.roughness = Math.max(0.08, Math.min(0.55, mat.roughness * 0.9));
                             }
                             if (typeof mat.metalness !== 'undefined') {
-                                mat.metalness = Math.max(0, Math.min(0.15, mat.metalness));
+                                mat.metalness = Math.max(0, Math.min(0.35, (mat.metalness || 0) + 0.05));
+                            }
+                            if (typeof mat.reflectivity !== 'undefined') {
+                                mat.reflectivity = Math.max(mat.reflectivity || 0, 0.45);
                             }
                             mat.needsUpdate = true;
                         }
