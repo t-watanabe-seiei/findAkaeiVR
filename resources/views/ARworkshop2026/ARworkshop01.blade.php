@@ -198,9 +198,9 @@
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
 
-        <a-light type="ambient" color="#d9d9d9" intensity="0.9"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.45" position="1 1 1"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.25" position="-1 0.5 -1"></a-light>
+<a-light type="ambient" color="#ffffff" intensity="1.3"></a-light>
+<a-light type="directional" color="#ffffff" intensity="0.8" position="1 1 1"></a-light>
+<a-light type="directional" color="#ffffff" intensity="0.5" position="-1 0.5 -1"></a-light>
 
         @for ($i = 1; $i <= 5; $i++)
             <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker' . sprintf('%02d', $i) . '.patt') }}" id="marker-maker{{ sprintf('%02d', $i) }}">
