@@ -195,15 +195,15 @@
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 15;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; premultipliedAlpha: false; precision: highp; powerPreference: high-performance; colorManagement: false; sortObjects: true; physicallyCorrectLights: true; outputEncoding: sRGB; exposure: 1.4; toneMapping: ACESFilmicToneMapping;"
+        renderer="logarithmicDepthBuffer: true; antialias: false; alpha: true; premultipliedAlpha: false; precision: highp; powerPreference: high-performance; colorManagement: false; sortObjects: true; physicallyCorrectLights: true; outputEncoding: sRGB; exposure: 1.39; toneMapping: ACESFilmicToneMapping;"
         ar-aspect-fix>
 
         <a-entity camera="near: 0.2; far: 800; fov: 65;"></a-entity>
 
-        <a-light type="ambient" color="#ffffff" intensity="2.2"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="1.4" position="2 3 4"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="1.0" position="-2 1 -3"></a-light>
-        <a-light type="point" color="#ffffff" intensity="3.2" distance="12" position="0 2 2"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="2.18"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1.39" position="2 3 4"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.99" position="-2 1 -3"></a-light>
+        <a-light type="point" color="#ffffff" intensity="3.17" distance="12" position="0 2 2"></a-light>
 
         @for ($i = 1; $i <= 5; $i++)
             <a-marker type="pattern" url="{{ asset('cg/202606/pattern-maker' . sprintf('%02d', $i) . '.patt') }}" id="marker-maker{{ sprintf('%02d', $i) }}">
@@ -483,7 +483,7 @@
                             mat.polygonOffsetFactor = 1;
                             mat.polygonOffsetUnits = 1;
                             if (mat.color) {
-                                mat.color.multiplyScalar(1.12);
+                                mat.color.multiplyScalar(1.22);
                             }
                             if (mat.emissive) {
                                 mat.emissive.setRGB(0.05, 0.05, 0.05);
