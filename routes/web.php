@@ -43,6 +43,10 @@ Route::match(['get', 'head'], '/stamp202606', function () {
     return view('ARstampRally202606');
 })->name('stamp202606.index');
 
+Route::match(['get', 'head'], '/stamp202609', function () {
+    return view('ARstampRally202609');
+})->name('stamp202609.index');
+
 Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');
@@ -176,5 +180,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard202605', [AdminController::class, 'dashboard202605'])->name('admin.dashboard202605');
         // ARstampRally202606用のダッシュボード
         Route::get('/dashboard202606', [AdminController::class, 'dashboard202606'])->name('admin.dashboard202606');
+        // ARstampRally202609用のダッシュボード
+        Route::get('/dashboard202609', [AdminController::class, 'dashboard202609'])->name('admin.dashboard202609');
     });
 });
