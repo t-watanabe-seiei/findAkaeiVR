@@ -6,6 +6,8 @@
 
 ## Windowsの cmd ではなく PowerShell を使用し、必ず Get-ChildItem -Path .\ -Filter "ARstamp" -Recurse のように検索パスへ明示的に .\ を指定して実行してください。
 
+## ARstampRallyアプリを作成する場合は、Android（Chrome/WebXR APIネイティブ）とiOS（Safari/WebXR未対応、AR.jsまたはThree.jsの独自実装およびUSDZクイックルックへのフォールバック）の両方でエラーなく動作するコードを書いてください
+
 ## AIアシスタントへの注意事項
 
 When working on this codebase:
