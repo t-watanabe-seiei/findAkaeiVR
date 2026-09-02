@@ -1,9 +1,13 @@
 @php
-    $_arjsIsAndroid = stripos(request()->header('User-Agent', ''), 'android') !== false;
-    $_srcW = $_arjsIsAndroid ? 640 : 1280;
-    $_srcH = $_arjsIsAndroid ? 480 : 720;
-    $_dispW = $_arjsIsAndroid ? 640 : 1280;
-    $_dispH = $_arjsIsAndroid ? 480 : 720;
+    // AR.js 射影パラメータの初期値（暫定値・16:9）。
+    // 動画読み込み完了後、js-init.blade.php の syncArjsToRealSize() が
+    // source=動画実寸 / display=実画面 に縦横問わず同期するため、
+    // UAによる解像度出し分けは行わない（低解像度 ideal 制約による
+    // Android HAL のデジタルクロップ回避）。
+    $_srcW = 1280;
+    $_srcH = 720;
+    $_dispW = 1280;
+    $_dispH = 720;
 @endphp
 <a-scene
     id="ar-scene"
@@ -70,23 +74,3 @@
     @endfor
 
 </a-scene>
-<script>
-// Samsung Galaxy 縦向き対策:
-// A-Frame の DOMContentLoaded 初期化より先に同期実行し、
-// arjs の sourceWidth/sourceHeight を縦型寸法（480x640）に上書きする。
-// 非 Samsung 端末・横向き使用時にはスキップするため既存端末への影響なし。
-(function () {
-    var ua = navigator.userAgent;
-    if (!/android/i.test(ua)) return;
-    if (!/samsung|SM-[A-Z]/i.test(ua)) return;
-    if (window.innerWidth >= window.innerHeight) return; // 横向きはスキップ
-    var scene = document.getElementById('ar-scene');
-    if (!scene) return;
-    scene.setAttribute('arjs',
-        'sourceWidth: 480; sourceHeight: 640; displayWidth: 480; displayHeight: 640;' +
-        ' trackingMethod: best; sourceType: webcam; debugUIEnabled: false;' +
-        ' detectionMode: mono; maxDetectionRate: 30;'
-    );
-    console.log('[AR202609] Samsung portrait: arjs set to 480x640.');
-}());
-</script>

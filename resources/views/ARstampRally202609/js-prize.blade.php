@@ -175,7 +175,11 @@
             });
         }
 
+        // 二重送信防止: 交換処理実行中は再実行しないガード
+        var _exchanging = false;
+
         function exchangePrize() {
+            if (_exchanging) return;
             var stamps = getCollectedStamps();
             var count  = Object.keys(stamps).length;
 
@@ -190,9 +194,10 @@
             if (!csrfMeta) { alert('エラー：ページをリロードしてください'); return; }
             var csrfToken = csrfMeta.content;
 
+            _exchanging = true;
             checkPrizeExchangeStatus().then(function (serverStatus) {
-                if (serverStatus.isRedeemed) { showRedeemedPrizeInfo(serverStatus.prizeCode, serverStatus.exchangedAt); return; }
-                if (serverStatus.hasExchanged && serverStatus.prizeCode) { showPrizeCode(serverStatus.prizeCode); return; }
+                if (serverStatus.isRedeemed) { _exchanging = false; showRedeemedPrizeInfo(serverStatus.prizeCode, serverStatus.exchangedAt); return; }
+                if (serverStatus.hasExchanged && serverStatus.prizeCode) { _exchanging = false; showPrizeCode(serverStatus.prizeCode); return; }
 
                 return generateFingerprint().then(function (fp) {
                     return fetch('{{ url("/api/exchange-prize") }}', {
@@ -208,9 +213,10 @@
                         } else {
                             alert(data.message || '景品交換に失敗しました');
                         }
+                        _exchanging = false;
                     });
                 });
-            }).catch(function () { alert('通信エラーが発生しました'); });
+            }).catch(function () { alert('通信エラーが発生しました'); _exchanging = false; });
         }
 
         function showPrizeCode(code) {

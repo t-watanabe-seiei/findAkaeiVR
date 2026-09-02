@@ -10,6 +10,10 @@
         (function () {
             var cameraButton      = document.getElementById('camera-button');
             var videoButton       = document.getElementById('video-button');
+            // MediaRecorder feature detection: 未実装環境（iOS 14.2以前等）では動画ボタンを非表示にする
+            if (typeof MediaRecorder === 'undefined' && videoButton) {
+                videoButton.style.display = 'none';
+            }
             var switchCameraBtn   = document.getElementById('switch-camera-button');
             var photoPreview      = document.getElementById('photo-preview');
             var previewImage      = document.getElementById('preview-image');

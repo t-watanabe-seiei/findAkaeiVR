@@ -34,15 +34,13 @@ document.addEventListener('DOMContentLoaded', function () {
             var base = parseFloat(el.dataset.baseScale || 1);
             var clamped = Math.max(1, Math.min(3, currentScale));
             var v = base * clamped;
-            el.setAttribute('scale', v + ' ' + v + ' ' + v);
+            el.setAttribute('scale', v + ' ' + v + ' ' + v); // スケールはルートの1回分のみ
             try {
-                if (el.object3D && el.object3D.scale) {
-                    el.object3D.scale.set(v, v, v);
-                }
+                // 注: メッシュへの scale.set は削除（ルート×メッシュで base² の二重スケールになっていた）。
+                // traverse はメッシュへ frustumCulled=false を設定するのみ。
                 if (el.object3D && el.object3D.children) {
                     el.object3D.traverse(function (node) {
                         if (node.isMesh) {
-                            if (node.scale) node.scale.set(v, v, v);
                             node.frustumCulled = false;
                         }
                     });
@@ -527,7 +525,10 @@ document.addEventListener('DOMContentLoaded', function () {
             var errDiv = document.getElementById('camera-error');
             if (errDiv) errDiv.style.display = 'none';
             if (scene) {
-                scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 320; sourceHeight: 240; detectionMode: mono; maxDetectionRate: 8;');
+                // display は実画面サイズに更新（source=320x240 のまま display 未設定だとスケールがずれる）
+                var dw = window.innerWidth || 320;
+                var dh = window.innerHeight || 240;
+                scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; sourceWidth: 320; sourceHeight: 240; displayWidth: ' + dw + '; displayHeight: ' + dh + '; detectionMode: mono; maxDetectionRate: 8;');
                 scene.setAttribute('renderer', 'antialias: false; alpha: true; precision: lowp;');
             }
             if (typeof ensureCameraAccess === 'function') ensureCameraAccess();
@@ -583,25 +584,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (scene) {
+        // 検出レートの確定: 現行値を維持しつつ、低スペックモードでは最大8
+        function desiredMaxDetectionRate() {
+            var base = 30;
+            try {
+                var a = scene.getAttribute && scene.getAttribute('arjs');
+                if (a && typeof a.maxDetectionRate === 'number' && a.maxDetectionRate > 0) base = a.maxDetectionRate;
+            } catch (e) {}
+            if (window.AR_FORCE_LOWRES) base = Math.min(base, 8);
+            return base;
+        }
+
+        // AR.js 射影パラメータを実態に同期（source=動画実寸 / display=実画面・縦横問わず）
+        function syncArjsToRealSize() {
+            try {
+                var vid = document.querySelector('video');
+                if (!vid) return;
+                var sw = vid.videoWidth || 0;
+                var sh = vid.videoHeight || 0;
+                if (sw < 2 || sh < 2) return; // 動画が確定する前は同期しない
+                var dw = window.innerWidth || sw;
+                var dh = window.innerHeight || sh;
+                var rate = desiredMaxDetectionRate();
+                scene.setAttribute('arjs',
+                    'sourceWidth: ' + sw + '; sourceHeight: ' + sh + ';' +
+                    ' displayWidth: ' + dw + '; displayHeight: ' + dh + ';' +
+                    ' trackingMethod: best; sourceType: webcam; debugUIEnabled: false;' +
+                    ' detectionMode: mono; maxDetectionRate: ' + rate + ';'
+                );
+                console.warn('[AR202609] arjs synced to real size (source ' + sw + 'x' + sh + ' / display ' + dw + 'x' + dh + ' / rate ' + rate + ')');
+            } catch (e) {}
+        }
+
         scene.addEventListener('arjs-video-loaded', function () {
             window.arjsVideoReady = true;
             hideArjsLoader();
             try { var chm = document.getElementById('camera-help-modal'); if (chm) { chm.style.display = 'none'; chm.setAttribute('aria-hidden','true'); } } catch (e) {}
 
-            // 縦長カメラストリーム対策（Samsung Galaxy 等で 480x640 が返る場合）
-            try {
-                var vid = document.querySelector('video');
-                if (vid && vid.videoWidth > 0 && vid.videoHeight > 0 && vid.videoWidth < vid.videoHeight) {
-                    var vw = vid.videoWidth, vh = vid.videoHeight;
-                    console.warn('[AR202609] Portrait video detected (' + vw + 'x' + vh + '). Updating arjs params.');
-                    scene.setAttribute('arjs',
-                        'sourceWidth: ' + vw + '; sourceHeight: ' + vh + ';' +
-                        ' displayWidth: ' + vw + '; displayHeight: ' + vh + ';' +
-                        ' trackingMethod: best; sourceType: webcam; debugUIEnabled: false;' +
-                        ' detectionMode: mono; maxDetectionRate: 30;'
-                    );
-                }
-            } catch (e) {}
+            // 縦横問わず、動画実寸/実画面に射影を同期
+            syncArjsToRealSize();
+        });
+
+        // 画面回転・ウィンドウリサイズで実表示が変化したら再同期（デバウンス）
+        var _syncArjsTimer = null;
+        window.addEventListener('resize', function () {
+            clearTimeout(_syncArjsTimer);
+            _syncArjsTimer = setTimeout(syncArjsToRealSize, 200);
+        });
+        window.addEventListener('orientationchange', function () {
+            setTimeout(syncArjsToRealSize, 300);
         });
     }
 

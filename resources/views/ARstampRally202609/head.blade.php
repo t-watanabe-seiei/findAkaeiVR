@@ -31,7 +31,17 @@
         window.AR_FORCE_LOWRES = (function() {
             const url = new URL(window.location.href);
             if (url.searchParams.get('lowres') === '1') return true;
-            return detectOldAndroid();
+            if (detectOldAndroid()) return true;
+            // 低スペックAndroidの精緻化: 少数コアまたは小メモリなら低検出レートモード
+            // (navigator が非対応(0/undefined)の場合は判定しない=従来挙動を維持)
+            try {
+                if (/Android/i.test(navigator.userAgent || '')) {
+                    const cores = navigator.hardwareConcurrency || 0;
+                    const mem   = navigator.deviceMemory || 0;
+                    if ((cores > 0 && cores <= 2) || (mem > 0 && mem <= 2)) return true;
+                }
+            } catch (e) {}
+            return false;
         })();
 
         function monitorCameraStartup(timeoutMs) {
@@ -169,8 +179,8 @@
         }
         a-scene { touch-action: none; }
 
-        /* ========== Androidカメラズーム防止 ========== */
-        /* AR.jsが生成するvideo要素と最終描画canvasの双方に cover を適用 */
+        /* ========== レターボックス防止（見た目専用） ========== */
+        /* 注: AR.js の射影(sourceWidth/displayWidth等)は js-init.blade.php の syncArjsToRealSize() により実寸に同期される */
         video {
             object-fit: cover !important;
         }

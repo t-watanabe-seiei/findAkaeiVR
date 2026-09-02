@@ -389,6 +389,56 @@ Android Chrome では `look-controls` が DeviceOrientationEvent（ジャイロ�
 
 ---
 
+### ARstampRally202609 - カメラ射影同期・モデルスケール修正・補助修正 20260902
+
+**ARstampRally202606 の分析で特定され未修正のままだった問題を修正（検証結果: `resources/views/ARstampRally202609/analysis_qwen3.8.md`、要件/設計/タスク: `.claude_workflow/ar_requirements.md` / `ar_design.md` / `ar_tasks.md`）**
+
+**1. AR.js 射影パラメータを実態に同期（全方向）**
+- `js-init.blade.php` に `syncArjsToRealSize()` を新設: `arjs-video-loaded`（動画読み込み完了）時に `source=動画実寸 (videoWidth/Height)` / `display=実画面 (innerWidth/Height)` に再設定
+- `resize`（200ms）/ `orientationchange`（300ms）でもデバウンス付きで再同期
+- `desiredMaxDetectionRate()`: 現行の `maxDetectionRate` を維持（低解像度リトライの8は維持）。低スペックモード（`AR_FORCE_LOWRES`）では最大8
+- 従来の縦型限定ブロック（`vid.videoWidth < vid.videoHeight` ガード）を全方向同期に置換
+
+**2. 初期値の統一・UA分岐と Samsung 専用パッチの削除**
+- `scene.blade.php`: Android 640×480（4:3）出し分けを廃止し、全端末 `1280×720`（16:9）の暫定値に
+  - 低解像度 `ideal` 制約による Android カメラ HAL のデジタルクロップも回避
+  - `arjs-video-loaded` 後立即に実寸へ同期するため、縦型ストリームへの影響はない
+- Samsung Galaxy 縦型 480×640 上書きの `<script>` ブロックを削除（1. が代替）
+
+**3. モデルの二重スケール（base²）解消**
+- `applyCurrentScaleTo()`: メッシュへの `node.scale.set(v,v,v)` を削除
+- 世界スケールはルート（A-Frame `scale` = baseScale × currentScale）の1回分のみ
+- `traverse` はメッシュへの `frustumCulled = false` 設定に限定
+- wheel/ピンチズーム2倍がモデルも2倍になる（従来は4倍相当）
+
+**4. 低解像度リトライ時の display 更新**
+- 「低解像度で再試行」で `displayWidth/Height` を実画面サイズに設定（従来は未設定でスケールがずれる主因C）
+
+**5. 低スペック判定の精緻化（AR_FORCE_LOWRES）**
+- `head.blade.php`: 従来の「Android 7以下」・`?lowres=1` URLパラメータに加え、Android の `hardwareConcurrency <= 2` または `deviceMemory <= 2` を判定
+  - `navigator` 非対応環境（0/undefined）は判定しない（従来挙動を維持）
+- 1. の `desiredMaxDetectionRate()` 経由で検出レート（30→8）に実効化（カメラ解像度は手動の低解像度リトライ経路を維持）
+
+**6. MediaRecorder feature detection**
+- `js-camera.blade.php`: `MediaRecorder` 未実装環境（iOS 14.2以前等）では動画ボタンを非表示に（タップ後のエラー表示ではなく事前隠蔽）
+
+**7. 景品交換の二重送信防止**
+- `js-prize.blade.php`: `exchangePrize()` に `_exchanging` ガードを追加（全4終端パスで復元。ボタンの disabled 操作はせず `updatePrizeButton()` との状態衝突を回避）
+
+#### 変更ファイル（6ファイル）
+- `resources/views/ARstampRally202609/scene.blade.php`: 初期値統一・Samsungブロック削除
+- `resources/views/ARstampRally202609/js-init.blade.php`: `syncArjsToRealSize` / スケール / 低解像度 display
+- `resources/views/ARstampRally202609/head.blade.php`: 低スペック判定・CSSコメント修正
+- `resources/views/ARstampRally202609/js-camera.blade.php`: MediaRecorder 判定
+- `resources/views/ARstampRally202609/js-prize.blade.php`: 二重送信ガード
+- `README.md`: 本ドキュメント
+
+#### 確認済み項目
+- ✅ `php -l` で構文エラーなし（変更した blade ファイル5ファイルすべて）
+- ⏳ 実機検証（Android縦長/横長のカメラ比率・モデル位置、Samsung縦型の読み込み直後認識、iOS回帰、低スペック機、`MediaRecorder` 非対応環境で動画ボタン非表示）— 開発者実行予定
+
+---
+
 ### ARstampRally202605 - 新規作成 (モジュール化リファクタリング)
 
 **ARstampRally202603をベースに2026年5月イベント向け新版を作成:**
