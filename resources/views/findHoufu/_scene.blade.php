@@ -1,10 +1,10 @@
 <a-scene
-    renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; exposure: 1; toneMapping: ACESFilmic"
+    renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true"
     vr-mode-ui="enabled: true"
     auto-enter-vr>
 
     <a-assets>
-        <a-asset-item id="model_bucchi" src="{{ asset('cg/202609/model01_bucchi.glb') }}"></a-asset-item>
+        <a-asset-item id="model_bucchi" src="{{ asset('cg/202609/model00_bucchi.glb') }}"></a-asset-item>
         <audio id="bgm_s1" src="{{ asset('cg/sound_bgm11.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s2" src="{{ asset('cg/sound_bgm12.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s3" src="{{ asset('cg/sound_bgm13.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>

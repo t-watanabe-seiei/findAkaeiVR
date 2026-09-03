@@ -174,7 +174,7 @@
                     registerTimeout(function () {
                         if (s.sessionMode !== 'vr') s.enterVR();
                     }, window.DEBUG_MODE ? 200 : this.data.delay);
-                }.catch(function () {});
+                }).catch(function () {});
             }.bind(this);
             if (navigator.xr) checkXR();
             else window.addEventListener('online', checkXR, { once: true });
@@ -366,6 +366,9 @@
                         sceneEl.session.end().catch(function () {}).then(function () { location.reload(); });
                     } else { location.reload(); }
                 }.bind(this));
+            });
+        },
+
         placeModelAt: function (locIdx) {
             const cfg = window.LOCATIONS[locIdx];
             const sceneEl = this.el.sceneEl;
