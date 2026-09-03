@@ -159,6 +159,24 @@
         window.activeBalls = [];
     }
 
+    // ─── HUD 更新 ───
+    function updateHUD() {
+        var timerText = document.getElementById('timerText');
+        if (timerText) timerText.setAttribute('value', 'TIME: ' + Math.max(0, window.gameTimeLeft) + 's');
+
+        var scoreText = document.getElementById('scoreText');
+        if (scoreText) scoreText.setAttribute('value', 'SCORE: ' + (window.totalScore || 0));
+
+        var comboText = document.getElementById('comboText');
+        if (comboText) {
+            if (window.comboCount > 1) {
+                comboText.setAttribute('value', window.comboCount + 'x COMBO!');
+            } else {
+                comboText.setAttribute('value', '');
+            }
+        }
+    }
+
     // ═══ A-Frame コンポーネント ═══
 
     // ─── auto-enter-vr ───
