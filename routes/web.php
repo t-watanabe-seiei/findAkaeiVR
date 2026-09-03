@@ -11,6 +11,10 @@ Route::get('/findAkaei', function () {
     return view('findakaei');
 });
 
+Route::get('/findHoufu', function () {
+    return view('findHoufu.index');
+});
+
 Route::get('/train', function () {
     return view('train');
 });

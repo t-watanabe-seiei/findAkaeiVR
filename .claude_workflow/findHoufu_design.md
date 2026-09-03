@@ -1,0 +1,194 @@
+# findHoufu 設計書
+
+> 作成日: 2026-07-09  
+> 前提: `.claude_workflow/findHoufu_requirements.md` を読み込み済み
+
+---
+
+## 1. アーキテクチャ概要
+
+```
+┌─────────────────────────────────────────────────────┐
+│  index.blade.php (HTML シェル)                       │
+│  ├── <head>: scripts + @include(_components)        │
+│  └── <body>: @include(_scene)                       │
+├─────────────────────────────────────────────────────┤
+│  _components.blade.php (JS)                         │
+│  ├── グローバル設定 (STAGE_CONFIG, LOCATIONS, ...)   │
+│  ├── ユーティリティ関数 (pool, dispose, timeout...)  │
+│  └── A-Frame コンポーネント                          │
+│      ├── start-menu                                 │
+│      ├── shoot                                      │
+│      ├── hit-box                                    │
+│      ├── auto-enter-vr                              │
+│      └── vr-controller                              │
+├─────────────────────────────────────────────────────┤
+│  _scene.blade.php (A-Frame HTML)                    │
+│  ├── a-assets (model, gun, ball, bgm, sky, sound)   │
+│  ├── lighting                                       │
+│  ├── controllers (left/right + gun model)           │
+│  ├── startMenu                                      │
+│  ├── timerDisplay (HUD)                             │
+│  ├── resultMenu                                     │
+│  ├── aSky                                           │
+│  ├── particles                                      │
+│  └── camera (shoot)                                 │
+└─────────────────────────────────────────────────────┘
+```
+
+## 2. データ構造
+
+### 2.1 STAGE_CONFIG
+
+```js
+window.STAGE_CONFIG = {
+  1: { timeLimit: 10, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
+  2: { timeLimit: 12, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
+  3: { timeLimit: 12, skyId: 'sky03', bgmId: 'bgm_s2', isResult: false },
+  4: { timeLimit: 12, skyId: 'sky04', bgmId: 'bgm_s2', isResult: false },
+  5: { timeLimit: 12, skyId: 'sky05', bgmId: 'bgm_s3', isResult: false },
+  6: { timeLimit: 12, skyId: 'sky06', bgmId: 'bgm_s3', isResult: false },
+  7: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
+};
+```
+
+### 2.2 LOCATIONS
+
+```js
+window.LOCATIONS = [
+  { pos: '-2 -0.6 1',      rot: '0 120 0',  scale: '1.4 1.4 1.4' },
+  { pos: '10 -0.88 -1.9',  rot: '0 -90 0',  scale: '2.7 2.7 2.7' },
+  { pos: '-1.325 1.0 4.00',rot: '0 150 0',  scale: '1.4 1.4 1.4' },
+  { pos: '6.0 0 0.13',     rot: '0 -120 0', scale: '2.1 2.1 2.1' },
+  { pos: '-0.5 0 -0.5',    rot: '0 0 0',    scale: '1 1 1' },
+  { pos: '-4.5 0.9 4.6',   rot: '0 130 0',  scale: '1.9 1.9 1.9' },
+];
+```
+
+### 2.3 グローバル状態
+
+```js
+window.gameStarted   = false;
+window.gameEnded     = false;
+window.currentStage  = 1;
+window.totalScore    = 0;
+window.comboCount    = 0;
+window.maxComboCount = 0;
+window.hitCount      = 0;
+window.modelAppearTime = 0;
+window.modelActive   = false;
+window.gameTimer     = null;
+window.gameTimeLeft  = 0;
+window.activeBalls   = [];
+window.ballPool      = [];
+window.activeTimers  = [];
+window._cachedPos    = new THREE.Vector3();
+window._cachedDir    = new THREE.Vector3();
+window._cachedBallColor = null;
+```
+
+## 3. コンポーネント設計
+
+### 3.1 start-menu
+
+| 項目 | 内容 |
+|------|------|
+| 役割 | ゲーム開始、ステージ進行、タイマー、リザルト |
+| 発火 | START ボタン click/touchstart |
+
+**メソッド:** `handleClick`, `startGame`, `startTimer`, `spawnModel(locIdx)`, `advanceStage`, `showResult`, `saveScore`, `fetchRankings`, `tick`
+
+### 3.2 shoot
+
+| 項目 | 内容 |
+|------|------|
+| 役割 | ボール発射・移動・当たり判定 |
+| 発火 | triggerdown / mouse click |
+| 同時 | 最大 2 発 |
+
+**メソッド:** `shoot(e)`, `tick`, `updateBallPosition(bd)`, `checkHit(ballPos)`
+
+**ボール物理:** `pos = start + vel*t + 0.5*g*t²`, `g=(0,-2.45,0)`, `vel=dir*20`
+
+### 3.3 hit-box
+
+| 項目 | 内容 |
+|------|------|
+| 役割 | ヒット検出→アニメ切替→フェード→スコア→再出現 |
+| 発火 | `ball-hit` イベント |
+
+**フロー:** ball-hit → anime02 → ヒット音 → スコア計算 → コンボ+1 → 0.5s フェード → dispose → 0.5s 後再出現
+
+### 3.4 auto-enter-vr / vr-controller
+
+halloween4 と同じ。WebXR 検出→1s 後 enterVR / 空コンポーネント。
+
+## 4. ユーティリティ関数
+
+| 関数 | 説明 |
+|------|------|
+| `registerTimeout(cb, delay)` | 追跡可能な setTimeout |
+| `clearAllTimers()` | 全 activeTimers クリア |
+| `disposeEntityResources(entity)` | GPU リソース解放 |
+| `disposeAndRemoveEntity(entity)` | dispose + DOM 削除 |
+| `createBallEntity()` | ボール生成 |
+| `acquireBall(sceneEl)` | プール取得 or 新規 |
+| `releaseBall(ball)` | プール返却（max 4） |
+| `playSound(id)` | 効果音再生 |
+| `fadeOutAndStopAudio(el, dur, cb)` | BGM フェード |
+| `preloadNextStage(n)` | 次ステージプリロード |
+| `updateHUD()` | HUD 更新 |
+| `showScorePopup(pos, score, combo)` | 得点ポップアップ |
+
+## 5. シーン構造（_scene.blade.php）
+
+```
+a-scene
+├── a-assets (model, gun, ball, bgm×4, sound×2, sky×6, icon)
+├── lighting (ambient + 2x directional)
+├── mouseCursor
+├── leftController (laser showLine:false)
+├── rightController (laser showLine:true + gun)
+├── startMenu [start-menu] (plane + texts + START)
+├── timerDisplay (score, combo, time)
+├── resultMenu (plane + texts + ranking + message)
+├── aSky
+├── particles (celebration)
+└── my_camera [shoot] → fadeOverlay
+```
+
+## 6. 状態遷移
+
+```
+[LOADED] → [START_MENU] → START → [STAGE_1]
+  STAGE_N: spawn → hit → fade → respawn (loop until timeout)
+  timeout → STAGE_N+1
+  STAGE_6 timeout → STAGE_7 (Result)
+  STAGE_7: model + score + ranking + 12s → FADE → VR_EXIT → RELOAD
+```
+
+## 7. パフォーマンス設計
+
+| 項目 | 実装 |
+|------|------|
+| ボールプーリング | max 4 発 |
+| Color キャッシュ | `window._cachedBallColor` |
+| Vector3 再利用 | `_cachedPos`, `_cachedDir` |
+| GPU 解放 | フェード後 `disposeAndRemoveEntity()` |
+| タイムアウト追跡 | `registerTimeout` + `clearAllTimers` |
+| laser | 左: false / 右: true |
+| tick スロットル | start-menu: 100ms |
+| プリロード | a-assets + BGM preload="auto" |
+
+## 8. findakaei 問題点への対策
+
+| 問題 | 対策 |
+|------|------|
+| `OnStartButtonClick()` 未定義 | start-menu で event listener |
+| `PassSec` 未初期化 | `Date.now()` ベース |
+| `setInterval` 文字列引数 | 関数リファレンス |
+| CSRF なし | `<meta>` + `X-CSRF-TOKEN` |
+| `userid` ハードコード | `name: 'noName'` |
+| 単一ファイル | 3 ファイル分割 |
+| axios 未使用 | 読み込まない（native fetch） |
+| コメント残骸 | clean な定義 |

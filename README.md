@@ -1,3 +1,103 @@
+## findHoufu VRゲーム（2026-07-17）
+
+### 概要
+豊後市観光地を巡る「探す＆撃つ」VRシューティングゲーム。A-Frame ベースで 7 ステージ構成。Bucchi モデルを素早く撃つことでスコアを稼ぎ、各ステージのタイムリミット内に撃破する。
+
+### ルート
+```
+GET /findHoufu → view('findHoufu.index')
+```
+
+### ファイル構成
+```
+resources/views/findHoufu/
+├── index.blade.php      # HTML シェル（CSRF meta + @include）
+├── _scene.blade.php     # A-Frame シーン（アセット・コントローラー・UI・パーティクル）
+└── _components.blade.php # 全 JS ロジック（5 コンポーネント + ユーティリティ）
+```
+
+### ゲームフロー
+1. VR 自動入場（WebXR 検出 → 1s 後 `enterVR()`）
+2. START メニュー表示 → 「START」押下
+3. Stage 1〜7 進行（各ステージ: タイムリミット内に Bucchi を撃つ）
+4. 全ステージクリア後 → リザルト画面（スコア・最大コンボ・ヒット数・ランキング表示）
+5. 12 秒後にフェードアウト → VR 退出 → ページ再読込
+
+### スコア計算
+```
+baseScore = max(5, round(50 × (1 - hitTime / stageLimit)))
+comboMult = 1 + min(combo, 10) × 0.1
+finalScore = baseScore × comboMult
+```
+
+### ステージ設定
+| Stage | 時間 | 背景 | BGM |
+|-------|------|------|-----|
+| 1 | 10s | sky01 | bgm_s1 |
+| 2 | 12s | sky02 | bgm_s1 |
+| 3 | 12s | sky03 | bgm_s2 |
+| 4 | 12s | sky04 | bgm_s2 |
+| 5 | 12s | sky05 | bgm_s3 |
+| 6 | 12s | sky06 | bgm_s3 |
+| 7 | 12s | sky01 | bgm_s4（リザルト） |
+
+### A-Frame コンポーネント
+- `auto-enter-vr` — WebXR 検出 → 自動 VR 入場
+- `vr-controller` — raycaster 依存（空コンポーネント）
+- `start-menu` — ゲーム開始・ステージ進行・タイマー・モデル管理・フェード・リザルト・API 連携
+- `shoot` — ボール発射（トリガー/クリック）・重力込み弾道・当たり判定・同時最大 2 発
+- `hit-box` — ヒット検出 → anime02 切替 → フェードアウト → スコア計算 → 再出現
+
+### パフォーマンス対策
+- ボールオブジェクトプーリング（最大 4 発、発射上限 2 発）
+- GPU リソース解放（`disposeEntityResources`）
+- タイムアウト追跡（`registerTimeout` + `clearAllTimers`）
+- 左コントローラー laser 非表示（`showLine: false`）
+- 次ステージ背景/BGM プリロード
+- tick スロットリング（100ms 間隔）
+
+### findakaei からの改善点
+| 問題 | 修正 |
+|------|------|
+| `OnStartButtonClick()` 未定義 | event listener（click / `triggerdown`） |
+| `PassSec` 未初期化 | `Date.now()` ベースの `gameStartTime` |
+| `setInterval` 文字列引数 | 関数リファレンス |
+| CSRF なし | `<meta name="csrf-token">` + `X-CSRF-TOKEN` ヘッダ |
+| `userid` ハードコード | `name: 'noName'` |
+| 単一ファイル（~1500行） | 3 ファイル分割（index / _scene / _components） |
+| axios 読み込み（未使用） | native `fetch` のみ |
+
+### API 連携
+- **スコア送信:** `POST /scores` — `{ game_name: 'findHoufu', score, rank, name: 'noName' }`
+- **ランキング取得:** `GET /scores?game=findHoufu&limit=5`
+
+### 必要アセット
+- モデル: `public/cg/202609/model01_bucchi.glb`（anime01 / anime02 必須）
+- BGM: `sound_bgm11.mp3` 〜 `sound_bgm14.mp3`
+- 効果音: `sound_animal_appear.mp3` / `sound_animal_die.mp3`
+- 背景: `R0010095.JPG` 〜 `R0010143.JPG`（6 種）
+- 銃: `gun_01.glb`
+- ボール: `poke_ball_02orange.glb`
+
+### 操作
+- **VR:** 右コントローラー Trigger で射撃
+- **PC:** Space キー / マウスクリック で射撃
+
+### テストチェックリスト
+- [ ] `/findHoufu` でページロード
+- [ ] START メニュー表示
+- [ ] VR 自動入場（WebXR 対応ブラウザ）
+- [ ] Stage 1 開始（sky01 + bgm_s1）
+- [ ] モデル出現（anime01 + 出現音）
+- [ ] ボール射撃 → ヒット → anime02 → フェードアウト → 再出現
+- [ ] スコア更新・コンボ表示
+- [ ] Stage 遷移（背景 + BGM 切替 + フェード）
+- [ ] 7 ステージクリア → リザルト画面
+- [ ] スコア POST / ランキング GET
+- [ ] タイムアウト時（12 秒超 → スコア 0 + コンボリセット）
+
+---
+
 ## terrer4に関するメモ
 発射ポケボールの速度はここです。
 _components.blade.php:1075
