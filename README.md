@@ -1393,3 +1393,50 @@ THREE.jsの不適切なリソース解放処理が原因。
 
 
 #### ishimaru
+
+---
+
+## findHoufu VRゲーム — 2026-09-04 修正・改善履歴
+
+### 修正内容一覧
+
+| # | 修正内容 | 詳細 |
+|---|---------|------|
+| 1 | `this.fadeToBlack is not a function` 修正 | `showResult` 内の `this` 参照バグ修正（arrow function → function） |
+| 2 | 無限再帰ループ修正 | `isTransitioning` ガード追加でステージ遷移の重複呼び出し防止 |
+| 3 | BGM クロスフェード | 旧BGM 1.5s fade-out → 新BGM 開始（唐突な切替解消） |
+| 4 | ボール速度 300% | 20→60（ゲームプレイのテンポ向上） |
+| 5 | ボールサイズ 50% | 0.3→0.15（視覚バランス改善） |
+| 6 | ボール回転アニメーション追加 | 視認性向上のため回転追加 |
+| 7 | ボール発射方向修正 | VR: controller raycaster / PC: camera 方向でボール生成 |
+| 8 | 右コントローラ既定モデル重複除去 | `model: false` でレーザーのみ表示 |
+| 9 | VR カメラが動かない修正 | `look-controls` + position 追加 |
+| 10 | Stage 1 タイム 12s 統一 | 全ステージ12秒に統一 |
+| 11 | Stage 7: 全BGM停止→bgm_s4のみ | 終了後VR抜け→スタート画面へ（`exitToStart`） |
+| 12 | `findhoufu-scores` API 404修正 | Controller + Model + Migration + Routes 追加 |
+
+### 新規作成ファイル
+
+| ファイル | 説明 |
+|------|------|
+| `app/Models/FindHoufuScore.php` | findHoufu スコア Eloquent Model |
+| `app/Http/Controllers/FindHoufuScoreController.php` | スコア保存・ランキング取得 Controller |
+| `database/migrations/2026_09_04_051915_create_findhoufu_scores_table.php` | `findhoufu_scores` テーブル作成 Migration（実行済み） |
+
+### 編集ファイル
+
+| ファイル | 変更点 |
+|------|------|
+| `resources/views/findHoufu/_components.blade.php` | 上記 12 件の JS 修正 |
+| `resources/views/findHoufu/_scene.blade.php` | カメラ/コントローラ設定修正 |
+| `routes/api.php` | `findhoufu-scores` ルート追加（行31-32） |
+
+### API エンドポイント
+
+| Game | Method | Endpoint | Status |
+|------|--------|----------|--------|
+| `shooting3Dhalloween4` | POST | `api/shooting-scores` | 元々OK |
+| `shooting3Dhalloween4` | GET | `api/shooting-scores/top5` | 元々OK |
+| `findHoufu` | POST | `api/findhoufu-scores` | **今回追加** |
+| `findHoufu` | GET | `api/findhoufu-scores/top5` | **今回追加** |
+

@@ -3,7 +3,7 @@
     vr-mode-ui="enabled: true"
     auto-enter-vr>
 
-    <a-assets timeout="15000">
+    <a-assets timeout="6000">
         <a-asset-item id="model_bucchi" src="{{ asset('cg/202609/model00_bucchi.glb') }}"></a-asset-item>
         <audio id="bgm_s1" src="{{ asset('cg/sound_bgm11.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s2" src="{{ asset('cg/sound_bgm12.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>

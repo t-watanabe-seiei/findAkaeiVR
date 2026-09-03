@@ -336,9 +336,9 @@
             window.modelActive = false;
             var self = this;
             this.fadeToBlack(function () {
+                window.isTransitioning = false;
                 self.advanceStage(stageNum + 1);
                 self.fadeFromBlack();
-                window.isTransitioning = false;
             });
         },
 
@@ -567,8 +567,8 @@
         init: function () {
             this.lastShot = 0;
             this.cooldown = this.data.cooldown;
-            this.gravity = new THREE.Vector3(0, -2.45, 0);
-            this.speed = 60;
+            this.gravity = new THREE.Vector3(0, -5.45, 0);
+            this.speed = 30;
 
             // VR: コントローラー triggerdown
             var vrTriggerFn = function (e) {
