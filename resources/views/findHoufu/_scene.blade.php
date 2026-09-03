@@ -3,7 +3,7 @@
     vr-mode-ui="enabled: true"
     auto-enter-vr>
 
-    <a-assets>
+    <a-assets timeout="15000">
         <a-asset-item id="model_bucchi" src="{{ asset('cg/202609/model00_bucchi.glb') }}"></a-asset-item>
         <audio id="bgm_s1" src="{{ asset('cg/sound_bgm11.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s2" src="{{ asset('cg/sound_bgm12.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
@@ -29,7 +29,7 @@
               raycaster="objects: .collidable, .clickable; far: 5; showLine: false"
               vr-controller></a-entity>
     <a-entity id="rightController"
-              laser-controls="hand: right"
+              laser-controls="hand: right; model: false"
               raycaster="objects: .collidable, .clickable; far: 5; showLine: true"
               vr-controller>
         <a-entity id="controllerGunModel"
@@ -72,7 +72,7 @@
         <a-entity particle-system="preset: default; color: #FFFFFF,#FFD700; particleCount: 10; size: 0.15; maxAge: 2.5; velocityValue: 0 3 0; velocitySpread: 4 3 4; accelerationValue: 0 -0.5 0; blending: 1" position="0 0.5 0"></a-entity>
     </a-entity>
 
-    <a-camera id="my_camera" shoot>
+    <a-camera id="my_camera" position="0 1.6 0" look-controls shoot>
         <a-entity id="fadeOverlay" visible="false">
             <a-plane width="200" height="200" position="0 0 -0.5" color="#000000" opacity="0" material="transparent: true; depthTest: false; side: double"></a-plane>
         </a-entity>

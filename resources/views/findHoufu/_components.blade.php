@@ -4,7 +4,7 @@
     function debugLog(...a) { if (window.DEBUG_MODE) console.log('[findHoufu]', ...a); }
 
     window.STAGE_CONFIG = {
-        1: { timeLimit: 10, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
+        1: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
         2: { timeLimit: 12, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
         3: { timeLimit: 12, skyId: 'sky03', bgmId: 'bgm_s2', isResult: false },
         4: { timeLimit: 12, skyId: 'sky04', bgmId: 'bgm_s2', isResult: false },
@@ -14,12 +14,12 @@
     };
 
     window.LOCATIONS = [
-        { pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '1.4 1.4 1.4' },
-        { pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '2.7 2.7 2.7' },
-        { pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '1.4 1.4 1.4' },
-        { pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '2.1 2.1 2.1' },
-        { pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '1 1 1' },
-        { pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '1.9 1.9 1.9' },
+        { pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.7 0.7 0.7' },
+        { pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '1.35 1.35 1.35' },
+        { pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.7 0.7 0.7' },
+        { pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '1.05 1.05 1.05' },
+        { pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.5 0.5 0.5' },
+        { pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.95 0.95 0.95' },
     ];
 
     window.gameStarted   = false;
@@ -36,6 +36,7 @@
     window.activeBalls   = [];
     window.ballPool      = [];
     window.activeTimers  = [];
+    window.isTransitioning = false;
     window._cachedPos    = new THREE.Vector3();
     window._cachedDir    = new THREE.Vector3();
     window._cachedBallColor = new THREE.Color(0x444444);
@@ -126,7 +127,7 @@
     function createBallEntity(sceneEl) {
         const ball = document.createElement('a-entity');
         ball.setAttribute('gltf-model', '{{ asset('cg/poke_ball_05.glb') }}');
-        ball.setAttribute('scale', '0.3 0.3 0.3');
+        ball.setAttribute('scale', '0.15 0.15 0.15');
         ball.setAttribute('visible', 'false');
         sceneEl.appendChild(ball);
         return ball;
@@ -264,6 +265,7 @@
         },
 
         advanceStage: function (stageNum) {
+            if (window.isTransitioning) return;
             const cfg = window.STAGE_CONFIG[stageNum];
             if (!cfg) return;
             window.currentStage = stageNum;
@@ -272,16 +274,23 @@
             const skyEl = document.getElementById('aSky');
             if (skyEl) skyEl.setAttribute('src', '#' + cfg.skyId);
 
-            // Switch BGM
-            const bgmEl = document.getElementById(cfg.bgmId);
-            if (this.bgmAudio && this.bgmAudio !== bgmEl) {
-                fadeOutAndStopAudio(this.bgmAudio, 500, null);
-            }
-            if (bgmEl) {
-                bgmEl.volume = 0.5;
-                bgmEl.currentTime = 0;
-                bgmEl.play().catch(function () {});
-                this.bgmAudio = bgmEl;
+            // BGM crossfade: fade out old, then start new
+            var self = this;
+            const newBgmEl = document.getElementById(cfg.bgmId);
+            if (this.bgmAudio && this.bgmAudio !== newBgmEl) {
+                fadeOutAndStopAudio(this.bgmAudio, 1500, function () {
+                    if (newBgmEl) {
+                        newBgmEl.volume = 0.5;
+                        newBgmEl.currentTime = 0;
+                        newBgmEl.play().catch(function () {});
+                    }
+                    self.bgmAudio = newBgmEl;
+                });
+            } else if (newBgmEl) {
+                newBgmEl.volume = 0.5;
+                newBgmEl.currentTime = 0;
+                newBgmEl.play().catch(function () {});
+                this.bgmAudio = newBgmEl;
             }
 
             // Preload next stage
@@ -316,6 +325,8 @@
         },
 
         onStageEnd: function (stageNum) {
+            if (window.isTransitioning) return;
+            window.isTransitioning = true;
             releaseAllBalls();
             const model = document.getElementById('bucchiModel');
             if (model) {
@@ -323,10 +334,12 @@
                 registerTimeout(function () { disposeAndRemoveEntity(model); }, 300);
             }
             window.modelActive = false;
+            var self = this;
             this.fadeToBlack(function () {
-                this.advanceStage(stageNum + 1);
-                this.fadeFromBlack();
-            }.bind(this));
+                self.advanceStage(stageNum + 1);
+                self.fadeFromBlack();
+                window.isTransitioning = false;
+            });
         },
 
         fadeToBlack: function (callback) {
@@ -377,18 +390,103 @@
             if (hitsEl) hitsEl.setAttribute('value', 'HITS: ' + window.hitCount);
             const particles = document.getElementById('particle-celebration');
             if (particles) particles.setAttribute('visible', 'true');
+
+            // Stop ALL BGMs, then start bgm_s4 only
+            ['bgm_s1', 'bgm_s2', 'bgm_s3'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) { el.pause(); el.currentTime = 0; el.volume = 0.8; }
+            });
+            var bgm4 = document.getElementById('bgm_s4');
+            if (bgm4) {
+                bgm4.volume = 0.5;
+                bgm4.currentTime = 0;
+                bgm4.play().catch(function () {});
+            }
+            this.bgmAudio = bgm4;
+
             this.saveScore();
             this.fetchRankings();
-            registerTimeout(function () {
+
+            // After 12 seconds: exit VR and return to start menu
+            var self = this;
+            var resultTimeLeft = 12;
+            window.gameTimer = setInterval(function () {
+                resultTimeLeft -= 1;
+                if (resultTimeLeft <= 0) {
+                    clearInterval(window.gameTimer);
+                    window.gameTimer = null;
+                    if (self.bgmAudio) {
+                        fadeOutAndStopAudio(self.bgmAudio, 1000, function () {
+                            self.exitToStart();
+                        });
+                    } else {
+                        self.exitToStart();
+                    }
+                }
+            }, 1000);
+        },
+
+        exitToStart: function () {
+            var sceneEl = this.el.sceneEl;
+            var self = this;
+
+            function doReset() {
+                window.gameStarted = false;
+                window.gameEnded = false;
+                window.currentStage = 1;
+                window.totalScore = 0;
+                window.comboCount = 0;
+                window.maxComboCount = 0;
+                window.hitCount = 0;
+                window.modelActive = false;
+                window.isTransitioning = false;
+                releaseAllBalls();
                 clearAllTimers();
-                if (this.bgmAudio) fadeOutAndStopAudio(this.bgmAudio, 1000, null);
-                this.fadeToBlack(function () {
-                    const sceneEl = this.el.sceneEl;
-                    if (sceneEl.session && sceneEl.session.end) {
-                        sceneEl.session.end().catch(function () {}).then(function () { location.reload(); });
-                    } else { location.reload(); }
-                }.bind(this));
-            });
+                if (window.gameTimer) { clearInterval(window.gameTimer); window.gameTimer = null; }
+
+                // Hide result menu & particles
+                var resultMenu = document.getElementById('resultMenu');
+                if (resultMenu) resultMenu.setAttribute('visible', 'false');
+                var particles = document.getElementById('particle-celebration');
+                if (particles) particles.setAttribute('visible', 'false');
+
+                // Show start menu
+                var startMenu = document.getElementById('startMenu');
+                if (startMenu) {
+                    startMenu.setAttribute('visible', 'true');
+                    if (startMenu.components['start-menu']) {
+                        startMenu.components['start-menu'].clickBlocked = false;
+                    }
+                }
+
+                // Reset sky to stage 1
+                var skyEl = document.getElementById('aSky');
+                if (skyEl) skyEl.setAttribute('src', '#sky01');
+
+                // Remove any remaining model
+                var model = document.getElementById('bucchiModel');
+                if (model) disposeAndRemoveEntity(model);
+
+                // Stop all BGMs
+                ['bgm_s1', 'bgm_s2', 'bgm_s3', 'bgm_s4'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) { el.pause(); el.currentTime = 0; el.volume = 0.8; }
+                });
+                self.bgmAudio = null;
+
+                // Hide HUD
+                var hud = document.getElementById('timerDisplay');
+                if (hud) hud.setAttribute('visible', 'false');
+            }
+
+            // Exit VR if active, then reset
+            if (sceneEl.session && sceneEl.session.end) {
+                sceneEl.session.end().catch(function () {}).then(function () {
+                    doReset();
+                });
+            } else {
+                doReset();
+            }
         },
 
         placeModelAt: function (locIdx) {
@@ -470,7 +568,7 @@
             this.lastShot = 0;
             this.cooldown = this.data.cooldown;
             this.gravity = new THREE.Vector3(0, -2.45, 0);
-            this.speed = 20;
+            this.speed = 60;
 
             // VR: コントローラー triggerdown
             var vrTriggerFn = function (e) {
@@ -511,16 +609,36 @@
             const sceneEl = this.el.sceneEl;
             const ball = acquireBall(sceneEl);
             if (!ball) return;
-            const obj3d = this.el.getObject3D('camera');
-            const startPos = obj3d.position.clone();
-            const dir = new THREE.Vector3();
-            obj3d.getWorldDirection(dir);
+
+            var startPos, dir;
+            if (e && e.type === 'triggerdown' && e.target && e.target.object3D) {
+                // VR: use controller position and raycaster direction
+                var ctrl = e.target;
+                startPos = new THREE.Vector3();
+                ctrl.object3D.getWorldPosition(startPos);
+                dir = new THREE.Vector3();
+                var rc = ctrl.components && ctrl.components.raycaster;
+                if (rc && rc.raycaster) {
+                    dir.copy(rc.raycaster.ray.direction).normalize();
+                } else {
+                    dir.set(0, 0, -1);
+                    dir.applyQuaternion(ctrl.object3D.quaternion);
+                    dir.normalize();
+                }
+            } else {
+                // PC: use camera position and direction
+                var obj3d = this.el.getObject3D('camera');
+                startPos = obj3d.position.clone();
+                dir = new THREE.Vector3();
+                obj3d.getWorldDirection(dir);
+            }
+
             startPos.add(dir.clone().multiplyScalar(0.5));
             ball.setAttribute('position', startPos.x + ' ' + startPos.y + ' ' + startPos.z);
             ball.setAttribute('visible', 'true');
             window.activeBalls.push({
                 el: ball, startPos: startPos,
-                velocity: dir.multiplyScalar(this.speed),
+                velocity: dir.clone().multiplyScalar(this.speed),
                 startTime: performance.now(),
                 gravity: this.gravity, hit: false
             });
@@ -537,6 +655,7 @@
                 const z = bd.startPos.z + bd.velocity.z * t;
                 if (y < -5 || t > 5) { toRemove.push(bd); return; }
                 bd.el.setAttribute('position', x + ' ' + y + ' ' + z);
+                bd.el.setAttribute('rotation', (t * 360) + ' ' + (t * 180) + ' 0');
                 if (window.modelActive) {
                     const hitBox = document.getElementById('bucchiHitBox');
                     if (hitBox) {

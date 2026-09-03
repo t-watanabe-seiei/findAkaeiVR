@@ -26,3 +26,7 @@ Route::get('/shooting-scores', [ShootingScoreController::class, 'index']);
 Route::post('/record-marker-scan', [MarkerScanController::class, 'record']);
 Route::post('/check-prize-exchange', [PrizeExchangeController::class, 'checkStatus']);
 Route::post('/exchange-prize', [PrizeExchangeController::class, 'exchange']);
+
+// Find Houfu Score API endpoints
+Route::post('/findhoufu-scores', [App\Http\Controllers\FindHoufuScoreController::class, 'store']);
+Route::get('/findhoufu-scores/top5', [App\Http\Controllers\FindHoufuScoreController::class, 'top5']);
