@@ -1,7 +1,123 @@
 # findHoufu 設計書
 
 > 作成日: 2026-07-09  
+> 最終更新: 2026-09-03  
 > 前提: `.claude_workflow/findHoufu_requirements.md` を読み込み済み
+
+---
+
+## 0. 修正設計（2026-09-03）
+
+shooting3Dhalloween4 を参照し、`_components.blade.php` の以下4箇所を修正する。
+
+### 0.1 auto-enter-vr 修正
+
+**問題:** `init()` 内で即座に `navigator.xr.isSessionSupported()` を呼び、`loaded` イベントを待たない。VRゴーグル（Pico等）ではシーン初期化完了前に `enterVR()` が呼ばれ失敗する。
+
+**修正方針:** shooting3Dhalloween4 と同じく `loaded` イベントを待ってから WebXR 確認 → 1秒待機 → `enterVR()`。
+
+```js
+AFRAME.registerComponent('auto-enter-vr', {
+    init: function () {
+        const sceneEl = this.el;
+        sceneEl.addEventListener('loaded', function () {
+            if (navigator.xr) {
+                navigator.xr.isSessionSupported('immersive-vr').then(function (supported) {
+                    if (supported) {
+                        registerTimeout(function () {
+                            if (sceneEl.sessionMode !== 'vr') sceneEl.enterVR();
+                        }, 1000);
+                    }
+                }).catch(function () {});
+            }
+        });
+    }
+});
+```
+
+### 0.2 start-menu clickBlocked 修正
+
+**問題:** schema の `clickBlocked` デフォルト値が `true`、`init()` でも `this.data.clickBlocked`（= `true`）をそのまま使用。`handleClick()` 内の `if (this.clickBlocked) return;` で永久にブロックされる。
+
+**修正方針:** shooting3Dhalloween4 と同じく `init()` 内で `this.clickBlocked = false` で初期化。`startGame()` 内で `true` に変更（再クリック防止）。
+
+```js
+// schema の default を false に変更
+schema: { clickBlocked: { type: 'boolean', default: false }, ... },
+
+// init() で明示的に false
+init: function () {
+    this.clickBlocked = false;  // ← 修正
+    ...
+},
+
+// handleClick() は既存ロジックのまま（clickBlocked チェックは有効）
+// startGame() で clickBlocked = true を設定（既存）
+```
+
+### 0.3 shoot triggerdown リスナー修正
+
+**問題:** `this.el.addEventListener('triggerdown', triggerFn)` の `this.el` は `<a-camera>`。VR では `triggerdown` がコントローラー实体（`#leftController` / `#rightController`）で発火するため、カメラには届かない。
+
+**修正方針:** shooting3Dhalloween4 と同じくコントローラー实体に `triggerdown` リスナーを付与。PC は `document mousedown` を維持。
+
+```js
+init: function () {
+    ...
+    const vrTriggerFn = function (e) {
+        if (window.gameStarted && !window.gameEnded) this.shoot(e);
+    }.bind(this);
+
+    // VR: コントローラーにリスナー
+    const lc = document.getElementById('leftController');
+    const rc = document.getElementById('rightController');
+    if (lc) lc.addEventListener('triggerdown', vrTriggerFn);
+    if (rc) rc.addEventListener('triggerdown', vrTriggerFn);
+
+    // PC: document にリスナー（mousedown / touchstart）
+    const pcFn = function (e) {
+        if (window.gameStarted && !window.gameEnded) {
+            e.preventDefault();
+            this.shoot(e);
+        }
+    }.bind(this);
+    document.addEventListener('mousedown', pcFn);
+    document.addEventListener('touchstart', pcFn, { passive: false });
+
+    this._vrTriggerFn = vrTriggerFn;
+    this._pcFn = pcFn;
+},
+remove: function () {
+    const lc = document.getElementById('leftController');
+    const rc = document.getElementById('rightController');
+    if (lc) lc.removeEventListener('triggerdown', this._vrTriggerFn);
+    if (rc) rc.removeEventListener('triggerdown', this._vrTriggerFn);
+    document.removeEventListener('mousedown', this._pcFn);
+    document.removeEventListener('touchstart', this._pcFn);
+    releaseAllBalls();
+},
+```
+
+### 0.4 vr-controller 登録追加
+
+**問題:** `_scene.blade.php` のコントローラーで `vr-controller` 属性を使用しているが、`AFRAME.registerComponent('vr-controller', ...)` が存在しない。A-Frame が警告を出力し、シーン初期化に悪影響を及ぼす可能性がある。
+
+**修正方針:** shooting3Dhalloween4 と同じ空コンポーネントを登録。
+
+```js
+AFRAME.registerComponent('vr-controller', {
+    dependencies: ['raycaster'],
+    init: function () {}
+});
+```
+
+### 0.5 変更対象ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `resources/views/findHoufu/_components.blade.php` | 上記4箇所（auto-enter-vr / start-menu / shoot / vr-controller） |
+
+> `_scene.blade.php` / `index.blade.php` / `vr-mode-ui` は変更不要。
 
 ---
 

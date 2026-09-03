@@ -163,30 +163,34 @@
 
     // ─── auto-enter-vr ───
     AFRAME.registerComponent('auto-enter-vr', {
-        schema: { delay: { type: 'number', default: 1000 } },
         init: function () {
-            const s = this.el.sceneEl;
-            if (s.sessionMode === 'vr') return;
-            const checkXR = function () {
-                if (!navigator.xr) return;
-                navigator.xr.isSessionSupported('immersive-vr').then(function (ok) {
-                    if (!ok) return;
-                    registerTimeout(function () {
-                        if (s.sessionMode !== 'vr') s.enterVR();
-                    }, window.DEBUG_MODE ? 200 : this.data.delay);
-                }).catch(function () {});
-            }.bind(this);
-            if (navigator.xr) checkXR();
-            else window.addEventListener('online', checkXR, { once: true });
+            const sceneEl = this.el;
+            sceneEl.addEventListener('loaded', function () {
+                if (navigator.xr) {
+                    navigator.xr.isSessionSupported('immersive-vr').then(function (supported) {
+                        if (supported) {
+                            registerTimeout(function () {
+                                if (sceneEl.sessionMode !== 'vr') sceneEl.enterVR();
+                            }, 1000);
+                        }
+                    }).catch(function () {});
+                }
+            });
         }
+    });
+
+    // ─── vr-controller ───
+    AFRAME.registerComponent('vr-controller', {
+        dependencies: ['raycaster'],
+        init: function () {}
     });
 
     // ─── start-menu ───
     AFRAME.registerComponent('start-menu', {
-        schema: { clickBlocked: { type: 'boolean', default: true }, menuHidden: { type: 'boolean', default: false } },
+        schema: { clickBlocked: { type: 'boolean', default: false }, menuHidden: { type: 'boolean', default: false } },
 
         init: function () {
-            this.clickBlocked = this.data.clickBlocked;
+            this.clickBlocked = false;
             this.menuHidden = this.data.menuHidden;
             this.tickLast = 0;
             this.bgmAudio = null;
@@ -449,21 +453,36 @@
             this.cooldown = this.data.cooldown;
             this.gravity = new THREE.Vector3(0, -2.45, 0);
             this.speed = 20;
-            const triggerFn = function (e) {
-                if (e.type === 'triggerdown' || e.type === 'mousedown' || e.type === 'touchstart') {
+
+            // VR: コントローラー triggerdown
+            var vrTriggerFn = function (e) {
+                if (window.gameStarted && !window.gameEnded) this.shoot(e);
+            }.bind(this);
+            var lc = document.getElementById('leftController');
+            var rc = document.getElementById('rightController');
+            if (lc) lc.addEventListener('triggerdown', vrTriggerFn);
+            if (rc) rc.addEventListener('triggerdown', vrTriggerFn);
+
+            // PC: mousedown / touchstart
+            var pcFn = function (e) {
+                if (window.gameStarted && !window.gameEnded) {
                     e.preventDefault();
-                    if (window.gameStarted && !window.gameEnded) this.shoot(e);
+                    this.shoot(e);
                 }
             }.bind(this);
-            this.el.addEventListener('triggerdown', triggerFn);
-            document.addEventListener('mousedown', triggerFn);
-            document.addEventListener('touchstart', triggerFn, { passive: false });
-            this._triggerFn = triggerFn;
+            document.addEventListener('mousedown', pcFn);
+            document.addEventListener('touchstart', pcFn, { passive: false });
+
+            this._vrTriggerFn = vrTriggerFn;
+            this._pcFn = pcFn;
         },
         remove: function () {
-            this.el.removeEventListener('triggerdown', this._triggerFn);
-            document.removeEventListener('mousedown', this._triggerFn);
-            document.removeEventListener('touchstart', this._triggerFn);
+            var lc = document.getElementById('leftController');
+            var rc = document.getElementById('rightController');
+            if (lc) lc.removeEventListener('triggerdown', this._vrTriggerFn);
+            if (rc) rc.removeEventListener('triggerdown', this._vrTriggerFn);
+            document.removeEventListener('mousedown', this._pcFn);
+            document.removeEventListener('touchstart', this._pcFn);
             releaseAllBalls();
         },
         shoot: function (e) {

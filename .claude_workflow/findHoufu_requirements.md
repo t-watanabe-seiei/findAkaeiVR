@@ -1,7 +1,39 @@
 # findHoufu 要件定義
 
 > 作成日: 2026-07-09  
-> 状態: 作成中
+> 最終更新: 2026-09-03  
+> 状態: 修正対応中
+
+---
+
+## 0. 修正追加要件（2026-09-03）
+
+shooting3Dhalloween4 との差異調査により、以下の不備を特定し修正が必要。
+
+### 0.1 VR 自動入場（VRゴーグル）
+
+| # | 要件 | 現状 | 目標 |
+|---|------|------|------|
+| RV1 | VRゴーグルでページを開いた際に、シーン読み込み完了後 1 秒で自動 VR 入場 | `auto-enter-vr` が `loaded` を待たず即座に `enterVR()` → 失敗 | `loaded` イベントを待ってから WebXR 確認 → `enterVR()`（shooting3Dhalloween4 と同等） |
+
+### 0.2 VR ボタン（A-Frame 標準）
+
+| # | 要件 | 現状 | 目標 |
+|---|------|------|------|
+| RV2 | `body > a-scene > div.a-enter-vr > button` 構造で標準 VR 入場ボタン表示 | `vr-mode-ui="enabled: true"` ありだが `vr-controller` 未登録でシーン初期化に異常あり | `vr-controller` を登録し、A-Frame 標準 VR ボタンが正常に表示される |
+
+### 0.3 PC マウス操作
+
+| # | 要件 | 現状 | 目標 |
+|---|------|------|------|
+| RP1 | PC で START ボタンをマウスクリックで押せる | `start-menu` の `clickBlocked` が `true` 初期化され `false` に戻らない → 永久にブロック | `clickBlocked` を `false` で初期化（shooting3Dhalloween4 と同等） |
+| RP2 | PC でゲーム開始後、マウスクリックでボール射撃 | `shoot` の `triggerdown` リスナーがカメラに付いている（PC では発火しない） | PC: `document mousedown` / VR: コントローラー `triggerdown` にリスナー（shooting3Dhalloween4 と同等） |
+
+### 0.4 VR コントローラー射撃
+
+| # | 要件 | 現状 | 目標 |
+|---|------|------|------|
+| RV3 | VR で左右コントローラー Trigger 引いたらボールが飛ぶ | `triggerdown` リスナーがカメラ实体に付いている → コントローラーから発火しない | `leftController` / `rightController` 实体に `triggerdown` リスナーを付与 |
 
 ---
 

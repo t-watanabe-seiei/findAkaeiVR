@@ -3,6 +3,18 @@
 ### 概要
 豊後市観光地を巡る「探す＆撃つ」VRシューティングゲーム。A-Frame ベースで 7 ステージ構成。Bucchi モデルを素早く撃つことでスコアを稼ぎ、各ステージのタイムリミット内に撃破する。
 
+### 修正履歴（2026-09-03）
+shooting3Dhalloween4 との比較により、以下の4つの不備を修正。
+
+| # | 不備 | 修正内容 |
+|---|------|---------|
+| 1 | VRゴーグルで自動入場しない | `auto-enter-vr`：`loaded` イベントを待ってから WebXR 確認 → 1 秒後 `enterVR()` |
+| 2 | PC で START ボタンが押せない | `start-menu`：`clickBlocked` 初期値を `true` → `false` に変更 |
+| 3 | VR でトリガー射撃が動かない | `shoot`：`triggerdown` リスナーをカメラからコントローラー（`#leftController` / `#rightController`）へ移動 |
+| 4 | `vr-controller` 未登録で A-Frame 警告 | `AFRAME.registerComponent('vr-controller', ...)` を追加 |
+
+> VR ボタン（`body > a-scene > div.a-enter-vr > button`）は `vr-mode-ui="enabled: true"` により A-Frame 標準で表示される。上記4件の修正により、VR 自動入場 + 標準 VR ボタン + PC マウス操作（START / 射撃）が全て動作する。
+
 ### ルート
 ```
 GET /findHoufu → view('findHoufu.index')
