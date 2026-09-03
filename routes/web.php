@@ -7,7 +7,7 @@ Route::get('/welcome', function () {
     return view('welcome0');
 });
 
-Route::get('/vr', function () {
+Route::get('/findAkaei', function () {
     return view('findakaei');
 });
 
