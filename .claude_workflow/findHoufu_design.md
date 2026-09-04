@@ -308,3 +308,205 @@ a-scene
 | 単一ファイル | 3 ファイル分割 |
 | axios 未使用 | 読み込まない（native fetch） |
 | コメント残骸 | clean な定義 |
+---
+
+## 9. 追加設計（2026-09-04）
+
+前提: `.claude_workflow/findHoufu_requirements.md` §10 を読み込み済み
+
+### 9.1 変更対象ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `resources/views/findHoufu/_components.blade.php` | 全変更（STAGE_CONFIG / LOCATIONS / BGM / ボール / タイマー） |
+
+> `_scene.blade.php` / `index.blade.php` は変更不要。
+
+### 9.2 STAGE_CONFIG 変更
+
+```js
+// 変更前
+1: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
+2: { timeLimit: 12, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
+3: { timeLimit: 12, skyId: 'sky03', bgmId: 'bgm_s2', isResult: false },
+4: { timeLimit: 12, skyId: 'sky04', bgmId: 'bgm_s2', isResult: false },
+5: { timeLimit: 12, skyId: 'sky05', bgmId: 'bgm_s3', isResult: false },
+6: { timeLimit: 12, skyId: 'sky06', bgmId: 'bgm_s3', isResult: false },
+7: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
+
+// 変更後
+1: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
+2: { timeLimit: 16, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
+3: { timeLimit: 16, skyId: 'sky03', bgmId: 'bgm_s1', isResult: false },
+4: { timeLimit: 16, skyId: 'sky04', bgmId: 'bgm_s1', isResult: false },
+5: { timeLimit: 16, skyId: 'sky05', bgmId: 'bgm_s1', isResult: false },
+6: { timeLimit: 16, skyId: 'sky06', bgmId: 'bgm_s1', isResult: false },
+7: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
+```
+
+**ポイント:**
+- 全ステージ `timeLimit: 16`
+- Stage1〜6: すべて `bgmId: 'bgm_s1'`（同一BGM）
+- Stage7: `bgm_s4`（リザルト用）
+
+### 9.3 LOCATIONS（モデルサイズ50%）
+
+```js
+// 変更前（現在値）
+{ pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.7 0.7 0.7' },
+{ pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '1.35 1.35 1.35' },
+{ pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.7 0.7 0.7' },
+{ pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '1.05 1.05 1.05' },
+{ pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.5 0.5 0.5' },
+{ pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.95 0.95 0.95' },
+
+// 変更後（50%）
+{ pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.35 0.35 0.35' },
+{ pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '0.675 0.675 0.675' },
+{ pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.35 0.35 0.35' },
+{ pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '0.525 0.525 0.525' },
+{ pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.25 0.25 0.25' },
+{ pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.475 0.475 0.475' },
+```
+
+### 9.4 ボール速度 50%
+
+```js
+// 変更前
+this.speed = 30;
+
+// 変更後
+this.speed = 15;
+```
+
+### 9.5 ボールヒット時：跳ね返り+フェードアウト
+
+**変更箇所:** `shoot` コンポーネントの `tick` 内、ヒット判定ブロック
+
+**変更前:**
+```js
+if (dist < 1.5) {
+    bd.hit = true;
+    toRemove.push(bd);
+    this.el.sceneEl.dispatchEvent(new CustomEvent('ball-hit'));
+    return;
+}
+```
+
+**変更後:**
+```js
+if (dist < 1.5) {
+    bd.hit = true;
+    this.el.sceneEl.dispatchEvent(new CustomEvent('ball-hit'));
+    // ボール跳ね返り + フェードアウト（shooting3Dhalloween4 同等）
+    var ballEl = bd.el;
+    var mesh = ballEl.getObject3D('mesh');
+    if (mesh && window._cachedHitEmissive) {
+        mesh.traverse(function(n) {
+            if (n.isMesh && n.material) {
+                n.material.emissive = window._cachedHitEmissive;
+                n.material.emissiveIntensity = 1.5;
+            }
+        });
+    }
+    ballEl.setAttribute('animation__fade', { property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad' });
+    var idx = window.activeBalls.indexOf(bd);
+    if (idx !== -1) window.activeBalls.splice(idx, 1);
+    registerTimeout(function() { releaseBall(ballEl); }, 300);
+    return;
+}
+```
+
+**グローバル追加:**
+```js
+window._cachedHitEmissive = new THREE.Color(0xFFFFFF);
+```
+
+**動作フロー:**
+1. ヒット判定 → `ball-hit` イベント発火（hit-boxコンポーネントがスコア計算）
+2. ボール mesh の emissive を白(0xFFFFFF) intensity 1.5 に設定（フラッシュ）
+3. `animation__fade` で scale 0→0（300ms, easeInQuad）で縮小
+4. `activeBalls` から即除去（同時進行ボール数に影響しない）
+5. 300ms後に `releaseBall()` でプール返却（hidden + pool push）
+
+### 9.6 BGM ループ再生（Stage1〜6）
+
+**変更箇所:** `start-menu` コンポーネントの `advanceStage` 内 BGM ブロック
+
+**変更前（crossfade 方式）:**
+```js
+var self = this;
+const newBgmEl = document.getElementById(cfg.bgmId);
+if (this.bgmAudio && this.bgmAudio !== newBgmEl) {
+    fadeOutAndStopAudio(this.bgmAudio, 1500, function () {
+        if (newBgmEl) {
+            newBgmEl.volume = 0.5;
+            newBgmEl.currentTime = 0;
+            newBgmEl.play().catch(function () {});
+        }
+        self.bgmAudio = newBgmEl;
+    });
+} else if (newBgmEl) {
+    newBgmEl.volume = 0.5;
+    newBgmEl.currentTime = 0;
+    newBgmEl.play().catch(function () {});
+    this.bgmAudio = newBgmEl;
+}
+```
+
+**変更後（同一BGMループ方式）:**
+```js
+var self = this;
+// BGM: Stage1〜6 同一BGMループ（ステージ切替で停止しない）
+//       Stage7 は showResult が BGM 切替を処理
+if (!cfg.isResult) {
+    const newBgmEl = document.getElementById(cfg.bgmId);
+    if (this.bgmAudio !== newBgmEl && newBgmEl) {
+        if (this.bgmAudio) {
+            fadeOutAndStopAudio(this.bgmAudio, 1500, function () {
+                newBgmEl.volume = 0.5;
+                newBgmEl.currentTime = 0;
+                newBgmEl.play().catch(function () {});
+                self.bgmAudio = newBgmEl;
+            });
+        } else {
+            newBgmEl.volume = 0.5;
+            newBgmEl.currentTime = 0;
+            newBgmEl.play().catch(function () {});
+            this.bgmAudio = newBgmEl;
+        }
+    }
+    // this.bgmAudio === newBgmEl → 同一BGMループ継続（何もしない）
+}
+```
+
+**動作フロー:**
+- Stage1開始: `this.bgmAudio === null` → `bgm_s1` 開始（loop属性で自動ループ）
+- Stage1→2: `this.bgmAudio === bgm_s1 === newBgmEl` → 何もしない（ループ継続）
+- Stage2→3〜6: 同上（すべて `bgm_s1` なので何もしない）
+- Stage6→7: `cfg.isResult === true` → BGMブロックスキップ → `showResult()` が `bgm_s1` 停止 + `bgm_s4` 開始
+
+### 9.7 Stage7: 16秒後にVR解除
+
+**変更箇所:** `showResult` 内の `resultTimeLeft`
+
+```js
+// 変更前
+var resultTimeLeft = 12;
+
+// 変更後
+var resultTimeLeft = 16;
+```
+
+VR解除ロジック（`exitToStart`）は既存のまま維持。
+
+### 9.8 影響範囲サマリー
+
+| 機能 | 影響 | 備考 |
+|------|------|------|
+| ボール速度 | 50%減 | 射撃テンポが低下 |
+| モデルサイズ | 50%減 | ヒット判定 radius 0.8 は維持（相対的に大きくなる） |
+| ステージ時間 | 12s→16s | 全ステージ + 結果画面 |
+| ボールヒット | 視覚効果追加 | emissive + scale animation |
+| BGM | Stage1-6 統一 | `bgm_s1` のみ。Stage7 で `bgm_s4` |
+| VR解除 | 12s→16s | Stage7 リザルト表示時間 |

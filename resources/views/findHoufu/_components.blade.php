@@ -4,22 +4,22 @@
     function debugLog(...a) { if (window.DEBUG_MODE) console.log('[findHoufu]', ...a); }
 
     window.STAGE_CONFIG = {
-        1: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
-        2: { timeLimit: 12, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
-        3: { timeLimit: 12, skyId: 'sky03', bgmId: 'bgm_s2', isResult: false },
-        4: { timeLimit: 12, skyId: 'sky04', bgmId: 'bgm_s2', isResult: false },
-        5: { timeLimit: 12, skyId: 'sky05', bgmId: 'bgm_s3', isResult: false },
-        6: { timeLimit: 12, skyId: 'sky06', bgmId: 'bgm_s3', isResult: false },
-        7: { timeLimit: 12, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
+        1: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
+        2: { timeLimit: 16, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
+        3: { timeLimit: 16, skyId: 'sky03', bgmId: 'bgm_s1', isResult: false },
+        4: { timeLimit: 16, skyId: 'sky04', bgmId: 'bgm_s1', isResult: false },
+        5: { timeLimit: 16, skyId: 'sky05', bgmId: 'bgm_s1', isResult: false },
+        6: { timeLimit: 16, skyId: 'sky06', bgmId: 'bgm_s1', isResult: false },
+        7: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
     };
 
     window.LOCATIONS = [
-        { pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.7 0.7 0.7' },
-        { pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '1.35 1.35 1.35' },
-        { pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.7 0.7 0.7' },
-        { pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '1.05 1.05 1.05' },
-        { pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.5 0.5 0.5' },
-        { pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.95 0.95 0.95' },
+        { pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.35 0.35 0.35' },
+        { pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '0.675 0.675 0.675' },
+        { pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.35 0.35 0.35' },
+        { pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '0.525 0.525 0.525' },
+        { pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.25 0.25 0.25' },
+        { pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.475 0.475 0.475' },
     ];
 
     window.gameStarted   = false;
@@ -40,6 +40,7 @@
     window._cachedPos    = new THREE.Vector3();
     window._cachedDir    = new THREE.Vector3();
     window._cachedBallColor = new THREE.Color(0x444444);
+    window._cachedHitEmissive = new THREE.Color(0xFFFFFF);
     window.maxSimultaneousBalls = 2;
     window.ballPoolSize  = 4;
 
@@ -274,23 +275,27 @@
             const skyEl = document.getElementById('aSky');
             if (skyEl) skyEl.setAttribute('src', '#' + cfg.skyId);
 
-            // BGM crossfade: fade out old, then start new
+            // BGM: Stage1〜6 同一BGMループ（ステージ切替で停止しない）
+            //       Stage7 は showResult が BGM 切替を処理
             var self = this;
-            const newBgmEl = document.getElementById(cfg.bgmId);
-            if (this.bgmAudio && this.bgmAudio !== newBgmEl) {
-                fadeOutAndStopAudio(this.bgmAudio, 1500, function () {
-                    if (newBgmEl) {
+            if (!cfg.isResult) {
+                const newBgmEl = document.getElementById(cfg.bgmId);
+                if (this.bgmAudio !== newBgmEl && newBgmEl) {
+                    if (this.bgmAudio) {
+                        fadeOutAndStopAudio(this.bgmAudio, 1500, function () {
+                            newBgmEl.volume = 0.5;
+                            newBgmEl.currentTime = 0;
+                            newBgmEl.play().catch(function () {});
+                            self.bgmAudio = newBgmEl;
+                        });
+                    } else {
                         newBgmEl.volume = 0.5;
                         newBgmEl.currentTime = 0;
                         newBgmEl.play().catch(function () {});
+                        this.bgmAudio = newBgmEl;
                     }
-                    self.bgmAudio = newBgmEl;
-                });
-            } else if (newBgmEl) {
-                newBgmEl.volume = 0.5;
-                newBgmEl.currentTime = 0;
-                newBgmEl.play().catch(function () {});
-                this.bgmAudio = newBgmEl;
+                }
+                // this.bgmAudio === newBgmEl → 同一BGMループ継続（何もしない）
             }
 
             // Preload next stage
@@ -409,7 +414,7 @@
 
             // After 12 seconds: exit VR and return to start menu
             var self = this;
-            var resultTimeLeft = 12;
+            var resultTimeLeft = 16;
             window.gameTimer = setInterval(function () {
                 resultTimeLeft -= 1;
                 if (resultTimeLeft <= 0) {
@@ -568,7 +573,7 @@
             this.lastShot = 0;
             this.cooldown = this.data.cooldown;
             this.gravity = new THREE.Vector3(0, -5.45, 0);
-            this.speed = 30;
+            this.speed = 15;
 
             // VR: コントローラー triggerdown
             var vrTriggerFn = function (e) {
@@ -667,8 +672,22 @@
                             const dist = Math.sqrt((x - hbPos.x) * (x - hbPos.x) + dy * dy + (z - hbPos.z) * (z - hbPos.z));
                             if (dist < 1.5) {
                                 bd.hit = true;
-                                toRemove.push(bd);
                                 this.el.sceneEl.dispatchEvent(new CustomEvent('ball-hit'));
+                                // ボール跳ね返り + フェードアウト（shooting3Dhalloween4 同等）
+                                var ballEl = bd.el;
+                                var mesh = ballEl.getObject3D('mesh');
+                                if (mesh && window._cachedHitEmissive) {
+                                    mesh.traverse(function(n) {
+                                        if (n.isMesh && n.material) {
+                                            n.material.emissive = window._cachedHitEmissive;
+                                            n.material.emissiveIntensity = 1.5;
+                                        }
+                                    });
+                                }
+                                ballEl.setAttribute('animation__fade', { property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad' });
+                                var idx = window.activeBalls.indexOf(bd);
+                                if (idx !== -1) window.activeBalls.splice(idx, 1);
+                                registerTimeout(function() { releaseBall(ballEl); }, 300);
                                 return;
                             }
                         }

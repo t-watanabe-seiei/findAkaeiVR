@@ -1440,3 +1440,18 @@ THREE.jsの不適切なリソース解放処理が原因。
 | `findHoufu` | POST | `api/findhoufu-scores` | **今回追加** |
 | `findHoufu` | GET | `api/findhoufu-scores/top5` | **今回追加** |
 
+
+### findHoufu 仕様変更（2026-09-04）
+
+shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました。
+
+| # | 変更内容 | 詳細 |
+|---|---------|------|
+| 1 | ボール速度 50% | 30→15（テンポ調整） |
+| 2 | モデルサイズ 50% | 全6位置の scale を50%に缩小 |
+| 3 | 各ステージ16秒 | 全ステージ（Stage1〜7）`timeLimit: 16` に変更 |
+| 4 | ボールヒット時演出 | emissiveフラッシュ（白）→ scale 0へ300msフェードアウト → プール返却 |
+| 5 | Stage1〜6 BGM統一 | すべて `bgm_s1` ループ再生。ステージ切替で停止しない |
+| 6 | Stage7: 16秒後VR解除 | リザルト表示16秒後に自動VRモード解除+リセット |
+
+**変更ファイル:** `resources/views/findHoufu/_components.blade.php`
