@@ -313,3 +313,54 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を追加する。
 - [ ] Stage1〜6: BGMが途切れずループ再生
 - [ ] Stage7: 16秒後にVR解除+リセット
 - [ ] VRゴーグルで自動VR入場（既存機能維持）
+
+---
+
+## 11. 追加要件（2026-09-04 第2回）
+
+### R8: ボールVRゴーグル非表示バグ修正
+
+**問題:** ボールがVRゴーグルでは見えない。PCでは時々見える。
+
+**原因:** ヒット時に `animation__fade`（scale→0）が設定されるが、`acquireBall` でクリーンアップされないため、再取得時に scale=0 のままになる。
+
+**要求:**
+- ボール取得時: `animation__fade` 削除、emissiveリセット、scale を `0.1` に設定
+- ボールリリース時: `animation__fade` 削除、position を画外(`0 -999 0`)、scale を `0.0001` に設定
+- shooting3Dhalloween4 の `acquireBallEntity` / `releaseBallEntity` と同等の処理
+
+### R9: ボール数値を shooting3Dhalloween4 と同一にする
+
+| 項目 | 現在値 | 変更後（shooting3Dhalloween4 基準） |
+|------|--------|--------------------------------------|
+| スケール | 0.15 | **0.1** |
+| 速度 | 15 | **20** |
+| 重力 | 5.45 (公式: 0.5*g*t²) | **4.9** (公式: 0.5*4.9*t² = 2.45*t²) |
+| 回転 | 手動: 360°/sec X + 180°/sec Y | **-1080°/sec X軸** (animation__spin) |
+
+### R10: API相対パス化
+
+**問題:** `baseUrl + 'api/findhoufu-scores'` が本番環境でアクセスできない。
+
+**要求:**
+- `baseUrl` を削除し、相対パス `'api/findhoufu-scores'` を直接使用
+- `'api/findhoufu-scores/top5'` も同様に相対パス化
+
+### R11: Stage7 16秒後に VRモード解除
+
+**問題:** 現在 `sceneEl.session.end()` を使用しているが、shooting3Dhalloween4 と同様の `sceneEl.exitVR()` パターンに統一する。
+
+**要求:**
+- Stage7 の16秒経過後、以下を実行：
+```js
+const sceneEl = document.querySelector('a-scene');
+const isVR = sceneEl && sceneEl.is('vr-mode');
+const finish = () => { window.location.reload(); };
+if (isVR) {
+    sceneEl.exitVR().then(() => window.registerTimeout(finish, 300)).catch(finish);
+} else {
+    finish();
+}
+```
+- `exitToStart` 内の `doReset` は維持（リセットロジック）
+- `performClose` 相当を `exitToStart` 内に統合

@@ -128,16 +128,36 @@
     function createBallEntity(sceneEl) {
         const ball = document.createElement('a-entity');
         ball.setAttribute('gltf-model', '{{ asset('cg/poke_ball_05.glb') }}');
-        ball.setAttribute('scale', '0.15 0.15 0.15');
+        ball.setAttribute('scale', '0.1 0.1 0.1');
         ball.setAttribute('visible', 'false');
         sceneEl.appendChild(ball);
         return ball;
     }
 
+    function resetBallAppearance(ball) {
+        if (!ball) return;
+        var mesh = ball.getObject3D('mesh');
+        if (!mesh) return;
+        mesh.traverse(function (n) {
+            if (!n.isMesh || !n.material) return;
+            var mats = Array.isArray(n.material) ? n.material : [n.material];
+            mats.forEach(function (mat) {
+                if (!mat) return;
+                if (window._cachedBallColor && mat.emissive) mat.emissive = window._cachedBallColor;
+                mat.emissiveIntensity = 0.1;
+                mat.needsUpdate = true;
+            });
+        });
+    }
+
     function acquireBall(sceneEl) {
         if (window.ballPool.length > 0) {
             const b = window.ballPool.pop();
+            b.removeAttribute('animation__fade');
+            b.removeAttribute('animation__spin');
+            resetBallAppearance(b);
             b.setAttribute('visible', 'true');
+            b.setAttribute('scale', '0.1 0.1 0.1');
             return b;
         }
         return createBallEntity(sceneEl);
@@ -146,7 +166,12 @@
     function releaseBall(ball) {
         if (!ball) return;
         window.activeBalls = window.activeBalls.filter(function (b) { return b.el !== ball; });
+        ball.removeAttribute('animation__fade');
+        ball.removeAttribute('animation__spin');
+        resetBallAppearance(ball);
         ball.setAttribute('visible', 'false');
+        ball.setAttribute('position', '0 -999 0');
+        ball.setAttribute('scale', '0.0001 0.0001 0.0001');
         if (window.ballPool.length < window.ballPoolSize) {
             window.ballPool.push(ball);
         } else {
@@ -484,13 +509,13 @@
                 if (hud) hud.setAttribute('visible', 'false');
             }
 
-            // Exit VR if active, then reset
-            if (sceneEl.session && sceneEl.session.end) {
-                sceneEl.session.end().catch(function () {}).then(function () {
-                    doReset();
-                });
+            // Exit VR if active, then reset (shooting3Dhalloween4 同等)
+            var isVR = sceneEl && sceneEl.is('vr-mode');
+            var finish = function () { doReset(); };
+            if (isVR) {
+                sceneEl.exitVR().then(function () { registerTimeout(finish, 300); }).catch(finish);
             } else {
-                doReset();
+                finish();
             }
         },
 
@@ -529,8 +554,7 @@
         saveScore: function () {
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
             const token = csrfToken ? csrfToken.content : '';
-            const baseUrl = '{{ env("MIX_ASSET_URL", "") }}';
-            fetch(baseUrl + 'api/findhoufu-scores', {
+            fetch('api/findhoufu-scores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                 body: JSON.stringify({ name: 'noName', score: window.totalScore, max_combo: window.maxComboCount, hits: window.hitCount })
@@ -542,8 +566,7 @@
         fetchRankings: function () {
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
             const token = csrfToken ? csrfToken.content : '';
-            const baseUrl = '{{ env("MIX_ASSET_URL", "") }}';
-            fetch(baseUrl + 'api/findhoufu-scores/top5', { headers: { 'X-CSRF-TOKEN': token } })
+            fetch('api/findhoufu-scores/top5', { headers: { 'X-CSRF-TOKEN': token } })
               .then(function (r) { return r.json(); })
               .then(function (data) {
                 const container = document.getElementById('rankingDisplay');
@@ -572,8 +595,8 @@
         init: function () {
             this.lastShot = 0;
             this.cooldown = this.data.cooldown;
-            this.gravity = new THREE.Vector3(0, -5.45, 0);
-            this.speed = 15;
+            this.gravity = new THREE.Vector3(0, -4.9, 0);
+            this.speed = 20;
 
             // VR: コントローラー triggerdown
             var vrTriggerFn = function (e) {
@@ -660,7 +683,7 @@
                 const z = bd.startPos.z + bd.velocity.z * t;
                 if (y < -5 || t > 5) { toRemove.push(bd); return; }
                 bd.el.setAttribute('position', x + ' ' + y + ' ' + z);
-                bd.el.setAttribute('rotation', (t * 360) + ' ' + (t * 180) + ' 0');
+                bd.el.setAttribute('rotation', (-t * 1080) + ' 0 0');
                 if (window.modelActive) {
                     const hitBox = document.getElementById('bucchiHitBox');
                     if (hitBox) {

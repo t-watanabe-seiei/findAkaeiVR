@@ -510,3 +510,134 @@ VR解除ロジック（`exitToStart`）は既存のまま維持。
 | ボールヒット | 視覚効果追加 | emissive + scale animation |
 | BGM | Stage1-6 統一 | `bgm_s1` のみ。Stage7 で `bgm_s4` |
 | VR解除 | 12s→16s | Stage7 リザルト表示時間 |
+
+---
+
+## 10. 追加設計（2026-09-04 第2回）
+
+前提: `.claude_workflow/findHoufu_requirements.md` §11 を読み込み済み
+
+### 10.1 createBallEntity / acquireBall / releaseBall リファクタ
+
+**createBallEntity** — scale 0.15→0.1
+```js
+ball.setAttribute('scale', '0.1 0.1 0.1');
+```
+
+**acquireBall** — アニメーションクリーンアップ + emissiveリセット + scale設定
+```js
+function acquireBall(sceneEl) {
+    if (window.ballPool.length > 0) {
+        const b = window.ballPool.pop();
+        b.removeAttribute('animation__fade');
+        b.removeAttribute('animation__spin');
+        resetBallAppearance(b);
+        b.setAttribute('visible', 'true');
+        b.setAttribute('scale', '0.1 0.1 0.1');
+        return b;
+    }
+    return createBallEntity(sceneEl);
+}
+```
+
+**releaseBall** — アニメーション削除 + 画外配置
+```js
+function releaseBall(ball) {
+    if (!ball) return;
+    window.activeBalls = window.activeBalls.filter(function (b) { return b.el !== ball; });
+    ball.removeAttribute('animation__fade');
+    ball.removeAttribute('animation__spin');
+    resetBallAppearance(ball);
+    ball.setAttribute('visible', 'false');
+    ball.setAttribute('position', '0 -999 0');
+    ball.setAttribute('scale', '0.0001 0.0001 0.0001');
+    if (window.ballPool.length < window.ballPoolSize) {
+        window.ballPool.push(ball);
+    } else {
+        disposeAndRemoveEntity(ball);
+    }
+}
+```
+
+**resetBallAppearance** — 新規関数
+```js
+function resetBallAppearance(ball) {
+    if (!ball) return;
+    var mesh = ball.getObject3D('mesh');
+    if (!mesh) return;
+    mesh.traverse(function (n) {
+        if (!n.isMesh || !n.material) return;
+        var mats = Array.isArray(n.material) ? n.material : [n.material];
+        mats.forEach(function (mat) {
+            if (!mat) return;
+            if (window._cachedBallColor && mat.emissive) mat.emissive = window._cachedBallColor;
+            mat.emissiveIntensity = 0.1;
+            mat.needsUpdate = true;
+        });
+    });
+}
+```
+
+### 10.2 ボール数値変更（shootコンポーネント）
+
+```js
+// 変更前
+this.gravity = new THREE.Vector3(0, -5.45, 0);
+this.speed = 15;
+
+// 変更後
+this.gravity = new THREE.Vector3(0, -4.9, 0);  // 0.5*4.9 = 2.45（shooting3Dhalloween4 と同一）
+this.speed = 20;
+```
+
+### 10.3 ボール回転（tick内）
+
+```js
+// 変更前（手動回転: X 360°/sec + Y 180°/sec）
+bd.el.setAttribute('rotation', (t * 360) + ' ' + (t * 180) + ' 0');
+
+// 変更後（shooting3Dhalloween4 同等: X軸 -1080°/sec）
+bd.el.setAttribute('rotation', (-t * 1080) + ' 0 0');
+```
+
+### 10.4 API相対パス化
+
+```js
+// 変更前
+const baseUrl = '{{ env("MIX_ASSET_URL", "") }}';
+fetch(baseUrl + 'api/findhoufu-scores', { ... })
+fetch(baseUrl + 'api/findhoufu-scores/top5', { ... })
+
+// 変更後
+fetch('api/findhoufu-scores', { ... })
+fetch('api/findhoufu-scores/top5', { ... })
+```
+
+### 10.5 Stage7 VR解除（exitToStart 変更）
+
+```js
+exitToStart: function () {
+    var sceneEl = this.el.sceneEl;
+    var self = this;
+
+    function doReset() {
+        // ... 既存リセットロジック維持 ...
+    }
+
+    // shooting3Dhalloween4 同様の exitVR パターン
+    var isVR = sceneEl && sceneEl.is('vr-mode');
+    var finish = function () { doReset(); };
+
+    if (isVR) {
+        sceneEl.exitVR().then(function () { registerTimeout(finish, 300); }).catch(finish);
+    } else {
+        finish();
+    }
+},
+```
+
+**注意:**
+- `sceneEl.session.end()` を廃止
+- `sceneEl.exitVR()` が Promise を返す（WebXR API）
+- VRモード解除後 300ms 待機 → `doReset()`
+- `doReset()` 内に `location.reload()` は入れない（リセットのみ）

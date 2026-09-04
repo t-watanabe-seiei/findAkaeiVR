@@ -1455,3 +1455,14 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 | 6 | Stage7: 16秒後VR解除 | リザルト表示16秒後に自動VRモード解除+リセット |
 
 **変更ファイル:** `resources/views/findHoufu/_components.blade.php`
+
+### findHoufu バグ修正＆仕様変更（2026-09-04 第2回）
+
+| # | 変更内容 | 詳細 |
+|---|---------|------|
+| 1 | ボールVR非表示バグ修正 | `acquireBall`/`releaseBall` でアニメーションクリーンアップ+emissiveリセット+scale設定 |
+| 2 | ボール数値 shooting3Dhalloween4 統一 | scale=0.1, speed=20, gravity=2.45(t²), 回転X軸-1080°/sec |
+| 3 | API相対パス化 | `baseUrl` 削除、`'api/findhoufu-scores'` 直接使用 |
+| 4 | Stage7 VR解除 | `sceneEl.exitVR()` パターンに変更（shooting3Dhalloween4 同等） |
+
+**変更ファイル:** `resources/views/findHoufu/_components.blade.php`

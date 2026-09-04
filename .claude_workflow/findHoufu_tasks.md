@@ -58,3 +58,39 @@
 | T19 | showResult: 12→16秒 | ✅ |
 | T20 | 構文チェック（php -l） | ✅ |
 | T21 | README.md 追記 | ✅ |
+
+---
+
+## 追加タスク（2026-09-04 第2回）
+
+前提: `.claude_workflow/findHoufu_design.md` §10 を読み込み済み
+
+| # | タスク | 対象ファイル | 優先 | 進捗 |
+|---|--------|-------------|------|------|
+| T22 | `resetBallAppearance` 関数追加 | `_components.blade.php` | P0 | ⬜ |
+| T23 | `acquireBall` リファクタ（アニメクリーンアップ+scale+emissive） | `_components.blade.php` | P0 | ⬜ |
+| T24 | `releaseBall` リファクタ（アニメ削除+画外配置+scale 0.0001） | `_components.blade.php` | P0 | ⬜ |
+| T25 | `createBallEntity` scale 0.15→0.1 | `_components.blade.php` | P0 | ⬜ |
+| T26 | shoot: gravity 5.45→4.9, speed 15→20 | `_components.blade.php` | P0 | ⬜ |
+| T27 | shoot tick: 回転 X軸 -1080°/sec に変更 | `_components.blade.php` | P0 | ⬜ |
+| T28 | API相対パス化（baseUrl削除） | `_components.blade.php` | P0 | ⬜ |
+| T29 | exitToStart: `sceneEl.exitVR()` パターンに変更 | `_components.blade.php` | P0 | ⬜ |
+| T30 | 構文チェック（php -l） | `_components.blade.php` | P0 | ⬜ |
+| T31 | README.md に更新内容を追記 | `README.md` | P1 | ⬜ |
+
+---
+
+## 進捗更新（2026-09-04 第2回 完了）
+
+| # | タスク | 進捗 |
+|---|--------|------|
+| T22 | `resetBallAppearance` 関数追加 | ✅ |
+| T23 | `acquireBall` リファクタ | ✅ |
+| T24 | `releaseBall` リファクタ | ✅ |
+| T25 | `createBallEntity` scale 0.15→0.1 | ✅ |
+| T26 | gravity 5.45→4.9, speed 15→20 | ✅ |
+| T27 | 回転 X軸 -1080°/sec | ✅ |
+| T28 | API相対パス化 | ✅ |
+| T29 | `exitToStart`: `sceneEl.exitVR()` | ✅ |
+| T30 | 構文チェック | ✅ |
+| T31 | README.md 追記 | ✅ |
