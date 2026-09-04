@@ -513,7 +513,7 @@
             var isVR = sceneEl && sceneEl.is('vr-mode');
             var finish = function () { doReset(); };
             if (isVR) {
-                sceneEl.exitVR().then(function () { registerTimeout(finish, 300); }).catch(finish);
+                sceneEl.exitVR().then(function () { registerTimeout(finish, 5000); }).catch(finish);
             } else {
                 finish();
             }
@@ -535,8 +535,8 @@
             sceneEl.appendChild(model);
             const hitBox = document.createElement('a-cylinder');
             hitBox.id = 'bucchiHitBox';
-            hitBox.setAttribute('radius', '0.8');
-            hitBox.setAttribute('height', '2');
+            hitBox.setAttribute('radius', '0.4');
+            hitBox.setAttribute('height', '1');
             hitBox.setAttribute('segments-radial', '8');
             hitBox.setAttribute('material', 'color: #ff0000; opacity: 0; transparent: true');
             hitBox.setAttribute('hit-box', '');
