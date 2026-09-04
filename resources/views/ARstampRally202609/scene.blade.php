@@ -29,7 +29,7 @@
     <!-- maker00: ギャラリー専用マーカー（Model_00固定 + 選択4体をjs-gallery.blade.phpで動的生成） -->
     <a-marker
         type="pattern"
-        url="{{ asset('cg/202606/pattern-maker00.patt') }}"
+        url="{{ asset('cg/202609/pattern-maker00.patt') }}"
         id="marker-00"
         smooth="true"
         smoothCount="10"
@@ -40,7 +40,7 @@
 
         <a-entity
             id="model-00"
-            lazy-model="src: {{ asset('cg/202606/Model_00.glb') }}"
+            lazy-model="src: {{ asset('cg/202609/Model_00.glb') }}"
             position="0 0 0"
             scale="0.6 0.6 0.6"
             rotation="0 0 0"
@@ -54,7 +54,7 @@
     @php $id = str_pad($i, 2, '0', STR_PAD_LEFT); @endphp
     <a-marker
         type="pattern"
-        url="{{ asset('cg/202606/pattern-maker' . $id . '.patt') }}"
+        url="{{ asset('cg/202609/pattern-maker' . $id . '.patt') }}"
         id="marker-{{ $id }}"
         smooth="true"
         smoothCount="10"
@@ -62,7 +62,7 @@
         smoothThreshold="5">
         <a-entity
             id="model-{{ $id }}"
-            lazy-model="src: {{ asset('cg/202606/Model_' . $id . '.glb') }}"
+            lazy-model="src: {{ asset('cg/202609/Model_' . $id . '.glb') }}"
             position="0 0 0.5"
             scale="1.1 1.1 1.1"
             rotation="-90 0 0"
