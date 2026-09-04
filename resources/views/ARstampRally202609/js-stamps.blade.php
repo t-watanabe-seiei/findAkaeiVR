@@ -19,7 +19,7 @@
             'model_17': { name: 'カタツムリ2', icon: '🐾', model: '202606/Model_17.glb' },
             'model_18': { name: 'カタツムリ3', icon: '🐾', model: '202606/Model_18.glb' },
             'model_19': { name: 'カタツムリ4', icon: '🐾', model: '202606/Model_19.glb' },
-            'model_20': { name: 'ぶっちー', icon: '🐾', model: '202606/Model_20.glb' }
+            'model_20': { name: 'イオちゃん', icon: '🐾', model: '202606/Model_20.glb' }
         };
 
         const TOTAL_STAMP_SLOTS = 20;
