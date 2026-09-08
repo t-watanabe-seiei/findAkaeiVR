@@ -1,0 +1,15 @@
+# Project Tech Stack
+- PHP Version: 8.2
+- Framework: Laravel 11.x (Vite build system)
+- Node.js Version: 24.x
+- Frontend: Vue 3 (Composition API / <script setup>), A-Frame (WebVR)
+
+# Coding Standards & Guidelines
+- Follow PSR-12 for all PHP / Laravel code.
+- Use Laravel 11 structure (Route files in routes/web.php, configuration in config/ or env).
+- Write Vue 3 components using <script setup> and Composition API.
+- Keep A-Frame components integrated safely with Vue lifecycle hooks (onMounted / onUnmounted).
+
+# Response Instructions
+- Provide exact, runnable code without skipping necessary imports or setup.
+- Avoid verbose explanations or reasoning text. Output direct implementation code.
