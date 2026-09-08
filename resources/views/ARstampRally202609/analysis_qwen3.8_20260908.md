@@ -308,11 +308,11 @@
 
 | # | 対象ファイル | 関数/箇所 | 問題 | 修正方針 | 工数 |
 |---|---|---|---|---|---|
-| **T-04** | `js-init.blade.php` | L639 `setTimeout(hideArjsLoader, 3000)` | **P1-2**: 3秒無条件非表示 vs `monitorCameraStartup(7000)` → 約4秒間黒画面 | `hideArjsLoader` を `arjsVideoReady===true` 時のみに制限。7秒タイムアウトでエラー表示集約 | **30分** |
+| **T-04** ✅ | `js-init.blade.php` | L639 `setTimeout(hideArjsLoader, 3000)` | **P1-2**: 3秒無条件非表示 vs `monitorCameraStartup(7000)` → 約4秒間黒画面 | フォールバック 3秒→7秒に変更（`monitorCameraStartup` と整合）→ **2026-09-09 修正済み** | **30分** |
 | **T-05** | `js-stamps.blade.php` | `showStampBook()` L338-348 | **P1-4**: `innerHTML` に base64 URL + `s.name` を直接組み込み | `document.createElement('img')` + `img.src` でDOM生成（XSS面） | **30分** |
 | **T-06** | `js-camera.blade.php` / `js-throw.blade.php` | L17,L25-39 / L28 | **P1-5**: `#switch-camera-button` が202609 UIに存在しない（null参照デッドコード） | 該当行を削除 | **15分** |
 | **T-07** | `js-prize.blade.php` | `collectDeviceInfo()` L134 | **P1-6**: iPadOS 13+（Mac UA偽装）が `isIOS=false` | `navigator.maxTouchPoints>1 && /MacIntel/.test(navigator.platform)` 分岐追加 | **15分** |
-| **T-08** | `head.blade.php` | L31-45 IIFE | **P1-7**: try/catch無し。例外で `monitorCameraStartup` 等が全undefined→起動不能 | IIFE全体を `try{...}catch{...return false;}` で包む | **15分** |
+| **T-08** ✅ | `head.blade.php` | L31-45 IIFE | **P1-7**: try/catch無し。例外で `monitorCameraStartup` 等が全undefined→起動不能 | IIFE全体を `try{...}catch{...return false;}` で包む → **2026-09-09 修正済み** | **15分** |
 | **T-09** | `head.blade.php` | L51,75,89 | **P1-8**: `querySelector('video')` がDOM先頭を仮定（`#photo-preview` 競合） | `a-scene video` セレクタ or AR.jsイベントに統一 | **30分** |
 
 ### 10.3 余力（性能・軽微）
@@ -372,4 +372,47 @@
 - T-01: `screenshot:null` 化後、ユーザーがスタンプ帳の画像プレビューを見る場合は「画像なし」になる。運用上はスタンプ個数・名前が重要なので許容範囲。
 - T-02: `PrizeExchange.stamps_data` に今後 base64 が保存されなくなる。既存データ（過去に base64 込みで保存済み）は残ったままだが、新規交換から解消。
 - T-03: 旧 `PrizeExchangeController`（202605/202606 共用）の `checkStatus` にも同欠落があるが、202609 専用コントローラー側は修正済み。
+
+
+## 12. 修正記録（2026-09-09 実施）— P1 UI安定性2項目対応完了
+
+> 本節は 2026-09-09 に実施した P1 UI安定性2項目（T-08/T-04）の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 12.1 修正内容一覧
+
+| 項目 | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|
+| **T-08** | `AR_FORCE_LOWRES` IIFE 全体を try/catch で包み、例外時は `false` 返却（従来: 例外伝播→アプリ起動不能） | `head.blade.php` L31-45 | ✅ 修正済み |
+| **T-04** | `setTimeout(hideArjsLoader, 3000)` を `setTimeout(hideArjsLoader, 7000)` に変更（`monitorCameraStartup(7000)` と整合） | `js-init.blade.php` L639-641 | ✅ 修正済み |
+
+### 12.2 詳細
+
+**T-08**（P1-7 対応）
+- 旧: `const url = new URL(window.location.href);` が例外を投げると IIFE 外に伝播 → `monitorCameraStartup` / `ensureCameraAccess` / `destroyAndFreeEntity` が全 undefined → アプリ起動不能
+- 新: IIFE 本体を `try { ... } catch (e) {}` で包み、例外時は `return false`
+- `AR_FORCE_LOWRES` の読み取り箇所（`js-init.blade.php` L594 `desiredMaxDetectionRate()`）は `if (window.AR_FORCE_LOWRES)` 判定 → `false`（falsy）で従来どおり動作
+- `AR_FORCE_LOWRES = true` になる条件（`?lowres=1` / 旧Android / 低コア・小メモリ）は try 内であり従来どおり動作
+
+**T-04**（P1-2 対応）
+- 旧: `setTimeout(hideArjsLoader, 3000)` → カメラ未起動時に3秒でローダー非表示 → `monitorCameraStartup(7000)` のエラー表示（7秒）まで**約4秒間黒画面**
+- 新: `setTimeout(hideArjsLoader, 7000)` → 7秒でローダー非表示 ＝ `camera-error` UI 表示のタイミングと整合
+- `arjs-video-loaded` イベント発火時（カメラ正常起動）は従来どおり `hideArjsLoader()` 即時呼出（L621）→ 影響なし
+- 低スペックAndroid（`AR_FORCE_LOWRES=true`）でも同一の7秒フォールバックが適用
+
+### 12.3 検証結果
+
+| チェック | 結果 |
+|---|---|
+| `php -l head.blade.php` | 警告0件 ✅ |
+| `php -l js-init.blade.php` | 警告0件 ✅ |
+| `AR_FORCE_LOWRES` 参照箇所で `true` 判定が変わらない | 確認済み ✅ |
+| `hideArjsLoader` 関数本体・`arjs-video-loaded` ハンドラ | 変更なし ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 12.4 残存リスク・補足
+
+- T-08: 例外発生時は `AR_FORCE_LOWRES = false`（低スペック判定を放棄）→ 高スペックパスで処理継続。従来（クラッシュ）より**改善**。
+- T-04: 7秒間ローダーが表示され続ける（従来3秒より4秒長い）。これは「読み込み中」を示す正しい状態であり、黒画面（従来3〜7秒）よりユーザー体験は改善。
+- T-04: `window.load` が DOMContentLoaded より大幅に遅延する極端な端末では `monitorCameraStartup` の開始が遅れる可能性がある。ただしフォールバックは `hideArjsLoader` のみ（エラーUI表示は `monitorCameraStartup` 側で制御）なので、最悪の場合ローダーが7秒後に非表示になる程度。
 
