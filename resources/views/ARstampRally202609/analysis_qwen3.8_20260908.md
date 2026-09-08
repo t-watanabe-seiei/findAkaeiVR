@@ -300,9 +300,9 @@
 
 | # | 対象ファイル | 関数/箇所 | 問題 | 修正方針 | 工数 |
 |---|---|---|---|---|---|
-| **T-01** | `js-stamps.blade.php` | `collectStamp()` catch（L164-167） | **P1-1**: `localStorage.removeItem(LOCAL_STORAGE_KEY)` で全スタンプ消去。クォータ超過時に景品交換直前で全データ消失 | catch内で各スタンプの `screenshot` を `null` にし**再保存**（全消去回避） | **30分** |
-| **T-02** | `js-prize.blade.php` | `exchangePrize()` fetch 前 | **N2/P1-3**: base64スクショ含む stamps をそのまま送付 → DBに数MB JSON | `stamps` を `{ stampId, collectedAt, name }` のみの配列に整形して送付 | **30分** |
-| **T-03** | `StampRally202609Controller.php` | `checkStatus()` | **N1**: レスポンスに `exchangedAt` 欠落 → 交換済みモーダルで日時非表示 | `'exchangedAt' => $exchange ? $exchange->exchanged_at->toIso8601String() : null` を追加 | **10分** |
+| **T-01** ✅ | `js-stamps.blade.php` | `collectStamp()` catch（L164-176） | **P1-1**: `localStorage.removeItem(LOCAL_STORAGE_KEY)` で全スタンプ消去。クォータ超過時に景品交換直前で全データ消失 | catch内で各スタンプの `screenshot` を `null` にし**再保存**（全消去回避）→ **2026-09-09 修正済み** | **30分** |
+| **T-02** ✅ | `js-prize.blade.php` | `exchangePrize()` fetch 前 | **N2/P1-3**: base64スクショ含む stamps をそのまま送付 → DBに数MB JSON | `stamps` を `{ stampId, collectedAt, name }` のみの配列に整形して送付 → **2026-09-09 修正済み** | **30分** |
+| **T-03** ✅ | `StampRally202609Controller.php` | `checkStatus()` | **N1**: レスポンスに `exchangedAt` 欠落 → 交換済みモーダルで日時非表示 | `'exchangedAt' => $exchange ? $exchange->exchanged_at->toIso8601String() : null` を追加 → **2026-09-09 修正済み** | **10分** |
 
 ### 10.2 要対応（UX・バグ）
 
@@ -324,3 +324,52 @@
 | **T-12** | `js-prize.blade.php:63-69` | **P3-3**: `generateUUID202609()` が `Math.random()` ベース | `crypto.randomUUID()` 切替（フォールバック維持） | **10分** |
 | **T-13** | `js-prize.blade.php:50` | **P3-2**: Cookie に `Secure` フラグなし | HTTPS環境で `;Secure` 追加 | **5分** |
 | **T-14** | `head.blade.php` | **P3-6**: グローバルエラーが `console` のみ | Sentry等の送信先接続 | **検討** |
+
+---
+
+## 11. 修正記録（2026-09-09 実施）— P1 最優先3項目対応完了
+
+> 本節は 2026-09-09 に実施した P1 最優先3項目（T-01/T-02/T-03）の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 11.1 修正内容一覧
+
+| 項目 | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|
+| **T-01** | `collectStamp()` catch 内で `screenshot:null` 化して再保存。全消去回避（スタンプ個数・名前は保持） | `js-stamps.blade.php` L164-176 | ✅ 修正済み |
+| **T-02** | `exchangePrize()` で base64 除外配列 `stampArr` を fetch 送信。DB JSON 肥大解消 | `js-prize.blade.php` L185-188, L210 | ✅ 修正済み |
+| **T-03** | `checkStatus()` レスポンスに `exchangedAt`（ISO 8601）を追加 | `StampRally202609Controller.php` L114-116 | ✅ 修正済み |
+
+### 11.2 詳細
+
+**T-01**（P1-1 対応）
+- 旧: `catch { localStorage.removeItem(LOCAL_STORAGE_KEY); }` → 全スタンプ消去
+- 新: `catch { try { stamps.forEach(sid => stamps[sid].screenshot = null); saveCollectedStamps(stamps); } catch { localStorage.removeItem(...); } }`
+- フォールバック（再保存も失敗時）は従来どおり維持
+
+**T-02**（N2 / P1-3 対応）
+- 旧: `body: JSON.stringify({ stamps: stamps })`（base64 込み）
+- 新: `body: JSON.stringify({ stamps: stampArr })`（`{ stampId, collectedAt, name }` のみ）
+- サーバー側 `PRIZE_EXCHANGE_THRESHOLD` チェック（`count(stamps)`）に無影響
+
+**T-03**（N1 対応）
+- 追加行: `'exchangedAt' => $exchange && $exchange->exchanged_at ? $exchange->exchanged_at->toIso8601String() : null`
+- `showRedeemedPrizeInfo()` 内の `exchangedAt.replace('T', ' ')` が正常に動作
+
+### 11.3 検証結果
+
+| チェック | 結果 |
+|---|---|
+| `php -l` 3ファイル（js-stamps / js-prize / Controller） | 警告0件 ✅ |
+| `stamps: stamps` 旧参照（202609 js-prize.blade.php） | 0件 ✅ |
+| `stamps: stampArr` 新参照 | 1件 ✅ |
+| `collectStamp` catch 内 `removeItem` | 1件のみ（最終フォールバック）✅ |
+| `checkStatus()` に `exchangedAt` | 存在 ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 11.4 残存リスク・補足
+
+- T-01: `screenshot:null` 化後、ユーザーがスタンプ帳の画像プレビューを見る場合は「画像なし」になる。運用上はスタンプ個数・名前が重要なので許容範囲。
+- T-02: `PrizeExchange.stamps_data` に今後 base64 が保存されなくなる。既存データ（過去に base64 込みで保存済み）は残ったままだが、新規交換から解消。
+- T-03: 旧 `PrizeExchangeController`（202605/202606 共用）の `checkStatus` にも同欠落があるが、202609 専用コントローラー側は修正済み。
+
