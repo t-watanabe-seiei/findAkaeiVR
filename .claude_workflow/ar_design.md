@@ -230,3 +230,65 @@ if (typeof MediaRecorder === 'undefined' && videoButton) {
 1. **静的検証**: 変更した全 blade ファイルで `php -l`（警告0件）。`grep` で「202609 配下に samsung/SM- 判定がない」「`node.scale.set` が `applyCurrentScaleTo` に残っていない」「`vid.videoWidth < vid.videoHeight` の縦型限定ガードが置換されている」ことを確認。
 2. **動作確認（可能範囲）**: PC/WebView でページ起動→カメラ起動→`syncArjsToRealSize` の console 出力（source/display が実寸になるか）→マーカー認識時のモデルスケール（`base²` でないか）→wheel ズーム2倍でモデルも2倍か→低解像度リトライ経路→交換ボタンの連打で `/api/exchange-prize` が1回のみ。
 3. **実機チェックリスト（開発者実行）**: Android（縦長/横長）でのカメラ比率・モデル位置、iOS 回帰、低スペック機（または `?lowres=1`）での検出レート、`MediaRecorder` 非対応環境で動画ボタン非表示。
+
+---
+
+# 設計 — ARstampRally202609 景品交換APIのサーバー側強化（202609専用エンドポイント）
+
+> 作成日: 2026-09-08
+> 前提: `.claude_workflow/ar_requirements.md` §7-11（P0-1/2/3、スコープ確定済み）
+> 方針: 共有API（`/api/...`）は 202605 / 202606 が利用中のため触らず、**202609専用の新コントローラー+新ルート**を `web` グループに新設する
+
+## 全体アプローチ
+
+P0 の3件を「202609専用エンドポイント」に分離して解消。他キャンペーンの閾値差（202605=5 / 202606=10 / 202609=10）を壊さないため、共有コントローラーは修正しない。
+
+| 軸 | 内容 | 対応 |
+|----|------|------|
+| ① サーバー側閾値強制 | 新コントローラー `exchange()` で `count(stamps) >= 10` を検証し、未満は 422 | P0-1 |
+| ② CSRF + セッション | 3ルートを `routes/web.php`（`web`グループ）に配置。フィンガープリントをセッションに保持 | P0-2 |
+| ③ レート制限 | `AppServiceProvider::boot()` で `stamp202609_scan/check/redeem` の命名リミッター3種を定義し各ルートに適用 | P0-3 |
+| ④ クライアント差し替え | `js-prize.blade.php` の3 fetch を新URLへ変更（CSRFヘッダ維持） | 結合 |
+
+## ファイル別設計
+
+### 新設 `app/Http/Controllers/StampRally202609Controller.php`
+- `recordScan()`: 既存 `MarkerScanController::record` と同ロジック＋ `session(['ar_fingerprint' => ...])` でセッションに紐付け
+- `checkStatus()`: `session('ar_fingerprint') ?: $request->input('fingerprint')` で参照（既存の `orWhere` 挙動を維持）
+- `exchange()`: バリデーション＋ `PRIZE_EXCHANGE_THRESHOLD = 10` の件数検証（未満は 422）→ 既存 `PrizeExchangeController::exchange()` と同じコード生成/保存ロジック
+
+### `routes/web.php`
+```php
+Route::post('/stamp202609/record-scan', [StampRally202609Controller::class, 'recordScan'])->middleware('throttle:stamp202609_scan');
+Route::post('/stamp202609/check-prize', [StampRally202609Controller::class, 'checkStatus'])->middleware('throttle:stamp202609_check');
+Route::post('/stamp202609/exchange-prize', [StampRally202609Controller::class, 'exchange'])->middleware('throttle:stamp202609_redeem');
+```
+
+### `app/Providers/AppServiceProvider.php`（`boot()`）
+```php
+$key = fn (Request $r) => $r->session()->get('ar_fingerprint') ?: $r->ip();
+RateLimiter::for('stamp202609_scan',   fn ($r) => Limit::perMinute(120)->by($key($r)));
+RateLimiter::for('stamp202609_check',  fn ($r) => Limit::perMinute(120)->by($key($r)));
+RateLimiter::for('stamp202609_redeem', fn ($r) => Limit::perHour(10)->by($key($r)));
+```
+※ 交換は1時間に10回まで（閾値10と整合。意図的な連打・Bot 防御）。キーはフィンガープリント優先→IPフォールバック。
+
+### `resources/views/ARstampRally202609/js-prize.blade.php`
+- 3 fetch の URL を `/stamp202609/...` へ変更（L149 / L170 / L203）
+- `X-CSRF-TOKEN` ヘッダは維持（`web` グループで検証される）
+
+## エッジケース・リスク
+
+| # | リスク | 対策 |
+|---|--------|------|
+| S1 | 202605 / 202606 への影響 | 共有API・共有コントローラー・他キャンペーンの `js-prize` を一切変更しない |
+| S2 | セッション未設定での `checkStatus` / `exchange` | `session('ar_fingerprint') ?: $request->input('fingerprint')` でフォールバック（既存挙動を維持） |
+| S3 | レートリミッターのキー | フィンガープリント優先 → IPフォールバック（`recordScan` でセッションに保持済みの値を参照） |
+| S4 | 202609 の既存 UI 挙動 | 新エンドポイントは応答形状を既存と同一に（`success` / `prizeCode` / `hasExchanged` 等） |
+
+## 検証計画
+1. `php -l`（`StampRally202609Controller.php` / `AppServiceProvider.php` / `web.php`）
+2. `php artisan route:list --path=stamp202609` で3新ルートが Controller に解決
+3. 10未満交換が 422 / 10以上でコード発行（要実機・要セッション）
+4. 別サイトからのクロスサイトフォームPOSTが CSRF 419 で拒否（要実機）
+5. 202605 が閾値5のまま `/api/...` で動作（回帰、要実機）

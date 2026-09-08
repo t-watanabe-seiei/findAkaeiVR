@@ -13,3 +13,4 @@
 # Response Instructions
 - Provide exact, runnable code without skipping necessary imports or setup.
 - Avoid verbose explanations or reasoning text. Output direct implementation code.
+- Answer directly with final code. Minimize internal reasoning text to save output tokens.

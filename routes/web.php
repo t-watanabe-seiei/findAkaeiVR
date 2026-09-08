@@ -51,6 +51,17 @@ Route::match(['get', 'head'], '/stamp202609', function () {
     return view('ARstampRally202609');
 })->name('stamp202609.index');
 
+// ARstampRally202609 専用API（web グループ: CSRF + セッション有効）
+// 閾値(10種)をサーバー側で強制し、レートリミッターも適用する。他キャンペーンには影響しない。
+Route::prefix('stamp202609')->group(function () {
+    Route::post('/record-scan', [App\Http\Controllers\StampRally202609Controller::class, 'recordScan'])
+        ->middleware('throttle:stamp202609_scan');
+    Route::post('/check-prize', [App\Http\Controllers\StampRally202609Controller::class, 'checkStatus'])
+        ->middleware('throttle:stamp202609_check');
+    Route::post('/exchange-prize', [App\Http\Controllers\StampRally202609Controller::class, 'exchange'])
+        ->middleware('throttle:stamp202609_redeem');
+});
+
 Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');

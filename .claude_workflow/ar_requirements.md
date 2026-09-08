@@ -74,3 +74,53 @@ Android / iOS / PC の全端末で「カメラ映像の比率・マRecognizerと
   → **決定（2026-09-02）: 今回の対象とする**
 
 ※ 「待機時間の基準不一致（7s vs 10s）」はスコープ外として今回変更しない（指示にない機能追加を避けるため）。
+
+---
+
+# 要件定義 — ARstampRally202609 景品交換APIのサーバー側強化（202609専用エンドポイント）
+
+> 作成日: 2026-09-08
+> 根拠: `resources/views/ARstampRally202609/analysis_qwen3.8_20260908.md` の P0-1 / P0-2 / P0-3
+> 制約（CLAUDE.md）: 日本語で説明・変更を最小に・既存挙動の保存・実装前に `php -l` 確認・**202605 / 202606（旧キャンペーン）への影響を完全に排除**
+> 重要: `routes/api.php` の `/api/record-marker-scan`・`/api/check-prize-exchange`・`/api/exchange-prize` は **202605 / 202606 が継続利用するため変更しない**
+
+## 7. 目的
+
+202609 の景品交換まわりの3つの P0 脆弱性を、**202609専用のサーバー側エンドポイント**として新設し、他キャンペーン（202605=閾値5 / 202606=閾値10）の閾値差を壊さず修正する。
+
+## 8. 現状（202609 の脆弱性）
+
+| # | 問題 | 箇所 |
+|---|------|------|
+| P0-1 | 景品交換API（`/api/exchange-prize`）がスタンプ件数・整合性を検証しない。クライアントの「10個以上」ガードは JS 内のみで、APIを直接叩けばスタンプ0個でもコード発行できる | `PrizeExchangeController::exchange()`・`routes/api.php:28` |
+| P0-2 | 3端点が `routes/api.php`（CSRF 非適用グループ）にあり、`head.blade.php` の CSRF トークンは検証されない。クロスサイトフォームPOSTで景品コード発行可能 | `routes/api.php:26-28` |
+| P0-3 | 3 API にレート制限（throttle）が無く、連打・自動化で DB 汚染・コード発行量暴走 | `routes/api.php:26-28` |
+
+## 9. 成功基準
+
+1. **P0-1**: `/stamp202609/exchange-prize` が `stamps` 件数10未満のとき **422** を返し、景品コードを発行しない（サーバー側強制）。
+2. **P0-2**: 3端点すべてが `web` ミドルウェアグループ（CSRF + Session）を強制しセッションに紐づく。別サイトからのフォームPOSTは CSRF で拒否。
+3. **P0-3**: スキャン記録・照会・交換それぞれに `throttle` を適用し、1分間 / 1時間 単位で上限を設ける。
+4. **他キャンペーン影響なし**: 202605（閾値5）・202606（閾値10）は従来どおり `/api/...` を使用し、本変更の影響を受けない。
+5. **既存機能保存**: マーカー認識→捕獲→スタンプ→交換→コード表示の既存UI挙動は維持（応答形状も同一）。
+6. `php -l` が変更した PHP ファイルで警告・エラーなし。`php artisan route:list` で3新ルートが `StampRally202609Controller` に解決される。
+
+## 10. スコープ
+
+### In-Scope（今回実施）
+- 新規 `app/Http/Controllers/StampRally202609Controller.php`（`recordScan` / `checkStatus` / `exchange`、閾値10をサーバー側で強制）
+- `routes/web.php`: 202609 専用の3ルート（`web`グループ + `throttle`）
+- `app/Providers/AppServiceProvider.php`: 202609 専用の命名レートリミッター3種
+- `resources/views/ARstampRally202609/js-prize.blade.php`: 3つの fetch を新エンドポイントへ差し替え
+
+### Out-of-Scope（変更しない）
+- `routes/api.php` の `/api/record-marker-scan`・`/api/check-prize-exchange`・`/api/exchange-prize`（202605 / 202606 が継続利用）
+- `app/Http/Controllers/MarkerScanController.php`・`PrizeExchangeController.php`（他キャンペーン向け）
+- 202605 / 202606 の `js-prize.blade.php`（各閾値は従来どおり JS 内ガードのまま）
+
+## 11. 前提・留意事項
+
+- `SESSION_DRIVER=database`（`env` 確認済み）→ `web` グループでセッション/CSRF が機能する前提。
+- 閾値10は 202609 の `js-prize.blade.php` の `PRIZE_EXCHANGE_THRESHOLD = 10` と一致させる。
+- フィンガープリントは `recordScan` 時にセッションへ保持し、`checkStatus` / `exchange` でセッション優先・リクエスト値フォールバックに読み替える（既存の `orWhere` 挙動を維持しつつセッションと紐付け）。
+- コード生成ロジック（ランダム5桁＋衝突チェック）は既存 `PrizeExchangeController::exchange()` と同一。

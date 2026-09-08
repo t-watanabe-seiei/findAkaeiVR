@@ -146,7 +146,7 @@
             if (!csrfMeta) return Promise.resolve();
             var csrfToken = csrfMeta.content;
             return generateFingerprint().then(function (fingerprint) {
-                return fetch('{{ url("/api/record-marker-scan") }}', {
+                return fetch('{{ url("/stamp202609/record-scan") }}', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                     body:    JSON.stringify({
@@ -167,7 +167,7 @@
             if (!csrfMeta) return Promise.resolve({ hasExchanged: false });
             var csrfToken = csrfMeta.content;
             return generateFingerprint().then(function (fp) {
-                return fetch('{{ url("/api/check-prize-exchange") }}', {
+                return fetch('{{ url("/stamp202609/check-prize") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                     body:   JSON.stringify({ fingerprint: fp })
@@ -200,7 +200,7 @@
                 if (serverStatus.hasExchanged && serverStatus.prizeCode) { _exchanging = false; showPrizeCode(serverStatus.prizeCode); return; }
 
                 return generateFingerprint().then(function (fp) {
-                    return fetch('{{ url("/api/exchange-prize") }}', {
+                    return fetch('{{ url("/stamp202609/exchange-prize") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                         body:   JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stamps })

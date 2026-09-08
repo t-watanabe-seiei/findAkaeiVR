@@ -55,3 +55,53 @@
 | 2026-09-02 | T7 | 静的検証4項目すべて合格（samsung/scale.set/縦型ガードはbladeで0件、202606未変更を確認） |
 | 2026-09-02 | T8-a | `artisan serve` + `curl` でレンダリング成功（HTTP 200/191KB）。HTML検証12項目すべて合格。バックグラウンドサーバー（PID12600）は正常終了済み |
 | 2026-09-02 | T8-b〜e | 実機/カメラが必要な項目 → 開発者実行待ち（README・タスク書に明記済み） |
+
+---
+
+# タスク — ARstampRally202609 景品交換APIのサーバー側強化
+
+> 作成日: 2026-09-08 / 根拠: `.claude_workflow/ar_design.md`（202609専用エンドポイント設計）
+> 進捗記法: `[ ]` 未着手 / `[~]` 実施中 / `[x]` 完了
+
+## タスクリスト
+
+### T10. 新コントローラー作成（設計 §ファイル別設計）
+- [x] T10-a `app/Http/Controllers/StampRally202609Controller.php` を新設（`recordScan` / `checkStatus` / `exchange`、閾値10をサーバー側で強制）
+- [x] T10-b `php -l app/Http/Controllers/StampRally202609Controller.php` が警告0件
+
+### T11. 202609 専用3ルートを `routes/web.php` に追加（`web`グループ + `throttle`）
+- [x] T11-a `POST /stamp202609/record-scan` → `throttle:stamp202609_scan`
+- [x] T11-b `POST /stamp202609/check-prize` → `throttle:stamp202609_check`
+- [x] T11-c `POST /stamp202609/exchange-prize` → `throttle:stamp202609_redeem`
+- [x] T11-d `php -l routes/web.php` が警告0件
+
+### T12. 命名レートリミッターを `AppServiceProvider::boot()` に定義
+- [x] T12-a `stamp202609_scan` / `stamp202609_check`（1分間120回）
+- [x] T12-b `stamp202609_redeem`（1時間10回）
+- [x] T12-c `php -l app/Providers/AppServiceProvider.php` が警告0件
+
+### T13. `js-prize.blade.php` の3 fetch を新エンドポイントへ差し替え
+- [x] T13-a L149: `/api/record-marker-scan` → `/stamp202609/record-scan`
+- [x] T13-b L170: `/api/check-prize-exchange` → `/stamp202609/check-prize`
+- [x] T13-c L203: `/api/exchange-prize` → `/stamp202609/exchange-prize`
+- [x] T13-d `X-CSRF-TOKEN` ヘッダは維持（`web` グループで検証される）
+- [x] T13-e `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T14. 静的検証
+- [x] T14-a `php artisan route:list --path=stamp202609` で3新ルートが `StampRally202609Controller` に解決
+- [x] T14-b 202609 配下 blade に旧 `/api/record-marker-scan`・`/api/check-prize-exchange`・`/api/exchange-prize` の参照が0件（.md 解析ドキュメントのみ残存）
+- [x] T14-c 202605 / 202606 の `js-prize.blade.php`・`routes/api.php`・共有コントローラーに変更がない
+
+### T15. 動作確認・実機チェックリスト
+- [~] T15-a 10体捕獲 → 交換 → コード発行（要実機/カメラ）
+- [~] T15-b 10体未満で API 直接叩いても 422（P0-1 無効化の目視確認、要セッション/DevTools）
+- [~] T15-c 別サイトからのクロスサイトフォームPOSTが CSRF 419 で拒否（P0-2、要実機）
+- [~] T15-d 202605 が閾値5のまま `/api/...` で動作（回帰、要実機）
+
+## 進捗ログ（202609 景品交換API強化）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-08 | T10〜T13 | 新コントローラー・3ルート・レートリミッター・JS差し替えの4ファイル変更完了。各ファイル `php -l` 警告0件 |
+| 2026-09-08 | T14 | 静的検証3項目すべて合格（route:list 3ルート解決 / 旧API参照0件 / 他キャンペーン未変更） |
+| 2026-09-08 | T15 | 実機/セッションが必要な項目 → 開発者実行待ち |

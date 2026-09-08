@@ -551,6 +551,46 @@ Android Chrome では `look-controls` が DeviceOrientationEvent（ジャイロ�
 
 ---
 
+### ARstampRally202609 - 景品交換APIのサーバー側強化（202609専用エンドポイント）20260908
+
+**分析レポート（`resources/views/ARstampRally202609/analysis_qwen3.8_20260908.md`）で特定された P0 の3件を、202609専用のサーバー側エンドポイントとして新設し、他キャンペーン（202605=閾値5 / 202606=閾値10）への影響を完全に排除した形で修正（要件/設計/タスク: `.claude_workflow/ar_requirements.md` §7-11 / `ar_design.md` / `ar_tasks.md`）**
+
+**1. P0-1 景品交換のサーバー側閾値強制**
+- 新設 `app/Http/Controllers/StampRally202609Controller.php` の `exchange()` が `count(stamps) >= 10` を検証し、未満は **422**（従来は JS 内ガードのみで、API直叩きでスタンプ0個でもコード発行できた）
+- 閾値10は 202609 の `PRIZE_EXCHANGE_THRESHOLD = 10` と一致
+
+**2. P0-2 CSRF + セッション強制**
+- 3端点を `routes/api.php`（CSRF 非適用グループ）から `routes/web.php`（`web`グループ = CSRF + Session）に移動
+- `recordScan` 時にフィンガープリントをセッションに保持し、`checkStatus` / `exchange` でセッション優先・リクエスト値フォールバックに参照
+- 別サイトからのクロスサイトフォームPOSTは CSRF 419 で拒否
+
+**3. P0-3 レート制限**
+- `app/Providers/AppServiceProvider.php` で命名リミッター3種を定義（フィンガープリント優先・IPフォールバック）
+  - `stamp202609_scan` / `stamp202609_check`: 1分間120回
+  - `stamp202609_redeem`: 1時間10回
+
+**4. クライアントの fetch URL 差し替え**
+- `resources/views/ARstampRally202609/js-prize.blade.php`: 3 fetch を `/stamp202609/record-scan` / `/stamp202609/check-prize` / `/stamp202609/exchange-prize` へ変更（`X-CSRF-TOKEN` ヘッダは維持）
+
+#### 変更ファイル（4ファイル）
+- `app/Http/Controllers/StampRally202609Controller.php`: **新設**（`recordScan` / `checkStatus` / `exchange`、閾値10をサーバー側で強制）
+- `routes/web.php`: 202609 専用の3ルート追加（`web`グループ + `throttle`）
+- `app/Providers/AppServiceProvider.php`: 命名レートリミッター3種追加
+- `resources/views/ARstampRally202609/js-prize.blade.php`: 3 fetch の URL 差し替え
+
+#### 未変更（意図的）
+- `routes/api.php` の `/api/record-marker-scan`・`/api/check-prize-exchange`・`/api/exchange-prize`（202605 / 202606 が継続利用）
+- `app/Http/Controllers/MarkerScanController.php`・`PrizeExchangeController.php`（他キャンペーン向け）
+- 202605 / 202606 の `js-prize.blade.php`（各閾値は従来どおり JS 内ガードのまま）
+
+#### 確認済み項目
+- ✅ `php -l` で構文エラーなし（変更した4ファイルすべて）
+- ✅ `php artisan route:list --path=stamp202609` で3新ルートが `StampRally202609Controller` に解決
+- ✅ 202609 配下 blade に旧 `/api/...` 参照が0件（.md 解析ドキュメントのみ残存）
+- ⏳ 実機検証（10体捕獲→交換→コード発行 / 10体未満で422 / クロスサイトフォームPOSTがCSRF 419 / 202605が閾値5のまま動作）— 開発者実行予定
+
+---
+
 ### ARstampRally202605 - 新規作成 (モジュール化リファクタリング)
 
 **ARstampRally202603をベースに2026年5月イベント向け新版を作成:**
