@@ -251,3 +251,76 @@
 2. `ar-engine.min.js` / `ar-tracking.min.js` は min 化済みのバンドルで、行番号ベースの指摘が困難なため、バージョン・実装キーの有無（`maxDetectionRate` 等）で確認した。
 3. `resources/views/ARstampRally202609/` 配下の blade 11ファイル+メインビューは全行読取済み。
 4. 本レポート作成時点で `.claude_workflow/ar_tasks.md` に記載の T1〜T4 修正（主因A/B/C の対応、UA分岐削除、`AR_FORCE_LOWRES` 精緻化、MediaRecorder検出）は**全てコードに反映済み**であることを確認した（既存分析への依存ではなくコード直接確認による）。
+
+---
+
+## 9. 修正記録（2026-09-08 実施）— P0 対応完了
+
+> 本節は 2026-09-08 に実施した P0（セキュリティ重大）全5項目の修正記録である。
+> 方針：202609専用コントローラー + `web` ミドルウェアグループ（CSRF・セッション有効）により他キャンペーン（202605 等）への影響を排除。
+
+### 9.1 修正内容一覧
+
+| 項目 | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|
+| **P0-1** | サーバー側で閾値（10種）強制。`stamps` 件数<10なら422返却 | `StampRally202609Controller::exchange()` | ✅ 修正済み |
+| **P0-2** | 3エンドポイントを `web` グループ（CSRF有効）へ移設。JSに `X-CSRF-TOKEN` 付与 | `routes/web.php` / `js-prize.blade.php` | ✅ 修正済み |
+| **P0-3** | 3種のレートリミッター（120/分・120/分・10/時間） | `AppServiceProvider.php` / `routes/web.php` | ✅ 修正済み |
+| **P0-4** | `recordScan` 時にFPをセッション保持。セッションID+FPでDB照合 | `StampRally202609Controller` 全体 | ✅ 修正済み |
+| **P0-5** | セッション優先・リクエスト値フォールバックで識別 | `StampRally202609Controller::checkStatus()/exchange()` | ✅ 修正済み |
+
+### 9.2 新規/変更ファイル
+
+| ファイル | 種別 | 内容 |
+|---|---|---|
+| `app/Http/Controllers/StampRally202609Controller.php` | **新規** | `recordScan()` / `checkStatus()` / `exchange()`。`PRIZE_EXCHANGE_THRESHOLD=10` |
+| `app/Providers/AppServiceProvider.php` | 編集 | `stamp202609_scan/check/redeem` RateLimiter定義追加 |
+| `routes/web.php` | 編集 | `stamp202609` prefix グループ3POSTルート追加（`throttle` 付き） |
+| `resources/views/ARstampRally202609/js-prize.blade.php` | 編集 | 3URL更新 + 全fetchに `X-CSRF-TOKEN` 付与 |
+
+### 9.3 P0-5 残存リスク
+
+- 同一端末・同一セッション内で `userId` を書き換え別FP生成しても、`recordScan` 時にセッション上書きされるため**最終FP**が基準 → 実害は「同一端末複数回交換」に限定
+- **推奨（将来）**: `recordScan` 時、セッション内FPが初回以外に不一致なら403 or 旧FP交換無効化
+
+### 9.4 P0対応時に判明した新規問題
+
+| # | 箇所 | 内容 | 優先度 |
+|---|---|---|---|
+| **N1** | `StampRally202609Controller::checkStatus()` | レスポンスに `exchangedAt` 欠落。JS `showRedeemedPrizeInfo` は `undefined` を受け取り交換日時非表示。旧 `PrizeExchangeController` にも同欠落 | **要対応** |
+| **N2** | `js-prize.blade.php::exchangePrize()` | `stamps`（base64スクショ含む）をそのまま送付。`stamps_data` に数MB JSON蓄積（P1-3 と同一） | **要対応** |
+
+---
+
+## 10. 次の修正候補（優先順位順・2026-09-08時点）
+
+> P0対応後に実コードを再確認し、次に着手すべき箇所を特定。
+
+### 10.1 最優先（データ損失・機能欠損）
+
+| # | 対象ファイル | 関数/箇所 | 問題 | 修正方針 | 工数 |
+|---|---|---|---|---|---|
+| **T-01** | `js-stamps.blade.php` | `collectStamp()` catch（L164-167） | **P1-1**: `localStorage.removeItem(LOCAL_STORAGE_KEY)` で全スタンプ消去。クォータ超過時に景品交換直前で全データ消失 | catch内で各スタンプの `screenshot` を `null` にし**再保存**（全消去回避） | **30分** |
+| **T-02** | `js-prize.blade.php` | `exchangePrize()` fetch 前 | **N2/P1-3**: base64スクショ含む stamps をそのまま送付 → DBに数MB JSON | `stamps` を `{ stampId, collectedAt, name }` のみの配列に整形して送付 | **30分** |
+| **T-03** | `StampRally202609Controller.php` | `checkStatus()` | **N1**: レスポンスに `exchangedAt` 欠落 → 交換済みモーダルで日時非表示 | `'exchangedAt' => $exchange ? $exchange->exchanged_at->toIso8601String() : null` を追加 | **10分** |
+
+### 10.2 要対応（UX・バグ）
+
+| # | 対象ファイル | 関数/箇所 | 問題 | 修正方針 | 工数 |
+|---|---|---|---|---|---|
+| **T-04** | `js-init.blade.php` | L639 `setTimeout(hideArjsLoader, 3000)` | **P1-2**: 3秒無条件非表示 vs `monitorCameraStartup(7000)` → 約4秒間黒画面 | `hideArjsLoader` を `arjsVideoReady===true` 時のみに制限。7秒タイムアウトでエラー表示集約 | **30分** |
+| **T-05** | `js-stamps.blade.php` | `showStampBook()` L338-348 | **P1-4**: `innerHTML` に base64 URL + `s.name` を直接組み込み | `document.createElement('img')` + `img.src` でDOM生成（XSS面） | **30分** |
+| **T-06** | `js-camera.blade.php` / `js-throw.blade.php` | L17,L25-39 / L28 | **P1-5**: `#switch-camera-button` が202609 UIに存在しない（null参照デッドコード） | 該当行を削除 | **15分** |
+| **T-07** | `js-prize.blade.php` | `collectDeviceInfo()` L134 | **P1-6**: iPadOS 13+（Mac UA偽装）が `isIOS=false` | `navigator.maxTouchPoints>1 && /MacIntel/.test(navigator.platform)` 分岐追加 | **15分** |
+| **T-08** | `head.blade.php` | L31-45 IIFE | **P1-7**: try/catch無し。例外で `monitorCameraStartup` 等が全undefined→起動不能 | IIFE全体を `try{...}catch{...return false;}` で包む | **15分** |
+| **T-09** | `head.blade.php` | L51,75,89 | **P1-8**: `querySelector('video')` がDOM先頭を仮定（`#photo-preview` 競合） | `a-scene video` セレクタ or AR.jsイベントに統一 | **30分** |
+
+### 10.3 余力（性能・軽微）
+
+| # | 対象ファイル | 問題 | 修正方針 | 工数 |
+|---|---|---|---|---|
+| **T-10** | `scene.blade.php:17` | **P2-10**: `antialias:true` がモバイルGPUコスト | `AR_FORCE_LOWRES` 時 `antialias:false` | **20分** |
+| **T-11** | `ui.blade.php:53` | **P2-9**: `howToOperate.png`(1.39MB) がLCP影響 | WebP/AVIF化 or 表示幅リサイズ | **30分** |
+| **T-12** | `js-prize.blade.php:63-69` | **P3-3**: `generateUUID202609()` が `Math.random()` ベース | `crypto.randomUUID()` 切替（フォールバック維持） | **10分** |
+| **T-13** | `js-prize.blade.php:50` | **P3-2**: Cookie に `Secure` フラグなし | HTTPS環境で `;Secure` 追加 | **5分** |
+| **T-14** | `head.blade.php` | **P3-6**: グローバルエラーが `console` のみ | Sentry等の送信先接続 | **検討** |
