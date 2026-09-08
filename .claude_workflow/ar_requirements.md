@@ -124,3 +124,49 @@ Android / iOS / PC の全端末で「カメラ映像の比率・マRecognizerと
 - 閾値10は 202609 の `js-prize.blade.php` の `PRIZE_EXCHANGE_THRESHOLD = 10` と一致させる。
 - フィンガープリントは `recordScan` 時にセッションへ保持し、`checkStatus` / `exchange` でセッション優先・リクエスト値フォールバックに読み替える（既存の `orWhere` 挙動を維持しつつセッションと紐付け）。
 - コード生成ロジック（ランダム5桁＋衝突チェック）は既存 `PrizeExchangeController::exchange()` と同一。
+---
+
+# 要件定義 — ARstampRally202609 最優先バグ修正（T-01 / T-02 / T-03）
+
+> 作成日: 2026-09-09
+> 根拠: `resources/views/ARstampRally202609/analysis_qwen3.8_20260908.md` §10.1（T-01/T-02/T-03）、§9.4（N1/N2）
+> 制約（CLAUDE.md）: 変更を最小に・既存挙動保存・`php -l` 必須・他キャンペーン影響排除
+
+## 12. 目的
+
+P0 対応後に判明した**最優先3項目**（データ損失・大規模データ送信・機能欠損）を修正する。
+
+| # | 問題 | 現状 | 修正目標 |
+|---|------|------|----------|
+| **T-01** | `collectStamp()` の catch が `localStorage.removeItem()` で**全スタンプ消去** | base64スクショ蓄積→クォータ超過時、景品交換直前で全データ消失 | catch 内で `screenshot: null` 化して**再保存**（スタンプ個数・名前は保持） |
+| **T-02** | `exchangePrize()` が base64 スクショを含む `stamps` をそのまま POST | `stamps_data` 列に数MB JSON が蓄積（20体×1MB超） | 送付前に `screenshot` を除外し `{ stampId, collectedAt, name }` 配列のみ送付 |
+| **T-03** | `checkStatus()` のレスポンスに `exchangedAt` 欠落 | 交換済みモーダルで交換日時が `undefined`（非表示） | `'exchangedAt' => $exchange->exchanged_at->toIso8601String()` を追加 |
+
+## 13. 成功基準
+
+1. **T-01**: `localStorage.setItem` が `QuotaExceededError` を投げても、`getCollectedStamps()` から `screenshot` を除外したデータが再保存され、スタンプ個数・名前が保持される。
+2. **T-02**: `exchangePrize()` の POST body に `screenshot` フィールドが存在しない（DevTools Network で確認）。サーバー側 `stamps_data` 列に `screenshot` 文字列が含まれない。
+3. **T-03**: `checkStatus()` のレスポンス JSON に `exchangedAt` フィールドが含まれる（ISO 8601 文字列 or `null`）。
+4. **既存機能保存**: スタンプ捕獲・交換・コード表示・交換済み表示の既存UI挙動が維持される。
+5. **他キャンペーン影響なし**: 202605 / 202606 のファイルに一切変更がない。
+6. `php -l` が変更した全 PHP ファイルで警告・エラーなし。
+
+## 14. スコープ
+
+### In-Scope（今回変更）
+- `resources/views/ARstampRally202609/js-stamps.blade.php` — `collectStamp()` の catch ブロック（L164-167）
+- `resources/views/ARstampRally202609/js-prize.blade.php` — `exchangePrize()` の fetch body 整形
+- `app/Http/Controllers/StampRally202609Controller.php` — `checkStatus()` のレスポンス
+
+### Out-of-Scope
+- `js-stamps.blade.php` の他関数（`collectAndMarkWithRetry` 等）
+- `js-prize.blade.php` の他関数（`recordMarkerScan` / `checkPrizeExchangeStatus`）
+- `PrizeExchangeController.php`（他キャンペーン共用、変更しない）
+- DB スキーマ変更（`stamps_data` 列は `text`/`json` のまま）
+- IndexedDB 移行・スクリーンショット保存の完全廃止（将来の選択肢）
+
+## 15. 前提・留意事項
+
+- T-01 の catch 内再保存もクォータ超過する可能性（極端な場合）は残る → その場合は従来の `removeItem` を最終フォールバックとして残す。
+- T-02 で送付する `stamps` の形状がオブジェクト（`{ stampId: {...} }`）→ 配列（`[{ stampId, collectedAt, name }]`）に変わるが、サーバー側 `count($validated['stamps'])` は両方で動作する（PHP の `count` は配列・オブジェクト両対応）。
+- T-03 の `exchanged_at` は `PrizeExchange` テーブルの `timestamp` 列（`exchanged_at`）で、`$casts` で `datetime` にキャスト済み（or `created_at` と同じ形式）。`toIso8601String()` で安全に文字列化できる。

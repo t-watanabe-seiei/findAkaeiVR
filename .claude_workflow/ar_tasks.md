@@ -105,3 +105,44 @@
 | 2026-09-08 | T10〜T13 | 新コントローラー・3ルート・レートリミッター・JS差し替えの4ファイル変更完了。各ファイル `php -l` 警告0件 |
 | 2026-09-08 | T14 | 静的検証3項目すべて合格（route:list 3ルート解決 / 旧API参照0件 / 他キャンペーン未変更） |
 | 2026-09-08 | T15 | 実機/セッションが必要な項目 → 開発者実行待ち |
+
+---
+
+# タスク — ARstampRally202609 最優先バグ修正（T-01 / T-02 / T-03）
+
+> 作成日: 2026-09-09 / 根拠: `.claude_workflow/ar_design.md`（最優先バグ修正設計）
+> 進捗記法: `[ ]` 未着手 / `[~]` 実施中 / `[x]` 完了
+> 変更対象: `js-stamps.blade.php` / `js-prize.blade.php` / `StampRally202609Controller.php` + `README.md`
+
+## タスクリスト
+
+### T16. `js-stamps.blade.php` — `collectStamp()` catch 修正（設計 §T-01）
+- [x] T16-a `collectStamp()` の catch（L164-167）を `screenshot:null` 化再保存に置換（フォールバック維持）
+- [x] T16-b `php -l resources/views/ARstampRally202609/js-stamps.blade.php` が警告0件
+
+### T17. `js-prize.blade.php` — `exchangePrize()` の stamps 整形（設計 §T-02）
+- [x] T17-a `exchangePrize()` 内で `stamps` → `stampArr`（screenshot除外配列）に変換し、fetch body に `stamps: stampArr` を送付
+- [x] T17-b `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T18. `StampRally202609Controller.php` — `checkStatus()` に `exchangedAt` 追加（設計 §T-03）
+- [x] T18-a `checkStatus()` のレスポンス配列に `'exchangedAt' => ...` を追加
+- [x] T18-b `php -l app/Http/Controllers/StampRally202609Controller.php` が警告0件
+
+### T19. 静的検証
+- [x] T19-a `exchangePrize` 内に旧参照 `stamps: stamps` が0件、新参照 `stamps: stampArr` が1件
+- [x] T19-b `collectStamp` の catch 内に `removeItem` が1件のみ（最終フォールバック）
+- [x] T19-c `checkStatus()` に `exchangedAt` が含まれる
+- [x] T19-d 202605 / 202606 のファイルに変更がない
+
+### T20. `README.md` に修正内容を追記（CLAUDE.md ルール6）
+- [x] T20-a 202609 最優先バグ修正セクションを追記（T-01/T-02/T-03 の概要・影響範囲）
+
+## 進捗ログ（最優先バグ修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T16 | `js-stamps.blade.php` catch修正完了（`screenshot:null` 化再保存）。`php -l` 警告0件 |
+| 2026-09-09 | T17 | `js-prize.blade.php` `exchangePrize()` に `stampArr` 変換追加。`php -l` 警告0件 |
+| 2026-09-09 | T18 | `StampRally202609Controller.php` `checkStatus()` に `exchangedAt` 追加。`php -l` 警告0件 |
+| 2026-09-09 | T19 | 静的検証4項目すべて合格（旧参照0件 / フォールバック1件 / exchangedAt有 / 他キャンペーン未変更） |
+| 2026-09-09 | T20 | README.md に「最優先バグ修正（2026-09-09）」セクション追加 |

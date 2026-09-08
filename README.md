@@ -1057,6 +1057,37 @@ this.material.uniforms.innerRadius.value = innerRadius;
 0:00～0:10  │████████████████████│ 中心暗転なし（完全に明瞭）
 0:10～0:20  │      ●●●●●●        │ 視野角20°の小さい円が暗転
 0:20～0:30  │    ●●●●●●●●●●      │ 視野角30°の中くらいの円に拡大
+
+---
+
+## ARstampRally202609 — 最優先バグ修正（2026-09-09）
+
+> 対象: T-01（データ損失）/ T-02（大規模データ送信）/ T-03（APIフィールド欠損）
+
+### T-01: スタンプ捕獲時のクォータ超過対策
+
+- **問題**: `collectStamp()` で `localStorage.setItem` が `QuotaExceededError` を投げた際、catch が `localStorage.removeItem()` で**全スタンプデータを消去**していた
+- **修正**: catch 内で全スタンプの `screenshot` を `null` 化して**再保存**（スタンプ個数・名前は保持）。再保存も失敗した場合のみ従来の `removeItem` をフォールバックとして実行
+- **対象ファイル**: `resources/views/ARstampRally202609/js-stamps.blade.php`
+
+### T-02: 景品交換時のデータ送信量削減
+
+- **問題**: `exchangePrize()` が base64 スクリーンショット（1枚数100KB〜1MB）を含む `stamps` をそのまま POST → `stamps_data` 列に数MBの JSON が蓄積
+- **修正**: 送付前に `screenshot` を除外し `{ stampId, collectedAt, name }` の配列のみ送付。サーバー側の閾値チェック（`count`）には影響なし
+- **対象ファイル**: `resources/views/ARstampRally202609/js-prize.blade.php`
+
+### T-03: 交換済み確認APIに `exchangedAt` 追加
+
+- **問題**: `checkStatus()` のレスポンスに `exchangedAt` が無く、交換済みモーダルで交換日時が表示されなかった（`undefined`）
+- **修正**: レスポンスに `'exchangedAt' => $exchange->exchanged_at->toIso8601String()` を追加（NULL安全ガード付き）
+- **対象ファイル**: `app/Http/Controllers/StampRally202609Controller.php`
+
+### 影響範囲
+
+- 他キャンペーン（202605 / 202606）への影響：**なし**
+- 既存UI挙動（スタンプ捕獲→交換→コード表示→交換済み表示）：**維持**
+- DBスキーマ変更：**なし**
+
 0:30～0:40  │  ●●●●●●●●●●●●●●    │ 視野角40°のやや大きい円に拡大
 0:40～0:50  │●●●●●●●●●●●●●●●●●●  │ 視野角50°の大きい円に拡大
 0:50～      │████████████████████│ 最初に戻る（暗転なし）

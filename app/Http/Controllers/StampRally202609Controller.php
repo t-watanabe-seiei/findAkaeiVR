@@ -110,7 +110,10 @@ class StampRally202609Controller extends Controller
         return response()->json([
             'hasExchanged' => $exchange !== null,
             'isRedeemed' => $exchange ? $exchange->is_redeemed : false,
-            'prizeCode' => $exchange ? $exchange->prize_code : null
+            'prizeCode' => $exchange ? $exchange->prize_code : null,
+            'exchangedAt' => $exchange && $exchange->exchanged_at
+                ? $exchange->exchanged_at->toIso8601String()
+                : null
         ]);
     }
 

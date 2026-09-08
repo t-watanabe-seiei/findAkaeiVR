@@ -182,6 +182,10 @@
             if (_exchanging) return;
             var stamps = getCollectedStamps();
             var count  = Object.keys(stamps).length;
+            // base64スクリーンショットを除外して送付（DB容量・ネットワーク帯域の節約）
+            var stampArr = Object.keys(stamps).map(function (sid) {
+                return { stampId: sid, collectedAt: stamps[sid].collectedAt || '', name: stamps[sid].name || '' };
+            });
 
             // 閾値未満は交換不可
             if (count < PRIZE_EXCHANGE_THRESHOLD) {
@@ -203,7 +207,7 @@
                     return fetch('{{ url("/stamp202609/exchange-prize") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                        body:   JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stamps })
+                        body:   JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stampArr })
                     }).then(function (r) { return r.json(); }).then(function (data) {
                         if (data.success) {
                             localStorage.setItem('ar-prize-exchanged-202609', 'true');

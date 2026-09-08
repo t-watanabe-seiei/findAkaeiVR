@@ -162,7 +162,16 @@
                     return false;
                 }
             } catch (err) {
-                try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch (e) {}
+                // クォータ超過等の例外時は、screenshotをnull化して再保存（スタンプ個数・名前は保持）
+                try {
+                    if (typeof stamps !== 'undefined' && stamps) {
+                        Object.keys(stamps).forEach(function (sid) { stamps[sid].screenshot = null; });
+                        saveCollectedStamps(stamps);
+                    }
+                } catch (e) {
+                    // 再保存も失敗した場合の最終フォールバック
+                    try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch (e2) {}
+                }
                 return false;
             }
         }

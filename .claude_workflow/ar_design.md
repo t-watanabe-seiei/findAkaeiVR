@@ -292,3 +292,137 @@ RateLimiter::for('stamp202609_redeem', fn ($r) => Limit::perHour(10)->by($key($r
 3. 10未満交換が 422 / 10以上でコード発行（要実機・要セッション）
 4. 別サイトからのクロスサイトフォームPOSTが CSRF 419 で拒否（要実機）
 5. 202605 が閾値5のまま `/api/...` で動作（回帰、要実機）
+
+---
+
+# 設計 — ARstampRally202609 最優先バグ修正（T-01 / T-02 / T-03）
+
+> 作成日: 2026-09-09
+> 前提: `.claude_workflow/ar_requirements.md` §12-15（要件定義・スコープ確定済み）
+> 方針: 変更を最小限に・既存挙動を完全保存・各関数は1箇所のみ修正
+
+## 全体アプローチ
+
+3項目とも「**該当関数内の1ブロックのみ**」を変更する。他関数・他ファイルのロジックには一切触れない。
+
+| # | 変更箇所 | 変更内容 | 影響範囲 |
+|---|----------|----------|----------|
+| T-01 | `js-stamps.blade.php` `collectStamp()` catch | `removeItem` → `screenshot:null` 化再保存（フォールバック維持） | `collectStamp()` 内のみ |
+| T-02 | `js-prize.blade.php` `exchangePrize()` | fetch 前に `stamps` → `stampArr`（screenshot除外）に整形 | `exchangePrize()` 内のみ |
+| T-03 | `StampRally202609Controller::checkStatus()` | レスポンス配列に `exchangedAt` を追加 | `checkStatus()` 内のみ |
+
+## ファイル別設計
+
+### T-01: `js-stamps.blade.php` — `collectStamp()` catch（L164-167）
+
+**変更前:**
+```js
+} catch (err) {
+    try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch (e) {}
+    return false;
+}
+```
+
+**変更後:**
+```js
+} catch (err) {
+    // クォータ超過等の例外時は、screenshotをnull化して再保存（スタンプ個数・名前は保持）
+    try {
+        if (typeof stamps !== 'undefined' && stamps) {
+            Object.keys(stamps).forEach(function (sid) { stamps[sid].screenshot = null; });
+            saveCollectedStamps(stamps);
+        }
+    } catch (e) {
+        // 再保存も失敗した場合の最終フォールバック
+        try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch (e2) {}
+    }
+    return false;
+}
+```
+
+**設計判断:**
+- `var stamps` は `try` 内で宣言されているが、JS の `var` は関数スコープのため `catch` 内から参照可能
+- `typeof stamps !== 'undefined' && stamps` ガードで、`getCollectedStamps()` 自体が例外を投げた場合の安全性を確保
+- 内側 catch（`e`）で再保存失敗時、従来の `removeItem` をフォールバックとして維持
+- `return false` は不変 → 呼び出し側 `collectAndMarkWithRetry` の分岐に影响なし
+
+### T-02: `js-prize.blade.php` — `exchangePrize()` の fetch body
+
+**変更前:**
+```js
+var stamps = getCollectedStamps();
+
+fetch('/stamp202609/exchange-prize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken202609() },
+    body: JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stamps })
+})
+```
+
+**変更後:**
+```js
+var stamps = getCollectedStamps();
+// base64スクリーンショットを除外して送付（DB容量・ネットワーク帯域の節約）
+var stampArr = Object.keys(stamps).map(function (sid) {
+    return { stampId: sid, collectedAt: stamps[sid].collectedAt || '', name: stamps[sid].name || '' };
+});
+
+fetch('/stamp202609/exchange-prize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken202609() },
+    body: JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stampArr })
+})
+```
+
+**設計判断:**
+- `stampArr` は `{ stampId, collectedAt, name }` の**配列**（既存のオブジェクト `{ stampId: {...} }` と形状が変わる）
+- サーバー側 `count($validated['stamps'])` は PHP で配列・オブジェクト両対応 → 閾値チェック正常
+- `stamps_data` 列の保存形式が変わるが、**読み取りコードが存在しない**（管理画面なし）
+- `recordMarkerScan()` は対象外（サーバー側は `count()` のみ使用・DB保存なし）
+
+### T-03: `StampRally202609Controller::checkStatus()` — レスポンス追加
+
+**変更前:**
+```php
+return response()->json([
+    'hasExchanged' => $exchange !== null,
+    'isRedeemed' => $exchange ? $exchange->is_redeemed : false,
+    'prizeCode' => $exchange ? $exchange->prize_code : null
+]);
+```
+
+**変更後:**
+```php
+return response()->json([
+    'hasExchanged' => $exchange !== null,
+    'isRedeemed' => $exchange ? $exchange->is_redeemed : false,
+    'prizeCode' => $exchange ? $exchange->prize_code : null,
+    'exchangedAt' => $exchange && $exchange->exchanged_at
+        ? $exchange->exchanged_at->toIso8601String()
+        : null
+]);
+```
+
+**設計判断:**
+- `$exchange && $exchange->exchanged_at` の二重ガードで NULL 安全（レコード存在時でも `exchanged_at` が NULL の場合対策）
+- `toIso8601String()` は Carbon 標準メソッド（`2026-09-09T12:00:00+09:00` 形式）
+- 追加フィールドのみで既存3フィールド（`hasExchanged`/`isRedeemed`/`prizeCode`）は不変 → 後方互換
+
+## リスク・回避策
+
+| # | リスク | 回避策 |
+|---|--------|--------|
+| R1 | T-01: `stamps` 変数が `catch` 内で `undefined`（`getCollectedStamps()` 自体が例外） | `typeof stamps !== 'undefined' && stamps` ガード |
+| R2 | T-01: スクショ除去後もクォータ超過（極端にスタンプ数が多い場合） | 内側 catch で従来の `removeItem` を最終フォールバックとして維持 |
+| R3 | T-02: `stamps` の形状変化でサーバー側バリデーション失敗 | PHP `count()` は配列・オブジェクト両対応。`required|array` バリデーションも配列で通る |
+| R4 | T-03: `exchanged_at` が NULL（旧データ） | `&& $exchange->exchanged_at` ガードで NULL 返却 |
+
+## 検証計画
+
+1. `php -l resources/views/ARstampRally202609/js-stamps.blade.php` → 警告0件
+2. `php -l resources/views/ARstampRally202609/js-prize.blade.php` → 警告0件
+3. `php -l app/Http/Controllers/StampRally202609Controller.php` → 警告0件
+4. `php artisan route:list --path=stamp202609` → 3ルートが Controller に解決
+5. `grep` で `exchangePrize` 内に `stamps: stamps`（旧参照）が0件、`stamps: stampArr`（新参照）が1件
+6. `grep` で `collectStamp` の catch 内に `removeItem` が**1件**（最終フォールバックのみ）
+7. 202605 / 202606 のファイルに変更がない
