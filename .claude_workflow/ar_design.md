@@ -426,3 +426,106 @@ return response()->json([
 5. `grep` で `exchangePrize` 内に `stamps: stamps`（旧参照）が0件、`stamps: stampArr`（新参照）が1件
 6. `grep` で `collectStamp` の catch 内に `removeItem` が**1件**（最終フォールバックのみ）
 7. 202605 / 202606 のファイルに変更がない
+
+---
+
+## 設計: T-08（P1-7）IIFE 例外耐性 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/head.blade.php` L31-45（`AR_FORCE_LOWRES` IIFE）
+
+### 現状
+```js
+window.AR_FORCE_LOWRES = (function() {
+    const url = new URL(window.location.href);          // ← 例外耐性なし
+    if (url.searchParams.get('lowres') === '1') return true;  // ← 例外耐性なし
+    if (detectOldAndroid()) return true;
+    try { /* Android cores/memory */ } catch (e) {}
+    return false;
+})();
+```
+
+### 設計方針
+IIFE 本体を try/catch で包み、例外時は `false` を返す。
+**理由**: `AR_FORCE_LOWRES` は「低スペックなら true、それ以外は false」の2値。例外時は「低スペックと判定できない」= `false` が安全な既定値。
+
+### 変更後コード
+```js
+window.AR_FORCE_LOWRES = (function() {
+    try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('lowres') === '1') return true;
+        if (detectOldAndroid()) return true;
+        if (/Android/i.test(navigator.userAgent || '')) {
+            const cores = navigator.hardwareConcurrency || 0;
+            const mem   = navigator.deviceMemory || 0;
+            if ((cores > 0 && cores <= 2) || (mem > 0 && mem <= 2)) return true;
+        }
+    } catch (e) {}
+    return false;
+})();
+```
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| `?lowres=1` URL パラメータ | 従来どおり `true`（try 内） |
+| 旧Android（≤7）検出 | 従来どおり `true`（try 内） |
+| 低コア/小メモリAndroid | 従来どおり `true`（try 内） |
+| 例外発生時 | `false`（従来: 例外伝播 → アプリ起動不能） |
+| 202605 / 202606 | 影響なし（専用ファイル） |
+
+---
+
+## 設計: T-04（P1-2）ローダーフォールバックタイミング — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-init.blade.php` L639-640
+
+### 現状
+```js
+// フォールバック: 3秒後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
+setTimeout(hideArjsLoader, 3000);
+```
+
+### 設計方針
+**3秒 → 7秒** に変更し、`monitorCameraStartup(7000)` のタイムアウトと整合させる。
+
+**理由**:
+- `monitorCameraStartup(7000)` は `window.load` イベント発火後に開始（L643-645）
+- 7秒時点でカメラ未起動 → `camera-error` + `retry-camera-lowres` が表示される
+- 3秒フォールバックがあると、カメラ未起動時にローダーが消えるがエラーUIがまだ出ない → **3〜7秒は黒画面**
+- 7秒に揃えることで「ローダー消える = エラーUIが表示される」の整合が取れる
+
+### 変更後コード
+```js
+// フォールバック: 7秒後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
+// monitorCameraStartup(7000) のタイムアウトと整合: ローダー非表示時 = camera-error が表示されるタイミング
+setTimeout(hideArjsLoader, 7000);
+```
+
+### シーケンス（修正後）
+```
+t=0s    DOMContentLoaded → hideArjsLoader 定義
+t=0s    window.load → monitorCameraStartup(7000) 開始
+t=0.5s  1回目の video.readyState チェック（ポーリング）
+        ...（カメラ起動したら arjs-video-loaded → hideArjsLoader() 即時非表示）
+t=7s    タイムアウト:
+        ├─ monitorCameraStartup: camera-error + retry 表示
+        └─ hideArjsLoader: ローダー非表示（カメラエラーUIが確認できる）
+```
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| カメラ正常起動（通常端末） | `arjs-video-loaded` が即発火 → 従来どおり即時非表示（影響なし） |
+| カメラ未起動（低スペックAndroid） | 7秒でローダー非表示 + camera-error 表示（従来: 3秒で黒画面） |
+| `?lowres=1` モード | 同一の7秒フォールバックが適用 |
+| 202605 / 202606 | 影響なし（専用ファイル） |
+
+### リスク
+| # | リスク | 対応 |
+|---|---|---|
+| R1 | 7秒間ローダーが表示され続ける（従来より4秒長い） | 許容範囲。ローダーは「読み込み中」を示す正しい状態。黒画面よりマシ |
+| R2 | `window.load` が遅延する端末で `monitorCameraStartup` の開始が遅れ、7秒フォールバックと不一致 | 低確率（`window.load` は通常 DOMContentLoaded 後数ms）。フォールバックは `hideArjsLoader` のみ（エラーUI表示は monitorCameraStartup 側で制御） |
+

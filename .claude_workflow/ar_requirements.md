@@ -170,3 +170,62 @@ P0 対応後に判明した**最優先3項目**（データ損失・大規模デ
 - T-01 の catch 内再保存もクォータ超過する可能性（極端な場合）は残る → その場合は従来の `removeItem` を最終フォールバックとして残す。
 - T-02 で送付する `stamps` の形状がオブジェクト（`{ stampId: {...} }`）→ 配列（`[{ stampId, collectedAt, name }]`）に変わるが、サーバー側 `count($validated['stamps'])` は両方で動作する（PHP の `count` は配列・オブジェクト両対応）。
 - T-03 の `exchanged_at` は `PrizeExchange` テーブルの `timestamp` 列（`exchanged_at`）で、`$casts` で `datetime` にキャスト済み（or `created_at` と同じ形式）。`toIso8601String()` で安全に文字列化できる。
+
+---
+
+## 16. T-08（P1-7）: `head.blade.php` IIFE の例外耐性不足
+
+### 目的
+`AR_FORCE_LOWRES` の IIFE（L31-45）内 L32 `new URL(window.location.href)` が例外を投げた場合、同一 `<script>` ブロックの `monitorCameraStartup` / `ensureCameraAccess` / `destroyAndFreeEntity` が全て未定義となり**アプリが起動不能**になる問題を解消する。
+
+### 現状（head.blade.php L31-45）
+```js
+window.AR_FORCE_LOWRES = (function() {
+    const url = new URL(window.location.href);  // ← 例外耐性なし
+    if (url.searchParams.get('lowres') === '1') return true;
+    if (detectOldAndroid()) return true;
+    try { /* Android cores/memory チェック */ } catch (e) {}
+    return false;
+})();
+```
+- L32 の `new URL()` / L33 の `searchParams.get()` が例外を投げると IIFE 外に伝播
+- 同一 `<script>` の L47 以降（`monitorCameraStartup` 等）は**実行されない**
+
+### 成功基準
+1. IIFE 内の全ステートメントが try/catch 内で評価される
+2. 例外発生時も `window.AR_FORCE_LOWRES = false` が確定（`undefined` にならない）
+3. 同一 `<script>` の残りの関数定義（L47+）は通常どおり実行される
+4. `AR_FORCE_LOWRES=true` になる条件（`?lowres=1` / 旧Android / 低コア/小メモリ）は従来どおり動作
+
+### Out-of-Scope
+- `detectOldAndroid()` 自体のロジック変更（既に try/catch あり）
+- `navigator.hardwareConcurrency` / `navigator.deviceMemory` の対応
+
+---
+
+## 17. T-04（P1-2）: ローダー3秒無条件非表示 vs カメラ監視7秒の矛盾
+
+### 目的
+低スペックAndroidで「ローダー消えたがカメラエラーも出ない」状態の約4秒間黒画面を解消し、ユーザーに明確なフィードバック（AR起動 or エラー表示）を7秒以内で提供する。
+
+### 現状（js-init.blade.php L639-645）
+```js
+setTimeout(hideArjsLoader, 3000);  // 3秒で無条件非表示
+window.addEventListener('load', function () {
+    if (typeof monitorCameraStartup === 'function') monitorCameraStartup(7000);  // 7秒監視
+});
+```
+- `monitorCameraStartup(7000)`: 500msポーリング×7秒、未起動時 `camera-error` + `retry-camera-lowres` を表示
+- 3秒フォールバック: カメラ未起動でもローダーが消える → **3〜7秒は黒画面**
+
+### 成功基準
+1. フォールバックタイムアウトが **7秒**（`monitorCameraStartup` のタイムアウトと一致）
+2. 7秒時点でローダーが非表示になり、`camera-error` UI が確実に表示される
+3. `arjs-video-loaded` イベントが正常に発火する端末では従来どおり即時非表示（影響なし）
+4. `AR_FORCE_LOWRES` が true の端末でも同一の7秒フォールバックが適用される
+
+### Out-of-Scope
+- `monitorCameraStartup` 自体のポーリング間隔（500ms）やタイムアウト値（7000ms）の変更
+- カメラエラーUI の文言・デザインの改善
+- `ensureCameraAccess` のリトライロジック
+

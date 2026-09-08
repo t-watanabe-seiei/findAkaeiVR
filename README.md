@@ -1088,6 +1088,31 @@ this.material.uniforms.innerRadius.value = innerRadius;
 - 既存UI挙動（スタンプ捕獲→交換→コード表示→交換済み表示）：**維持**
 - DBスキーマ変更：**なし**
 
+---
+
+## ARstampRally202609 — UI安定性修正（2026-09-09）
+
+> 対象: T-08（アプリ起動時クラッシュ）/ T-04（ローダー黒画面）
+
+### T-08: `AR_FORCE_LOWRES` IIFE の例外耐性確保
+
+- **問題**: `head.blade.php` の IIFE 内 `new URL(window.location.href)` が例外を投げると、同一 `<script>` の `monitorCameraStartup` / `ensureCameraAccess` / `destroyAndFreeEntity` が全て未定義になり**アプリ起動不能**
+- **修正**: IIFE 本体を try/catch で包み、例外時は `false` を返却（従来: 例外伝播でアプリ停止）
+- **対象ファイル**: `resources/views/ARstampRally202609/head.blade.php`
+
+### T-04: ローダー3秒無条件非表示の解消
+
+- **問題**: `js-init.blade.php` の `setTimeout(hideArjsLoader, 3000)` がカメラ未起動時にローダーを3秒で消したが、`monitorCameraStartup(7000)` のエラー表示は7秒後 → **約4秒間の黒画面**
+- **修正**: フォールバックを 3秒→7秒 に変更し、`monitorCameraStartup(7000)` のタイムアウトと整合（ローダー非表示 = camera-error 表示のタイミングに一致）
+- **対象ファイル**: `resources/views/ARstampRally202609/js-init.blade.php`
+
+### 影響範囲
+
+- 他キャンペーン（202605 / 202606）への影響：**なし**
+- 正常時（カメラ起動成功）：`arjs-video-loaded` イベントで即時非表示（従来どおり）
+- `?lowres=1` URL パラメータ / 旧Android検出 / 低コア・小メモリ判定：**維持**
+
+
 0:30～0:40  │  ●●●●●●●●●●●●●●    │ 視野角40°のやや大きい円に拡大
 0:40～0:50  │●●●●●●●●●●●●●●●●●●  │ 視野角50°の大きい円に拡大
 0:50～      │████████████████████│ 最初に戻る（暗転なし）

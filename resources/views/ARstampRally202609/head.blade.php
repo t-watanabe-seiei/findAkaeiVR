@@ -29,12 +29,12 @@
         }
 
         window.AR_FORCE_LOWRES = (function() {
-            const url = new URL(window.location.href);
-            if (url.searchParams.get('lowres') === '1') return true;
-            if (detectOldAndroid()) return true;
-            // 低スペックAndroidの精緻化: 少数コアまたは小メモリなら低検出レートモード
-            // (navigator が非対応(0/undefined)の場合は判定しない=従来挙動を維持)
             try {
+                const url = new URL(window.location.href);
+                if (url.searchParams.get('lowres') === '1') return true;
+                if (detectOldAndroid()) return true;
+                // 低スペックAndroidの精緻化: 少数コアまたは小メモリなら低検出レートモード
+                // (navigator が非対応(0/undefined)の場合は判定しない=従来挙動を維持)
                 if (/Android/i.test(navigator.userAgent || '')) {
                     const cores = navigator.hardwareConcurrency || 0;
                     const mem   = navigator.deviceMemory || 0;

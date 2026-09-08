@@ -146,3 +146,25 @@
 | 2026-09-09 | T18 | `StampRally202609Controller.php` `checkStatus()` に `exchangedAt` 追加。`php -l` 警告0件 |
 | 2026-09-09 | T19 | 静的検証4項目すべて合格（旧参照0件 / フォールバック1件 / exchangedAt有 / 他キャンペーン未変更） |
 | 2026-09-09 | T20 | README.md に「最優先バグ修正（2026-09-09）」セクション追加 |
+
+---
+
+## T-08（P1-7）: head.blade.php IIFE 例外耐性
+
+- [x] T21-a `head.blade.php` L31-45 の `AR_FORCE_LOWRES` IIFE 全体を try/catch で包み、例外時は `false` 返却
+- [x] T21-b `php -l resources/views/ARstampRally202609/head.blade.php` が警告0件
+- [x] T21-c 202605 / 202606 のファイルに変更がない
+
+## T-04（P1-2）: js-init.blade.php ローダーフォールバックタイミング
+
+- [x] T22-a `js-init.blade.php` L640 の `setTimeout(hideArjsLoader, 3000)` を `setTimeout(hideArjsLoader, 7000)` に変更（コメント更新含む）
+- [x] T22-b `php -l resources/views/ARstampRally202609/js-init.blade.php` が警告0件
+- [x] T22-c 202605 / 202606 のファイルに変更がない
+
+## 進捗ログ（T-08 / T-04）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T21 | `head.blade.php` IIFE 全体を try/catch で保護。`php -l` 警告0件。202605/202606未変更 |
+| 2026-09-09 | T22 | `js-init.blade.php` フォールバック 3秒→7秒（monitorCameraStartupと整合）。`php -l` 警告0件。202605/202606未変更 |
+

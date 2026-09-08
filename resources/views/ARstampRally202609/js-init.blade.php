@@ -636,8 +636,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // フォールバック: 3秒後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
-    setTimeout(hideArjsLoader, 3000);
+    // フォールバック: 7秒後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
+    // monitorCameraStartup(7000) のタイムアウトと整合: ローダー非表示時 = camera-error が表示されるタイミング
+    setTimeout(hideArjsLoader, 7000);
 
     // ===== 18. window.load: カメラ監視開始 =====
     window.addEventListener('load', function () {
