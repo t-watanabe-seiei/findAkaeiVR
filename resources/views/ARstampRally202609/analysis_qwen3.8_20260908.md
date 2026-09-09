@@ -588,3 +588,131 @@
 4. **NEXT-4（モーダル集約）**: 保守性向上。新規 UI 追加時の重複排除。
 5. **NEXT-5〜6**: パフォーマンスボトルネック解消のため要設計検討。
 
+---
+
+## 16. 修正記録（2026-09-09 実施）— NEXT-1〜NEXT-4（P2-10/P2-8/P2-9/P2-3）対応完了
+
+> 本節は 2026-09-09 に実施した NEXT-1〜NEXT-4 全4項目の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 16.1 修正内容一覧
+
+| 項目 | 対応P | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|---|
+| **NEXT-1** | P2-10 | `AR_FORCE_LOWRES` 時に `antialias: true → false` を動的置換（モバイル GPU 負荷軽減） | `scene.blade.php` L12-24 | ✅ 修正済み |
+| **NEXT-2** | P2-8 | `new Audio` 初回即生成 → `_ensureSound(which)` 遅延生成（初回 `playSound` 時のみ生成、171KB 帯域節約） | `js-stamps.blade.php` L31-38, L159-160 | ✅ 修正済み |
+| **NEXT-3** | P2-9 | `howToOperate.png`（1.39MB）に `loading="lazy" decoding="async"` 追加（LCP 改善） | `ui.blade.php` L53 | ✅ 修正済み |
+| **NEXT-4** | P2-3 | `showPrizeCode` / `showRedeemedPrizeInfo` 2関数を `showPrizeModal(config)` に集約。`innerHTML` → `textContent`（XSS 排除）＋ `addEventListener` 化 | `js-prize.blade.php` L213/214/226, L222-270 | ✅ 修正済み |
+
+### 16.2 詳細
+
+**NEXT-1**（P2-10 対応：antialias 動的無効化）
+
+- 旧: `scene.blade.php:32` の `renderer` 属性に `antialias: true` が全環境で固定
+- 新: `<a-scene>` 直前に `<script>` 追加（L12-24）
+  - `window.AR_FORCE_LOWRES === true` の場合のみ `beforeentitycomposition` イベント（`{ once: true }`）で `renderer` 属性から `antialias: true` → `antialias: false` を文字列置換
+  - `AR_FORCE_LOWRES === false`（高スペック / デスクトップ）は従来どおり `antialias: true` 維持
+- 検証: `AR_FORCE_LOWRES` 定義（`head.blade.php` IIFE）が `scene.blade.php` より前に実行される DOM 順序を確認済み
+- 残存リスク: なし。`beforeentitycomposition` は A-Frame 1.4.2 で確実に発火するイベント
+
+**NEXT-2**（P2-8 対応：Audio 遅延生成）
+
+- 旧: `js-stamps.blade.php:32-35`
+  ```js
+  const soundStamp01 = new Audio('...sound_stamp01.mp3'); // 71KB 初回即ロード
+  const soundStamp02 = new Audio('...sound_stamp02.mp3'); // 100KB 初回即ロード
+  ```
+- 新:
+  ```js
+  var soundStamp01 = null;  // L31
+  var soundStamp02 = null;  // L32
+  function _ensureSound(which) {  // L34-38
+      if (which === 1) { if (!soundStamp01) { soundStamp01 = new Audio('...'); } return soundStamp01; }
+      if (which === 2) { if (!soundStamp02) { soundStamp02 = new Audio('...'); } return soundStamp02; }
+      return null;
+  }
+  ```
+  - 呼出側（L159-160）: `playSound(_ensureSound(2))` / `playSound(_ensureSound(1))`
+- `playSound(audioElement)`（L222-227）は `currentTime=0` + `play().catch()` のシンプルな実装 → `_ensureSound` が返す `Audio` オブジェクトと完全互換
+- 検証: `_ensureSound` 定義（L34）が呼出箇所（L159/160）より前にあることを確認済み
+- 残存リスク: なし。初回以降は同一 `Audio` オブジェクトを再利用（メモリ効率向上）
+
+**NEXT-3**（P2-9 対応：画像遅延読み込み）
+
+- 旧: `ui.blade.php:53`
+  ```html
+  <img src="...howToOperate.png" alt="操作方法" width="100%">
+  ```
+- 新:
+  ```html
+  <img src="...howToOperate.png" alt="操作方法" width="100%" loading="lazy" decoding="async">
+  ```
+- 効果: ガイドモーダル非表示中は画像をロードしない → 初回ロードの LCP 改善
+- 残存リスク: なし。`loading="lazy"` は全ブラウザでサポート済み（2021〜）
+
+**NEXT-4**（P2-3 対応：モーダル集約 + XSS 排除）
+
+- 旧: `showPrizeCode()` / `showRedeemedPrizeInfo()` がほぼ同一のモーダル HTML を文字列連結（重複約30行）、`innerHTML` に直接組み込み、`onclick="this.parentElement.parentElement.remove()"`（DOM 深さに依存）
+- 新: `showPrizeModal(config)` 1関数に集約（L222-270）
+  ```js
+  function showPrizeModal(config) {
+      // config: { title, code, exchangedAt, isRedeemed }
+      // DOM 生成: document.createElement + textContent（innerHTML 不使用）
+      // 閉じる: addEventListener('click', function() { modal.remove(); })
+  }
+  ```
+  - `_formatExchangeDateTime(dt)`（L215-220）: `exchangedAt` の `T` 置換・`Z` 除去を抽出
+  - 呼出側:
+    - 交換成功: `showPrizeModal({ title: '景品コード', code: data.prizeCode })`（L213）
+    - 交換済み: `showPrizeModal({ title: '交換済み', code: data.prizeCode, exchangedAt: data.exchangedAt, isRedeemed: true })`（L214/226）
+- XSS 排除: `textContent` により HTML 特殊文字がエスケープされる
+- 残存リスク: なし。`textContent` は全ブラウザでサポート済み
+
+### 16.3 検証結果
+
+| チェック | 結果 |
+|---|---|
+| `php -l` 4ファイル（scene / js-stamps / ui / js-prize） | 警告0件 ✅ |
+| `playSound(_ensureSound(1/2))` 呼出箇所 | 2件（L159/160）✅ |
+| `_ensureSound` 定義が呼出より前にある | 確認済み ✅ |
+| `showPrizeModal` 定義が3つの呼出箇所より前にある | 確認済み ✅ |
+| `AR_FORCE_LOWRES` 参照が `head.blade.php`（IIFE 定義）より後にある | 確認済み ✅ |
+| 202609 モジュール内 `innerHTML` 使用箇所 | **0件** ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 16.4 残存リスク・補足
+
+- **NEXT-1**: `beforeentitycomposition` イベントは A-Frame 1.4.2 で確実に発火する。`renderer` 属性の文字列置換は A-Frame が `renderer` をパースする前のタイミングで実行されるため安全。
+- **NEXT-2**: `var` 宣言（IIFE 内ではスコープが `window` に昇格しないが、`IIFE` 内なので問題なし）。初回以降は同一 `Audio` オブジェクトを再利用。
+- **NEXT-3**: `loading="lazy"` は `IntersectionObserver` ベース。ブラウザが画像を視界外と判定するまでロードしない。
+- **NEXT-4**: `showPrizeModal` は `document.body.appendChild(modal)` で追加。モーダル表示中は `z-index: 9999` で前面表示。
+
+---
+
+## 17. 次の修正候補（2026-09-09 時点・NEXT-1〜4 完了後）
+
+> NEXT-1〜NEXT-4 対応後の残存項目。対応済み（P0 全件 / P1 全件 / P2-3〜P2-10 / P3-2/P3-3）は除外済み。
+
+### 17.1 推奨優先（影響大・工数小）
+
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
+|---|---|---|---|---|
+| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` キーが日付単位で localStorage に蓄積 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** |
+
+### 17.2 余力（アーキテクチャ・パフォーマンス）
+
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
+|---|---|---|---|---|
+| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** |
+| **NEXT-6** | `scene.blade.php:15` | **P2-1**: 21マーカー同時検出の Android 最大負荷 | N秒未検出マーカーの動的無効化（`enabled=false`）で検索空間狭小化 | **3〜5時間** |
+| **NEXT-8** | 全体 | **P3-6**: グローバルエラーが `console` のみ | Sentry / CloudWatch / 自社ログ送信先接続 | **要検討** |
+
+> **P3-1**（`user-scalable=no`）: `ar_requirements.md` で「ユーザー操作防御として維持」方針明記済み → **対応不要**。
+
+### 17.3 推奨進め方
+
+1. **NEXT-7（localStorage 掃除）**: 15分で完了。初回ロード時の微量メモリ削減。
+2. **NEXT-5（ボールプール）**: パフォーマンスボトルネック解消。設計検討必要。
+3. **NEXT-6（マーカー動的無効化）**: Android 最大負荷の解消。設計検討必要。
+4. **NEXT-8（エラー送信）**: 本番運用での障害検知強化。要検討。
+
