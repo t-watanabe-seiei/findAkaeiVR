@@ -320,3 +320,34 @@
 | 日付 | タスク | 内容・結果 |
 |------|--------|-----------|
 | 2026-09-09 | T36〜T41 | NEXT-1〜4 全件実装完了。`scene.blade.php`（antialias条件分岐）/ `js-stamps.blade.php`（Audio遅延生成）/ `ui.blade.php`（lazy loading）/ `js-prize.blade.php`（モーダル集約）。`php -l` 全4ファイル警告0件。README追記・analysis状態更新済み。 |
+
+---
+
+## NEXT-7 修正（P3-4: localStorage クリーンアップ）
+
+> 作成日: 2026-09-09 / 根拠: `.claude_workflow/ar_design.md`（NEXT-7 設計）
+
+### T42. `js-prize.blade.php` — `cleanupOldMarkerScanCache()` 関数を新設
+- [x] T42-a `recordMarkerDetection` 関数の直前に `cleanupOldMarkerScanCache()` を追加（逆順ループで `marker-scan-cache-202609-*` の過去日分キーを削除）
+- [x] T42-b `php -l resources/views/ARstampRally202609/js-prize.blade.php` 警告0件
+
+### T43. `js-init.blade.php` — 初期化セクションに呼出を追加
+- [x] T43-a §17 初期化（`updateStampBadge` 呼出の直前）に `if (typeof cleanupOldMarkerScanCache === 'function') cleanupOldMarkerScanCache();` を追加
+- [x] T43-b `php -l resources/views/ARstampRally202609/js-init.blade.php` 警告0件
+
+### T44. 静的検証
+- [x] T44-a `cleanupOldMarkerScanCache` が `js-prize.blade.php` に1回のみ定義されている
+- [x] T44-b `js-init.blade.php` の呼出箇所が定義より後にロードされる（`js-prize` が `js-init` より前に include される）
+- [x] T44-c 202605 / 202606 のファイルに変更がない
+
+### T45. `README.md` に NEXT-7 の修正内容を追記（CLAUDE.md ルール6）
+- [x] T45-a 優先度B修正セクションに NEXT-7 の項目を追加
+
+## 進捗ログ（NEXT-7 修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T42 | `js-prize.blade.php` に `cleanupOldMarkerScanCache()` を新設（`recordMarkerDetection` の直前）。`php -l` 警告0件 |
+| 2026-09-09 | T43 | `js-init.blade.php` §17 初期化に呼出を追加。`php -l` 警告0件 |
+| 2026-09-09 | T44 | 静的検証3項目すべて合格（定義1回・呼出順序OK・202605/202606未変更） |
+| 2026-09-09 | T45 | `README.md` 優先度B修正セクションに NEXT-7 項目を追加 |

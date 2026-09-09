@@ -133,6 +133,28 @@
             });
         }
 
+        // ===== marker-scan-cache クリーンアップ（P3-4）=====
+        // キー形式: marker-scan-cache-202609-{markerId}-{YYYY-MM-DD}
+        // 初回ロード時に「今日より古い」日付のキーのみを削除
+        function cleanupOldMarkerScanCache() {
+            var prefix = 'marker-scan-cache-202609-';
+            var today  = new Date().toISOString().split('T')[0];
+            try {
+                for (var i = localStorage.length - 1; i >= 0; i--) {
+                    var key = localStorage.key(i);
+                    if (!key || key.indexOf(prefix) !== 0) continue;
+                    var lastDash = key.lastIndexOf('-');
+                    if (lastDash <= prefix.length) continue;
+                    var datePart = key.substring(lastDash + 1);
+                    if (datePart < today) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            } catch (e) {
+                console.warn('[AR202609] cleanupOldMarkerScanCache error', e);
+            }
+        }
+
         // ========== マーカースキャン記録 ==========
 
         function recordMarkerDetection(markerId, markerName) {

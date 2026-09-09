@@ -1182,6 +1182,12 @@ this.material.uniforms.innerRadius.value = innerRadius;
 - 正常時（カメラ起動成功）：`arjs-video-loaded` イベントで即時非表示（従来どおり）
 - `?lowres=1` URL パラメータ / 旧Android検出 / 低コア・小メモリ判定：**維持**
 
+### NEXT-7（P3-4）: `marker-scan-cache-202609-*` localStorage クリーンアップ
+
+- **問題**: `recordMarkerDetection()` が `marker-scan-cache-202609-{markerId}-{YYYY-MM-DD}` キーを localStorage に書き込み、キャンペーン期間中（約2週間×20マーカー＝約280キー）が蓄積
+- **修正**: `cleanupOldMarkerScanCache()` 関数を新設（`js-prize.blade.php`）。`DOMContentLoaded` 時に1回実行し、`marker-scan-cache-202609-` プレフィックスのキーで日付部分が今日より古いものを逆順ループで削除
+- **対象ファイル**: `resources/views/ARstampRally202609/js-prize.blade.php` / `resources/views/ARstampRally202609/js-init.blade.php`
+
 
 0:30～0:40  │  ●●●●●●●●●●●●●●    │ 視野角40°のやや大きい円に拡大
 0:40～0:50  │●●●●●●●●●●●●●●●●●●  │ 視野角50°の大きい円に拡大

@@ -946,3 +946,64 @@ else            { playSound(_ensureSound(1)); showNormalParticles(); }
 | XSS 耐性 | `textContent` でコード値がエスケープされる |
 | DOM 深さ依存の onclick | 解消（`addEventListener` 使用） |
 | 202605 / 202606 | 影響なし（専用ファイル） |
+
+---
+
+## 設計: NEXT-7（P3-4）`marker-scan-cache-202609-*` localStorage クリーンアップ — 2026-09-09
+
+### 変更対象
+- `resources/views/ARstampRally202609/js-prize.blade.php`: `recordMarkerDetection` の直前に `cleanupOldMarkerScanCache()` 関数を新設
+- `resources/views/ARstampRally202609/js-init.blade.php`: `DOMContentLoaded` ハンドラの「§17. 初期化」セクションに呼出を追加
+
+### 設計方針
+
+**新設関数 `cleanupOldMarkerScanCache()`**（`js-prize.blade.php`）:
+
+```js
+// ===== marker-scan-cache クリーンアップ（P3-4）=====
+// キー形式: marker-scan-cache-202609-{markerId}-{YYYY-MM-DD}
+// 初回ロード時に「今日より古い」日付のキーのみを削除
+function cleanupOldMarkerScanCache() {
+    var prefix = 'marker-scan-cache-202609-';
+    var today  = new Date().toISOString().split('T')[0];
+    try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var key = localStorage.key(i);
+            if (!key || key.indexOf(prefix) !== 0) continue;
+            var lastDash = key.lastIndexOf('-');
+            if (lastDash <= prefix.length) continue; // 日付部分なし
+            var datePart = key.substring(lastDash + 1);
+            if (datePart < today) {
+                localStorage.removeItem(key);
+            }
+        }
+    } catch (e) {
+        console.warn('[AR202609] cleanupOldMarkerScanCache error', e);
+    }
+}
+```
+
+**呼出箇所**（`js-init.blade.php` §17 初期化）:
+
+```js
+// ===== 17. 初期化 =====
+// P3-4: 過去の marker-scan-cache をクリーンアップ（初回ロード時1回のみ）
+if (typeof cleanupOldMarkerScanCache === 'function') cleanupOldMarkerScanCache();
+if (typeof updateStampBadge === 'function') updateStampBadge();
+```
+
+### 理由
+- **逆順ループ**（`i = length - 1 → 0`）: `removeItem` 実行中に配列の長さが変わっても安全
+- **`datePart < today` の文字列比較**: `YYYY-MM-DD` 形式は辞書順＝時系列順なので文字列比較で十分
+- **`prefix` 限定**: 他キャンペーン（`marker-scan-cache-202606-*`）やスタンプデータには一切触れない
+- **`try/catch`**: `localStorage` が利用不可（Safari プライベートモード等）の環境でも例外を投げない
+- **`DOMContentLoaded` 内で1回のみ呼出**: スクリプトロード後に即実行（`js-prize` は `js-init` より前にロードされるため関数が存在する）
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| 当日分の `marker-scan-cache-202609-*` | 削除されない（重複防止機能維持） |
+| 過去日分の `marker-scan-cache-202609-*` | 初回ロード時に削除される |
+| `marker-scan-cache-202603-*` / `202605` / `202606` | 影響なし（プレフィックス不一致） |
+| `ar-stamp-rally-202609` / `ar-captured-animals-202609` | 影響なし |
+| 202605 / 202606 の blade ファイル | 変更なし |

@@ -555,3 +555,38 @@ soundStamp02.preload = 'auto';
 - `showPrizeModal` を他ファイルから呼べるようにする（グローバル公開）
 - モーダルのアニメーション追加
 
+---
+
+## 31. NEXT-7 (P3-4): `marker-scan-cache-202609-*` localStorage 蓄積クリーンアップ
+
+### 目的
+`js-prize.blade.php:140` の `recordMarkerDetection()` が `marker-scan-cache-202609-{markerId}-{YYYY-MM-DD}` キーを localStorage に書き込む。キャンペーン期間（例: 8月25日〜9月10日）で20マーカー×約2週間分＝約280キーが蓄積する。初回ロード時に「今日より古い」キーを1回ループで削除し、ストレージの肥大化を抑制する。
+
+### 現状
+```js
+// js-prize.blade.php L138-146
+function recordMarkerDetection(markerId, markerName) {
+    var today    = new Date().toISOString().split('T')[0];
+    var cacheKey = 'marker-scan-cache-202609-' + markerId + '-' + today;
+    if (localStorage.getItem(cacheKey)) return;
+    recordMarkerScan(markerId, markerName, 'marker_scan').then(function () {
+        localStorage.setItem(cacheKey, JSON.stringify({ scanned: true, timestamp: new Date().toISOString() }));
+    }).catch(function (err) { console.warn('[AR202609] recordMarkerDetection error', err); });
+}
+```
+
+### 成功基準
+1. 初回ロード時に `marker-scan-cache-202609-*` プレフィックスのキーのうち、日付部分（`YYYY-MM-DD`）が今日より前のキーのみが削除される
+2. 当日分のキーは削除されない（`recordMarkerDetection` の重複防止機能が維持される）
+3. クリーンアップ処理が `try/catch` で囲まれ、`localStorage` アクセスエラー時は `console.warn` でログ出力・例外を投げない
+4. 他キャンペーン（202605 / 202606）の localStorage キー（`marker-scan-cache-202603-*` / `marker-scan-cache-202606-*`）には影響しない
+5. 既存の `recordMarkerDetection` / `recordMarkerScan` / `checkPrizeExchangeStatus` / `exchangePrize` の動作は従来どおり
+6. `php -l` 警告0件
+7. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- IndexedDB のクリーンアップ（`ARStampRallyDB202609`）
+- 他キャンペーン（202603 / 202605 / 202606）の localStorage キーの削除
+- `ar-stamp-rally-202609` / `ar-captured-animals-202609` 等のスタンプデータ
+- サーバー側のログ削除
+

@@ -575,6 +575,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // ===== 17. 初期化 =====
+    // P3-4: 過去の marker-scan-cache をクリーンアップ（初回ロード時1回のみ）
+    if (typeof cleanupOldMarkerScanCache === 'function') cleanupOldMarkerScanCache();
     if (typeof updateStampBadge === 'function') updateStampBadge();
     if (typeof updatePrizeButton === 'function') updatePrizeButton();
 

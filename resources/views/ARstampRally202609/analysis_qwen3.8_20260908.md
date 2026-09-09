@@ -571,12 +571,12 @@
 
 ### 15.2 余力（アーキテクチャ・運用）
 
-| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
-|---|---|---|---|---|
-| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** |
-| **NEXT-6** | `scene.blade.php:15` | **P2-1**: 21マーカー同時検出の Android 最大負荷 | N秒未検出マーカーの動的無効化（`enabled=false`）で検索空間狭小化 | **3〜5時間** |
-| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` localStorage 残留 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** |
-| **NEXT-8** | 全体 | **P3-6**: グローバルエラーが `console` のみ | Sentry / CloudWatch / 自社ログ送信先接続 | **要検討** |
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 | 状態 |
+|---|---|---|---|---|---|
+| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** | |
+| **NEXT-6** | `scene.blade.php:15` | **P2-1**: 21マーカー同時検出の Android 最大負荷 | N秒未検出マーカーの動的無効化（`enabled=false`）で検索空間狭小化 | **3〜5時間** | |
+| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` localStorage 残留 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** | ✅ 修正済み |
+| **NEXT-8** | 全体 | **P3-6**: グローバルエラーが `console` のみ | Sentry / CloudWatch / 自社ログ送信先接続 | **要検討** | |
 
 > **P3-1**（`user-scalable=no`）: `ar_requirements.md` で「ユーザー操作防御として維持」方針明記済み → **対応不要**。
 
@@ -695,9 +695,9 @@
 
 ### 17.1 推奨優先（影響大・工数小）
 
-| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
-|---|---|---|---|---|
-| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` キーが日付単位で localStorage に蓄積 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** |
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 | 状態 |
+|---|---|---|---|---|---|
+| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` キーが日付単位で localStorage に蓄積 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** | ✅ 修正済み |
 
 ### 17.2 余力（アーキテクチャ・パフォーマンス）
 
@@ -715,4 +715,33 @@
 2. **NEXT-5（ボールプール）**: パフォーマンスボトルネック解消。設計検討必要。
 3. **NEXT-6（マーカー動的無効化）**: Android 最大負荷の解消。設計検討必要。
 4. **NEXT-8（エラー送信）**: 本番運用での障害検知強化。要検討。
+
+---
+
+## 18. 修正記録（2026-09-09 実施）— NEXT-7（P3-4）対応完了
+
+> 本節は 2026-09-09 に実施した NEXT-7 の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 18.1 修正内容一覧
+
+| 項目 | 対応P | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|---|
+| **NEXT-7** | P3-4 | `cleanupOldMarkerScanCache()` 新設。`DOMContentLoaded` 時に `marker-scan-cache-202609-*` の過去日分キーを逆順ループで削除 | `js-prize.blade.php` L136-156 / `js-init.blade.php` L578-579 | ✅ 修正済み |
+
+### 18.2 実装詳細
+
+**NEXT-7**（P3-4 対応：localStorage クリーンアップ）
+
+- `js-prize.blade.php`: `recordMarkerDetection` の直前に `cleanupOldMarkerScanCache()` を新設
+  - `localStorage` を逆順ループ（`length-1 → 0`）で走査
+  - `marker-scan-cache-202609-` プレフィックス一致かつ日付部分が `YYYY-MM-DD` の辞書順で今日より古いキーのみ `removeItem`
+  - `try/catch` で `localStorage` アクセス失敗（Safari プライベートモード等）を `console.warn` にキャプチャ
+- `js-init.blade.php`: §17 初期化セクションの `updateStampBadge()` 呼出の直前に `if (typeof cleanupOldMarkerScanCache === 'function') cleanupOldMarkerScanCache();` を追加
+
+### 18.3 影響・検証
+
+- `php -l` 両ファイル警告0件
+- 当日分の `marker-scan-cache-202609-*` キーは削除されない（重複防止機能維持）
+- 他キャンペーン（202605 / 202606）の localStorage キー・blade ファイルには影響なし
 
