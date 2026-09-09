@@ -2,15 +2,38 @@
 - PHP Version: 8.2
 - Framework: Laravel 11.x (Vite build system)
 - Node.js Version: 24.x
-- Frontend: Vue 3 (Composition API / <script setup>), A-Frame (WebVR)
+- Frontend: Vue 3 (Composition API / <script setup>), A-Frame (WebVR/AR)
+
+# Output & Response Constraints
+- Always provide explanations, comments, and interactive responses in Japanese.
+- Skip verbose internal reasoning or thinking text to save tokens; output direct implementation code.
+- Do not add unrequested features. Focus strictly on the specific task assigned.
+- Keep code changes minimal, concise, and elegant.
+- Ask clarifying questions whenever requirements or instructions are ambiguous.
 
 # Coding Standards & Guidelines
-- Follow PSR-12 for all PHP / Laravel code.
-- Use Laravel 11 structure (Route files in routes/web.php, configuration in config/ or env).
+- Follow active PSR standards (PSR-1, PSR-2, PSR-12) for all PHP/Laravel code.
+- Adhere strictly to Laravel 11 structure (routes in routes/web.php, config in config/ or .env).
 - Write Vue 3 components using <script setup> and Composition API.
-- Keep A-Frame components integrated safely with Vue lifecycle hooks (onMounted / onUnmounted).
+- Safely integrate A-Frame logic within Vue lifecycle hooks (onMounted / onUnmounted).
+- Prioritize predictability over cleverness.
+- Handle edge cases explicitly (empty states, missing files, permission errors).
 
-# Response Instructions
-- Provide exact, runnable code without skipping necessary imports or setup.
-- Avoid verbose explanations or reasoning text. Output direct implementation code.
-- Answer directly with final code. Minimize internal reasoning text to save output tokens.
+# Safety & Execution Rules
+- Target ONLY files within the current relative directory (./). NEVER use absolute paths or search parent directories.
+- ALWAYS run `php -l [PHP_FILE_NAME]` to verify syntax before finishing any PHP code task.
+- ALWAYS test and verify code changes—do not assume code works without checking.
+- Preserve existing correct functionality unless explicitly instructed to change it.
+- Resolve errors immediately at the current step. Never ignore errors or proceed to the next step prematurely.
+
+# AR Stamp Rally Cross-Platform Rules
+- For ARstampRally development, ensure error-free execution on both platforms:
+  - Android: Chrome native WebXR API.
+  - iOS: Safari (WebXR unsupported) via AR.js / Three.js custom implementations, or fallback to USDZ Quick Look.
+
+# Task & Workflow Management
+- Requirements & Design First: Never implement without proper specification. When adding a new web app or feature, document first in `requirements.md`, `design.md`, and `tasks.md`.
+- Phase Start Declaration: Report "前段階のmdファイルを読み込みました" before starting work on a new phase.
+- File Handling: Inspect current file contents before editing. When recreating files, clear obsolete content and write clean code from scratch.
+- Step-by-Step Execution: Implement incrementally with small changes. Do not run multiple tasks in parallel. Validate expected outcomes at each step.
+- Documentation Update: Update code comments and `README.md` upon completion of implementation.
