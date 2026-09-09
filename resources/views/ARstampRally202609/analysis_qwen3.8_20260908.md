@@ -12,16 +12,18 @@
 
 **クライアント（ビュー/JS）側は概ね良好**であり、端末互換・エラーフォールバック・GPU資源破棄・リトライ処理・二重送信防止など、実運用を想定した設計が多数見られる。重大な機能バグは少数である。
 
-**ただし、本アプリが依存するサーバー側 API（景品交換 / スキャン記録）に致命的なセキュリティホールがある**。スタンプ検証が全てクライアントサイドで行われており、サーバーは「`stamps` が array であること」しか確認しないため、**誰でもブラウザコンソール1行・または別サイトからのフォームPOSTで無制限に景品コードを発行できる**。さらに CSRF 保護なし・レート制限なし・セッションIDがnullで他ユーザー行にマッチしうる問題も重なっている。
+**ただし、本アプリが依存するサーバー側 API（景品交換 / スキャン記録）に致命的なセキュリティホールがあった**。スタンプ検証が全てクライアントサイドで行われており、サーバーは「`stamps` が array であること」しか確認しないため、**誰でもブラウザコンソール1行・または別サイトからのフォームPOSTで無制限に景品コードを発行できる**。さらに CSRF 保護なし・レート制限なし・セッションIDがnullで他ユーザー行にマッチしうる問題も重なっている。
+
+> ✅ **2026-09-09 修正済み**（commit `49a0a61`）: P0-1（閾値強制）/ P0-2（web グループへ移動 = CSRF有効）/ P0-3（throttle 適用）/ P0-4（セッション有効化）を `StampRally202609Controller` + `routes/web.php` で対応。P0-5（fingerprint偽造）はセッション紐付け + 内容ベース検証で大幅緩和（完全排除にはサーバー発行トークン導入が将来課題）。
 
 | 優先度 | 件数 | 概要 |
 |---|---|---|
-| **P0（セキュリティ重大）** | 5 | 景品発行APIの検証欠落 / CSRF無 / レート制限無 / nullセッションIDの他ユーザー参照 / クライアントIDの偽造可能性 |
-| **P1（機能・UXバグ）** | 8 | ストレージクォータエラー時のスタンプ全消去、ローダーとカメラ監視のタイミング矛盾、カメラ切替のデッドコード、iPadOS検出漏れ、XSS面、等 |
-| **P2（性能・保守性）** | 10 | 21マーカーの検出負荷、ボールGLB毎投擲ロード、インラインonclick、未使用セレクタ、ガイド言語の不一致、等 |
+| **P0（セキュリティ重大）** | 5 | ✅ **修正済み**（`49a0a61`）: 閾値強制 / webグループ=CSRF / throttle / セッション有効化 / fingerprint偽造（緩和） |
+| **P1（機能・UXバグ）** | 8 | ✅ **修正済み**: ストレージクォータ→null化再保存 / ローダー7s整合 / base64除外 / innerHTML排除 / 他 |
+| **P2（性能・保守性）** | 10 | P2-2 ✅ ボールプール実装 / P2-1（NEXT-6: 21マーカー負荷）残 / P2-3〜10 ✅ 修正済み |
 | **P3（軽微・参考）** | 6 | 時刻ゼロ埋め、`user-scalable=no`、Secureフラグ、テレメトリ無、等 |
 
-> 対応の優先順: **P0-1〜P0-5（即対応要）→ P1-1〜P1-3（データ損失系は要対応）→ 以降は余力次第**。
+> 対応の優先順: **P0 全件（✅ 修正済み）→ P1 全件（✅ 修正済み）→ 残: P2-1（NEXT-6: 21マーカー負荷）+ P3-6（NEXT-8: エラー送信）**。
 
 ---
 
@@ -701,9 +703,9 @@
 
 ### 17.2 余力（アーキテクチャ・パフォーマンス）
 
-| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
-|---|---|---|---|---|
-| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** |
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 | 状態 |
+|---|---|---|---|---|---|
+| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** | ✅ 修正済み |
 | **NEXT-6** | `scene.blade.php:15` | **P2-1**: 21マーカー同時検出の Android 最大負荷 | N秒未検出マーカーの動的無効化（`enabled=false`）で検索空間狭小化 | **3〜5時間** |
 | **NEXT-8** | 全体 | **P3-6**: グローバルエラーが `console` のみ | Sentry / CloudWatch / 自社ログ送信先接続 | **要検討** |
 
@@ -744,4 +746,49 @@
 - `php -l` 両ファイル警告0件
 - 当日分の `marker-scan-cache-202609-*` キーは削除されない（重複防止機能維持）
 - 他キャンペーン（202605 / 202606）の localStorage キー・blade ファイルには影響なし
+
+---
+
+## 19. 修正記録（2026-09-09 実施）— NEXT-5（P2-2）対応完了
+
+> 本節は 2026-09-09 に実施した NEXT-5（ポケボールGLBプリロード）の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 19.1 修正内容一覧
+
+| 項目 | 対応P | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|---|
+| **NEXT-5** | P2-2 | `initPokeballPool()` / `createPokeballFromPool()` 新設。初回ロードでGLBを1回だけパースしテンプレート保持、以降は `template.clone(true)` + geometry/material clone で即生成。`throwPokeballInDirection()` をプール利用＋フォールバック分岐に改修 | `js-throw.blade.php` L8-125 / `js-init.blade.php` L578-579 | ✅ 修正済み |
+
+### 19.2 実装詳細
+
+**NEXT-5**（P2-2 対応：ポケボールGLBプリロード・オブジェクトプール）
+
+- `js-throw.blade.php`:
+  - 変数: `_pokeballTemplate` / `_pokeballReady` / `_pokeballPreloadEl`（L9-11）
+  - `initPokeballPool()`: 非表示 `a-entity` に `gltf-model` を設定 → `model-loaded` / `loaded` でテンプレート取得 → マテリアル最適化（polygonOffset / depthFunc / dithering 等）を1回適用
+  - `createPokeballFromPool(cameraPos)`:
+    - プールパス: `_pokeballTemplate.clone(true)` + geometry/material 個別 clone → `setObject3D('mesh', clone)` → 即座に返す
+    - フォールバック: `setAttribute('gltf-model', ...)` で従来通りGLBロード
+  - `throwPokeballInDirection()`:
+    - `createPokeballFromPool(cameraPos)` でボール生成 → `pokeball-throwable` 設定 → `scene.appendChild`
+    - `_pokeballReady === true` 時: **即座に** `pokeball-throwable.throw(dir, speed)` を呼出（GLB再パースなし）
+    - `_pokeballReady === false` 時: `loaded` 待ち → マテリアル最適化 → `.throw()`（従来動作のフォールバック）
+- `js-init.blade.php`: §17 初期化セクションに `if (typeof initPokeballPool === 'function') initPokeballPool();` を追加（`cleanupOldMarkerScanCache` 呼出の直前）
+
+### 19.3 影響・検証
+
+| チェック | 結果 |
+|---|---|
+| `php -l js-throw.blade.php` | 警告0件 ✅ |
+| `php -l js-init.blade.php` | 警告0件 ✅ |
+| `initPokeballPool` / `createPokeballFromPool` 定義回数 | 各1回 ✅ |
+| タッチ/マウスイベントハンドラ | 変更なし ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 19.4 残存リスク・補足
+
+- **フォールバック経路**: プリロード完了前の初回投擲は従来通りGLBロード待ち（200〜400ms）。通常は初回ページ表示から300ms以内にプリロード完了するため、ユーザーが感知する前にプールが有効化される
+- **メモリ**: テンプレート1体（geometry + material）＋各投擲で clone 生成。投擲済みボールは `collectStamp` 後に `entity.remove()` されるため、同時存在数は最大2〜3体
+- **`_pokeballPreloadEl`**: 非表示エンティティとしてシーンに残存（`visible=false`）。メモリ量はGLB 1体分（233KB）のみ
 
