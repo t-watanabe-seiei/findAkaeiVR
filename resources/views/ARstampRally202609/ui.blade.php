@@ -50,7 +50,7 @@
             </div>
             <div class="guide-steps">
                 <div class="step main">
-                    <img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" />
+                    <img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" loading="lazy" decoding="async" />
                 </div>
                 <div class="step" id="guide-step-find"></div>
                 <div class="step" id="guide-step-zoom"></div>

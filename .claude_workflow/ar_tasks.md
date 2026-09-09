@@ -276,3 +276,47 @@
 | 2026-09-09 | T32 (T-18) | `js-prize.blade.php` L50 Cookie に `;Secure` 条件付き追加（HTTPSのみ） / php -l OK |
 | 2026-09-09 | T33 (T-19) | `js-prize.blade.php` L63-69 `crypto.randomUUID()` + `Math.random()` フォールバック / php -l OK |
 | 2026-09-09 | T34 | 静的検証全6項目パス / 202605・202606 影響なし |
+
+---
+
+## 優先度B 修正（analysis_qwen3.8_20260908.md NEXT-1〜4）
+
+> 作成日: 2026-09-09 / 根拠: `.claude_workflow/ar_design.md`（NEXT-1〜4 設計）
+
+### T36. `scene.blade.php` — `antialias` 条件分岐（NEXT-1 / P2-10）
+- [x] T36-a `<a-scene>` 直前に `<script>` 追加（`AR_FORCE_LOWRES` 時に `beforeentitycomposition` で `antialias: false` 設定）
+- [x] T36-b `php -l resources/views/ARstampRally202609/scene.blade.php` 警告0件
+
+### T37. `js-stamps.blade.php` — Audio 遅延生成（NEXT-2 / P2-8）
+- [x] T37-a L31-35 の `const soundStamp01/02 = new Audio(...)` を `var` + `null` 初期化 + `_ensureSound(which)` ヘルパーに置換
+- [x] T37-b L153-154 の `playSound(soundStamp01/02)` を `playSound(_ensureSound(1/2))` に置換
+- [x] T37-c `php -l resources/views/ARstampRally202609/js-stamps.blade.php` 警告0件
+
+### T38. `ui.blade.php` — `howToOperate.png` LCP 低減（NEXT-3 / P2-9）
+- [x] T38-a L53 の `<img>` に `loading="lazy" decoding="async"` 追加
+- [x] T38-b `php -l resources/views/ARstampRally202609/ui.blade.php` 警告0件
+
+### T39. `js-prize.blade.php` — 景品モーダル集約（NEXT-4 / P2-3）
+- [x] T39-a L236-247 `showPrizeCode` 関数を削除
+- [x] T39-b L249-268 `showRedeemedPrizeInfo` 関数を削除
+- [x] T39-c `_formatExchangeDateTime()` + `showPrizeModal(config)` を新設
+- [x] T39-d L213 `showRedeemedPrizeInfo(...)` → `showPrizeModal({...})` に置換
+- [x] T39-e L214 `showPrizeCode(...)` → `showPrizeModal({...})` に置換
+- [x] T39-f L226 `showPrizeCode(data.prizeCode)` → `showPrizeModal({...})` に置換
+- [x] T39-g `php -l resources/views/ARstampRally202609/js-prize.blade.php` 警告0件
+
+### T40. 静的検証
+- [x] T40-a `showPrizeModal` 定義が3つの呼出箇所すべてより前にある
+- [x] T40-b `_ensureSound` 定義が `playSound` 呼出箇所より前にある
+- [x] T40-c `AR_FORCE_LOWRES` 参照が `head.blade.php`（IIFE 定義）より後にある
+- [x] T40-d 202605 / 202606 のファイルに変更がない
+- [x] T40-e `analysis_qwen3.8_20260908.md` NEXT-1〜4 の「状態」列を更新（「未着手」→「修正済み」）
+
+### T41. `README.md` に NEXT-1〜4 の修正内容を追記（CLAUDE.md ルール6）
+- [x] T41-a 優先度B修正セクションを追加
+
+## 進捗ログ（優先度B修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T36〜T41 | NEXT-1〜4 全件実装完了。`scene.blade.php`（antialias条件分岐）/ `js-stamps.blade.php`（Audio遅延生成）/ `ui.blade.php`（lazy loading）/ `js-prize.blade.php`（モーダル集約）。`php -l` 全4ファイル警告0件。README追記・analysis状態更新済み。 |

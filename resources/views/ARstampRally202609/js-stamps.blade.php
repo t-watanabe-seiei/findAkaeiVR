@@ -28,11 +28,17 @@
         const LOCAL_STORAGE_KEY   = 'ar-stamp-rally-202609';
         const CAPTURED_KEY        = 'ar-captured-animals-202609';
 
-        // サウンド
-        const soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
-        const soundStamp02 = new Audio("{{ asset('cg/sound_stamp02.mp3') }}");
-        soundStamp01.preload = 'auto';
-        soundStamp02.preload = 'auto';
+        // サウンド（P2-8: 初回使用時に遅延生成）
+        var soundStamp01 = null;
+        var soundStamp02 = null;
+        function _ensureSound(which) {
+            if (which === 1) {
+                if (!soundStamp01) soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
+                return soundStamp01;
+            }
+            if (!soundStamp02) soundStamp02 = new Audio("{{ asset('cg/sound_stamp02.mp3') }}");
+            return soundStamp02;
+        }
 
         // ========== LocalStorage操作 ==========
 
@@ -150,8 +156,8 @@
 
                     var total = Object.keys(stamps).length;
                     var isComplete = total === Object.keys(STAMPS).length;
-                    if (isComplete) { playSound(soundStamp02); showCompleteParticles(); }
-                    else            { playSound(soundStamp01); showNormalParticles(); }
+                    if (isComplete) { playSound(_ensureSound(2)); showCompleteParticles(); }
+                    else            { playSound(_ensureSound(1)); showNormalParticles(); }
                     showStampNotification(stampId, isComplete);
                     return true;
                 } else {

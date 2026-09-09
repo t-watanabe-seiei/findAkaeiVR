@@ -210,8 +210,8 @@
 
             _exchanging = true;
             checkPrizeExchangeStatus().then(function (serverStatus) {
-                if (serverStatus.isRedeemed) { _exchanging = false; showRedeemedPrizeInfo(serverStatus.prizeCode, serverStatus.exchangedAt); return; }
-                if (serverStatus.hasExchanged && serverStatus.prizeCode) { _exchanging = false; showPrizeCode(serverStatus.prizeCode); return; }
+                if (serverStatus.isRedeemed) { _exchanging = false; showPrizeModal({ title:'✅ すでに景品と交換済みです', titleColor:'#999', code:serverStatus.prizeCode, codeFontSize:'28px', label:'景品コード', dateTimeStr:_formatExchangeDateTime(serverStatus.exchangedAt), buttonBg:'#999' }); return; }
+                if (serverStatus.hasExchanged && serverStatus.prizeCode) { _exchanging = false; showPrizeModal({ title:'🎉 景品交換完了！ 🎉', titleColor:'#4CAF50', subtitle:'以下のコードを受付でお見せください', code:serverStatus.prizeCode, codeFontSize:'32px', buttonBg:'#4CAF50' }); return; }
 
                 return generateFingerprint().then(function (fp) {
                     return fetch('{{ url("/stamp202609/exchange-prize") }}', {
@@ -223,7 +223,7 @@
                             localStorage.setItem('ar-prize-exchanged-202609', 'true');
                             localStorage.setItem('ar-prize-code-202609', data.prizeCode);
                             updatePrizeButton();
-                            showPrizeCode(data.prizeCode);
+                            showPrizeModal({ title:'🎉 景品交換完了！ 🎉', titleColor:'#4CAF50', subtitle:'以下のコードを受付でお見せください', code:data.prizeCode, codeFontSize:'32px', buttonBg:'#4CAF50' });
                         } else {
                             alert(data.message || '景品交換に失敗しました');
                         }
@@ -233,37 +233,55 @@
             }).catch(function (err) { console.warn('[AR202609] exchangePrize error', err); alert('通信エラーが発生しました'); _exchanging = false; });
         }
 
-        function showPrizeCode(code) {
-            var modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;justify-content:center;align-items:center;z-index:10005;';
-            modal.innerHTML = '<div style="background:white;padding:30px;border-radius:15px;text-align:center;max-width:90%;">'
-                + '<h2 style="color:#4CAF50;margin:0 0 20px 0;">🎉 景品交換完了！ 🎉</h2>'
-                + '<p style="font-size:16px;margin-bottom:20px;">以下のコードを受付でお見せください</p>'
-                + '<div style="background:#f5f5f5;padding:20px;border-radius:10px;margin-bottom:20px;">'
-                + '<div style="font-size:32px;font-weight:bold;color:#333;letter-spacing:3px;">' + code + '</div></div>'
-                + '<button onclick="this.parentElement.parentElement.remove()" style="padding:12px 30px;background:#4CAF50;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">閉じる</button>'
-                + '</div>';
-            document.body.appendChild(modal);
+        function _formatExchangeDateTime(exchangedAt) {
+            if (!exchangedAt) return '';
+            var d = new Date(exchangedAt);
+            return d.getFullYear() + '年' + String(d.getMonth() + 1).padStart(2, '0') + '月'
+                + String(d.getDate()).padStart(2, '0') + '日 '
+                + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
         }
 
-        function showRedeemedPrizeInfo(code, exchangedAt) {
-            var dateTimeStr = '';
-            if (exchangedAt) {
-                var d   = new Date(exchangedAt);
-                dateTimeStr = d.getFullYear() + '年' + String(d.getMonth() + 1).padStart(2, '0') + '月' + String(d.getDate()).padStart(2, '0') + '日 '
-                            + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-            }
+        function showPrizeModal(config) {
             var modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;justify-content:center;align-items:center;z-index:10005;';
-            modal.innerHTML = '<div style="background:white;padding:30px;border-radius:15px;text-align:center;max-width:90%;">'
-                + '<h2 style="color:#999;margin:0 0 20px 0;">✅ すでに景品と交換済みです</h2>'
-                + '<div style="background:#f5f5f5;padding:20px;border-radius:10px;margin-bottom:20px;">'
-                + '<div style="font-size:14px;color:#666;margin-bottom:10px;">景品コード</div>'
-                + '<div style="font-size:28px;font-weight:bold;color:#333;letter-spacing:3px;margin-bottom:15px;">' + code + '</div>'
-                + (dateTimeStr ? '<div style="font-size:14px;color:#666;border-top:1px solid #ddd;padding-top:10px;">交換日時: ' + dateTimeStr + '</div>' : '')
-                + '</div>'
-                + '<button onclick="this.parentElement.parentElement.remove()" style="padding:12px 30px;background:#999;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">閉じる</button>'
-                + '</div>';
+            var inner = document.createElement('div');
+            inner.style.cssText = 'background:white;padding:30px;border-radius:15px;text-align:center;max-width:90%;';
+            var h2 = document.createElement('h2');
+            h2.style.cssText = 'margin:0 0 20px 0;color:' + (config.titleColor || '#4CAF50') + ';';
+            h2.textContent = config.title;
+            inner.appendChild(h2);
+            if (config.subtitle) {
+                var p = document.createElement('p');
+                p.style.cssText = 'font-size:16px;margin-bottom:20px;';
+                p.textContent = config.subtitle;
+                inner.appendChild(p);
+            }
+            var codeBox = document.createElement('div');
+            codeBox.style.cssText = 'background:#f5f5f5;padding:20px;border-radius:10px;margin-bottom:20px;';
+            if (config.label) {
+                var labelDiv = document.createElement('div');
+                labelDiv.style.cssText = 'font-size:14px;color:#666;margin-bottom:10px;';
+                labelDiv.textContent = config.label;
+                codeBox.appendChild(labelDiv);
+            }
+            var codeDiv = document.createElement('div');
+            codeDiv.style.cssText = 'font-size:' + (config.codeFontSize || '32px') + ';font-weight:bold;color:#333;letter-spacing:3px;';
+            if (config.dateTimeStr) codeDiv.style.cssText += 'margin-bottom:15px;';
+            codeDiv.textContent = config.code;
+            codeBox.appendChild(codeDiv);
+            if (config.dateTimeStr) {
+                var dtDiv = document.createElement('div');
+                dtDiv.style.cssText = 'font-size:14px;color:#666;border-top:1px solid #ddd;padding-top:10px;';
+                dtDiv.textContent = '交換日時: ' + config.dateTimeStr;
+                codeBox.appendChild(dtDiv);
+            }
+            inner.appendChild(codeBox);
+            var btn = document.createElement('button');
+            btn.style.cssText = 'padding:12px 30px;background:' + (config.buttonBg || '#4CAF50') + ';color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
+            btn.textContent = '閉じる';
+            btn.addEventListener('click', function() { modal.remove(); });
+            inner.appendChild(btn);
+            modal.appendChild(inner);
             document.body.appendChild(modal);
         }
 

@@ -562,12 +562,12 @@
 
 ### 15.1 推奨優先（影響大・工数小）
 
-| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
-|---|---|---|---|---|
-| **NEXT-1** | `scene.blade.php:17` | **P2-10**: `antialias: true` が全環境有効 → モバイル GPU 負荷 | `AR_FORCE_LOWRES === true` 時に `antialias: false`（`head.blade.php` IIFE 結果を `scene.blade.php` で `@if` 分岐 or 動的 attribute set） | **20分** |
-| **NEXT-2** | `js-stamps.blade.php:32-35` | **P2-8**: 2つの `new Audio` が初回ロードで即生成（`preload=auto` 171KB 消費） | 遅延生成: IIFE 内 `null` 初期化 → 初回 `playSound` 時に `new Audio(...)` | **30分** |
-| **NEXT-3** | `ui.blade.php:53` | **P2-9**: `howToOperate.png`（1.39MB）が LCP 影響 | WebP/AVIF 化（`cwebp -q 80` → 200〜400KB）or `<picture>` + 幅 360px 相当リサイズ | **30分** |
-| **NEXT-4** | `js-prize.blade.php` | **P2-3**: `showPrizeCode` / `showRedeemedPrizeInfo` の約30行 HTML 重複 + インライン `onclick` | 共通 `showPrizeModal(title, code, extra)` に集約、`addEventListener` で `modal.remove()` | **30分** |
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 | 状態 |
+|---|---|---|---|---|---|
+| **NEXT-1** | `scene.blade.php:17` | **P2-10**: `antialias: true` が全環境有効 → モバイル GPU 負荷 | `AR_FORCE_LOWRES === true` 時に `antialias: false`（`head.blade.php` IIFE 結果を `scene.blade.php` で `@if` 分岐 or 動的 attribute set） | **20分** | ✅ 修正済み |
+| **NEXT-2** | `js-stamps.blade.php:32-35` | **P2-8**: 2つの `new Audio` が初回ロードで即生成（`preload=auto` 171KB 消費） | 遅延生成: IIFE 内 `null` 初期化 → 初回 `playSound` 時に `new Audio(...)` | **30分** | ✅ 修正済み |
+| **NEXT-3** | `ui.blade.php:53` | **P2-9**: `howToOperate.png`（1.39MB）が LCP 影響 | WebP/AVIF 化（`cwebp -q 80` → 200〜400KB）or `<picture>` + 幅 360px 相当リサイズ | **30分** | ✅ 修正済み |
+| **NEXT-4** | `js-prize.blade.php` | **P2-3**: `showPrizeCode` / `showRedeemedPrizeInfo` の約30行 HTML 重複 + インライン `onclick` | 共通 `showPrizeModal(title, code, extra)` に集約、`addEventListener` で `modal.remove()` | **30分** | ✅ 修正済み |
 
 ### 15.2 余力（アーキテクチャ・運用）
 

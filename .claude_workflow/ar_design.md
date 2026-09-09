@@ -811,3 +811,138 @@ function generateUUID202609() {
 | 旧版ブラウザ | 従来どおり `Math.random()` ベース（機能低下なし） |
 | 既存ユーザーの ID | 影響なし（新規ID生成時のみ） |
 | 202605 / 202606 | 影響なし（専用ファイル） |
+
+---
+
+## 設計: NEXT-1（P2-10）`antialias` 条件分岐 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/scene.blade.php`（`<a-scene>` 直前に `<script>` 追加）
+
+### 設計方針
+`AR_FORCE_LOWRES` は `head.blade.php` の JS IIFE で設定される `window` プロパティのため、Blade `@if` では使えない。`<a-scene>` 直前の `<script>` で A-Frame の `beforeentitycomposition` イベントをListen し、`renderer` 属性をパッチする。
+
+```html
+<script>
+    if (window.AR_FORCE_LOWRES) {
+        document.addEventListener('beforeentitycomposition', function(e) {
+            var el = e.target;
+            if (el && el.id === 'ar-scene') {
+                var r = el.getAttribute('renderer') || '';
+                if (r.indexOf('antialias: true') !== -1) {
+                    el.setAttribute('renderer', r.replace('antialias: true', 'antialias: false'));
+                }
+            }
+        }, { once: true });
+    }
+</script>
+```
+
+**理由**:
+- `beforeentitycomposition` は A-Frame がレンダラーを作成する直前に発火
+- `{ once: true }` で1回限り（リッスンリーク回避）
+- `AR_FORCE_LOWRES === false` の高スペック端末では何も行わない（従来挙動維持）
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| 低スペック端末（`AR_FORCE_LOWRES=true`） | `antialias: false`（GPU 負荷軽減） |
+| 高スペック端末（`AR_FORCE_LOWRES=false`） | 従来どおり `antialias: true` |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: NEXT-2（P2-8）Audio 遅延生成 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-stamps.blade.php` L31-35（宣言）、L153-154（呼出）
+
+### 設計方針
+`null` 初期化 + `_ensureSound(which)` ヘルパーで初回使用時のみ `new Audio(...)` を実行。
+
+```js
+// 変更後
+var soundStamp01 = null;
+var soundStamp02 = null;
+function _ensureSound(which) {
+    if (which === 1) {
+        if (!soundStamp01) soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
+        return soundStamp01;
+    }
+    if (!soundStamp02) soundStamp02 = new Audio("{{ asset('cg/sound_stamp02.mp3') }}");
+    return soundStamp02;
+}
+// 呼出側
+if (isComplete) { playSound(_ensureSound(2)); showCompleteParticles(); }
+else            { playSound(_ensureSound(1)); showNormalParticles(); }
+```
+
+**理由**:
+- `null` 初期化で初回ロード時の帯域171KBを節約
+- 初回捕獲時に Audio が生成される（1フレームの遅延は体感しにくい）
+- `preload` 属性は不要（初回 `play()` でブラウザが自動 fetch）
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| 初回ロード | Audio 171KB の帯域消費がなくなる |
+| 初回捕獲時 | Audio が遅延生成される |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: NEXT-3（P2-9）`howToOperate.png` LCP 低減 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/ui.blade.php` L53
+
+### 設計方針
+```html
+<!-- 変更後 -->
+<img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" loading="lazy" decoding="async" />
+```
+
+**理由**:
+- `loading="lazy"`: ビューポート外ではブラウザが読み込みを延期（LCP 改善）
+- `decoding="async"`: 非ブロッキングデコード（主スレッドのブロック解消）
+- 本番環境での更なる改善: `cwebp -q 80 howToOperate.png -o howToOperate.webp`（運用時に実施）
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| LCP | 改善（非同期デコード + 遅延読み込み） |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: NEXT-4（P2-3）景品モーダル集約 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-prize.blade.php` L213-214・L226（呼出）、L236-268（関数定義）
+
+### 設計方針
+共通関数 `showPrizeModal(config)` + `_formatExchangeDateTime()` に集約。`textContent` でコード値を設定（XSS 経路排除）。`addEventListener` で閉じるボタン。
+
+**新設関数**:
+- `_formatExchangeDateTime(exchangedAt)` — 日時文字列を返す（従来 `showRedeemedPrizeInfo` 内のロジックを抽出）
+- `showPrizeModal(config)` — `config` オブジェクト（`title` / `titleColor` / `subtitle` / `code` / `codeFontSize` / `label` / `dateTimeStr` / `buttonBg`）でモーダル生成
+
+**呼出箇所変更**（3箇所）:
+- L213: `showRedeemedPrizeInfo(code, exchangedAt)` → `showPrizeModal({ title:'✅ すでに景品と交換済みです', titleColor:'#999', code:..., codeFontSize:'28px', label:'景品コード', dateTimeStr:_formatExchangeDateTime(...), buttonBg:'#999' })`
+- L214: `showPrizeCode(code)` → `showPrizeModal({ title:'🎉 景品交換完了！ 🎉', titleColor:'#4CAF50', subtitle:'以下のコードを受付でお見せください', code:..., codeFontSize:'32px', buttonBg:'#4CAF50' })`
+- L226: `showPrizeCode(data.prizeCode)` → 同上
+
+**理由**:
+- 重複約30行を1関数に集約（保守性向上）
+- `textContent` でコード値を設定（`innerHTML` 経由の XSS 経路を排除）
+- `addEventListener` で DOM 深さに依存しない閉じる処理
+- `_formatExchangeDateTime` で日時フォーマット統一
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| 景品交換成功モーダル | 見た目不変 |
+| 交換済みモーダル | 見た目不変 + 日時表示維持 |
+| XSS 耐性 | `textContent` でコード値がエスケープされる |
+| DOM 深さ依存の onclick | 解消（`addEventListener` 使用） |
+| 202605 / 202606 | 影響なし（専用ファイル） |

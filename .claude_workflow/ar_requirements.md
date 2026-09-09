@@ -451,3 +451,107 @@ function generateUUID202609() {
 ### Out-of-Scope
 - サーバー側での ID 発行・検証の導入
 - 既存ユーザーの ID のマイグレーション
+
+---
+
+## 27. NEXT-1 (P2-10): `antialias` 条件分岐
+
+### 目的
+`scene.blade.php:17` の `antialias: true` が全端末で有効になり、モバイル GPU 負荷の原因になっている。`AR_FORCE_LOWRES === true`（低スペック判定）の端末では `antialias: false` にする。
+
+### 現状
+```
+<!-- scene.blade.php L17 -->
+renderer="... antialias: true;"
+```
+
+### 成功基準
+1. `AR_FORCE_LOWRES === true` の環境で、`a-scene` の `renderer` 属性が `antialias: false` に設定される
+2. `AR_FORCE_LOWRES === false`（高スペック端末）では従来どおり `antialias: true` が維持される
+3. モデル描画・マーカー認識に悪影響がない
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- `antialias` 以外の renderer 設定の変更
+- A-Frame のバージョン変更
+
+---
+
+## 28. NEXT-2 (P2-8): Audio 遅延生成
+
+### 目的
+`js-stamps.blade.php:32-35` の2つの `new Audio` が初回ロードで即生成され、`preload='auto'` で 171KB（71KB + 100KB）を消費する。捕獲が1回も起きなくても初回帯域が発生する無駄を解消する。
+
+### 現状
+```js
+const soundStamp01 = new Audio("{{ asset('cg/sound_stamp01.mp3') }}");
+const soundStamp02 = new Audio("{{ asset('cg/sound_stamp02.mp3') }}");
+soundStamp01.preload = 'auto';
+soundStamp02.preload = 'auto';
+```
+
+### 成功基準
+1. 初回ロード時に Audio オブジェクトが生成されない（`null` 初期化）
+2. 初回 `playSound` 呼び出し時にのみ Audio オブジェクトが生成される
+3. 2回目以降はキャッシュ済みオブジェクトが再利用される
+4. サウンド再生機能（音量・タイミング）は従来どおり
+5. `php -l` 警告0件
+6. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- サウンドファイル自体の圧縮・形式変更
+- `js-throw.blade.php` の `playSound` 関数のシグネチャ変更
+
+---
+
+## 29. NEXT-3 (P2-9): `howToOperate.png` LCP 影響低減
+
+### 目的
+`ui.blade.php:53` の `howToOperate.png`（1.39MB）がガイドモーダル表示時の LCP に影響している。
+
+### 現状
+```html
+<img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" />
+```
+
+### 成功基準
+1. `loading="lazy"` が追加され、ビューポート外では読み込みが Deferred される
+2. `decoding="async"` が追加され、非ブロッキングデコードが行われる
+3. ガイドモーダルの表示・閉じる機能は従来どおり
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
+### 備考
+- 本番環境での更なる改善: `cwebp -q 80 howToOperate.png -o howToOperate.webp` で 1.39MB → 約200〜400KB（運用時に実施）
+- 開発環境（`cwebp` 未インストール）では `loading="lazy"` + `decoding="async"` のみ適用
+
+### Out-of-Scope
+- 画像ファイル自体の WebP/AVIF 変換（外部ツール `cwebp` 必要）
+- 画像の再撮影・設計変更
+
+---
+
+## 30. NEXT-4 (P2-3): 景品モーダル HTML 重複解消
+
+### 目的
+`js-prize.blade.php` の `showPrizeCode` / `showRedeemedPrizeInfo` がほぼ同一のモーダル HTML を `innerHTML` 文字列連結（約30行重複）しており、保守性が低い。また、インライン `onclick="this.parentElement.parentElement.remove()"` は DOM 深さに依存する脆い記法。
+
+### 現状
+```js
+// showPrizeCode: innerHTML 文字列連結 + インライン onclick
+// showRedeemedPrizeInfo: 同様の HTML + 日時表示 + インライン onclick
+```
+
+### 成功基準
+1. 共通関数 `showPrizeModal(config)` に集約
+2. インライン `onclick` が `addEventListener` に置換
+3. `code` 値が `textContent` で設定（`innerHTML` 経由の XSS 経路を排除）
+4. 従来と同じ見た目のモーダルが表示される（交換成功・交換済みの両方）
+5. `php -l` 警告0件
+6. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- `showPrizeModal` を他ファイルから呼べるようにする（グローバル公開）
+- モーダルのアニメーション追加
+

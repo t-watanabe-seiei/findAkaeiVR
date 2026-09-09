@@ -1144,6 +1144,36 @@ this.material.uniforms.innerRadius.value = innerRadius;
 
 - **問題**: `js-init.blade.php` の `setTimeout(hideArjsLoader, 3000)` がカメラ未起動時にローダーを3秒で消したが、`monitorCameraStartup(7000)` のエラー表示は7秒後 → **約4秒間の黒画面**
 - **修正**: フォールバックを 3秒→7秒 に変更し、`monitorCameraStartup(7000)` のタイムアウトと整合（ローダー非表示 = camera-error 表示のタイミングに一致）
+
+---
+
+## 優先度B 修正（2026-09-09）
+
+> 根拠: `resources/views/ARstampRally202609/analysis_qwen3.8_20260908.md` NEXT-1〜4
+
+### NEXT-1（P2-10）: `antialias` 条件分岐
+
+- **問題**: `scene.blade.php:17` の `antialias: true` が全端末で有効 → モバイル GPU 負荷
+- **修正**: `<a-scene>` 直前に `<script>` 追加。`AR_FORCE_LOWRES === true` 時に `beforeentitycomposition` イベントで `antialias: false` を設定
+- **対象ファイル**: `resources/views/ARstampRally202609/scene.blade.php`
+
+### NEXT-2（P2-8）: Audio 遅延生成
+
+- **問題**: `js-stamps.blade.php:32-35` の2つの `new Audio` が初回ロードで即生成（`preload='auto'` で 171KB 消費）
+- **修正**: `null` 初期化 + `_ensureSound(which)` ヘルパーで初回使用時のみ生成（171KB の初回帯域を節約）
+- **対象ファイル**: `resources/views/ARstampRally202609/js-stamps.blade.php`
+
+### NEXT-3（P2-9）: `howToOperate.png` LCP 低減
+
+- **問題**: `ui.blade.php:53` の `howToOperate.png`（1.39MB）が LCP に影響
+- **修正**: `loading="lazy"` + `decoding="async"` を追加（本番環境では WebP 変換推奨: `cwebp -q 80`）
+- **対象ファイル**: `resources/views/ARstampRally202609/ui.blade.php`
+
+### NEXT-4（P2-3）: 景品モーダル HTML 重複解消
+
+- **問題**: `js-prize.blade.php` の `showPrizeCode` / `showRedeemedPrizeInfo` が約30行の重複 HTML を `innerHTML` 文字列連結で生成
+- **修正**: 共通関数 `showPrizeModal(config)` + `_formatExchangeDateTime()` に集約。`textContent` でコード値を設定（XSS 経路排除）、`addEventListener` で閉じるボタン
+- **対象ファイル**: `resources/views/ARstampRally202609/js-prize.blade.php`
 - **対象ファイル**: `resources/views/ARstampRally202609/js-init.blade.php`
 
 ### 影響範囲
