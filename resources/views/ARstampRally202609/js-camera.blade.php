@@ -5,8 +5,6 @@
         var mediaRecorder      = null;
         var recordedChunks     = [];
         var recordingStartTime = 0;
-        var currentFacingMode  = 'environment';
-
         (function () {
             var cameraButton      = document.getElementById('camera-button');
             var videoButton       = document.getElementById('video-button');
@@ -14,29 +12,11 @@
             if (typeof MediaRecorder === 'undefined' && videoButton) {
                 videoButton.style.display = 'none';
             }
-            var switchCameraBtn   = document.getElementById('switch-camera-button');
             var photoPreview      = document.getElementById('photo-preview');
             var previewImage      = document.getElementById('preview-image');
             var downloadButton    = document.getElementById('download-button');
             var closeButton       = document.getElementById('close-button');
             var flash             = document.getElementById('flash');
-
-            // ---- カメラ切り替え ----
-            if (switchCameraBtn) {
-                switchCameraBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var video = document.querySelector('video');
-                    if (video && video.srcObject) {
-                        video.srcObject.getTracks().forEach(function (t) { t.stop(); });
-                    }
-                    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-                    navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 960 } }
-                    }).then(function (stream) {
-                        if (video) { video.srcObject = stream; video.play().catch(function () {}); }
-                    }).catch(function (err) { alert('カメラの切り替えに失敗しました。\n' + err.message); });
-                });
-            }
 
             // ---- 動画撮影 ----
             if (videoButton) {

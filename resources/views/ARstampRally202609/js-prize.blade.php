@@ -102,7 +102,8 @@
                 colorDepth:  screen.colorDepth,
                 pixelRatio:  window.devicePixelRatio,
                 timezone:    Intl.DateTimeFormat().resolvedOptions().timeZone,
-                isIOS:       /iPad|iPhone|iPod/.test(navigator.userAgent),
+                isIOS:       /iPad|iPhone|iPod/.test(navigator.userAgent)
+                || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform)),
                 isAndroid:   /Android/.test(navigator.userAgent)
             };
         }

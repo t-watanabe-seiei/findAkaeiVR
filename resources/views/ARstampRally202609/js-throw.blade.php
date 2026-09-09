@@ -25,7 +25,7 @@
                 element.closest('#guide-button')        ||
                 element.closest('#camera-button')       ||
                 element.closest('#video-button')        ||
-                element.closest('#switch-camera-button') ||
+
                 element.closest('#stamp-book-modal')    ||
                 element.closest('#guide-modal')         ||
                 element.closest('#photo-preview')       ||

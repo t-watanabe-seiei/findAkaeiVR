@@ -48,7 +48,7 @@
             timeoutMs = timeoutMs || 6000;
             const start = Date.now();
             const interval = setInterval(function() {
-                const v = document.querySelector('video');
+                const v = document.querySelector('#ar-scene video');
                 if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
                     clearInterval(interval);
                     window.arjsVideoReady = true;
@@ -72,7 +72,7 @@
         }
 
         window.ensureCameraAccess = function() {
-            const v = document.querySelector('video');
+            const v = document.querySelector('#ar-scene video');
             if (v && v.srcObject && (v.readyState >= 2 || !v.paused || v.currentTime > 0)) { window.arjsVideoReady = true; return; }
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
             if (window._ensureCameraInProgress) return;
@@ -86,7 +86,7 @@
             function attempt(idx) {
                 if (idx >= sets.length) { window._ensureCameraInProgress = false; try { var el = document.getElementById('camera-error'); if (el) el.style.display = 'flex'; } catch(e){} return; }
                 navigator.mediaDevices.getUserMedia(sets[idx]).then(function(stream) {
-                    var videoEl = document.querySelector('video');
+                    var videoEl = document.querySelector('#ar-scene video');
                     if (videoEl) {
                         if (!videoEl.srcObject || videoEl.paused) {
                             videoEl.srcObject = stream;

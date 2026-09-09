@@ -344,20 +344,42 @@
                     var inGallery = gallerySelection.indexOf(sid) !== -1;
                     item.className = 'stamp-item ' + (collected ? 'collected' : 'not-collected') + (inGallery ? ' gallery-selected' : '');
 
-                    var iconContent = collected && stamps[sid].screenshot
-                        ? '<img src="' + stamps[sid].screenshot + '" alt="' + s.name + '" style="width:100%;height:100%;object-fit:contain;">'
-                        : (collected ? s.icon : '🐾');
-                    var nameText = collected ? s.name : '？？？';
-                    var dateText = '';
+                    // Safe DOM construction (XSS prevention — no innerHTML with user data)
+                    var iconDiv = document.createElement('div');
+                    iconDiv.className = 'stamp-icon';
+                    if (collected && stamps[sid].screenshot) {
+                        var img = document.createElement('img');
+                        img.src = stamps[sid].screenshot;
+                        img.alt = s.name;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'contain';
+                        iconDiv.appendChild(img);
+                    } else {
+                        iconDiv.textContent = collected ? s.icon : '🐾';
+                    }
+                    item.appendChild(iconDiv);
+
+                    var nameDiv = document.createElement('div');
+                    nameDiv.className = 'stamp-name';
+                    nameDiv.textContent = collected ? s.name : '？？？';
+                    item.appendChild(nameDiv);
+
                     if (collected && stamps[sid].collectedAt) {
                         var d = new Date(stamps[sid].collectedAt);
-                        dateText = '<div class="stamp-date">' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + '</div>';
+                        var dateDiv = document.createElement('div');
+                        dateDiv.className = 'stamp-date';
+                        dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+                        item.appendChild(dateDiv);
                     }
-                    var checkMark = collected ? '<div class="gallery-check' + (inGallery ? ' active' : '') + '">✓</div>' : '';
-                    item.innerHTML = '<div class="stamp-icon">' + iconContent + '</div><div class="stamp-name">' + nameText + '</div>' + dateText + checkMark;
 
-                    // 捕獲済みのみタップでギャラリー選択切替
                     if (collected) {
+                        var checkDiv = document.createElement('div');
+                        checkDiv.className = 'gallery-check' + (inGallery ? ' active' : '');
+                        checkDiv.textContent = '✓';
+                        item.appendChild(checkDiv);
+
+                        // 捕獲済みのみタップでギャラリー選択切替
                         (function (stampId, itemEl) {
                             itemEl.addEventListener('click', function () {
                                 var result = toggleGallerySelection(stampId);
@@ -367,7 +389,14 @@
                     }
                 } else {
                     item.className = 'stamp-item not-collected';
-                    item.innerHTML = '<div class="stamp-icon">🐾</div><div class="stamp-name">？？？</div>';
+                    var iconDiv2 = document.createElement('div');
+                    iconDiv2.className = 'stamp-icon';
+                    iconDiv2.textContent = '🐾';
+                    item.appendChild(iconDiv2);
+                    var nameDiv2 = document.createElement('div');
+                    nameDiv2.className = 'stamp-name';
+                    nameDiv2.textContent = '？？？';
+                    item.appendChild(nameDiv2);
                 }
                 grid.appendChild(item);
             }

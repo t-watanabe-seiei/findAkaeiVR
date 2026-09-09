@@ -1097,6 +1097,46 @@ this.material.uniforms.innerRadius.value = innerRadius;
 ### T-08: `AR_FORCE_LOWRES` IIFE の例外耐性確保
 
 - **問題**: `head.blade.php` の IIFE 内 `new URL(window.location.href)` が例外を投げると、同一 `<script>` の `monitorCameraStartup` / `ensureCameraAccess` / `destroyAndFreeEntity` が全て未定義になり**アプリ起動不能**
+
+---
+
+## ARstampRally202609 — P1高優先修正（2026-09-09）
+
+> 対象: T-05（XSS）/ T-06（デッドコード）/ T-07（iPadOS）/ T-09（セレクタ）
+
+### T-05: `showStampBook()` XSS 脆弱性修正
+
+- **問題**: `js-stamps.blade.php` の `showStampBook()` が `innerHTML` に `s.name`（スタンプ名）を直接埋め込み → XSS リスク
+- **修正**: `document.createElement` + `textContent` / `img.src` で安全DOM構築（`innerHTML` 使用を完全排除）
+- **対象ファイル**: `resources/views/ARstampRally202609/js-stamps.blade.php`
+
+### T-06: `#switch-camera-button` デッドコード削除
+
+- **問題**: `ui.blade.php` に `#switch-camera-button` が存在しないのに JS 側で参照が残存。将来誤って追加した際に AR.js トラッキングを破壊する地雷
+- **修正**: `js-camera.blade.php`（L8 `currentFacingMode` / L17-37 ハンドラ）・`js-throw.blade.php`（L28 `isUIButton`）から当該参照を削除
+- **対象ファイル**: `resources/views/ARstampRally202609/js-camera.blade.php` / `js-throw.blade.php`
+
+### T-07: iPadOS 13+ 検出修正
+
+- **問題**: `js-prize.blade.php` の `collectDeviceInfo()` が `/iPad|iPhone|iPod/.test(ua)` のみ → iPadOS 13+（Mac UA偽装）で `isIOS: false`
+- **修正**: `navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform)` 分岐を追加
+- **対象ファイル**: `resources/views/ARstampRally202609/js-prize.blade.php`
+
+### T-09: video セレクタ特定化
+
+- **問題**: `head.blade.php` の `monitorCameraStartup` / `ensureCameraAccess` が `document.querySelector('video')` で DOM 先頭 `<video>` を操作 → `#photo-preview` 競合リスク
+- **修正**: 全3箇所を `document.querySelector('#ar-scene video')` に置換
+- **対象ファイル**: `resources/views/ARstampRally202609/head.blade.php`
+
+**変更対象ファイル:**
+| ファイル | 変更内容 |
+|------|------|
+| `resources/views/ARstampRally202609/js-stamps.blade.php` | T-05 XSS 修正 |
+| `resources/views/ARstampRally202609/js-camera.blade.php` | T-06 デッドコード削除 |
+| `resources/views/ARstampRally202609/js-throw.blade.php` | T-06 デッドコード削除 |
+| `resources/views/ARstampRally202609/js-prize.blade.php` | T-07 iPadOS 検出 |
+| `resources/views/ARstampRally202609/head.blade.php` | T-09 セレクタ特定化 |
+
 - **修正**: IIFE 本体を try/catch で包み、例外時は `false` を返却（従来: 例外伝播でアプリ停止）
 - **対象ファイル**: `resources/views/ARstampRally202609/head.blade.php`
 

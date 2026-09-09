@@ -168,3 +168,55 @@
 | 2026-09-09 | T21 | `head.blade.php` IIFE 全体を try/catch で保護。`php -l` 警告0件。202605/202606未変更 |
 | 2026-09-09 | T22 | `js-init.blade.php` フォールバック 3秒→7秒（monitorCameraStartupと整合）。`php -l` 警告0件。202605/202606未変更 |
 
+
+---
+
+# タスク — ARstampRally202609 P1 高優先修正（T-05 / T-06 / T-07 / T-09）
+
+> 作成日: 2026-09-09 / 根拠: `.claude_workflow/ar_design.md`（P1 高優先修正設計）
+> 進捗記法: `[ ]` 未着手 / `[~]` 実施中 / `[x]` 完了
+> 変更対象: `js-stamps.blade.php` / `js-camera.blade.php` / `js-throw.blade.php` / `js-prize.blade.php` / `head.blade.php` + `README.md`
+
+## タスクリスト
+
+### T23. T-05（P1-4）: `js-stamps.blade.php` — `showStampBook()` XSS 修正
+- [x] T23-a `showStampBook()` 内 `innerHTML` 使用ブロック（L347-370）を `document.createElement` + `textContent` による安全DOM構築に置換
+- [x] T23-b `php -l resources/views/ARstampRally202609/js-stamps.blade.php` が警告0件
+
+### T24. T-06（P1-5）: `#switch-camera-button` デッドコード削除
+- [x] T24-a `js-camera.blade.php` L8（`currentFacingMode` 変数宣言）を削除
+- [x] T24-b `js-camera.blade.php` L17-37（`switchCameraBtn` 宣言 + 全イベントハンドラ）を削除
+- [x] T24-c `js-throw.blade.php` L28（`isUIButton` 内 `#switch-camera-button` チェック行）を削除
+- [x] T24-d `php -l resources/views/ARstampRally202609/js-camera.blade.php` / `js-throw.blade.php` が警告0件
+
+### T25. T-07（P1-6）: `js-prize.blade.php` — iPadOS 13+ 検出修正
+- [x] T25-a `collectDeviceInfo()` の `isIOS` 判定に `navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform)` 分岐を追加
+- [x] T25-b `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T26. T-09（P1-8）: `head.blade.php` — video セレクタ特定化
+- [x] T26-a L51（`monitorCameraStartup` ポーリング）`document.querySelector('video')` → `document.querySelector('#ar-scene video')`
+- [x] T26-b L75（`ensureCameraAccess` 初期チェック）`document.querySelector('video')` → `document.querySelector('#ar-scene video')`
+- [x] T26-c L89（`ensureCameraAccess` attempt 内）`document.querySelector('video')` → `document.querySelector('#ar-scene video')`
+- [x] T26-d `php -l resources/views/ARstampRally202609/head.blade.php` が警告0件
+
+### T27. 静的検証
+- [x] T27-a 202609 配下 blade に `switch-camera-button` が0件
+- [x] T27-b 202609 配下 blade に `innerHTML.*s.name`（`showStampBook` 内）が0件
+- [x] T27-c 202609 配下 blade に `document.querySelector('video')` が0件（`#ar-scene video` に置換済み）
+- [x] T27-d 202609 配下 blade に `maxTouchPoints` + `MacIntel` が1件（iPadOS検出のみ）
+- [x] T27-e 202605 / 202606 のファイルに変更がない
+
+### T28. `README.md` に修正内容を追記（CLAUDE.md ルール6）
+- [x] T28-a 202609 P1高優先修正セクションを追記（T-05 XSS / T-06 デッドコード / T-07 iPadOS / T-09 セレクタ）
+
+## 進捗ログ（P1 高優先修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T23 | `js-stamps.blade.php` `showStampBook()` の `innerHTML` を安全DOM構築に置換。`php -l` 警告0件 |
+| 2026-09-09 | T24 | `js-camera.blade.php`（L8, L17-37）・`js-throw.blade.php`（L28）の `#switch-camera-button` デッドコード削除。`php -l` 警告0件 |
+| 2026-09-09 | T25 | `js-prize.blade.php` `isIOS` 判定に iPadOS 13+（Mac UA偽装）分岐追加。`php -l` 警告0件 |
+| 2026-09-09 | T26 | `head.blade.php` 3箇所の `querySelector('video')` → `querySelector('#ar-scene video')`。`php -l` 警告0件 |
+| 2026-09-09 | T27 | 静的検証5項目すべて合格（switch-camera-button=0 / innerHTML XSS=0 / generic video=0 / iPadOS=1 / 他キャンペーン未変更） |
+| 2026-09-09 | T28 | README.md に「P1高優先修正（2026-09-09）」セクション追加 |
+

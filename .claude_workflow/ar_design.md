@@ -529,3 +529,104 @@ t=7s    タイムアウト:
 | R1 | 7秒間ローダーが表示され続ける（従来より4秒長い） | 許容範囲。ローダーは「読み込み中」を示す正しい状態。黒画面よりマシ |
 | R2 | `window.load` が遅延する端末で `monitorCameraStartup` の開始が遅れ、7秒フォールバックと不一致 | 低確率（`window.load` は通常 DOMContentLoaded 後数ms）。フォールバックは `hideArjsLoader` のみ（エラーUI表示は monitorCameraStartup 側で制御） |
 
+
+---
+
+## 設計: T-05（P1-4）XSS 修正 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-stamps.blade.php` L347-370（`showStampBook()` 内）
+
+### 設計方針
+`innerHTML` 文字列結合を**完全に排除**し、`document.createElement` + `textContent` / `img.src` でDOMを構築する。
+- `s.name` → `textContent` に代入（HTMLエスケープ自動）
+- `stamps[sid].screenshot` → `img.src` に代入（属性値として安全）
+- 静的文字列（`'🐾'` / `'？？？'` / `'✓'`）→ `textContent`
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| スタンプ捕獲・表示UI | 挙動不変（icon / name / date / check / click すべて維持） |
+| XSS リスク | `s.name` に `<script>` が含まれても実行されない |
+| 202605 / 202606 | 影響なし（専用ファイル） |
+
+---
+
+## 設計: T-06（P1-5）デッドコード削除 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-camera.blade.php`（L8, L17-37）
+`resources/views/ARstampRally202609/js-throw.blade.php`（L28）
+
+### 設計方針
+`#switch-camera-button` が `ui.blade.php` に存在しないことを確認済み。
+- `js-camera.blade.php`: `currentFacingMode` 変数 + `switchCameraBtn` 宣言 + 全イベントハンドラ（L17-37）を削除
+- `js-throw.blade.php`: `isUIButton` 内の `#switch-camera-button` チェック行のみ削除（他ボタンチェックは維持）
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| 動画撮影 / 写真撮影 | 影響なし（他ボタンのロジックは不変） |
+| `isUIButton` 投げ判定 | 他ボタン（`#stamp-book-button` 等）のチェックは維持 |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: T-07（P1-6）iPadOS 13+ 検出 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-prize.blade.php` L105（`collectDeviceInfo()` 内）
+
+### 設計方針
+```js
+// 変更前
+isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+
+// 変更後
+isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform)),
+```
+
+**判定根拠**:
+- iPadOS 13+ は `navigator.userAgent` が `MacIntel` を含み、`navigator.maxTouchPoints >= 5`
+- Mac desktop は `maxTouchPoints = 0`（タッチ非対応）または 1（touch-equipped MacBook）→ **誤検出なし**
+- Android / PC は `MacIntel` を含まない → **誤検出なし**
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| iPadOS 13+ | `isIOS: true`（従来: `false` → 端末情報が正確に記録） |
+| iPhone / iPod | `isIOS: true`（従来どおり） |
+| Mac desktop | `isIOS: false`（`maxTouchPoints=0` で除外） |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: T-09（P1-8）video セレクタ特定化 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/head.blade.php` L51, L75, L89
+
+### 設計方針
+```js
+// 変更前
+document.querySelector('video')
+
+// 変更後
+document.querySelector('#ar-scene video')
+```
+
+**理由**:
+- AR.js のカメラ `<video>` は `<a-scene id="ar-scene">` の子要素として生成される
+- `#photo-preview` のプレビュー `<video>` は `a-scene` の**外側**（`body` 直下）に存在
+- `#ar-scene video` で AR.js 管理の `<video>` だけが絞り込まれる
+- 将来 `<video>` 要素が追加されても、`a-scene` 外のものを選ばない
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| `monitorCameraStartup` | 従来どおり AR.js のカメラのみをポーリング |
+| `ensureCameraAccess` | 従来どおり AR.js のカメラのみを操作 |
+| `#photo-preview` 動画プレビュー | 影響なし（`a-scene` 外） |
+| 202605 / 202606 | 影響なし |
+

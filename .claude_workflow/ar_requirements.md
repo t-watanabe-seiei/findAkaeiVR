@@ -229,3 +229,91 @@ window.addEventListener('load', function () {
 - カメラエラーUI の文言・デザインの改善
 - `ensureCameraAccess` のリトライロジック
 
+
+---
+
+## 18. T-05（P1-4）: `showStampBook()` の XSS 脆弱性修正
+
+### 目的
+`showStampBook()`（`js-stamps.blade.php` L347-370）が `innerHTML` に `s.name`（スタンプ名）と `stamps[sid].screenshot`（base64 URL）を直接埋め込んでいる。スタンプ名がユーザー制御（API POST）であるため、`<script>` タグ等の HTML がそのまま DOM に注入される XSS リスクを解消する。
+
+### 現状
+```js
+var iconContent = collected && stamps[sid].screenshot
+    ? '<img src="' + stamps[sid].screenshot + '" alt="' + s.name + '" ...>'
+    : (collected ? s.icon : '🐾');
+var nameText = collected ? s.name : '？？？';
+item.innerHTML = '<div class="stamp-icon">' + iconContent + '</div><div class="stamp-name">' + nameText + '</div>' + dateText + checkMark;
+```
+
+### 成功基準
+1. `showStampBook()` 内に `innerHTML` の使用が0件
+2. `document.createElement` + `textContent` / `img.src` でDOMを構築（XSS安全）
+3. 既存UI（icon / name / date / check / click handler）の挙動が完全に維持される
+4. `php -l` 警告0件
+
+### Out-of-Scope
+- `collectStamp()` / `showCapturedMessage()` 等他関数の `innerHTML`
+- スタンプ名のサーバー側サニタイズ（将来の選択肢）
+
+---
+
+## 19. T-06（P1-5）: `#switch-camera-button` デッドコード削除
+
+### 目的
+202609 の `ui.blade.php` に `#switch-camera-button` が存在しないにもかかわらず、`js-camera.blade.php`（L8, L17-37）と `js-throw.blade.php`（L28）に当該ボタンの参照が残存する。将来誤ってボタンを追加した際に AR.js のトラッキングを破壊する地雷を除去する。
+
+### 現状
+- `js-camera.blade.php` L8: `var currentFacingMode = 'environment';`（switchCameraBtn のみで使用）
+- `js-camera.blade.php` L17-37: `switchCameraBtn` 宣言 + `addEventListener('click', ...)` 全体
+- `js-throw.blade.php` L28: `element.closest('#switch-camera-button') ||`（`isUIButton` 内）
+
+### 成功基準
+1. 202609 配下 blade ファイルに `switch-camera-button` が0件
+2. `currentFacingMode` 変数が残っていない
+3. `isUIButton` の他ボタンチェック（`#stamp-book-button` 等）は維持
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
+---
+
+## 20. T-07（P1-6）: iPadOS 13+ の `isIOS` 検出漏れ修正
+
+### 目的
+iPadOS 13 以降は User-Agent が `MacIntel` に偽装されるため、`/iPad|iPhone|iPod/.test(navigator.userAgent)` が `false` となり、`isIOS: false` がサーバーに送付される。景品交換時の端末情報が正確に記録されるよう修正する。
+
+### 現状（js-prize.blade.php `collectDeviceInfo()`）
+```js
+isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+```
+
+### 成功基準
+1. iPadOS 13+（Mac UA偽装）でも `isIOS: true` が送付される
+2. 判定式: `/iPad|iPhone|iPod/.test(ua) || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))`
+3. 非iOS端末（Mac desktop / Android / PC）で `isIOS: false` が維持される
+4. `php -l` 警告0件
+
+### Out-of-Scope
+- `collectDeviceInfo()` の他フィールド
+- 202605 / 202606 の同関数（専用ファイル）
+
+---
+
+## 21. T-09（P1-8）: `document.querySelector('video')` の特定化
+
+### 目的
+`head.blade.php` の `monitorCameraStartup`（L51）・`ensureCameraAccess`（L75, L89）が `document.querySelector('video')` で DOM 上の**最初の** `<video>` を取得している。`#photo-preview` のプレビュー `<video>` や将来追加される `<video>` が先頭に来ると誤った要素を操作するリスクがある。AR.js のカメラ映像のみを対象にする。
+
+### 現状
+```js
+const v = document.querySelector('video');  // L51, L75
+var videoEl = document.querySelector('video');  // L89
+```
+
+### 成功基準
+1. 全3箇所が `document.querySelector('#ar-scene video')` に置換される
+2. 202609 配下 blade に `document.querySelector('video')` が0件
+3. `monitorCameraStartup` / `ensureCameraAccess` の機能（ポーリング・フォールバック・リトライ）が完全に維持される
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
