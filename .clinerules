@@ -20,6 +20,7 @@
 - Handle edge cases explicitly (empty states, missing files, permission errors).
 
 # Safety & Execution Rules
+- Execution Shell: The terminal shell is MSYS (Git Bash) on Windows. Use POSIX/Bash compatible commands and syntax.
 - Target ONLY files within the current relative directory (./). NEVER use absolute paths or search parent directories.
 - ALWAYS run `php -l [PHP_FILE_NAME]` to verify syntax before finishing any PHP code task.
 - ALWAYS test and verify code changes—do not assume code works without checking.
