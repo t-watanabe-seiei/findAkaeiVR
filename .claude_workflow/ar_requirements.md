@@ -317,3 +317,137 @@ var videoEl = document.querySelector('video');  // L89
 4. `php -l` 警告0件
 5. 202605 / 202606 に影響なし
 
+
+---
+
+## 22. T-15（P2-6）: 捕獲日時表示のゼロ埋め漏れ修正
+
+### 目的
+`showStampBook()`（`js-stamps.blade.php` L372）が捕獲日時を表示する際、`d.getHours()` を直接文字列結合しているため、9時台が `9:05`、10時台が `10:05` と不揃いに表示される。分（`String(d.getMinutes()).padStart(2, '0')`）にはゼロ埋めがあるが、時間にない。
+
+### 現状
+```js
+dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+```
+
+### 成功基準
+1. 時刻の表示が `HH:MM` 形式（例: `09:05` / `10:30`）で常に2桁
+2. 日付部分（`M/D`）の表示は変えない
+3. `php -l` 警告0件
+4. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- 日付表示のフォーマット変更（`M/D` → `YYYY-MM-DD` 等）
+- 月 / 日のゼロ埋め
+
+---
+
+## 23. T-16（P2-7）: API エラーの沈黙修正（`console.warn` + `r.ok` チェック）
+
+### 目的
+`js-prize.blade.php` の `recordMarkerDetection`（L141）・`recordMarkerScan`（L158）・`checkPrizeExchangeStatus`（L175）・`exchangePrize`（L224）が `.catch(function () {})` で API エラーを完全に無視している。`r.json()` が 5xx HTML を返すと `JSON.parse` 失敗も catch が飲み込み、運用時トラブルが「何も起きない」形で消える。
+
+### 現状
+```js
+// L141
+.catch(function () {});
+
+// L158
+.then(function (r) { return r.json(); }).catch(function () {});
+
+// L175
+.then(function (r) { return r.json(); }).catch(function () { return { hasExchanged: false }; });
+
+// L224
+.catch(function () { alert('通信エラーが発生しました'); _exchanging = false; });
+```
+
+### 成功基準
+1. 全4箇所の `.catch` に `console.warn('[AR202609] ...', err)` を追加
+2. `recordMarkerScan` / `checkPrizeExchangeStatus` / `exchangePrize` の `r.json()` 前に `r.ok` チェックを追加（非2xx時は `console.warn` + 安全なフォールバック値を返す）
+3. `exchangePrize` の `alert` 表示は維持（ユーザー向けフィードバックは変更しない）
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- Sentry / 外部エラー送信先への接続
+- API のレート制限・リトライロジックの追加
+
+---
+
+## 24. T-17（P2-5）: ガイドモーダルの初期言語統一
+
+### 目的
+`ui.blade.php` L47-48 の初期状態が `lang-en` に `active` / `aria-pressed="true"` になっている一方、`js-init.blade.php` L9 の `guideLang = 'jp'` は日本語。初回表示時に画面の「active」ボタン（English）と実効言語（日本語）が食い違う。`setGuideLanguage('jp')`（L195）が DOMContentLoaded で即座に修正するが、その前に英語が active に見える一瞬のちらつきがある。
+
+### 現状
+```html
+<!-- ui.blade.php L47-48 -->
+<button id="lang-jp" class="lang-btn" aria-pressed="false">日本語</button>
+<button id="lang-en" class="lang-btn active" aria-pressed="true">English</button>
+```
+
+### 成功基準
+1. `ui.blade.php` の初期 HTML が `lang-jp` に `active` / `aria-pressed="true"`、`lang-en` に `aria-pressed="false"`（`js-init.blade.php` L9 の `guideLang = 'jp'` と一致）
+2. DOMContentLoaded 後の `setGuideLanguage('jp')` による再描画で挙動変化なし（no-op になる）
+3. 言語切替ボタン（JP ↔ EN）の切替機能は従来どおり動作する
+4. `php -l` 警告0件
+5. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- `guideLang` 初期値そのものの変更（`'jp'` → `'en'` 等）
+- ガイド文言の翻訳・内容変更
+
+---
+
+## 25. T-18（P3-2）: Cookie `ar_user_id_202609` に `Secure` フラグ追加
+
+### 目的
+`js-prize.blade.php` L50 の `CookieHelper202609.set()` が設定する Cookie `ar_user_id_202609` に `Secure` フラグがない。HTTPS 提供環境では、HTTPS 経由で渡されたユーザー識別子が HTTP リダイレクトや MITM 経由で漏洩するリスクがある。
+
+### 現状
+```js
+document.cookie = name + '=' + value + ';expires=' + exp.toUTCString() + ';path=/;SameSite=Strict';
+```
+
+### 成功基準
+1. HTTPS 環境（`location.protocol === 'https:'`）で `;Secure` が付与される
+2. HTTP 環境（ローカル開発 `php artisan serve`）では `Secure` を付与しない（Cookie が読めなくなる問題回避）
+3. 既存の `expires` / `path=/` / `SameSite=Strict` は維持
+4. `getUserId202609()` の Cookie 読込・書込フローは従来どおり動作する
+5. `php -l` 警告0件
+6. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- `CookieHelper202609` の API 変更（`get` / `set` シグネチャは不変）
+- `__Host-` prefix への移行
+
+---
+
+## 26. T-19（P3-3）: UUID 生成を `crypto.randomUUID()` に切替（フォールバック維持）
+
+### 目的
+`js-prize.blade.php` L63-69 の `generateUUID202609()` が `Math.random()` ベースのUUIDを生成している。`Math.random()` は暗号学的に安全でない乱数であり、ユーザー識別子として使用する場合、予測可能な ID が生成されるリスクがある。モダンブラウザ（Chrome 92+ / Firefox 95+ / Safari 15.4+）は `crypto.randomUUID()` をサポートしている。
+
+### 現状
+```js
+function generateUUID202609() {
+    return 'uid_' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+```
+
+### 成功基準
+1. `crypto.randomUUID` が利用可能な環境では `crypto.randomUUID()` を使用（`'uid_'` prefix 維持）
+2. 非対応ブラウザ（旧版等）では従来の `Math.random()` 方式にフォールバック
+3. 生成される ID のフォーマット（`uid_` + UUID文字列）は不変
+4. `getUserId202609()` / `generateFingerprint()` の動作は従来どおり
+5. `php -l` 警告0件
+6. 202605 / 202606 に影響なし
+
+### Out-of-Scope
+- サーバー側での ID 発行・検証の導入
+- 既存ユーザーの ID のマイグレーション

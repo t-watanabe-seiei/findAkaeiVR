@@ -630,3 +630,184 @@ document.querySelector('#ar-scene video')
 | `#photo-preview` 動画プレビュー | 影響なし（`a-scene` 外） |
 | 202605 / 202606 | 影響なし |
 
+---
+
+## 設計: T-15（P2-6）捕獲日時ゼロ埋め — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-stamps.blade.php` L372（`showStampBook()` 内）
+
+### 設計方針
+```js
+// 変更前
+dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+
+// 変更後
+dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+```
+
+**理由**: 既存の分（minutes）の `padStart(2, '0')` パターンを時間（hours）にも適用するのみ。日付（M/D）のフォーマットは変更しない。
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| スタンプブックの日時表示 | `9:05` → `09:05`（時刻が常に2桁） |
+| 他UI / 他ファイル | 影響なし |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: T-16（P2-7）API エラーの沈黙修正 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-prize.blade.php`（4箇所）
+
+### 設計方針
+
+**① `recordMarkerDetection` L141** — catch 内で `console.warn` を出す
+```js
+// 変更前
+.catch(function () {});
+
+// 変更後
+.catch(function (err) { console.warn('[AR202609] recordMarkerDetection error', err); });
+```
+
+**② `recordMarkerScan` L158** — `r.ok` チェック + `console.warn`
+```js
+// 変更前
+}).then(function (r) { return r.json(); }).catch(function () {});
+
+// 変更後
+}).then(function (r) {
+    if (!r.ok) { console.warn('[AR202609] recordMarkerScan HTTP ' + r.status); return null; }
+    return r.json();
+}).catch(function (err) { console.warn('[AR202609] recordMarkerScan error', err); });
+```
+
+**③ `checkPrizeExchangeStatus` L175** — `r.ok` チェック + `console.warn`（フォールバック値維持）
+```js
+// 変更前
+}).then(function (r) { return r.json(); }).catch(function () { return { hasExchanged: false }; });
+
+// 変更後
+}).then(function (r) {
+    if (!r.ok) { console.warn('[AR202609] checkPrize HTTP ' + r.status); return { hasExchanged: false }; }
+    return r.json();
+}).catch(function (err) { console.warn('[AR202609] checkPrize error', err); return { hasExchanged: false }; });
+```
+
+**④ `exchangePrize` L224** — catch 内で `console.warn` を追加（`alert` は維持）
+```js
+// 変更前
+.catch(function () { alert('通信エラーが発生しました'); _exchanging = false; });
+
+// 変更後
+.catch(function (err) { console.warn('[AR202609] exchangePrize error', err); alert('通信エラーが発生しました'); _exchanging = false; });
+```
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| API 正常応答 | 挙動不変（`r.ok === true` で `r.json()` を呼ぶ） |
+| API 5xx / ネットワークエラー | `console.warn` でログ出力（従来: 沈黙） |
+| ユーザー向け UI（alert / modal） | 変更なし |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: T-17（P2-5）ガイド初期言語統一 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/ui.blade.php` L47-48
+
+### 設計方針
+```html
+<!-- 変更前 -->
+<button id="lang-jp" class="lang-btn" aria-pressed="false">日本語</button>
+<button id="lang-en" class="lang-btn active" aria-pressed="true">English</button>
+
+<!-- 変更後 -->
+<button id="lang-jp" class="lang-btn active" aria-pressed="true">日本語</button>
+<button id="lang-en" class="lang-btn" aria-pressed="false">English</button>
+```
+
+**理由**: `js-init.blade.php` L9 で `guideLang = 'jp'` としており、L195 で `setGuideLanguage(guideLang)` が DOMContentLoaded 時に呼ばれる。HTML の初期状態を JS の初期状態（日本語）に合わせることで、JS 実行前のちらつきを解消する。
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| ガイドモーダル初回表示 | 日本語 active（従来: 一瞬英語 active → JSで日本語に切替） |
+| 言語切替機能（JP ↔ EN） | 影響なし（`setGuideLanguage` は従来どおり動作） |
+| 202605 / 202606 | 影響なし |
+
+---
+
+## 設計: T-18（P3-2）Cookie `Secure` フラグ追加 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-prize.blade.php` L50（`CookieHelper202609.set()` 内）
+
+### 設計方針
+```js
+// 変更前
+document.cookie = name + '=' + value + ';expires=' + exp.toUTCString() + ';path=/;SameSite=Strict';
+
+// 変更後
+document.cookie = name + '=' + value + ';expires=' + exp.toUTCString() + ';path=/;SameSite=Strict' + (location.protocol === 'https:' ? ';Secure' : '');
+```
+
+**理由**: `Secure` フラグは HTTPS 環境でのみ有効。HTTP 環境（ローカル開発 `php artisan serve`）で `Secure` を付与すると Cookie が読み書きできなくなるため、`location.protocol === 'https:'` で条件付き付与する。
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| HTTPS 本番環境 | Cookie に `Secure` フラグ付与（MITM 対策） |
+| HTTP ローカル開発 | `Secure` なし（従来どおり動作） |
+| `getUserId202609()` のフロー | 影響なし（Cookie API の変更有り） |
+| 202605 / 202606 | 影響なし（専用ファイル） |
+
+---
+
+## 設計: T-19（P3-3）`crypto.randomUUID()` 切替 — 2026-09-09
+
+### 変更対象
+`resources/views/ARstampRally202609/js-prize.blade.php` L63-69（`generateUUID202609()` 内）
+
+### 設計方針
+```js
+// 変更前
+function generateUUID202609() {
+    return 'uid_' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// 変更後
+function generateUUID202609() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return 'uid_' + crypto.randomUUID();
+    }
+    return 'uid_' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+```
+
+**理由**:
+- `crypto.randomUUID()` は暗号学的に安全な乱数で、UUID v4 を生成する
+- `typeof crypto !== 'undefined' && crypto.randomUUID` で feature detection（旧ブラウザ対応）
+- `'uid_'` prefix は維持（既存の `localStorage` / Cookie 値との互換性）
+- フォールバックで従来の `Math.random()` 方式を維持
+
+### 影響
+| 項目 | 影響 |
+|---|---|
+| モダンブラウザ（Chrome 92+ / Firefox 95+ / Safari 15.4+） | `crypto.randomUUID()` を使用（より安全なUUID） |
+| 旧版ブラウザ | 従来どおり `Math.random()` ベース（機能低下なし） |
+| 既存ユーザーの ID | 影響なし（新規ID生成時のみ） |
+| 202605 / 202606 | 影響なし（専用ファイル） |

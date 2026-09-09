@@ -220,3 +220,59 @@
 | 2026-09-09 | T27 | 静的検証5項目すべて合格（switch-camera-button=0 / innerHTML XSS=0 / generic video=0 / iPadOS=1 / 他キャンペーン未変更） |
 | 2026-09-09 | T28 | README.md に「P1高優先修正（2026-09-09）」セクション追加 |
 
+
+---
+
+# タスク — ARstampRally202609 優先度A修正（T-15 / T-16 / T-17 / T-18 / T-19）
+
+> 作成日: 2026-09-09 / 根拠: `.claude_workflow/ar_design.md`（優先度A修正設計）
+> 進捗記法: `[ ]` 未着手 / `[~]` 実施中 / `[x]` 完了
+> 変更対象: `js-stamps.blade.php` / `js-prize.blade.php` / `ui.blade.php` + `README.md`
+> 制約: 202605 / 202606 への変更禁止
+
+## タスクリスト
+
+### T29. T-15（P2-6）: `js-stamps.blade.php` — 捕獲日時ゼロ埋め
+- [x] T29-a `showStampBook()` の `dateDiv.textContent` 行（L372）で `d.getHours()` を `String(d.getHours()).padStart(2, '0')` に置換
+- [x] T29-b `php -l resources/views/ARstampRally202609/js-stamps.blade.php` が警告0件
+
+### T30. T-16（P2-7）: `js-prize.blade.php` — APIエラーの沈黙修正
+- [x] T30-a `recordMarkerDetection` L141 の `.catch(function () {})` → `.catch(function (err) { console.warn(...) })`
+- [x] T30-b `recordMarkerScan` L158 の `.then(r => r.json()).catch(() => {})` → `r.ok` チェック + `console.warn`
+- [x] T30-c `checkPrizeExchangeStatus` L175 の `.then(r => r.json()).catch(() => fallback)` → `r.ok` チェック + `console.warn`（フォールバック値維持）
+- [x] T30-d `exchangePrize` L224 の `.catch(() => { alert; _exchanging=false })` → `console.warn` 追加（alert 維持）
+- [x] T30-e `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T31. T-17（P2-5）: `ui.blade.php` — ガイド初期言語統一
+- [x] T31-a L47-48 の `active` クラスと `aria-pressed` を `lang-jp` ↔ `lang-en` 間で入れ替え
+- [x] T31-b `php -l resources/views/ARstampRally202609/ui.blade.php` が警告0件
+
+### T32. T-18（P3-2）: `js-prize.blade.php` — Cookie `Secure` フラグ追加
+- [x] T32-a `CookieHelper202609.set()` L50 に `(location.protocol === 'https:' ? ';Secure' : '')` を追記
+- [x] T32-b `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T33. T-19（P3-3）: `js-prize.blade.php` — `crypto.randomUUID()` 切替
+- [x] T33-a `generateUUID202609()` L63-69 に `crypto.randomUUID()` フォールバック構文を追加
+- [x] T33-b `php -l resources/views/ARstampRally202609/js-prize.blade.php` が警告0件
+
+### T34. 静的検証
+- [x] T34-a 202609 配下 blade に `d.getHours() + ':'`（padStart なし）が0件
+- [x] T34-b 202609 配下 blade に `.catch(function () {})`（空関数）が0件
+- [x] T34-c 202609 配下 blade に `lang-btn active` が `lang-jp` にのみ存在
+- [x] T34-d `js-prize.blade.php` に `Secure`（条件付き）が1件
+- [x] T34-e `js-prize.blade.php` に `crypto.randomUUID` が1件
+- [x] T34-f 202605 / 202606 のファイルに変更がない
+
+### T35. `README.md` に修正内容を追記（CLAUDE.md ルール6）
+- [x] T35-a 202609 優先度A修正セクションを追記（T-15〜T-19）
+
+## 進捗ログ（優先度A修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T29 (T-15) | `js-stamps.blade.php` L372 `d.getHours()` → `String(d.getHours()).padStart(2,'0')` / php -l OK |
+| 2026-09-09 | T30 (T-16) | `js-prize.blade.php` L30/L141/L158/L175/L224 `.catch` 空関数 → `console.warn` + `r.ok` チェック / php -l OK |
+| 2026-09-09 | T31 (T-17) | `ui.blade.php` L47-48 `active` / `aria-pressed` を `lang-jp` に統一 / php -l OK |
+| 2026-09-09 | T32 (T-18) | `js-prize.blade.php` L50 Cookie に `;Secure` 条件付き追加（HTTPSのみ） / php -l OK |
+| 2026-09-09 | T33 (T-19) | `js-prize.blade.php` L63-69 `crypto.randomUUID()` + `Math.random()` フォールバック / php -l OK |
+| 2026-09-09 | T34 | 静的検証全6項目パス / 202605・202606 影響なし |

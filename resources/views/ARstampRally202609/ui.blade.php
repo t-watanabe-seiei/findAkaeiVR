@@ -44,8 +44,8 @@
             <div class="guide-header">
                 <h2 id="guide-title">How to play</h2>
                 <div class="lang-switch" id="guide-lang-switch" role="tablist" aria-label="言語切替">
-                    <button id="lang-jp" class="lang-btn" aria-pressed="false">日本語</button>
-                    <button id="lang-en" class="lang-btn active" aria-pressed="true">English</button>
+                    <button id="lang-jp" class="lang-btn active" aria-pressed="true">日本語</button>
+                    <button id="lang-en" class="lang-btn" aria-pressed="false">English</button>
                 </div>
             </div>
             <div class="guide-steps">

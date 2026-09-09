@@ -1602,3 +1602,15 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 | 4 | Stage7 VR解除 | `sceneEl.exitVR()` パターンに変更（shooting3Dhalloween4 同等） |
 
 **変更ファイル:** `resources/views/findHoufu/_components.blade.php`
+### ARstampRally202609 優先度A修正（2026-09-09）
+
+| # | 変更内容 | 詳細 |
+|---|---------|------|
+| T-15 | 捕獲日時ゼロ埋め修正 | `js-stamps.blade.php` L372: `d.getHours()` → `String(d.getHours()).padStart(2, '0')`（`9:05` → `09:05`） |
+| T-16 | APIエラーの沈黙修正 | `js-prize.blade.php` 全5箇所の `.catch(function(){})` → `console.warn` + `r.ok` チェック（recordMarkerDetection / recordMarkerScan / checkPrize / exchangePrize / saveUserId） |
+| T-17 | ガイド初期言語統一 | `ui.blade.php` L47-48: `active` / `aria-pressed` を `lang-en` → `lang-jp` に変更（`js-init.blade.php` の `guideLang='jp'` と一致） |
+| T-18 | Cookie `Secure` フラグ追加 | `js-prize.blade.php` L50: HTTPS環境で条件付き `;Secure` 付与（`location.protocol === 'https:'`） |
+| T-19 | `crypto.randomUUID()` 切替 | `js-prize.blade.php` L63-69: `crypto.randomUUID()` + `Math.random()` フォールバック（暗号学的に安全なUUID生成） |
+
+**変更ファイル:** `resources/views/ARstampRally202609/js-stamps.blade.php` / `resources/views/ARstampRally202609/js-prize.blade.php` / `resources/views/ARstampRally202609/ui.blade.php`
+**影響範囲:** 202605 / 202606 への変更なし

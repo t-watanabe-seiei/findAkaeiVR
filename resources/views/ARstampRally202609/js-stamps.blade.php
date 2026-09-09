@@ -369,7 +369,7 @@
                         var d = new Date(stamps[sid].collectedAt);
                         var dateDiv = document.createElement('div');
                         dateDiv.className = 'stamp-date';
-                        dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+                        dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
                         item.appendChild(dateDiv);
                     }
 

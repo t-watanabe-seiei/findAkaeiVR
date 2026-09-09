@@ -27,7 +27,7 @@
                         tx.oncomplete = function () { resolve(); };
                         tx.onerror    = function () { reject(tx.error); };
                     });
-                }).catch(function () {});
+                }).catch(function (err) { console.warn('[AR202609] saveUserId error', err); });
             },
             getUserId: function () {
                 var self = this;
@@ -47,7 +47,7 @@
                 days = days || 365;
                 var exp = new Date();
                 exp.setTime(exp.getTime() + days * 24 * 60 * 60 * 1000);
-                document.cookie = name + '=' + value + ';expires=' + exp.toUTCString() + ';path=/;SameSite=Strict';
+                document.cookie = name + '=' + value + ';expires=' + exp.toUTCString() + ';path=/;SameSite=Strict' + (location.protocol === 'https:' ? ';Secure' : '');
             },
             get: function (name) {
                 var prefix = name + '=';
@@ -61,6 +61,9 @@
         };
 
         function generateUUID202609() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return 'uid_' + crypto.randomUUID();
+            }
             return 'uid_' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
                 var r = Math.random() * 16 | 0;
                 var v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -138,7 +141,7 @@
             if (localStorage.getItem(cacheKey)) return;
             recordMarkerScan(markerId, markerName, 'marker_scan').then(function () {
                 localStorage.setItem(cacheKey, JSON.stringify({ scanned: true, timestamp: new Date().toISOString() }));
-            }).catch(function () {});
+            }).catch(function (err) { console.warn('[AR202609] recordMarkerDetection error', err); });
         }
 
         function recordMarkerScan(markerId, markerName, captureType) {
@@ -155,7 +158,10 @@
                         fingerprint: fingerprint, deviceInfo: collectDeviceInfo(),
                         captureType: captureType, scannedAt: new Date().toISOString()
                     })
-                }).then(function (r) { return r.json(); }).catch(function () {});
+                }).then(function (r) {
+                    if (!r.ok) { console.warn('[AR202609] recordMarkerScan HTTP ' + r.status); return null; }
+                    return r.json();
+                }).catch(function (err) { console.warn('[AR202609] recordMarkerScan error', err); });
             });
         }
 
@@ -172,7 +178,10 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                     body:   JSON.stringify({ fingerprint: fp })
-                }).then(function (r) { return r.json(); }).catch(function () { return { hasExchanged: false }; });
+                }).then(function (r) {
+                    if (!r.ok) { console.warn('[AR202609] checkPrize HTTP ' + r.status); return { hasExchanged: false }; }
+                    return r.json();
+                }).catch(function (err) { console.warn('[AR202609] checkPrize error', err); return { hasExchanged: false }; });
             });
         }
 
@@ -221,7 +230,7 @@
                         _exchanging = false;
                     });
                 });
-            }).catch(function () { alert('通信エラーが発生しました'); _exchanging = false; });
+            }).catch(function (err) { console.warn('[AR202609] exchangePrize error', err); alert('通信エラーが発生しました'); _exchanging = false; });
         }
 
         function showPrizeCode(code) {
