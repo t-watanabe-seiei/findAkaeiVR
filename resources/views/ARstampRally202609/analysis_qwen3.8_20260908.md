@@ -416,3 +416,70 @@
 - T-04: 7秒間ローダーが表示され続ける（従来3秒より4秒長い）。これは「読み込み中」を示す正しい状態であり、黒画面（従来3〜7秒）よりユーザー体験は改善。
 - T-04: `window.load` が DOMContentLoaded より大幅に遅延する極端な端末では `monitorCameraStartup` の開始が遅れる可能性がある。ただしフォールバックは `hideArjsLoader` のみ（エラーUI表示は `monitorCameraStartup` 側で制御）なので、最悪の場合ローダーが7秒後に非表示になる程度。
 
+---
+
+## 13. 修正記録（2026-09-09 実施）— P1高優先4項目＋P2対応完了
+
+> 本節は 2026-09-09 に実施した P1高優先4項目（T-05/T-06/T-07）＋P2（T-09）の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 13.1 修正内容一覧
+
+| 項目 | 対応P | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|---|
+| **T-05** | P1-5 | `showStampBook()` の `innerHTML` 全削除 → `document.createElement` + `textContent`（XSS防止） | `js-stamps.blade.php` L348-400 | ✅ 修正済み |
+| **T-06** | P1-3 | `#switch-camera-button` 関連デッドコード削除（ボタン自体が存在しない） | `js-camera.blade.php` L8,17-37 / `js-throw.blade.php` L28 | ✅ 修正済み |
+| **T-07** | P1-4 | iPadOS 13+ 検出追加（`maxTouchPoints > 1 && /MacIntel/.test(navigator.platform)`） | `js-prize.blade.php` L105-106 | ✅ 修正済み |
+| **T-09** | P2 | `querySelector('video')` → `querySelector('#ar-scene video')`（特定性強化） | `head.blade.php` L51,75,89 | ✅ 修正済み |
+
+### 13.2 詳細
+
+**T-05**（P1-5 XSS 対応）
+- 旧: `item.innerHTML = '<div class="stamp-icon">…</div>' + (screenshot ? '<img src="' + url + '">' : icon) + '<div class="stamp-name">' + s.name + '</div>…'`
+- 新: `document.createElement('div')` → `className` 設定 → `textContent` 設定 → `appendChild`
+  - `<img>`: `createElement('img')` → `src` / `alt` プロパティ直接代入（`innerHTML` なし）
+  - 名前: `nameDiv.textContent = s.name`（HTMLエスケープ自動）
+  - 日付: `dateDiv.textContent = '…'`
+- CSS整合性: `head.blade.php` L262-279 の `.stamp-icon` / `.stamp-name` / `.stamp-date` / `.gallery-check` セレクタが新DOM構造と完全一致（確認済み）
+- 202609 モジュールの `innerHTML` 使用箇所: **0件**（確認済み）
+
+**T-06**（P1-3 デッドコード削除）
+- `js-camera.blade.php`:
+  - 削除: `var currentFacingMode = 'environment';`（switchCameraBtn のみで使用）
+  - 削除: `var switchCameraBtn = …; switchCameraBtn.addEventListener('click', …)`（L17-37、ボタン自体が `ui.blade.php` に存在しない）
+- `js-throw.blade.php`:
+  - 削除: `element.closest('#switch-camera-button') ||`（`isUIButton` 判定から除去）
+- 残存UI判定: `#stamp-book-button` / `#guide-button` / `#camera-button` / `#video-button` / 各モーダル → **すべて残存**
+- 他キャンペーン: 202603 / 202605 / 202606 は独立ファイル → **未変更**
+
+**T-07**（P1-4 iPadOS 検出）
+- 旧: `isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent)` → iPadOS 13+（Mac UA偽装）で `false` ❌
+- 新: `isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))`
+- 影響: iPadOS 13+ のみ `isIOS: false→true`（意図した修正）。他端末は条件が成り立たず**不変**
+
+**T-09**（P2 セレクタ特定化）
+- 旧: `document.querySelector('video')`（DOM先頭の`<video>`を掴む — `#photo-preview` のvideoと競合の恐れ）
+- 新: `document.querySelector('#ar-scene video')`（AR.js が生成する video 元素のみ取得）
+- `#ar-scene` の存在: `scene.blade.php` L13 `id="ar-scene"` ✅
+- 通常時: 取得される元素は同一（AR.js video が DOM 先頭だったため）→ **既存動作不変**
+- 競合時: `#photo-preview` の `<video>` を誤って掴まなくなる → **改善**
+
+### 13.3 検証結果
+
+| チェック | 結果 |
+|---|---|
+| `php -l` 5ファイル（js-stamps / js-camera / js-throw / js-prize / head） | 警告0件 ✅ |
+| 202609 モジュール内 `innerHTML` 使用箇所 | **0件** ✅ |
+| 202609 モジュール内 `switch-camera-button` 参照 | **0件** ✅ |
+| 202609 モジュール内 `querySelector('video')`（汎用） | **0件**（すべて `#ar-scene video`）✅ |
+| `maxTouchPoints` + `MacIntel`（iPadOS判定） | 1件（`js-prize.blade.php` L105-106）✅ |
+| `showStampBook` の新DOM構造と CSS セレクタ整合 | 一致 ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 13.4 残存リスク・補足
+
+- **T-05**: `img.src` は `screenshot`（base64 data URI）を直接代入。base64 は `collectAndMarkWithRetry` で `canvas.toDataURL('image/png')` 生成されるため、外部 URL を含まない。万一外部 URL が混入した場合は `img.src` としてロードされる（HTML注入ではない）。リスク: 低。
+- **T-06**: 削除した `currentFacingMode` 変数は削除後、ファイル内に残存しないことを確認済み。`isUIButton` の他ボタン判定はすべて残存。
+- **T-07**: `navigator.platform` は将来 non-standard として削除される可能性があるが、`maxTouchPoints > 1` 条件と組み合わせたフォールバック判定なので、`platform` が `undefined` の場合は条件が false になり従来どおり `isIOS: false`（iPhone/iPad は UA で判定済み）。
+- **T-09**: `#ar-scene` は A-Frame が生成する `<a-scene>` 元素の id。AR.js が内部で `<video>` を生成する構造は不変。
+
