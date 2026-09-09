@@ -1188,6 +1188,13 @@ this.material.uniforms.innerRadius.value = innerRadius;
 - **修正**: `cleanupOldMarkerScanCache()` 関数を新設（`js-prize.blade.php`）。`DOMContentLoaded` 時に1回実行し、`marker-scan-cache-202609-` プレフィックスのキーで日付部分が今日より古いものを逆順ループで削除
 - **対象ファイル**: `resources/views/ARstampRally202609/js-prize.blade.php` / `resources/views/ARstampRally202609/js-init.blade.php`
 
+### NEXT-5: ポケボールGLBプリロード（オブジェクトプール）
+
+- **問題**: 毎投擲で `setAttribute('gltf-model', ...)` → GLB(233KB) を再パース＆再コンパイル（Android で 200〜400ms のカクつき）
+- **修正**: 初回ロード時に非表示エンティティとしてGLBを1回だけパースし、テンプレートとして保持。以降の投擲は `template.clone(true)` + geometry/material 個別 clone で即座に生成
+- **フォールバック**: プリロード完了前は従来通り `gltf-model` attribute + `loaded` 待ちでGLBロード
+- **対象ファイル**: `resources/views/ARstampRally202609/js-throw.blade.php`（`initPokeballPool` / `createPokeballFromPool` / `throwPokeballInDirection` 修正）/ `resources/views/ARstampRally202609/js-init.blade.php`（初期化呼出）
+
 
 0:30～0:40  │  ●●●●●●●●●●●●●●    │ 視野角40°のやや大きい円に拡大
 0:40～0:50  │●●●●●●●●●●●●●●●●●●  │ 視野角50°の大きい円に拡大

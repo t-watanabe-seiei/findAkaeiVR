@@ -575,6 +575,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // ===== 17. 初期化 =====
+    // NEXT-5: ポケボールGLBプリロード（初回ロード時1回のみ）
+    if (typeof initPokeballPool === 'function') initPokeballPool();
     // P3-4: 過去の marker-scan-cache をクリーンアップ（初回ロード時1回のみ）
     if (typeof cleanupOldMarkerScanCache === 'function') cleanupOldMarkerScanCache();
     if (typeof updateStampBadge === 'function') updateStampBadge();

@@ -5,6 +5,93 @@
         var _isThrowing   = false;
         var _tapStartTime = 0;
 
+        // ---- ポケボールGLBプリロード (NEXT-5: 毎投擲再パース回避) ----
+        var _pokeballTemplate  = null;
+        var _pokeballReady     = false;
+        var _pokeballPreloadEl = null;
+
+        function initPokeballPool() {
+            if (_pokeballReady) return;
+            try {
+                var scene = document.getElementById('ar-scene');
+                if (!scene) return;
+                _pokeballPreloadEl = document.createElement('a-entity');
+                _pokeballPreloadEl.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seinei2.glb") }}');
+                _pokeballPreloadEl.setAttribute('visible', 'false');
+                scene.appendChild(_pokeballPreloadEl);
+
+                function onPokeballLoaded() {
+                    if (_pokeballReady) return;
+                    var mesh = _pokeballPreloadEl.getObject3D('mesh');
+                    if (!mesh) return;
+                    _pokeballTemplate = mesh;
+                    _pokeballReady = true;
+                    // マテリアル最適化をテンプレートに1回のみ適用
+                    (function () {
+                        var meshIdx = 0;
+                        mesh.traverse(function (node) {
+                            if (!node.isMesh) return;
+                            if (node.geometry) node.geometry.computeVertexNormals();
+                            if (node.material) {
+                                var mats = Array.isArray(node.material) ? node.material : [node.material];
+                                mats.forEach(function (mat, idx) {
+                                    mat.side = THREE.FrontSide;
+                                    mat.depthWrite = true;
+                                    mat.depthTest = true;
+                                    mat.polygonOffset = true;
+                                    mat.polygonOffsetFactor = meshIdx + idx + 1;
+                                    mat.polygonOffsetUnits  = meshIdx + idx + 1;
+                                    mat.flatShading = false;
+                                    mat.transparent = false;
+                                    mat.opacity = 1.0;
+                                    mat.alphaTest = 0;
+                                    mat.depthFunc = THREE.LessEqualDepth;
+                                    mat.dithering = true;
+                                    if (mat.metalness !== undefined) { mat.metalness = 0.2; mat.roughness = 0.5; }
+                                    mat.needsUpdate = true;
+                                });
+                                node.renderOrder = 1000 + meshIdx * 10;
+                            }
+                            meshIdx++;
+                        });
+                    })();
+                    console.log('[pokeball-pool] Preload complete');
+                }
+
+                _pokeballPreloadEl.addEventListener('model-loaded', onPokeballLoaded);
+                _pokeballPreloadEl.addEventListener('loaded', onPokeballLoaded);
+            } catch (e) {
+                console.warn('[pokeball-pool] init failed:', e);
+            }
+        }
+
+        function createPokeballFromPool(cameraPos) {
+            var pokeball = document.createElement('a-entity');
+            pokeball.setAttribute('scale', '0.15 0.15 0.15');
+
+            if (_pokeballReady && _pokeballTemplate) {
+                // 深さ複製: geometry / material を各自 clone（共有 dispose 防止）
+                var mesh = _pokeballTemplate.clone(true);
+                mesh.traverse(function (node) {
+                    if (node.isMesh) {
+                        if (node.geometry) node.geometry = node.geometry.clone();
+                        if (Array.isArray(node.material)) {
+                            node.material = node.material.map(function (m) { return m.clone(); });
+                        } else if (node.material) {
+                            node.material = node.material.clone();
+                        }
+                    }
+                });
+                pokeball.setObject3D('mesh', mesh);
+            } else {
+                // フォールバック: 従来の GLB ロード
+                pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seinei2.glb") }}');
+            }
+
+            pokeball.setAttribute('position', cameraPos.x + ' ' + cameraPos.y + ' ' + cameraPos.z);
+            return pokeball;
+        }
+
         function getActiveVisibleStampId() {
             if (!window.allHitboxes || !Array.isArray(window.allHitboxes)) return '';
             for (var i = 0; i < window.allHitboxes.length; i++) {
@@ -37,7 +124,7 @@
             );
         }
 
-        // 画面指定方向へポケボールを投げる
+        // 画面指定方向へポケボールを投げる（NEXT-5: GLB プール利用）
         function throwPokeballInDirection(forwardDir, speed, autoGetStampId) {
             var scene = document.getElementById('ar-scene');
             if (!scene || !scene.camera) return;
@@ -45,51 +132,55 @@
             var camera   = scene.camera;
             var cameraPos = camera.getWorldPosition(new THREE.Vector3());
 
-            var pokeball = document.createElement('a-entity');
-            pokeball.setAttribute('gltf-model', '{{ asset("cg/poke_ball_seiei2.glb") }}');
-            pokeball.setAttribute('scale', '0.15 0.15 0.15');
             var throwableConfig = 'autoGetDelayMs: 1000';
             if (autoGetStampId) throwableConfig += '; autoGetStampId: ' + autoGetStampId;
-            pokeball.setAttribute('pokeball-throwable', throwableConfig);
-            pokeball.setAttribute('position', cameraPos.x + ' ' + cameraPos.y + ' ' + cameraPos.z);
 
+            var pokeball = createPokeballFromPool(cameraPos);
+            pokeball.setAttribute('pokeball-throwable', throwableConfig);
             scene.appendChild(pokeball);
 
-            pokeball.addEventListener('loaded', function () {
-                // マテリアル最適化（Android向け）
-                var model = pokeball.getObject3D('mesh');
-                if (model) {
-                    var meshIdx = 0;
-                    model.traverse(function (node) {
-                        if (!node.isMesh) return;
-                        if (node.geometry) node.geometry.computeVertexNormals();
-                        if (node.material) {
-                            var mats = Array.isArray(node.material) ? node.material : [node.material];
-                            mats.forEach(function (mat, idx) {
-                                mat.side              = THREE.FrontSide;
-                                mat.depthWrite        = true;
-                                mat.depthTest         = true;
-                                mat.polygonOffset     = true;
-                                mat.polygonOffsetFactor = meshIdx + idx + 1;
-                                mat.polygonOffsetUnits  = meshIdx + idx + 1;
-                                mat.flatShading       = false;
-                                mat.transparent       = false;
-                                mat.opacity           = 1.0;
-                                mat.alphaTest         = 0;
-                                mat.depthFunc         = THREE.LessEqualDepth;
-                                mat.dithering         = true;
-                                if (mat.metalness !== undefined) { mat.metalness = 0.2; mat.roughness = 0.5; }
-                                mat.needsUpdate       = true;
-                            });
-                            node.renderOrder = 1000 + meshIdx * 10;
-                        }
-                        meshIdx++;
-                    });
-                }
+            if (_pokeballReady && _pokeballTemplate) {
+                // ---- プールパス: マテリアル最適化済みテンプレートの深さ複製 → 即 throw ----
                 if (pokeball.components['pokeball-throwable']) {
                     pokeball.components['pokeball-throwable'].throw(forwardDir, speed);
                 }
-            });
+            } else {
+                // ---- フォールバック: GLB ロード待ち → マテリアル最適化 → throw ----
+                pokeball.addEventListener('loaded', function () {
+                    var model = pokeball.getObject3D('mesh');
+                    if (model) {
+                        var meshIdx = 0;
+                        model.traverse(function (node) {
+                            if (!node.isMesh) return;
+                            if (node.geometry) node.geometry.computeVertexNormals();
+                            if (node.material) {
+                                var mats = Array.isArray(node.material) ? node.material : [node.material];
+                                mats.forEach(function (mat, idx) {
+                                    mat.side              = THREE.FrontSide;
+                                    mat.depthWrite        = true;
+                                    mat.depthTest         = true;
+                                    mat.polygonOffset     = true;
+                                    mat.polygonOffsetFactor = meshIdx + idx + 1;
+                                    mat.polygonOffsetUnits  = meshIdx + idx + 1;
+                                    mat.flatShading       = false;
+                                    mat.transparent       = false;
+                                    mat.opacity           = 1.0;
+                                    mat.alphaTest         = 0;
+                                    mat.depthFunc         = THREE.LessEqualDepth;
+                                    mat.dithering         = true;
+                                    if (mat.metalness !== undefined) { mat.metalness = 0.2; mat.roughness = 0.5; }
+                                    mat.needsUpdate       = true;
+                                });
+                                node.renderOrder = 1000 + meshIdx * 10;
+                            }
+                            meshIdx++;
+                        });
+                    }
+                    if (pokeball.components['pokeball-throwable']) {
+                        pokeball.components['pokeball-throwable'].throw(forwardDir, speed);
+                    }
+                });
+            }
         }
 
         // タッチ開始: 始点とスワイプ方向を記録する（UIボタン上は無視）

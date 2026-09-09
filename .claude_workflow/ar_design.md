@@ -1007,3 +1007,79 @@ if (typeof updateStampBadge === 'function') updateStampBadge();
 | `marker-scan-cache-202603-*` / `202605` / `202606` | 影響なし（プレフィックス不一致） |
 | `ar-stamp-rally-202609` / `ar-captured-animals-202609` | 影響なし |
 | 202605 / 202606 の blade ファイル | 変更なし |
+
+---
+
+## § NEXT-5 設計: ポケボール GLB プリロード
+
+### 概要
+
+初回ロード時に A-Frame の `gltf` コンポーネント経由で GLB を**1回だけ**パースし、得られた `THREE.Group`（`entity.getObject3D('mesh')`）をテンプレートとして保持する。以降の投擲はテンプレートの**深さ複製**（`geometry.clone()` + `material.clone()`）のみで即座にボールを生成する。
+
+### アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ js-init.blade.php (DOMContentLoaded)                             │
+│   └→ initPokeballPool()                                          │
+│        └→ hidden a-entity + gltf-model → A-Frame がパース       │
+│             └→ 'model-loaded' / 'loaded' → テンプレート取得     │
+│                  └→ マテリアル最適化をテンプレートに適用         │
+└─────────────────────────────────────────────────────────────────┘
+          ↓ (プリロード完了後)
+┌─────────────────────────────────────────────────────────────────┐
+│ js-throw.blade.php                                               │
+│   throwPokeballInDirection(forwardDir, speed, autoGetStampId)    │
+│     ├── _pokeballReady ?                                         │
+│     │   ├── YES → createPokeballFromPool(cameraPos)             │
+│     │   │         → template.clone(true)                        │
+│     │   │         → geometry.clone() + material.clone()         │
+│     │   │         → pokeball.setObject3D('mesh', mesh)          │
+│     │   │         → setAttribute('pokeball-throwable', conf)    │
+│     │   │         → scene.appendChild(pokeball)                 │
+│     │   │         → 即座に .throw(dir, speed)                   │
+│     │   └── NO  → フォールバック（従来どおり）                  │
+│     │             → setAttribute('gltf-model', url)             │
+│     │             → 待機: 'loaded' → material最適化 → .throw()  │
+│     └── common: throwableConfig, position, scene.appendChild     │
+└─────────────────────────────────────────────────────────────────┘
+          ↓ (投擲完了後)
+┌─────────────────────────────────────────────────────────────────┐
+│ aframe-components.blade.php (不変)                                │
+│   handleHit / handleGalleryHit → destroyAndFreeEntity(el)        │
+│     → geometry.dispose() / material.dispose()                    │
+│     → ※ clone 済みのためテンプレート本体には影響しない           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 新設変数・関数（`js-throw.blade.php` 冒頭）
+
+```js
+var _pokeballTemplate = null;   // THREE.Group（プリロード済みテンプレート）
+var _pokeballReady = false;     // フラグ: プリロード完了
+var _pokeballPreloadEl = null;  // 非表示のプリロード用 a-entity
+
+function initPokeballPool() { /* プリロード開始 */ }
+function createPokeballFromPool(cameraPos) { /* 深さ複製でボール生成 */ }
+```
+
+### 重要設計判断
+
+| # | 判断 | 理由 |
+|---|---|---|
+| 1 | `clone()` 後に geometry/material を各自 clone | `destroyAndFreeEntity` が共有参照を dispose するとテンプレートが壊れるため |
+| 2 | `aframe-components.blade.php` は変更しない | `pokeball-throwable` の挙動（throw/tick/handleHit）は不変で安全 |
+| 3 | 非表示エンティティをシーンに常駐 | テンプレートとしてメモリに保持（VRAM 約 0.5MB 程度で許容範囲） |
+| 4 | フォールバックを維持 | プリロード未完了時 / A-Frame 初期化失敗時の保険 |
+| 5 | `initPokeballPool()` は `DOMContentLoaded` 内で呼出 | A-Frame シーンが初期化された後に `appendChild` する必要があるため |
+| 6 | `model-loaded` と `loaded` の両方をリッスン | A-Frame バージョン差に耐える（片方のみ発火する可能性） |
+
+### 影響
+
+| 項目 | 影響 |
+|---|---|
+| 投擲パフォーマンス | 2投擲目以降: GLB パースなし（clone のみ）→ フレームドロップ改善 |
+| メモリ使用量 | 常時 +約 0.5MB（テンプレート）/ 投擲ごとに +geometry/material clone |
+| 初回投擲 | プリロードが完了していれば即時投擲（従来は GLB ロード待機） |
+| 当たり判定 / スタンプ取得 | 挙動不変（`pokeball-throwable` 本体不変） |
+| 202605 / 202606 | 影響なし（対象ファイルのみ変更） |

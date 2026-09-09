@@ -351,3 +351,41 @@
 | 2026-09-09 | T43 | `js-init.blade.php` §17 初期化に呼出を追加。`php -l` 警告0件 |
 | 2026-09-09 | T44 | 静的検証3項目すべて合格（定義1回・呼出順序OK・202605/202606未変更） |
 | 2026-09-09 | T45 | `README.md` 優先度B修正セクションに NEXT-7 項目を追加 |
+
+---
+
+## NEXT-5: ポケボールGLBプリロード（T46〜T50）
+
+### T46. `js-throw.blade.php` にプリロード基盤を追加
+- [x] T46-a `_pokeballTemplate` / `_pokeballReady` / `_pokeballPreloadEl` 変数宣言（既存変数宣言直後）
+- [x] T46-b `initPokeballPool()` 関数を定義（非表示エンティティ生成 + `model-loaded`/`loaded` リッスン + マテリアル最適化適用）
+- [x] T46-c `createPokeballFromPool(cameraPos)` 関数を定義（`template.clone(true)` + geometry/material clone + `setObject3D`）
+- [x] T46-d フォールバック: `_pokeballReady === false` 時は従来の `setAttribute('gltf-model', ...)` にフォールバック
+
+### T47. `throwPokeballInDirection()` を修正
+- [x] T47-a プール利用時: `createPokeballFromPool(cameraPos)` で生成 → `pokeball-throwable` 設定 → `appendChild` → 即座に `.throw(dir, speed)`
+- [x] T47-b フォールバック時: 従来の `setAttribute('gltf-model', ...)` + `loaded` 待ち → マテリアル最適化 → `.throw()`
+- [x] T47-c 既存のタッチ/マウスイベントハンドラ（`touchstart`/`touchend`/`mousedown`/`mouseup`）に影響がないことを確認
+
+### T48. `js-init.blade.php` に `initPokeballPool()` 呼出を追加
+- [x] T48-a §17 初期化セクションに `if (typeof initPokeballPool === 'function') initPokeballPool();` を追加
+- [x] T48-b `cleanupOldMarkerScanCache()` 呼出の直前に配置（順序: プリロード → クリーンアップ → UI更新）
+
+### T49. 静的検証
+- [x] T49-a `php -l js-throw.blade.php` 警告0件
+- [x] T49-b `php -l js-init.blade.php` 警告0件
+- [x] T49-c `initPokeballPool` / `createPokeballFromPool` が `js-throw.blade.php` 内で1回のみ定義
+- [x] T49-d 202605 / 202606 ファイルに変更がない
+
+### T50. `README.md` に NEXT-5 修正内容を追記
+- [x] T50-a 優先度B修正セクションに NEXT-5 の項目を追加
+
+## 進捗ログ（NEXT-5 修正）
+
+| 日付 | タスク | 内容・結果 |
+|------|--------|-----------|
+| 2026-09-09 | T46 | `js-throw.blade.php` に `_pokeballTemplate`/`_pokeballReady`/`_pokeballPreloadEl` 変数、`initPokeballPool()`、`createPokeballFromPool()` を追加。`php -l` 警告0件 |
+| 2026-09-09 | T47 | `throwPokeballInDirection()` をプール利用に改修（即throw / GLBフォールバック分岐）。タッチ/マウスイベントに変更なし |
+| 2026-09-09 | T48 | `js-init.blade.php` §17 に `initPokeballPool()` 呼出を追加（`cleanupOldMarkerScanCache` 直前）。`php -l` 警告0件 |
+| 2026-09-09 | T49 | 静的検証4項目すべて合格（php-l×2 / 定義1回×2 / 202605-06未変更） |
+| 2026-09-09 | T50 | `README.md` 優先度B修正セクションに NEXT-5 項目を追加 |

@@ -590,3 +590,35 @@ function recordMarkerDetection(markerId, markerName) {
 - `ar-stamp-rally-202609` / `ar-captured-animals-202609` 等のスタンプデータ
 - サーバー側のログ削除
 
+---
+
+## 32. NEXT-5: ポケボール GLB プリロード（毎投擲再パース回避）
+
+### 背景
+
+`throwPokeballInDirection()`（`js-throw.blade.php:48-49`）が**毎投擲** `setAttribute('gltf-model', ...)` で `poke_ball_seinei2.glb`（233KB）を A-Frame の `gltf` コンポーネントに読み込ませる。A-Frame は `<a-assets>` 経由以外は**毎回の読み込みで GLTF を再パース**する（JSON + Binary Buffer デコード + Three.js オブジェクト生成）。さらに `destroyAndFreeEntity` が geometry/material を `dispose()` するため GPU メモリ上の再利用も無い。連続タップ時パースコストが積み上がり、Android（特に低スペック端末）でフレームドロップ / GC スパイキが発生する。
+
+### 目的
+
+GLB を**初回のみパース**し、テンプレートとして保持。以降の投擲では `geometry.clone()` + `material.clone()` による軽量な深さ複製のみを行い、パースコストを排除する。
+
+### Scope
+
+**対象**:
+- `js-throw.blade.php`（プリロード IIFE + `createPokeballFromPool()` + `throwPokeballInDirection()` 修正）
+- `js-init.blade.php`（`initPokeballPool()` 呼出追加）
+
+**非対象**:
+- `aframe-components.blade.php`（`pokeball-throwable` コンポーネント本体は変更しない）
+- `scene.blade.php` / `head.blade.php` / `js-stamps.blade.php` / `js-prize.blade.php`
+- 202605 / 202606 モジュール
+
+### 成功基準
+
+1. 初回投擲時: プリロードが完了していれば GLB パースなし（`setObject3D` による即座のマッシュ注入）でボールが生成される
+2. 投擲後の破壊（`destroyAndFreeEntity`）がテンプレート本体の geometry/material に影響しない（`clone()` 済み）
+3. プリロード未完了時は従来どおり `gltf-model` 設定によるロード（フォールバック）
+4. 投擲速度・当たり判定・スタンプ取得フローに挙動変更有りなし
+5. 202605 / 202606 影響なし
+6. `php -l` 警告 0 件
+
