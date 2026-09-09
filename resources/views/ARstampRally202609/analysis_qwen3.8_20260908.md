@@ -483,3 +483,108 @@
 - **T-07**: `navigator.platform` は将来 non-standard として削除される可能性があるが、`maxTouchPoints > 1` 条件と組み合わせたフォールバック判定なので、`platform` が `undefined` の場合は条件が false になり従来どおり `isIOS: false`（iPhone/iPad は UA で判定済み）。
 - **T-09**: `#ar-scene` は A-Frame が生成する `<a-scene>` 元素の id。AR.js が内部で `<video>` を生成する構造は不変。
 
+---
+
+## 14. 修正記録（2026-09-09 実施）— 優先度A 5項目（P2/P3）対応完了
+
+> 本節は 2026-09-09 に実施した優先度A 5項目（T-15〜T-19）の修正記録である。
+> 方針：202609 専用ファイルのみ変更。202605 / 202606 には影響なし。
+
+### 14.1 修正内容一覧
+
+| 項目 | 対応P | 修正内容 | 対象ファイル | 状態 |
+|---|---|---|---|---|
+| **T-15** | P2-6 | 捕獲日時 `d.getHours()` → `String(d.getHours()).padStart(2, '0')`（`9:05` → `09:05`） | `js-stamps.blade.php` L372 | ✅ 修正済み |
+| **T-16** | P2-7 | 全5箇所の空 `.catch` → `console.warn` + `r.ok` チェック | `js-prize.blade.php` L30/L144/L162-164/L182-184/L233 | ✅ 修正済み |
+| **T-17** | P2-5 | `active` / `aria-pressed` を `lang-en` → `lang-jp` に統一（`guideLang='jp'` と一致） | `ui.blade.php` L47-48 | ✅ 修正済み |
+| **T-18** | P3-2 | Cookie 書込に `(location.protocol === 'https:' ? ';Secure' : '')` 条件追加 | `js-prize.blade.php` L50 | ✅ 修正済み |
+| **T-19** | P3-3 | `crypto.randomUUID()` + `Math.random()` フォールバック構文 | `js-prize.blade.php` L63-69 | ✅ 修正済み |
+
+### 14.2 詳細
+
+**T-15**（P2-6 捕獲日時ゼロ埋め）
+- 旧: `d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0')`
+- 新: `String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')`
+- 表示例: `9:05` → `09:05` / `10:30` → `10:30`（2桁均一化）
+
+**T-16**（P2-7 API エラーの沈黙修正）
+- 対象5箇所（`js-prize.blade.php`）:
+
+| # | 行 | 関数 | 修正 |
+|---|---|---|---|
+| ① | L30 | `UserIdStore202609.set()` IndexedDB save | `.catch(function(){})` → `.catch(function(err){ console.warn('[AR202609] saveUserId error', err); })` |
+| ② | L144 | `recordMarkerDetection()` | catch → `console.warn('[AR202609] recordMarkerDetection error', err)` |
+| ③ | L162-164 | `recordMarkerScan()` | `r.ok` チェック + `console.warn` / catch → `console.warn` |
+| ④ | L182-184 | `checkPrizeExchangeStatus()` | `r.ok` チェック + `console.warn` + フォールバック / catch → `console.warn` + フォールバック |
+| ⑤ | L233 | `exchangePrize()` | catch に `console.warn` 追加（`alert` 維持） |
+
+- API 正常応答時の挙動は不変。ユーザー向け UI（alert / modal）は変更なし
+- ①（L30）は設計当初の「4箇所」に追加で発見した IndexedDB `put()` 失敗時のサイレントスワロウ
+
+**T-17**（P2-5 ガイド初期言語統一）
+- 旧: `lang-en` が `active` + `aria-pressed="true"` / `lang-jp` が `aria-pressed="false"`
+- 新: `lang-jp` が `active` + `aria-pressed="true"` / `lang-en` が `aria-pressed="false"`
+- `js-init.blade.php` L9 `guideLang='jp'` と初期 HTML が一致 → JS 実行前の一瞬の英語ちらつき解消
+
+**T-18**（P3-2 Cookie `Secure` フラグ）
+- 旧: `document.cookie = name + '=' + value + ';expires=...;path=/;SameSite=Strict';`
+- 新: `document.cookie = name + '=' + value + ';expires=...;path=/;SameSite=Strict' + (location.protocol === 'https:' ? ';Secure' : '');`
+- HTTPS 本番: `Secure` 付与（MITM 経由の Cookie 盗難防止） / HTTP ローカル: なし（開発互換維持）
+
+**T-19**（P3-3 `crypto.randomUUID()` 切替）
+- 旧: `Math.random()` ベースの UUID 生成
+- 新: `crypto.randomUUID()` 優先 + `Math.random()` フォールバック（secure context 非対応環境で自動切替）
+- `'uid_'` prefix 維持 → 既存 DB / Cookie 内の ID 形式と統一
+
+### 14.3 検証結果
+
+| チェック | 結果 |
+|---|---|
+| `php -l` 3ファイル（js-stamps / js-prize / ui） | 警告0件 ✅ |
+| 202609 モジュール内 空 `.catch(function () {})` | **0件**（全5箇所 `console.warn` 済み）✅ |
+| `location.protocol === 'https:'` 条件判定 | 1件（`js-prize.blade.php` L50）✅ |
+| `crypto.randomUUID` 使用 + フォールバック | 1件（`js-prize.blade.php` L64-66）✅ |
+| `lang-jp` active / `aria-pressed="true"` | `ui.blade.php` L47 ✅ |
+| `String(d.getHours()).padStart(2, '0')` | `js-stamps.blade.php` L372 ✅ |
+| 202605 / 202606 ファイル | 変更なし ✅ |
+
+### 14.4 残存リスク・補足
+
+- **T-16 ①**: `UserIdStore202609.set()` の IndexedDB 保存失敗は、`localStorage` / Cookie による3重保存が存在するため実運用上のリスクは低い。
+- **T-18**: HTTP→HTTPS 移行時に `Secure` なしで書かれた旧 Cookie が読み取られない可能性 → `localStorage` 参照フォールバックで吸収される設計。
+- **T-19**: `crypto.randomUUID()` は secure context のみ利用可能。HTTP 環境（localhost 以外）では `Math.random()` フォールバック → 既存 ID 形式不変。
+
+---
+
+## 15. 次の修正候補（2026-09-09 時点）
+
+> T-15〜T-19 対応後の残存項目。対応済み（P2-5/P2-6/P2-7/P3-2/P3-3）は除外済み。
+
+### 15.1 推奨優先（影響大・工数小）
+
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
+|---|---|---|---|---|
+| **NEXT-1** | `scene.blade.php:17` | **P2-10**: `antialias: true` が全環境有効 → モバイル GPU 負荷 | `AR_FORCE_LOWRES === true` 時に `antialias: false`（`head.blade.php` IIFE 結果を `scene.blade.php` で `@if` 分岐 or 動的 attribute set） | **20分** |
+| **NEXT-2** | `js-stamps.blade.php:32-35` | **P2-8**: 2つの `new Audio` が初回ロードで即生成（`preload=auto` 171KB 消費） | 遅延生成: IIFE 内 `null` 初期化 → 初回 `playSound` 時に `new Audio(...)` | **30分** |
+| **NEXT-3** | `ui.blade.php:53` | **P2-9**: `howToOperate.png`（1.39MB）が LCP 影響 | WebP/AVIF 化（`cwebp -q 80` → 200〜400KB）or `<picture>` + 幅 360px 相当リサイズ | **30分** |
+| **NEXT-4** | `js-prize.blade.php` | **P2-3**: `showPrizeCode` / `showRedeemedPrizeInfo` の約30行 HTML 重複 + インライン `onclick` | 共通 `showPrizeModal(title, code, extra)` に集約、`addEventListener` で `modal.remove()` | **30分** |
+
+### 15.2 余力（アーキテクチャ・運用）
+
+| # | 対象ファイル | 問題（対応P） | 修正方針 | 工数 |
+|---|---|---|---|---|
+| **NEXT-5** | `js-throw.blade.php:48-49` | **P2-2**: ポケボール GLB（233KB）毎投擲再パース | シーン内にボールプール（3体）or `a-assets` プリロード | **1〜2時間** |
+| **NEXT-6** | `scene.blade.php:15` | **P2-1**: 21マーカー同時検出の Android 最大負荷 | N秒未検出マーカーの動的無効化（`enabled=false`）で検索空間狭小化 | **3〜5時間** |
+| **NEXT-7** | `js-prize.blade.php:136-144` | **P3-4**: `marker-scan-cache-202609-*` localStorage 残留 | 初回ロード時 `date < today` キーを削除（1行ループ） | **15分** |
+| **NEXT-8** | 全体 | **P3-6**: グローバルエラーが `console` のみ | Sentry / CloudWatch / 自社ログ送信先接続 | **要検討** |
+
+> **P3-1**（`user-scalable=no`）: `ar_requirements.md` で「ユーザー操作防御として維持」方針明記済み → **対応不要**。
+
+### 15.3 推奨進め方
+
+1. **NEXT-1（antialias）**: 条件分岐1行で低スペック端末の FPS 改善。即対応推奨。
+2. **NEXT-2（Audio 遅延生成）**: 初回ロード時の 171KB 帯域 + メモリ削減。
+3. **NEXT-3（画像最適化）**: 1.39MB → 200〜400KB。LCP 大幅改善。
+4. **NEXT-4（モーダル集約）**: 保守性向上。新規 UI 追加時の重複排除。
+5. **NEXT-5〜6**: パフォーマンスボトルネック解消のため要設計検討。
+
