@@ -30,5 +30,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('stamp202609_scan', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
         RateLimiter::for('stamp202609_check', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
         RateLimiter::for('stamp202609_redeem', fn (Request $request) => Limit::perHour(10)->by($key($request)));
+
+        // ARstampRally202610 専用のレートリミッター。
+        RateLimiter::for('stamp202610_scan', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
+        RateLimiter::for('stamp202610_check', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
+        RateLimiter::for('stamp202610_redeem', fn (Request $request) => Limit::perHour(10)->by($key($request)));
     }
 }

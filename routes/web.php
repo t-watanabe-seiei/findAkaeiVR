@@ -62,6 +62,21 @@ Route::prefix('stamp202609')->group(function () {
         ->middleware('throttle:stamp202609_redeem');
 });
 
+// ARstampRally202610 専用API（web グループ: CSRF + セッション有効）
+// 閾値(10種)をサーバー側で強制し、レートリミッターも適用する。他キャンペーンには影響しない。
+Route::match(['get', 'head'], '/stamp202610', function () {
+    return view('ARstampRally202610');
+})->name('stamp202610.index');
+
+Route::prefix('stamp202610')->group(function () {
+    Route::post('/record-scan', [App\Http\Controllers\StampRally202610Controller::class, 'recordScan'])
+        ->middleware('throttle:stamp202610_scan');
+    Route::post('/check-prize', [App\Http\Controllers\StampRally202610Controller::class, 'checkStatus'])
+        ->middleware('throttle:stamp202610_check');
+    Route::post('/exchange-prize', [App\Http\Controllers\StampRally202610Controller::class, 'exchange'])
+        ->middleware('throttle:stamp202610_redeem');
+});
+
 Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');
@@ -197,5 +212,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard202606', [AdminController::class, 'dashboard202606'])->name('admin.dashboard202606');
         // ARstampRally202609用のダッシュボード
         Route::get('/dashboard202609', [AdminController::class, 'dashboard202609'])->name('admin.dashboard202609');
+        // ARstampRally202610用のダッシュボード
+        Route::get('/dashboard202610', [AdminController::class, 'dashboard202610'])->name('admin.dashboard202610');
     });
 });
