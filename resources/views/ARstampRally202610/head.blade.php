@@ -63,7 +63,10 @@
                 } catch (e) {}
             }
             const interval = setInterval(function() {
-                const v = document.querySelector('#ar-scene video');
+                // ★根本修正: AR.js の <video> は document.body 直下に配置されるため
+                //   「#ar-scene video」は常に null を返し、カメラ監視が永遠にタイムアウトした。
+                //   動作実績のある「video」（202605 / 202609@e0c369c と同一）に復旧。
+                const v = document.querySelector('video');
                 if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
                     clearInterval(interval);
                     window.arjsVideoReady = true;
@@ -83,7 +86,8 @@
         }
 
         window.ensureCameraAccess = function() {
-            const v = document.querySelector('#ar-scene video');
+            // ★根本修正: 同上（「#ar-scene video」は null）→「video」に復旧
+            const v = document.querySelector('video');
             if (v && v.srcObject && (v.readyState >= 2 || !v.paused || v.currentTime > 0)) { window.arjsVideoReady = true; return; }
             // 2026-09-11 修正（FR-10）:
             // AR.js が既にストリームを確保済み（srcObject あり）の場合は、2度目の
@@ -116,7 +120,7 @@
             function attempt(idx) {
                 if (idx >= sets.length) { window._ensureCameraInProgress = false; try { var el = document.getElementById('camera-error'); if (el) el.style.display = 'flex'; } catch(e){} return; }
                 navigator.mediaDevices.getUserMedia(sets[idx]).then(function(stream) {
-                    var videoEl = document.querySelector('#ar-scene video');
+                    var videoEl = document.querySelector('video');
                     if (videoEl) {
                         if (!videoEl.srcObject || videoEl.paused) {
                             videoEl.srcObject = stream;
