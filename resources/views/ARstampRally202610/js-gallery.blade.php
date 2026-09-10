@@ -1,8 +1,8 @@
         // ========== maker00 ギャラリー機能 ==========
         // marker-00 が見つかったとき、
-        //   - Model_00 を (0,0,0) に固定表示（anime01ループ + gallery-hitbox）
-        //   - 捕獲済み選択モデル最大4体を GALLERY_POSITIONS に配置（anime01ループ + gallery-hitbox）
-        //   - ボールヒット時: anime02一度再生 → anime01ループに戻る（スタンプ取得なし）
+        //   - Model_00 を (0,0,0) に固定表示（anime03ループ + gallery-hitbox）
+        //   - 捕獲済み選択モデル最大4体を GALLERY_POSITIONS に配置（anime03ループ + gallery-hitbox）
+        //   - ボールヒット時: anime02一度再生 → anime03ループに戻る（スタンプ取得なし）
 
         (function () {
             var GALLERY_POSITIONS = [
@@ -47,7 +47,7 @@
 
                     model00Entity._galleryMixer   = model00Mixer;
 
-                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime01') || model.animations[0];
+                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime03') || model.animations[0];
                     var clip02 = THREE.AnimationClip.findByName(model.animations, 'anime02')
                                || (model.animations.length > 1 ? model.animations[1] : model.animations[0]);
 
@@ -184,7 +184,7 @@
                     galleryMixers.push(mixer);
                     window.galleryMixers = galleryMixers;
 
-                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime01') || model.animations[0];
+                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime03') || model.animations[0];
                     var clip02 = THREE.AnimationClip.findByName(model.animations, 'anime02')
                                || (model.animations.length > 1 ? model.animations[1] : model.animations[0]);
 
@@ -228,7 +228,7 @@
                 var mixer    = entity._galleryMixer;
                 if (!mixer || !action02) return;
 
-                // anime01停止 → anime02再生
+                // anime03停止 → anime02再生
                 if (action01) action01.stop();
                 try {
                     action02.reset();
@@ -242,7 +242,7 @@
                             try { if (mixer) mixer.removeEventListener('finished', onFinished); } catch (e) {}
                             if (!resolved) {
                                 resolved = true;
-                                // anime01に戻す
+                                // anime03に戻す
                                 try {
                                     action02.stop();
                                     if (action01) { action01.reset(); action01.play(); }
@@ -268,7 +268,7 @@
                         }
                     }, (clipDuration * 1000) + 120);
                 } catch (e) {
-                    // フォールバック: anime01再生
+                    // フォールバック: anime03再生
                     try { if (action01) { action01.reset(); action01.play(); } } catch (e2) {}
                 }
             };
