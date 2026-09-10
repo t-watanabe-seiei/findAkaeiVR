@@ -44,24 +44,35 @@
             return false;
         })();
 
+        // 2026-09-11 修正（FR-9）:
+        // タイムアウトで「カメラが起動できません」を表示しても監視は継続し、
+        // video が後から ready になればエラー画面等を自動非表示にする。
+        // （低スペックiOSで7秒以内に初フレームが来ても、その後に起動するケースの誤表示を解消）
         function monitorCameraStartup(timeoutMs) {
             timeoutMs = timeoutMs || 6000;
             const start = Date.now();
+            let timedOut = false;
+            function hideCameraErrorUI() {
+                try {
+                    const el = document.getElementById('camera-error');
+                    if (el) el.style.display = 'none';
+                    const hm = document.getElementById('camera-help-modal');
+                    if (hm && hm.style.display !== 'none') { hm.style.display = 'none'; hm.setAttribute('aria-hidden', 'true'); }
+                    const ld = document.querySelector('.arjs-loader');
+                    if (ld) ld.style.display = 'none';
+                } catch (e) {}
+            }
             const interval = setInterval(function() {
                 const v = document.querySelector('#ar-scene video');
                 if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
                     clearInterval(interval);
                     window.arjsVideoReady = true;
-                    const el = document.getElementById('camera-error');
-                    if (el) el.style.display = 'none';
-                    try {
-                        const hm = document.getElementById('camera-help-modal');
-                        if (hm && hm.style.display !== 'none') { hm.style.display = 'none'; hm.setAttribute('aria-hidden', 'true'); }
-                    } catch (e) {}
+                    window._pendingCameraError = false;
+                    hideCameraErrorUI();
                     return;
                 }
-                if (Date.now() - start > timeoutMs) {
-                    clearInterval(interval);
+                if (!timedOut && Date.now() - start > timeoutMs) {
+                    timedOut = true; // 監視は解除せず継続（video が遅れて起動しても自動復帰する）
                     if (window.guideModalOpen) { window._pendingCameraError = true; return; }
                     const el = document.getElementById('camera-error');
                     if (el) el.style.display = 'flex';
@@ -74,6 +85,25 @@
         window.ensureCameraAccess = function() {
             const v = document.querySelector('#ar-scene video');
             if (v && v.srcObject && (v.readyState >= 2 || !v.paused || v.currentTime > 0)) { window.arjsVideoReady = true; return; }
+            // 2026-09-11 修正（FR-10）:
+            // AR.js が既にストリームを確保済み（srcObject あり）の場合は、2度目の
+            // getUserMedia を行わない（iOS では既存ストリームと競合し全制約セットが失敗する）。
+            // 代わりにこのタップgesture内で play() を試行し、失敗しても監視継続で自動復帰する。
+            if (v && v.srcObject) {
+                try {
+                    if (!v.hasAttribute('playsinline')) v.setAttribute('playsinline', '');
+                    v.muted = true;
+                    const p = v.play();
+                    if (p && p.catch) {
+                        p.catch(function (e) {
+                            console.warn('[AR202610] ensureCameraAccess: play() blocked, monitor will recover', e);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('[AR202610] ensureCameraAccess: play() failed', e);
+                }
+                return;
+            }
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
             if (window._ensureCameraInProgress) return;
             window._ensureCameraInProgress = true;

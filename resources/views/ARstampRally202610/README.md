@@ -35,6 +35,16 @@
 - モデル: `public/cg/202609/Model_00.glb` 〜 `Model_20.glb`
 - マーカー: `public/cg/202609/pattern-maker00.patt` 〜 `pattern-maker20.patt`
 
+## iOS 対応（カメラ起動の誤表示対策・2026-09-11 追加）
+- iPhone7 / iPhone SE3 などの低スペック機では、AR.js のカメラコールドスタートに 7〜15 秒程度かかる場合があります。
+  その場合でも実際にはカメラが起動しており、従来は「カメラが起動できません」画面が**そのまま残る**不具合がありました。
+- 対応内容（202610 パーシャルのみ・`public/js/` 共通ライブラリは未変更）:
+  - `monitorCameraStartup` はタイムアウト後も**監視を継続**し、video が後から ready になった時点でエラー画面等を自動非表示にします。
+  - タップ時の `ensureCameraAccess` は、`video.srcObject` が既に存在する場合は**二重 `getUserMedia` を行わず `video.play()` のみ**を実行（iOS のストリーム競合 / `NotAllowedError` を回避）。
+  - UA 判定で iOS なら監視タイムアウトを **15000ms**（他は 7000ms）に延長し、ローダー強制非表示のフォールバックとも同一値に整合。
+  - `#camera-error` の文言を「起動に時間がかかる場合がある／タップで自動再開されることがある」導線に更新。
+- 詳細な仕様は `requirements.md`（FR-8〜FR-12）/ `design.md` / `tasks.md`（T15〜T20）を参照してください。
+
 ## 注意
 - スキャン・交換データは `marker_scans` / `prize_exchanges` テーブルを既存キャンペーンと共用している（202609 と同一仕様）。
 - `cg/202609/` アセットを削除すると 202610 にも影響します。

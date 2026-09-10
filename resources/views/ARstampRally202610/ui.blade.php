@@ -88,8 +88,14 @@
     <!-- カメラ権限エラーUI -->
     <div id="camera-error" style="display:none; position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.75); color:#fff; z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
         <div style="max-width:420px; text-align:center; padding:20px;">
-            <h2 style="margin-top:0;">カメラが起動できません</h2>
-            <p>カメラの許可が拒否されているか、端末がカメラを初期化できませんでした。<br>カメラの許可を確認し、もう一度お試しください。</p>
+            <h2 style="margin-top:0;">カメラの起動を確認しています</h2>
+            <!-- 2026-09-11 修正（FR-11）:
+                 低スペック機（iPhone7/SE3 等）では起動に時間がかかることがあり、
+                 実際には起動済みでもこの画面が一時的に残ることがあるため、
+                 「タップで再開されることがあります」導線を追加。 -->
+            <p>カメラの起動に時間がかかる場合があり、実際にはすでに動いていることがあります。<br>
+            しばらくお待ちいただくか、下の「再試行」をタップすると自動的に再開されることがあります。<br>
+            それでも続く場合、設定からカメラの許可を確認してください。</p>
             <div style="margin-top:12px;">
                 <button id="retry-camera" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#0078D4;color:#fff;border:none;margin-right:8px;">再試行</button>
                 <button id="retry-camera-lowres" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#ff8c00;color:#fff;border:none;display:none;">低解像度で再試行</button>
