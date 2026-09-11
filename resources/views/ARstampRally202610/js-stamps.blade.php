@@ -16,10 +16,10 @@
             'model_14': { name: 'ウーパールーパー', icon: '🐾', model: '202610/Model_14.glb' },
             'model_15': { name: 'とら', icon: '🐾', model: '202610/Model_15.glb' },
             'model_16': { name: 'ねこ', icon: '🐾', model: '202610/Model_16.glb' },
-            'model_17': { name: 'バーガー', icon: '🐾', model: '202610/Model_17.glb' },
-            'model_18': { name: 'かめ', icon: '🐾', model: '202610/Model_18.glb' },
-            'model_19': { name: 'ペットボトル', icon: '🐾', model: '202610/Model_19.glb' },
-            'model_20': { name: 'T-REX', icon: '🐾', model: '202610/Model_20.glb' }
+            'model_17': { name: 'うさぎ', icon: '🐾', model: '202610/Model_17.glb' },
+            'model_18': { name: 'おおかみ', icon: '🐾', model: '202610/Model_18.glb' },
+            'model_19': { name: 'さる', icon: '🐾', model: '202610/Model_19.glb' },
+            'model_20': { name: 'うし', icon: '🐾', model: '202610/Model_20.glb' }
         };
 
         const TOTAL_STAMP_SLOTS = 20;
