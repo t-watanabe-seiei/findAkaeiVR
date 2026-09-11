@@ -51,3 +51,24 @@ ARstampRally202609 と同一のアーキテクチャ（Bladeパーシャル + �
 | FR-10 | リトライ時は既存ストリーム（`srcObject`）が既に存在する場合は新たな `getUserMedia` を要求せず、タップgesture内で `video.play()` を試行して自動復帰させる（二重キャプチャ防止） |
 | FR-11 | 誤表示時にユーザーに正しい導線（タップで再開/権限確認）を提示するエラー文言にする |
 | FR-12 | 修正対象は 202610 のパーシャルのみとし、202609 等他のキャンペーンおよび共有JS（`public/js/`）への変更は行わない |
+
+## 6. 根本原因修正（video セレクタ誤り）と要件の再定義（2026-09-11 追記・最終）
+
+> **要約**: §5 で設定した FR-8〜FR-12（監視継続 / 二重 getUserMedia 防止 / タイムアウト拡張）を
+> 適用しても旧 iPhone で症状が解消しなかった。その真因は、カメラ監視・確保処理が
+> video 要素を**誤ったセレクタ**で取得していたことである。本節が最終的な根本原因と修正要件。
+
+### 根本原因（§5 の診断に対する再定義）
+- AR.js（`public/js/ar-tracking.min.js`）はカメラ `<video>` を `<a-scene>` 配下ではなく
+  **`document.body` 直下**に `appendChild` する（ライブラリ本体で確認）。
+- そのため `document.querySelector('#ar-scene video')` は**常に `null`** を返し、
+  カメラが実動作していても ready 判定（`readyState >= 2 || ...`）に到達しない
+  →「カメラを起動できません」が固定表示される。
+- 正常系（`ARstampRally202605` / `ARstampRally202609@e0c369c`）は `document.querySelector('video')`
+  を使い、同様の症状は現れていない。
+
+### 機能要件（追加・最優先）
+| # | 要件 |
+|---|---|
+| FR-13 | カメラ video の取得セレクタを `document.querySelector('video')` とする（`#ar-scene video` は使わない）。`monitorCameraStartup` / `ensureCameraAccess` / `getUserMedia` 成功ハンドラの **3 箇所すべて**で適用する |
+| FR-14 | 修正対象は `ARstampRally202610/head.blade.php` のみ。202609 等の他キャンペーン・共有JS（`public/js/`）は変更しない（分離原則）。現行 202609 が同バグを持つ場合は `analysis20260911.md` の「要対応」に留め、本タスクでは修正しない |

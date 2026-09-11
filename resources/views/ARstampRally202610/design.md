@@ -112,3 +112,38 @@ ARstampRally202609 と同一構成のクローン（単一モジュール追加�
 - 202610: `head.blade.php` / `js-init.blade.php` / `ui.blade.php` の3ファイルのみ。
 - 202609 / 202605 / 202606 / 202603 / 共有JS（`public/js/ar-engine.min.js` 等）は変更しない。
 - Android（Chrome・WebXR）経路の挙動はタイムアウト値以外不変（監視継続は Android でも「起動遅延の自動復帰」として有効）。
+
+## 8. 根本原因修正 設計（video セレクタ誤り・2026-09-11 追記・最終）
+
+> **注**: §7 のフロー記述にある「`#ar-scene video` を 500ms 間隔でポーリング」は
+> **修正前の（不具合のある）状態**である。本節が修正後の設計であり、
+> §7 と本節が矛盾する場合は **本節を優先**する。
+
+### 根拠（AR.js ライブラリ本体）
+```js
+// public/js/ar-tracking.min.js（ARTracking クラス）
+B = document.createElement("video"), ...
+document.body.appendChild(B)   // ★ <a-scene> 配下ではなく body 直下
+```
+→ `document.querySelector('#ar-scene video')` は **常に `null`**。
+→ `document.querySelector('video')`（文書内の先頭 video）が AR.js カメラ video。
+  202610 の blade テンプレートにハードコードされた `<video>` は存在しないため、
+  この video は必ずカメラ video である。
+
+### 修正点（`head.blade.php` 3箇所）
+| 関数 / 位置 | 修正前（破損） | 修正後（正常） |
+|---|---|---|
+| `monitorCameraStartup` の `setInterval` 内 | `querySelector('#ar-scene video')` | `querySelector('video')` |
+| `ensureCameraAccess` 冒頭 | 同上 | 同上 |
+| `getUserMedia` 成功ハンドラ内 | 同上 | 同上 |
+
+### なぜ §7 の安全策（FR-9 / T15 等）だけでは不十分だったか
+- 監視継続・二重 getUserMedia 防止も、いずれも `#ar-scene video` を前提に video を取得していたため、
+  取得結果 `v` が常に `null` になり **ready 判定に到達しなかった**。
+- セレクタが `video`（正）に修正されると、§7 の監視継続（FR-9）・
+  二重 getUserMedia 防止（FR-10）は **補完として機能する**（低速起動時の自動復帰等）。
+
+### 影響範囲
+- **変更**: `ARstampRally202610/head.blade.php` のみ（3箇所・セレクタ文字列）。
+- **非変更**: 202609 / 202605 / 202606 / 202603 / 共有JS（`public/js/*`）（FR-14・分離原則）。
+- Android（Chrome・WebXR）経路も `video` 取得で同一挙動（正常系と整合）。

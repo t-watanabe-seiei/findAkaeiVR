@@ -48,3 +48,20 @@
 ## 注意
 - スキャン・交換データは `marker_scans` / `prize_exchanges` テーブルを既存キャンペーンと共用している（202609 と同一仕様）。
 - `cg/202609/` アセットを削除すると 202610 にも影響します。
+
+## 根本原因の特定と最終修正（video セレクタ誤り・2026-09-11 追記）
+- 上記「iOS 対応（FR-8〜FR-12）」の安全策（監視継続 / 二重 `getUserMedia` 防止 / タイムアウト拡張）を
+  適用しても旧 iPhone で症状が解消しなかった**真の根本原因**を特定した。
+  - **原因**: AR.js（`public/js/ar-tracking.min.js`）はカメラ `<video>` を `<a-scene>` 配下ではなく
+    `document.body` 直下に `appendChild` するため、`document.querySelector('#ar-scene video')` が
+    **常に `null`** になり、カメラが実動作していても監視の ready 判定に到達しなかった。
+  - **修正**: 202610 の `head.blade.php` 3箇所（`monitorCameraStartup` / `ensureCameraAccess` /
+    `getUserMedia` 成功ハンドラ）のセレクタを `document.querySelector('video')` に復旧（正常系
+    202605 / 202609@e0c369c と同一）。
+- **影響範囲**: 202610 の `head.blade.php` のみ（`public/js/` 共有ライブラリ・他キャンペーンは未変更）。
+- **検証**: `php -l` 通過 / レンダリング正常（`querySelector('video')` 3件、`#ar-scene video` はコメント2行のみ）/
+  `git status` で 202609 未変更を確認。詳細は `requirements.md`（§6・FR-13〜FR-14）/
+  `design.md`（§8）/ `tasks.md`（T21〜T24）/ `analysis20260911.md` を参照。
+- **既知の未対応（別キャンペーン）**: 現行 `ARstampRally202609`（HEAD）にも同様の `#ar-scene video`
+  セレクタ（3箇所）が残存し、旧 iPhone で同症状が出る可能性。分離原則により本キャンペーンでは
+  未修正（要対応: `resources/views/ARstampRally202609/analysis20260911.md` 参照）。

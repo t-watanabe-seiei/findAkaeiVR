@@ -36,3 +36,21 @@
 - `View::make('ARstampRally202610')->render()`: 200KB の HTML を生成（タイトル・`cg/202609/` アセット参照・`/stamp202610/` API を確認）
 - `admin/dashboard202610.blade.php`: Blade コンパイル + `php -l` で構文OK
 - `git status`: 202609 関連ファイル（views / controller）は変更なし
+
+## 根本原因修正（video セレクタ誤り）のドキュメント化・検証（2026-09-11 追記・最終）
+> 前段階のmdファイル（requirements / design / tasks / README）を読み込みました。
+> 範囲: **202610 のみ**（分離原則・ユーザー確認済み）。202609 のコードは変更しない（要対応は `analysis20260911.md` に記録）。
+> コード修正（セレクタ `video` 化）はコミット `166a16d`（HEAD）で反映済み。本節は「ドキュメント化 ＋ 検証」タスク。
+> **ステータス: 全タスク完了（2026-09-11）**
+
+- [x] T21 コード修正の確認: `head.blade.php` の3箇所が `querySelector('video')` であること、コード内で `#ar-scene video` 実体0件であることを確認（コメント2行のみ参照）
+- [x] T22 `requirements.md`（§6 / FR-13・FR-14）と `design.md`（§8）に根本原因と修正設計を追記
+- [x] T23 検証: `php -l` / ビューレンダリング（`view('...head')->render()`）/ `#ar-scene video` 残存確認（コメントのみ）/ `git status`（202609 未変更）
+- [x] T24 `README.md` に更新内容（根本原因・最終修正）を追記
+
+## 検証結果（根本原因修正・video セレクタ / 2026-09-11）
+- コード実態（`head.blade.php`）: `querySelector('video')` = **3件**（`monitorCameraStartup` / `ensureCameraAccess` / `getUserMedia` 成功ハンドラ）、コード内の `#ar-scene video` 実体 = **0件**（67/89 行は説明コメントのみ）
+- `php -l`: `No syntax errors detected`
+- レンダリング: `view('ARstampRally202610.head')->render()` = **25685 bytes**、出力に `querySelector('video')` が3件、`#ar-scene video` は2件（いずれもコメント・機能しない）
+- `git status`: 変更は `ARstampRally202610/requirements.md` / `design.md`（本追記）のみ。`head.blade.php` は HEAD（`166a16d`）にコミット済み、**202609 関連ファイル・`public/js/` は未変更**（分離原則遵守）
+- 残課題（202609・別キャンペーン）: 現行 202609 にも同様の `#ar-scene video` セレクタ（3箇所）が残存。**本タスクでは対象外**（要対応: `analysis20260911.md` 参照）
