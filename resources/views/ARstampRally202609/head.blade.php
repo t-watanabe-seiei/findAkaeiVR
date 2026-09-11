@@ -48,7 +48,7 @@
             timeoutMs = timeoutMs || 6000;
             const start = Date.now();
             const interval = setInterval(function() {
-                const v = document.querySelector('#ar-scene video');
+                const v = document.querySelector('video'); // 2026-09-11 fix(根本原因): AR.js は <video> を document.body に生成するため、#ar-scene の下位セレクタは必ず null
                 if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
                     clearInterval(interval);
                     window.arjsVideoReady = true;
@@ -61,7 +61,7 @@
                     return;
                 }
                 if (Date.now() - start > timeoutMs) {
-                    clearInterval(interval);
+                    // 2026-09-11 fix: タイムアウト後も監視を継続（低スペックiOSで camera が7秒後に起動したケースで、video ready になったら自動解除）
                     if (window.guideModalOpen) { window._pendingCameraError = true; return; }
                     const el = document.getElementById('camera-error');
                     if (el) el.style.display = 'flex';
@@ -72,7 +72,7 @@
         }
 
         window.ensureCameraAccess = function() {
-            const v = document.querySelector('#ar-scene video');
+            const v = document.querySelector('video'); // 2026-09-11 fix(根本原因): #ar-scene の下位セレクタは必ず null（202610 と同一）
             if (v && v.srcObject && (v.readyState >= 2 || !v.paused || v.currentTime > 0)) { window.arjsVideoReady = true; return; }
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
             if (window._ensureCameraInProgress) return;
@@ -86,7 +86,7 @@
             function attempt(idx) {
                 if (idx >= sets.length) { window._ensureCameraInProgress = false; try { var el = document.getElementById('camera-error'); if (el) el.style.display = 'flex'; } catch(e){} return; }
                 navigator.mediaDevices.getUserMedia(sets[idx]).then(function(stream) {
-                    var videoEl = document.querySelector('#ar-scene video');
+                    var videoEl = document.querySelector('video'); // 2026-09-11 fix(根本原因): 同上
                     if (videoEl) {
                         if (!videoEl.srcObject || videoEl.paused) {
                             videoEl.srcObject = stream;

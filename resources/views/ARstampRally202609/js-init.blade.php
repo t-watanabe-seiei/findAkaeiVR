@@ -624,6 +624,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.arjsVideoReady = true;
             hideArjsLoader();
             try { var chm = document.getElementById('camera-help-modal'); if (chm) { chm.style.display = 'none'; chm.setAttribute('aria-hidden','true'); } } catch (e) {}
+            try { var ce = document.getElementById('camera-error'); if (ce) ce.style.display = 'none'; window._pendingCameraError = false; } catch (e) {} // 2026-09-11 fix: 二重防御（202610 と同一）
 
             // 縦横問わず、動画実寸/実画面に射影を同期
             syncArjsToRealSize();
@@ -640,13 +641,21 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // フォールバック: 7秒後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
-    // monitorCameraStartup(7000) のタイムアウトと整合: ローダー非表示時 = camera-error が表示されるタイミング
-    setTimeout(hideArjsLoader, 7000);
+    // 2026-09-11 fix: 低スペックiOS（iPhone7/SE3 等）は AR.js のコールドスタートが遅いため監視タイムアウトを延長。iPadOS 13+（Mac UA偽装）も iOS として扱う。
+    function cameraStartupTimeout() {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform));
+        return isIOS ? 15000 : 7000;
+    }
+    var _camStartupTimeout = cameraStartupTimeout();
+
+    // フォールバック: タイムアウト後にローダーを強制非表示（arjs-video-loaded が発火しない端末向け）
+    // monitorCameraStartup(_camStartupTimeout) のタイムアウトと整合: ローダー非表示時 = camera-error が表示されるタイミング
+    setTimeout(hideArjsLoader, _camStartupTimeout);
 
     // ===== 18. window.load: カメラ監視開始 =====
     window.addEventListener('load', function () {
-        if (typeof monitorCameraStartup === 'function') monitorCameraStartup(7000);
+        if (typeof monitorCameraStartup === 'function') monitorCameraStartup(_camStartupTimeout);
     });
 
 }); // end DOMContentLoaded
