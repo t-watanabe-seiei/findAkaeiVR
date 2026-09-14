@@ -14,7 +14,7 @@
         8:  { timeLimit: 16, skyId: 'sky08',  bgmId: 'bgm_s3', isResult: false },
         9:  { timeLimit: 16, skyId: 'sky09',  bgmId: 'bgm_s3', isResult: false },
         10: { timeLimit: 16, skyId: 'sky10',  bgmId: 'bgm_s3', isResult: false },
-        11: { timeLimit: 16, skyId: 'skyResult', bgmId: 'bgm_s3', isResult: true },
+        11: { timeLimit: 16, skyId: 'skyResult', bgmId: 'bgm_s4', isResult: true },
     };
 
     // モデル表示位置：以下9点からランダム選択。向きはカメラの方を向く（placeModelAt 内で計算）

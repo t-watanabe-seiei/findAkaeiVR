@@ -8,7 +8,7 @@
         <audio id="bgm_s1" src="{{ asset('cg/sound_bgm11.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s2" src="{{ asset('cg/sound_bgm12.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="bgm_s3" src="{{ asset('cg/sound_bgm13.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
-        <audio id="bgm_s4" src="{{ asset('cg/sound_bgm14.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
+        <audio id="bgm_s4" src="{{ asset('cg/sound_bgm07.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="sound_appear" src="{{ asset('cg/sound_bucchi_appear.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
         <audio id="sound_hit" src="{{ asset('cg/sound_bucchi_die.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
         <img id="sky01" src="{{ asset('cg/202609/IMG_20260204_153.jpg') }}" crossorigin="anonymous">
