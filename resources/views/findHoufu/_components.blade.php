@@ -4,23 +4,33 @@
     function debugLog(...a) { if (window.DEBUG_MODE) console.log('[findHoufu]', ...a); }
 
     window.STAGE_CONFIG = {
-        1: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s1', isResult: false },
-        2: { timeLimit: 16, skyId: 'sky02', bgmId: 'bgm_s1', isResult: false },
-        3: { timeLimit: 16, skyId: 'sky03', bgmId: 'bgm_s1', isResult: false },
-        4: { timeLimit: 16, skyId: 'sky04', bgmId: 'bgm_s1', isResult: false },
-        5: { timeLimit: 16, skyId: 'sky05', bgmId: 'bgm_s1', isResult: false },
-        6: { timeLimit: 16, skyId: 'sky06', bgmId: 'bgm_s1', isResult: false },
-        7: { timeLimit: 16, skyId: 'sky01', bgmId: 'bgm_s4', isResult: true  },
+        1:  { timeLimit: 16, skyId: 'sky01',  bgmId: 'bgm_s1', isResult: false },
+        2:  { timeLimit: 16, skyId: 'sky02',  bgmId: 'bgm_s1', isResult: false },
+        3:  { timeLimit: 16, skyId: 'sky03',  bgmId: 'bgm_s1', isResult: false },
+        4:  { timeLimit: 16, skyId: 'sky04',  bgmId: 'bgm_s1', isResult: false },
+        5:  { timeLimit: 16, skyId: 'sky05',  bgmId: 'bgm_s1', isResult: false },
+        6:  { timeLimit: 16, skyId: 'sky06',  bgmId: 'bgm_s1', isResult: false },
+        7:  { timeLimit: 16, skyId: 'sky07',  bgmId: 'bgm_s1', isResult: false },
+        8:  { timeLimit: 16, skyId: 'sky08',  bgmId: 'bgm_s1', isResult: false },
+        9:  { timeLimit: 16, skyId: 'sky09',  bgmId: 'bgm_s1', isResult: false },
+        10: { timeLimit: 16, skyId: 'sky10',  bgmId: 'bgm_s1', isResult: false },
+        11: { timeLimit: 16, skyId: 'skyResult', bgmId: 'bgm_s4', isResult: true },
     };
 
+    // モデル表示位置：以下9点からランダム選択。向きはカメラの方を向く（placeModelAt 内で計算）
     window.LOCATIONS = [
-        { pos: '-2 -0.6 1',       rot: '0 120 0',  scale: '0.35 0.35 0.35' },
-        { pos: '10 -0.88 -1.9',   rot: '0 -90 0',  scale: '0.675 0.675 0.675' },
-        { pos: '-1.325 1.0 4.00', rot: '0 150 0',  scale: '0.35 0.35 0.35' },
-        { pos: '6.0 0 0.13',      rot: '0 -120 0', scale: '0.525 0.525 0.525' },
-        { pos: '-0.5 0 -0.5',     rot: '0 0 0',    scale: '0.25 0.25 0.25' },
-        { pos: '-4.5 0.9 4.6',    rot: '0 130 0',  scale: '0.475 0.475 0.475' },
+        { x: -5, y: 0,  z: -5 },
+        { x: 0,  y: 0,  z: -7 },
+        { x: 5,  y: 0,  z: -5 },
+        { x: 7,  y: 0,  z: 0  },
+        { x: 5,  y: 0,  z: 5  },
+        { x: -7, y: 0,  z: 0  },
+        { x: 0,  y: 0,  z: 7  },
+        { x: -5, y: 0,  z: 5  },
+        { x: -2, y: -1, z: 1  },
     ];
+    // モデルの固定スケール（全位置共通）
+    window.MODEL_SCALE = '0.5 0.5 0.5';
 
     window.gameStarted   = false;
     window.gameEnded     = false;
@@ -324,7 +334,7 @@
             }
 
             // Preload next stage
-            if (stageNum < 7) preloadNextStage(stageNum + 1);
+            if (stageNum < 11) preloadNextStage(stageNum + 1);
 
             if (cfg.isResult) {
                 this.showResult();
@@ -519,16 +529,36 @@
             }
         },
 
+        // モデルの向きをカメラの方に向けた yaw（度）を算出。A-Frame の正面は +Z 方向
+        computeYawFacingCamera: function (mx, mz) {
+            let camX = 0, camZ = 0;
+            const camEl = document.getElementById('my_camera');
+            if (camEl && camEl.object3D) {
+                const p = new THREE.Vector3();
+                camEl.object3D.getWorldPosition(p);
+                camX = p.x;
+                camZ = p.z;
+            }
+            const dx = camX - mx;
+            const dz = camZ - mz;
+            const len = Math.sqrt(dx * dx + dz * dz);
+            if (len < 0.0001) return 0;
+            return (Math.atan2(dx, dz) * 180) / Math.PI;
+        },
+
         placeModelAt: function (locIdx) {
             const cfg = window.LOCATIONS[locIdx];
             const sceneEl = this.el.sceneEl;
             const existing = document.getElementById('bucchiModel');
             if (existing) disposeAndRemoveEntity(existing);
+            const posStr = cfg.x + ' ' + cfg.y + ' ' + cfg.z;
+            const rotY = this.computeYawFacingCamera(cfg.x, cfg.z);
+            const rotStr = '0 ' + rotY.toFixed(1) + ' 0';
             const model = document.createElement('a-entity');
             model.id = 'bucchiModel';
-            model.setAttribute('position', cfg.pos);
-            model.setAttribute('rotation', cfg.rot);
-            model.setAttribute('scale', cfg.scale);
+            model.setAttribute('position', posStr);
+            model.setAttribute('rotation', rotStr);
+            model.setAttribute('scale', window.MODEL_SCALE);
             model.setAttribute('gltf-model', '#model_bucchi');
             model.setAttribute('animation-mixer', 'clip: anime01; loop: repeat; timeScale: 1');
             model.setAttribute('visible', 'false');
