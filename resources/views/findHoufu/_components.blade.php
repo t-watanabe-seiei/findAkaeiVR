@@ -8,12 +8,12 @@
         2:  { timeLimit: 16, skyId: 'sky02',  bgmId: 'bgm_s1', isResult: false },
         3:  { timeLimit: 16, skyId: 'sky03',  bgmId: 'bgm_s1', isResult: false },
         4:  { timeLimit: 16, skyId: 'sky04',  bgmId: 'bgm_s1', isResult: false },
-        5:  { timeLimit: 16, skyId: 'sky05',  bgmId: 'bgm_s1', isResult: false },
-        6:  { timeLimit: 16, skyId: 'sky06',  bgmId: 'bgm_s1', isResult: false },
-        7:  { timeLimit: 16, skyId: 'sky07',  bgmId: 'bgm_s1', isResult: false },
-        8:  { timeLimit: 16, skyId: 'sky08',  bgmId: 'bgm_s1', isResult: false },
-        9:  { timeLimit: 16, skyId: 'sky09',  bgmId: 'bgm_s1', isResult: false },
-        10: { timeLimit: 16, skyId: 'sky10',  bgmId: 'bgm_s1', isResult: false },
+        5:  { timeLimit: 16, skyId: 'sky05',  bgmId: 'bgm_s2', isResult: false },
+        6:  { timeLimit: 16, skyId: 'sky06',  bgmId: 'bgm_s2', isResult: false },
+        7:  { timeLimit: 16, skyId: 'sky07',  bgmId: 'bgm_s2', isResult: false },
+        8:  { timeLimit: 16, skyId: 'sky08',  bgmId: 'bgm_s3', isResult: false },
+        9:  { timeLimit: 16, skyId: 'sky09',  bgmId: 'bgm_s3', isResult: false },
+        10: { timeLimit: 16, skyId: 'sky10',  bgmId: 'bgm_s3', isResult: false },
         11: { timeLimit: 16, skyId: 'skyResult', bgmId: 'bgm_s4', isResult: true },
     };
 
