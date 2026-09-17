@@ -11,17 +11,17 @@
         <audio id="bgm_s4" src="{{ asset('cg/sound_bgm07.mp3') }}" preload="auto" loop crossorigin="anonymous"></audio>
         <audio id="sound_appear" src="{{ asset('cg/sound_bucchi_appear.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
         <audio id="sound_hit" src="{{ asset('cg/sound_bucchi_die.mp3') }}" preload="auto" crossorigin="anonymous"></audio>
-        <img id="sky01" src="{{ asset('cg/202609/IMG_20260204_153.jpg') }}" crossorigin="anonymous">
-        <img id="sky02" src="{{ asset('cg/202609/IMG_20260204_154.jpg') }}" crossorigin="anonymous">
-        <img id="sky03" src="{{ asset('cg/202609/IMG_20260305_425.jpg') }}" crossorigin="anonymous">
-        <img id="sky04" src="{{ asset('cg/202609/IMG_20260331_473.jpg') }}" crossorigin="anonymous">
-        <img id="sky05" src="{{ asset('cg/202609/IMG_20260405_497.jpg') }}" crossorigin="anonymous">
-        <img id="sky06" src="{{ asset('cg/202609/IMG_20260405_502.jpg') }}" crossorigin="anonymous">
-        <img id="sky07" src="{{ asset('cg/202609/IMG_20260405_506.jpg') }}" crossorigin="anonymous">
-        <img id="sky08" src="{{ asset('cg/202609/IMG_20260405_508.jpg') }}" crossorigin="anonymous">
-        <img id="sky09" src="{{ asset('cg/202609/IMG_20260405_526.jpg') }}" crossorigin="anonymous">
-        <img id="sky10" src="{{ asset('cg/202609/IMG_20260405_537.jpg') }}" crossorigin="anonymous">
-        <img id="skyResult" src="{{ asset('cg/202609/IMG_20260405_507.jpg') }}" crossorigin="anonymous">
+        <img id="sky01" src="{{ asset('cg/202609/IMG_20260331_473.jpg') }}" crossorigin="anonymous">
+        <img id="sky02" src="{{ asset('cg/202609/IMG_20260405_497.jpg') }}" crossorigin="anonymous">
+        <img id="sky03" src="{{ asset('cg/202609/IMG_20260405_508.jpg') }}" crossorigin="anonymous">
+        <img id="sky04" src="{{ asset('cg/202609/IMG_20260915_556.jpg') }}" crossorigin="anonymous">
+        <img id="sky05" src="{{ asset('cg/202609/IMG_20260915_559.jpg') }}" crossorigin="anonymous">
+        <img id="sky06" src="{{ asset('cg/202609/IMG_20260917_566.jpg') }}" crossorigin="anonymous">
+        <img id="sky07" src="{{ asset('cg/202609/IMG_20260917_570.jpg') }}" crossorigin="anonymous">
+        <img id="sky08" src="{{ asset('cg/202609/IMG_20260917_581.jpg') }}" crossorigin="anonymous">
+        <img id="sky09" src="{{ asset('cg/202609/IMG_20260917_586.jpg') }}" crossorigin="anonymous">
+        <img id="sky10" src="{{ asset('cg/202609/IMG_20260917_588.jpg') }}" crossorigin="anonymous">
+        <img id="skyResult" src="{{ asset('cg/202609/IMG_20260204_153.jpg') }}" crossorigin="anonymous">
     </a-assets>
 
     <a-entity light="type: ambient; color: #DDD; intensity: 1.2"></a-entity>
