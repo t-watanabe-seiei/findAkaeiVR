@@ -404,11 +404,11 @@
     });
 
     // ---- クリックアニメーションコンポーネント ----
-    // anime01: アイドルループ, anime02: ヒット1回再生
+    // anime03: アイドルループ, anime02: ヒット1回再生
     if (!AFRAME.components['click-animation'])
     AFRAME.registerComponent('click-animation', {
         schema: {
-            clip: { type: 'string', default: 'anime01' }
+            clip: { type: 'string', default: 'anime03' }
         },
 
         init: function () {
@@ -436,7 +436,7 @@
                 mixer = new THREE.AnimationMixer(model);
                 this.mixer = mixer;
 
-                var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime01') || model.animations[0];
+                var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime03') || model.animations[0];
                 var clip02 = THREE.AnimationClip.findByName(model.animations, 'anime02')
                           || (model.animations.length > 1 ? model.animations[1] : model.animations[0]);
 
