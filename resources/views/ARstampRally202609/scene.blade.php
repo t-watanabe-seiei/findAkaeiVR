@@ -82,7 +82,7 @@
             scale="1.1 1.1 1.1"
             rotation="-90 0 0"
             visible="false"
-            click-animation="clip: anime01"
+            click-animation="clip: anime03"
             hitbox="stampId: model_{{ $id }}; width: 1.6; height: 3.2; depth: 1.6">
         </a-entity>
     </a-marker>
