@@ -47,7 +47,7 @@
 
                     model00Entity._galleryMixer   = model00Mixer;
 
-                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime01') || model.animations[0];
+                    var clip01 = THREE.AnimationClip.findByName(model.animations, 'anime03') || model.animations[0];
                     var clip02 = THREE.AnimationClip.findByName(model.animations, 'anime02')
                                || (model.animations.length > 1 ? model.animations[1] : model.animations[0]);
 
