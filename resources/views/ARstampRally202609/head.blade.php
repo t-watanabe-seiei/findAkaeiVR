@@ -44,24 +44,36 @@
             return false;
         })();
 
+        // 2026-09-23 バックポート（202610 / FR-9 同等）:
+        // タイムアウト後も監視を継続し、video が後から ready になった時点で
+        // エラー画面 / ヘルプモーダル / ローダー（.arjs-loader）を自動非表示にする。
+        // （低スペック iOS で「実際には起動済みなのにローダー表示が残る」現象の解消）
         function monitorCameraStartup(timeoutMs) {
             timeoutMs = timeoutMs || 6000;
             const start = Date.now();
+            let timedOut = false; // 2026-09-23: タイムアウト分岐の重複実行を抑制
+            function hideCameraErrorUI() {
+                try {
+                    const el = document.getElementById('camera-error');
+                    if (el) el.style.display = 'none';
+                    const hm = document.getElementById('camera-help-modal');
+                    if (hm && hm.style.display !== 'none') { hm.style.display = 'none'; hm.setAttribute('aria-hidden', 'true'); }
+                    // 2026-09-23: ローダーも併せて非表示（202610 と同一挙動・iPhone SE3 の表示遅延の本命修正）
+                    const ld = document.querySelector('.arjs-loader');
+                    if (ld) ld.style.display = 'none';
+                } catch (e) {}
+            }
             const interval = setInterval(function() {
                 const v = document.querySelector('video'); // 2026-09-11 fix(根本原因): AR.js は <video> を document.body に生成するため、#ar-scene の下位セレクタは必ず null
                 if (v && (v.readyState >= 2 || v.currentTime > 0 || !v.paused)) {
                     clearInterval(interval);
                     window.arjsVideoReady = true;
-                    const el = document.getElementById('camera-error');
-                    if (el) el.style.display = 'none';
-                    try {
-                        const hm = document.getElementById('camera-help-modal');
-                        if (hm && hm.style.display !== 'none') { hm.style.display = 'none'; hm.setAttribute('aria-hidden', 'true'); }
-                    } catch (e) {}
+                    window._pendingCameraError = false; // 2026-09-23: 保留エラーを復位（202610 と同一）
+                    hideCameraErrorUI();
                     return;
                 }
-                if (Date.now() - start > timeoutMs) {
-                    // 2026-09-11 fix: タイムアウト後も監視を継続（低スペックiOSで camera が7秒後に起動したケースで、video ready になったら自動解除）
+                if (!timedOut && Date.now() - start > timeoutMs) {
+                    timedOut = true; // 2026-09-23: 以降は監視を継続（video が遅れて起動したら自動復帰）
                     if (window.guideModalOpen) { window._pendingCameraError = true; return; }
                     const el = document.getElementById('camera-error');
                     if (el) el.style.display = 'flex';
@@ -74,6 +86,25 @@
         window.ensureCameraAccess = function() {
             const v = document.querySelector('video'); // 2026-09-11 fix(根本原因): #ar-scene の下位セレクタは必ず null（202610 と同一）
             if (v && v.srcObject && (v.readyState >= 2 || !v.paused || v.currentTime > 0)) { window.arjsVideoReady = true; return; }
+            // 2026-09-23 バックポート（202610 / FR-10）:
+            // AR.js が既にストリームを確保済み（srcObject あり）なのに未 ready の場合は、
+            // 2度目の getUserMedia を発行しない（iOS では既存ストリームと競合し全制約セットが失敗する）。
+            // その代わり、今回のタップgesture内で play() を試行して即復帰を目指す。失敗しても監視継続で自動復帰する。
+            if (v && v.srcObject) {
+                try {
+                    if (!v.hasAttribute('playsinline')) v.setAttribute('playsinline', '');
+                    v.muted = true;
+                    const p = v.play();
+                    if (p && p.catch) {
+                        p.catch(function (e) {
+                            console.warn('[AR202609] ensureCameraAccess: play() がブロックされました（監視継続で復帰します）', e);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('[AR202609] ensureCameraAccess: play() 失敗（監視継続で復帰します）', e);
+                }
+                return;
+            }
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
             if (window._ensureCameraInProgress) return;
             window._ensureCameraInProgress = true;
