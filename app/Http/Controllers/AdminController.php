@@ -698,7 +698,7 @@ class AdminController extends Controller
         // 2026年8月20日00:00:00 JST 〜 2026年9月10日23:59:59 JST（UTC変換）
         $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-08-20 00:00:00', 'Asia/Tokyo')
                            ->setTimezone('UTC');
-        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-09-10 23:59:59', 'Asia/Tokyo')
+        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-09-26 23:59:59', 'Asia/Tokyo')
                            ->setTimezone('UTC');
 
         // 景品交換の統計
@@ -862,26 +862,26 @@ class AdminController extends Controller
 
         // 全モデルのリスト（ARstampRally202609の管理画面と同一、202610も同一アセットを使用）
         $animals = [
-            'model_01' => 'シマウマ',
-            'model_02' => 'シカ',
-            'model_03' => 'とら',
-            'model_04' => 'とり',
-            'model_05' => 'ぶた',
-            'model_06' => 'ビーバー',
-            'model_07' => 'レッサーパンダ',
-            'model_08' => 'きりん',
-            'model_09' => 'いぬ',
-            'model_10' => 'リス',
-            'model_11' => 'あらいぐま',
-            'model_12' => 'チーター',
-            'model_13' => 'きつね',
-            'model_14' => 'パンダ',
-            'model_15' => 'ぞう',
-            'model_16' => 'カタツムリ1',
-            'model_17' => 'カタツムリ2',
-            'model_18' => 'カタツムリ3',
-            'model_19' => 'カタツムリ4',
-            'model_20' => 'ぶっちー',
+            'model_01' => 'ひつじ',
+            'model_02' => 'いぬ',
+            'model_03' => 'ハムスター',
+            'model_04' => 'コアラ',
+            'model_05' => 'パンダ',
+            'model_06' => 'ぶた',
+            'model_07' => 'ぞう',
+            'model_08' => 'はりねずみ',
+            'model_09' => 'ペンギン',
+            'model_10' => 'ゴリラ',
+            'model_11' => 'ワニ',
+            'model_12' => 'ライオン',
+            'model_13' => 'うま',
+            'model_14' => 'ウーパールーパー',
+            'model_15' => 'とら',
+            'model_16' => 'きじネコ',
+            'model_17' => 'うさぎ',
+            'model_18' => 'おおかみ',
+            'model_19' => 'チンパンジー',
+            'model_20' => 'うし',
         ];
 
         // 各モデルの統計を収集

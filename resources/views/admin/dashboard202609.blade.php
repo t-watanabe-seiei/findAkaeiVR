@@ -429,14 +429,14 @@
     </div>
 
     <div class="card">
-        <h2>📅 日別スキャン統計（2026年5月）</h2>
+        <h2>📅 日別スキャン統計（2026年9月）</h2>
         <div class="chart-container">
             <canvas id="dailyChart"></canvas>
         </div>
     </div>
 
     <div class="card">
-        <h2>👥 日別個別ユーザー数（2026年5月）</h2>
+        <h2>👥 日別個別ユーザー数（2026年9月）</h2>
         <div class="chart-container">
             <canvas id="uniqueUsersChart"></canvas>
         </div>
