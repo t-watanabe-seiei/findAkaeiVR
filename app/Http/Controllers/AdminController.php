@@ -725,28 +725,28 @@ class AdminController extends Controller
             ->orderBy('redeemed_at', 'desc')
             ->paginate(10, ['*'], 'redeemed_page');
 
-        // 全モデルのリスト（ARstampRally202609.blade.phpのSTAMPSと同じ順序）
+        // 全モデルのリスト（ARstampRally202609.blade.phpのSTAMPSと同じ順序・2026-09-23 動物名更新）
         $animals = [
-            'model_01' => 'シマウマ',
-            'model_02' => 'シカ',
-            'model_03' => 'とら',
-            'model_04' => 'とり',
-            'model_05' => 'ぶた',
-            'model_06' => 'ビーバー',
-            'model_07' => 'レッサーパンダ',
-            'model_08' => 'きりん',
-            'model_09' => 'いぬ',
-            'model_10' => 'リス',
-            'model_11' => 'あらいぐま',
-            'model_12' => 'チーター',
-            'model_13' => 'きつね',
-            'model_14' => 'パンダ',
-            'model_15' => 'ぞう',
-            'model_16' => 'カタツムリ1',
-            'model_17' => 'カタツムリ2',
-            'model_18' => 'カタツムリ3',
-            'model_19' => 'カタツムリ4',
-            'model_20' => 'ぶっちー',
+            'model_01' => 'ひつじ',
+            'model_02' => 'いぬ',
+            'model_03' => 'ハムスター',
+            'model_04' => 'コアラ',
+            'model_05' => 'パンダ',
+            'model_06' => 'ぶた',
+            'model_07' => 'ぞう',
+            'model_08' => 'はりねずみ',
+            'model_09' => 'ペンギン',
+            'model_10' => 'ゴリラ',
+            'model_11' => 'ハリセンボン',
+            'model_12' => 'かば',
+            'model_13' => 'カメレオン',
+            'model_14' => 'ウーパールーパー',
+            'model_15' => '白ネコ',
+            'model_16' => 'きじネコ',
+            'model_17' => '白くま',
+            'model_18' => 'カワウソ',
+            'model_19' => 'すずめ',
+            'model_20' => 'キリン',
         ];
 
         // 各モデルの統計を収集

@@ -65,6 +65,57 @@
 
 ## 5. 検証計画
 1. `php -l`（head.blade.php / ui.blade.php）
+
+---
+
+# 追記: 2026-09-23 スタンプ動物名の更新設計
+
+> 作成日: 2026-09-23 / 要件: `requirements.md` §「追記: 2026-09-23」（RS-1〜RS-5）
+
+## D-S-1. 現状構造（名前参照箇所）
+1. `resources/views/ARstampRally202609/js-stamps.blade.php`
+   - `STAMPS = { 'model_01': { name:'シマウマ', ... }, ..., 'model_20': {...} }`
+   - `showStampBook()` / `js-prize.blade.php::exchangePrize()` / `js-gallery.blade.php` が
+     この `STAMPS[sid].name` を表示・送信に使用（キーは `model_XX` で不変）。
+2. `app/Http/Controllers/AdminController.php::dashboard202609()`
+   - `$animals = [ 'model_01' => 'シマウマ', ..., 'model_20' => 'イオちゃん' ];`
+   - `resources/views/admin/dashboard202609.blade.php` が `marker_name` 列として表示。
+
+> **名前以外の場所（キー / パス / アニメ / ストレージ）は一切触らない**こと。
+
+## D-S-2. 改修設計
+### 2.1 `js-stamps.blade.php`（RS-1）
+- `STAMPS` 配列の20エントリの **`name:` の値のみ** を新名に置換。
+- `icon: '🐾'` / `model: '202609/Model_NN.glb'` / キー `model_NN` は不変。
+- 行の並び・形式・コンマ・セミコロンを維持（diff が最小になるよう20行の value 置換のみ）。
+
+### 2.2 `AdminController.php::dashboard202609()`（RS-2）
+- `$animals` 配列の20エントリの **value のみ** を新名に置換（キー `model_NN` 不変）。
+- `dashboard202606` / `dashboard202603` / `dashboard202610` の同名配列は**不変**（キャンペーン別データ）。
+- DB 保存・クエリ・レートリミッター・ビューテンプレートは不変。
+
+### 2.3 影響ゼロの根拠
+- `STAMPS[sid].name` は**表示と API 送信（`stampArr.name`）のみ**で、
+  収集判定（`captured[sid] === true`）・景品判定（件数）・ギャラリー（`stampId`）には影響しない。
+- `LocalStorage` のキーと `marker_id`（`model_NN`）は不変 → 既存収集データ・DB 集計はそのまま有効。
+- 202610 / 202606 / 他キャンペーンは独立した STAMPS / 配列 / アセットを使用 → 影響なし。
+
+## D-S-3. 変更しないもの
+- `scene.blade.php` / `js-gallery.blade.php` / `js-prize.blade.php` / `js-throw.blade.php` /
+  `js-camera.blade.php` / `js-init.blade.php` / `aframe-components.blade.php` / `head.blade.php` / `ui.blade.php`
+- `public/cg/202609/` 内全ファイル（モデル / マーカー / 画像）
+- 他キャンペーン `ARstampRally202610/` / `ARstampRally202606/` / `ARstampRally202605/` / `ARstampRally202603/` /
+  `ARstampRally202607/` 等、`public/js/` / `routes/` / `app/Http/Controllers/StampRally202609Controller.php` 等
+- `AdminController.php` の `dashboard202606/202603/202610` 内の `$animals`
+
+## D-S-4. 検証計画（本追記）
+1. `php -l resources/views/ARstampRally202609/js-stamps.blade.php`
+2. `php -l app/Http/Controllers/AdminController.php`
+3. `grep -c` で新名20種（ひつじ/いぬ/ハムスター/コアラ/パンダ/ぶた/ぞう/はりねずみ/ペンギン/ゴリラ/ハリセンボン/かば/カメレオン/ウーパールーパー/白ネコ/きじネコ/白くま/カワウソ/すずめ/キリン）が
+   `js-stamps.blade.php` と `AdminController.php::dashboard202609` に各1件ずつ存在すること
+4. 旧名（シマウマ/シカ/とら/とり/ビーバー/レッサーパンダ/きりん/リス/あらいぐま/チーター/きつね/カタツムリ1〜4/イオちゃん）が
+   上記2ファイル（202609 側・`dashboard202609` 配列のみ）で **0件** であること
+5. `git status` で変更が 202609 パーシャル1 + `AdminController.php`1 + 関連md4 のみであることを確認
 2. トークン検証: 202609 head で `timedOut` / `hideCameraErrorUI` / `.arjs-loader` 非表示 / FR-10 ブロック（`srcObject`+`play()`）の存在、`querySelector('video')`=3件以上・`#ar-scene video` 実体0件を確認
 3. レンダリング: Laravel アプリブート + `view('ARstampRally202609.head')` / `view('ARstampRally202609.ui')` の `render()` が正常な HTML を生成すること
 4. 分離確認: `git status` で変更が 202609 パーシャル + 関連 md のみであることを確認（202610・`public/js/`・`public/cg/` 未変更）

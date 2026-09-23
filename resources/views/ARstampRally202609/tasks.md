@@ -5,6 +5,44 @@
 > **ステータス: 全タスク完了（2026-09-23）**
 > 範囲: `ARstampRally202609` パーシャル（head / ui）とドキュメントのみ（202610 / 他キャンペーン / `public/js/` / `public/cg/` 非変更・FR-5〜FR-7）。
 
+---
+
+# 追記: 2026-09-23 スタンプ動物名の更新（モデルデータ更新対応）
+
+> 作成日: 2026-09-23
+> 進め方: 1タスクずつ実施し、各ステップで検証してから次へ進む。
+> 範囲: `ARstampRally202609/js-stamps.blade.php` の STAMPS 定義 + `app/Http/Controllers/AdminController.php::dashboard202609()` の `$animals` 配列 + 関連ドキュメント。
+
+- [x] S1 ドキュメント作成（requirements / design / tasks への追記）
+- [x] S2 `js-stamps.blade.php` の `STAMPS` 定義を新名20種に更新
+- [x] S3 `AdminController.php::dashboard202609()` の `$animals` 配列を新名20種に更新
+- [x] S4 検証: `php -l` ×2 + トークン検証（新名存在 / 旧名0件）+ `git status`（分離確認）
+- [x] S5 `README.md` に追記
+- [x] S6 `tasks.md` に進捗を最終更新
+
+## 検証結果（2026-09-23・スタンプ名更新）
+- `php -l`（2ファイル）: **No syntax errors detected**
+- トークン検証:
+  - 新名20種が `js-stamps.blade.php` に各1件 / `AdminController.php::dashboard202609()` 配列に各1件
+  - 旧名16種（シマウマ / シカ / とら / とり / ビーバー / レッサーパンダ / きりん / リス / あらいぐま / チーター / きつね / カタツムリ1〜4 / イオちゃん / ぶっちー）が 202609 側2ファイルで **0件**
+- 分離確認（`git status`）: 変更は `AdminController.php` / 202609 パーシャル1 / 関連md4 / `php_errors.log`（実行時ログ）のみ
+  - 未変更: `ARstampRally202610/` / `ARstampRally202606/` / `ARstampRally202605/` / `ARstampRally202603/` / `public/cg/` / `public/js/` / `routes/` / `StampRally202609Controller.php`
+- 影響ゼロ保証:
+  - 収集判定は `STAMPS[sid].name` を参照しない（`captured[sid] === true` のキーのみ）
+  - 景品判定は件数ベース（name 非依存）
+  - ギャラリーは `stampId` 参照（name 非依存）
+  - LocalStorage キー・API / DB スキーマ・アニメクリップ名・`cg/202609/` 内アセットは不変
+  - 他キャンペーン（202610 / 202606 等）は独立した STAMPS / 配列 / アセットで影響なし
+
+## 進捗ログ（2026-09-23・スタンプ名更新）
+- 2026-09-23: S1 開始（requirements / design / tasks へ追記）
+- 2026-09-23: S1 完了
+- 2026-09-23: S2 完了（`js-stamps.blade.php` STAMPS 20行を新名に更新・`php -l` OK）
+- 2026-09-23: S3 完了（`AdminController.php::dashboard202609()` `$animals` 20行を新名に更新・`php -l` OK）
+- 2026-09-23: S4 完了（トークン検証 / 旧名0件 / `git status` で分離確認）
+- 2026-09-23: S5 完了（`README.md` に §5〜§7 追記）
+- 2026-09-23: S6 完了（本 tasks.md を最終更新・**全タスク完了**）
+
 - [x] T1 ドキュメント作成（requirements.md / design.md / tasks.md）
 - [x] T2 `head.blade.php` / `monitorCameraStartup` を 202610 同一ロジックに置換（`timedOut` フラグ / ready 時 `hideCameraErrorUI()` で `.arjs-loader` も非表示 / `_pendingCameraError` 復位）
 - [x] T3 `head.blade.php` / `ensureCameraAccess` に FR-10 ブロック追加（`srcObject` 有なら `play()` のみ・2度目 `getUserMedia` 禁止）
