@@ -658,11 +658,11 @@
         activateModels: function(sceneEl) {
             const cfg = window.STAGE_CONFIG[window.currentStage];
             const initPats = [
-                { startPos: {x:-5,y:-2,z:-10}, speed:0.4, useCamera:true,  waitTime:4000 },
-                { startPos: {x: 5,y:-2,z:-10}, speed:0.3, useCamera:true,  waitTime:4000 },
-                { startPos: {x: 0,y:-2,z:-12}, speed:0.2, useCamera:true,  waitTime:4000 },
-                { startPos: {x:-6,y:-2,z: -8}, endPos:{x:6,y:0,z:-8},  speed:0.35, useCamera:false, waitTime:4000 },
-                { startPos: {x: 6,y:-2,z: -8}, endPos:{x:-6,y:0,z:-8}, speed:0.35, useCamera:false, waitTime:4000 },
+                { startPos: {x:-5,y:-0.7,z:-10}, speed:0.4, useCamera:true,  waitTime:4000 },
+                { startPos: {x: 5,y:-0.7,z:-10}, speed:0.3, useCamera:true,  waitTime:4000 },
+                { startPos: {x: 0,y:-0.7,z:-12}, speed:0.2, useCamera:true,  waitTime:4000 },
+                { startPos: {x:-6,y:-0.7,z: -8}, endPos:{x:6,y:0,z:-8},  speed:0.35, useCamera:false, waitTime:4000 },
+                { startPos: {x: 6,y:-0.7,z: -8}, endPos:{x:-6,y:0,z:-8}, speed:0.35, useCamera:false, waitTime:4000 },
             ];
             const colors = ['blue','green','red','yellow','cyan'];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
@@ -1431,16 +1431,16 @@
         createNewModel: function(modelId, gltfSrc, sceneEl) {
             if (window.gameEnded || !window.gameStarted) return;
             const pats = [
-                { startPos: {x:-3,y:-2,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 0,y:-2,z:-4}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 3,y:-2,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 4,y:-2,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 5,y:-2,z: 3}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-6,y:-2,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x: 0,y:-2,z: 4}, speed:0.15, useCamera:true, waitTime:4000 },
-                { startPos: {x: 3,y:-2,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-4,y:-2,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
-                { startPos: {x:-7,y:-2,z: 2}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-3,y:-0.7,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 0,y:-0.7,z:-4}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 3,y:-0.7,z:-3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 4,y:-0.7,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 5,y:-0.7,z: 3}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-6,y:-0.7,z: 0}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x: 0,y:-0.7,z: 4}, speed:0.15, useCamera:true, waitTime:4000 },
+                { startPos: {x: 3,y:-0.7,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-4,y:-0.7,z: 6}, speed:0.25, useCamera:true, waitTime:4000 },
+                { startPos: {x:-7,y:-0.7,z: 2}, speed:0.25, useCamera:true, waitTime:4000 },
             ];
             const speedMult = window.currentStage === 2 ? 1.2 : 1.0;
             const { pattern: p } = window.getAvailablePattern(pats, modelId);
