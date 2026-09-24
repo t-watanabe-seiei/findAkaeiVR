@@ -695,8 +695,8 @@ class AdminController extends Controller
 
     public function dashboard202609(Request $request)
     {
-        // 2026年8月20日00:00:00 JST 〜 2026年9月10日23:59:59 JST（UTC変換）
-        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-08-20 00:00:00', 'Asia/Tokyo')
+        // 2026年9月24日00:00:00 JST 〜 2026年9月26日23:59:59 JST（UTC変換）
+        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-09-24 00:00:00', 'Asia/Tokyo')
                            ->setTimezone('UTC');
         $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-09-26 23:59:59', 'Asia/Tokyo')
                            ->setTimezone('UTC');
