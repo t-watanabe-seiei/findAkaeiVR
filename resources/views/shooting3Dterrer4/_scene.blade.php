@@ -31,7 +31,7 @@
 
         <!-- 背景画像 -->
         <img id="sky_s1" src="{{ asset('cg/202609/IMG_20260917_573.jpg') }}" crossorigin="anonymous">
-        <img id="sky_s2" src="{{ asset('cg/202609/IMG_20260917_579.jpg') }}" crossorigin="anonymous">
+        <img id="sky_s2" src="{{ asset('cg/202609/IMG_20260917_576.jpg') }}" crossorigin="anonymous">
         <img id="pokeball_icon_05" src="{{ asset('cg/pokeball_icon05.png') }}" crossorigin="anonymous">
         <img id="pokeball_icon_06" src="{{ asset('cg/pokeball_icon06.png') }}" crossorigin="anonymous">
     </a-assets>
