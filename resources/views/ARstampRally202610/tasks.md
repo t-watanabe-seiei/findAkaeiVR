@@ -54,3 +54,21 @@
 - レンダリング: `view('ARstampRally202610.head')->render()` = **25685 bytes**、出力に `querySelector('video')` が3件、`#ar-scene video` は2件（いずれもコメント・機能しない）
 - `git status`: 変更は `ARstampRally202610/requirements.md` / `design.md`（本追記）のみ。`head.blade.php` は HEAD（`166a16d`）にコミット済み、**202609 関連ファイル・`public/js/` は未変更**（分離原則遵守）
 - 残課題（202609・別キャンペーン）: 現行 202609 にも同様の `#ar-scene video` セレクタ（3箇所）が残存。**本タスクでは対象外**（要対応: `analysis20260911.md` 参照）
+
+## 再交換リセット（方式②・保存キー名変更）と期間変更（2026-09-30）
+> 前段階のmdファイルを読み込みました。
+> 範囲: **202610 のみ**（分離原則）。方式②＝保存キー名変更で新userId→新fingerprintを生成し、交換済み判定を切り離す（DB履歴は保持）。
+> **ステータス: 全タスク完了（2026-09-30）**
+
+- [x] T25 `js-prize.blade.php`: userId 系キー3個（IndexedDB `ARStampRallyDB202610r2` / LocalStorage `ar-user-id-202610-r2` / Cookie `ar_user_id_202610_r2`）を `-r2` 化
+- [x] T26 `js-prize.blade.php`（`ar-prize-exchanged-202610-r2` / `ar-prize-code-202610-r2`）＋ `js-stamps.blade.php`（`ar-stamp-rally-202610-r2` / `ar-captured-animals-202610-r2` / `ar-gallery-selection-202610-r2`）＋ `js-init.blade.php`（上記キー参照2行）を `-r2` 化
+- [x] T27 `AdminController::dashboard202610()`: 集計期間を `2026-10-01 00:00:00 〜 2026-10-24 23:59:59（JST）` に変更（別イベント dashboard202609 は未変更）
+- [x] T28 ドキュメント更新: `requirements.md`（§7 / FR-15〜FR-18）・`design.md`（§5 期間＋§9 設計）・`tasks.md`（本節）・`README.md`
+- [x] T29 検証: `php -l AdminController.php` 構文OK／旧キー（`-r2` 以外）残存なし確認（grep）／202609 未変更確認
+
+## 検証結果（再交換リセット・2026-09-30）
+- `php -l app/Http/Controllers/AdminController.php`: **No syntax errors detected**
+- 旧キー残存確認（grep）: コード内（`resources/views/ARstampRally202610/*.blade.php`）の該当キーはすべて `-r2` 化済み。旧キー文字列は md のみ参照
+- 変更ファイル: `js-prize.blade.php` / `js-stamps.blade.php` / `js-init.blade.php`（キー文字列）＋ `AdminController.php`（`dashboard202610()` 期間）
+- 非変更: 202609 関連 / `StampRally202610Controller` / `public/js/` / `dashboard202609()`（別イベント）
+- 動作想定: 10/24 に初回アクセスで新 userId（→新 fingerprint）生成 ⇒ `prize_exchanges` の旧レコードと一致せず「未交換」⇒ 改めて 10 種収集後に再交換可。旧キーのデータは残存（履歴保持）

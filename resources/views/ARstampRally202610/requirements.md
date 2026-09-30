@@ -72,3 +72,17 @@ ARstampRally202609 と同一のアーキテクチャ（Bladeパーシャル + �
 |---|---|
 | FR-13 | カメラ video の取得セレクタを `document.querySelector('video')` とする（`#ar-scene video` は使わない）。`monitorCameraStartup` / `ensureCameraAccess` / `getUserMedia` 成功ハンドラの **3 箇所すべて**で適用する |
 | FR-14 | 修正対象は `ARstampRally202610/head.blade.php` のみ。202609 等の他キャンペーン・共有JS（`public/js/`）は変更しない（分離原則）。現行 202609 が同バグを持つ場合は `analysis20260911.md` の「要対応」に留め、本タスクでは修正しない |
+
+## 7. 再交換リセット（方式②・保存キー名変更）と期間変更（2026-09-30 追記）
+
+### 背景
+- 2026-10（イベント本番）に向けて、過去に景品交換済みのユーザーが **再交換できるようにする**（テスト/プレビュー期間の交換済みレコードでブロックされることを解消）。
+- 併せて、管理ダッシュボードの集計期間を実イベント期間に合わせる。
+
+### 機能要件（追加）
+| # | 要件 |
+|---|---|
+| FR-15 | 202610 関連のクライアント保存キー（LocalStorage / IndexedDB / Cookie）のキー名にサフィックス `-r2` を付与し、**新userId → 新fingerprint** を生成して `prize_exchanges` の交換済み判定（`session_id` / `fingerprint`）と切り離す。これにより交換済みユーザーも再交換可能にする |
+| FR-16 | 同時にスタンプ収集状態（`ar-stamp-rally-*` / `ar-captured-animals-*` / `ar-gallery-selection-*` / `ar-prize-exchanged-*` / `ar-prize-code-*`）も新キー化し、**全面リセット**で 10/24 に改めて 10 種を集めてから交換させる |
+| FR-17 | 過去交換済みレコード（`prize_exchanges`）の削除・更新は行わない（履歴保持）。変更はクライアント側のキー文字列のみ（API・DB スキーマ変更なし） |
+| FR-18 | 管理ダッシュボード `admin/dashboard202610` の集計期間を **2026-10-01 00:00:00 〜 2026-10-24 23:59:59（JST）** に変更 |

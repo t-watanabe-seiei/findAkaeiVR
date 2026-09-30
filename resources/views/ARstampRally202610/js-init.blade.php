@@ -448,8 +448,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hideConfirmDialog();
             if (stampBookModal) stampBookModal.style.display = 'none';
 
-            localStorage.removeItem('ar-stamp-rally-202610');
-            localStorage.removeItem('ar-captured-animals-202610');
+            localStorage.removeItem('ar-stamp-rally-202610-r2');
+            localStorage.removeItem('ar-captured-animals-202610-r2');
 
             // 全モデルの捕獲状態リセット
             for (var i = 1; i <= 20; i++) {

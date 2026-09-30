@@ -15,7 +15,7 @@
 | POST | `/stamp202610/record-scan` | スキャン記録（分120回制限） |
 | POST | `/stamp202610/check-prize` | 交換状態確認（分120回制限） |
 | POST | `/stamp202610/exchange-prize` | 景品コード発行（時10回制限・閾値10種） |
-| GET | `/admin/dashboard202610` | 管理ダッシュボード（期間 2026-09-17 〜 2026-10-31 JST） |
+| GET | `/admin/dashboard202610` | 管理ダッシュボード（期間 2026-10-01 〜 2026-10-24 JST） |
 
 ## 主なファイル
 - `resources/views/ARstampRally202610.blade.php` — エントリ
@@ -26,8 +26,8 @@
 - `resources/views/admin/dashboard202610.blade.php` — 管理画面
 
 ## 202610 固有の識別子（分離）
-- LocalStorage: `ar-stamp-rally-202610` / `ar-captured-animals-202610` / `ar-gallery-selection-202610` / `ar-user-id-202610`
-- IndexedDB: `ARStampRallyDB202610`、Cookie: `ar_user_id_202610`
+- LocalStorage: `ar-stamp-rally-202610-r2` / `ar-captured-animals-202610-r2` / `ar-gallery-selection-202610-r2` / `ar-user-id-202610-r2`
+- IndexedDB: `ARStampRallyDB202610r2`、Cookie: `ar_user_id_202610_r2`
 - スキャン日次キャッシュ: `marker-scan-cache-202610-*`
 - レートリミッター: `stamp202610_scan` / `stamp202610_check` / `stamp202610_redeem`
 
@@ -65,3 +65,15 @@
 - **既知の未対応（別キャンペーン）**: 現行 `ARstampRally202609`（HEAD）にも同様の `#ar-scene video`
   セレクタ（3箇所）が残存し、旧 iPhone で同症状が出る可能性。分離原則により本キャンペーンでは
   未修正（要対応: `resources/views/ARstampRally202609/analysis20260911.md` 参照）。
+
+## 再交換リセットと期間変更（方式②・2026-09-30 追記）
+- **目的**: 過去に景品交換済みのユーザーが **再交換できるようにする**（DB の交換履歴は保持）。
+- **手段（方式②・保存キー名変更）**: 202610 関連のクライアント保存キーにサフィックス `-r2` を付与。
+  - userId 系キー（LocalStorage `ar-user-id-202610-r2` / Cookie `ar_user_id_202610_r2` / IndexedDB `ARStampRallyDB202610r2`）が変わることで
+    **新 userId → 新 fingerprint** が生成され、`prize_exchanges` の交換済み判定（`session_id` / `fingerprint`）と切り離される。
+  - 同時にスタンプ収集状態（`ar-stamp-rally-*` / `ar-captured-animals-*` / `ar-gallery-selection-*` / `ar-prize-exchanged-*` / `ar-prize-code-*`）も新キー化し、
+    **全面リセット**で 10/24 に改めて 10 種を集めてから交換させる。
+- **変更ファイル**: `js-prize.blade.php` / `js-stamps.blade.php` / `js-init.blade.php`（キー文字列）＋ `AdminController::dashboard202610()`（集計期間）。
+- **非変更**: 202609 等他キャンペーン、API（`StampRally202610Controller`）、DB スキーマ、`public/js/`。旧キーの既存データは残存（履歴保持）。
+- **管理ダッシュボード期間**: `admin/dashboard202610` は **2026-10-01 00:00:00 〜 2026-10-24 23:59:59（JST）** に変更。
+- 詳細な仕様・影響範囲は `requirements.md`（§7 / FR-15〜FR-18）・`design.md`（§9）・`tasks.md`（T25〜T29）を参照してください。

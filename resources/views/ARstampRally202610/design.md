@@ -61,7 +61,7 @@ ARstampRally202609 と同一構成のクローン（単一モジュール追加�
 
 ## 5. 管理ダッシュボード
 - ルート: `GET /admin/dashboard202610`（auth + admin ミドルウェア）
-- 統計期間: **2026-09-17 00:00:00 〜 2026-10-31 23:59:59（JST、UTC変換してクエリ）**
+- 統計期間: **2026-10-01 00:00:00 〜 2026-10-24 23:59:59（JST、UTC変換してクエリ）**（2026-09-30 変更・§9 参照）
 - 集計内容: 動物別スキャン数（marker_scan / ball_hit）・個別ユーザー数・最近のスキャン・日別統計・景品交換実績
 - 動物リスト: `model_01`〜`model_20`（202609 の管理画面と同一。model_20 = ぶっちー）
 - 集計項目: スキャン数（capture_type: marker_scan / ball_hit）・個別ユーザー数（fingerprint）・最近のスキャン履歴・日別統計・景品交換実績（exchanged_at）
@@ -147,3 +147,40 @@ document.body.appendChild(B)   // ★ <a-scene> 配下ではなく body 直下
 - **変更**: `ARstampRally202610/head.blade.php` のみ（3箇所・セレクタ文字列）。
 - **非変更**: 202609 / 202605 / 202606 / 202603 / 共有JS（`public/js/*`）（FR-14・分離原則）。
 - Android（Chrome・WebXR）経路も `video` 取得で同一挙動（正常系と整合）。
+
+## 9. 再交換リセット設計（方式②・保存キー名変更 / 2026-09-30 追記）
+
+### 目的
+過去に景品交換済みユーザーが再交換できるようにする（`prize_exchanges` の履歴は保持）。
+
+### 仕組み（なぜキー名変更で再交換できるか）
+1. `getUserId202610()` は **LocalStorage(`ar-user-id-*`) → Cookie(`ar_user_id_*`) → IndexedDB(`ARStampRallyDB*`)** の順に userId を取得し、無ければ新 UUID を生成。
+2. `generateFingerprint()` は `userId` + UA + language + screen + colorDepth + timezone + CPUコア + メモリの **hash** を生成（`fp_` 接頭辞）。
+3. サーバーの交換済み判定は `PrizeExchange::where('session_id', $s)->orWhere('fingerprint', $fp)->first()`。
+4. → **userId のキー名を変えれば新 userId が生まれ、新 fingerprint になる**。旧レコードの `fingerprint` とは一致しなくなる。
+   （`session_id` もセッション失効（120分）後は別物なので、2条件とも旧レコードと一致せず「未交換」と判定される。）
+
+### 変更対象キー（旧 → 新、サフィックス `-r2`）
+| 種別 | 旧キー | 新キー | ファイル |
+|---|---|---|---|
+| IndexedDB | `ARStampRallyDB202610` | `ARStampRallyDB202610r2` | `js-prize.blade.php` |
+| LocalStorage | `ar-user-id-202610` | `ar-user-id-202610-r2` | `js-prize.blade.php` |
+| Cookie | `ar_user_id_202610` | `ar_user_id_202610_r2` | `js-prize.blade.php` |
+| LocalStorage | `ar-stamp-rally-202610` | `ar-stamp-rally-202610-r2` | `js-stamps.blade.php` / `js-init.blade.php` |
+| LocalStorage | `ar-captured-animals-202610` | `ar-captured-animals-202610-r2` | `js-stamps.blade.php` / `js-init.blade.php` |
+| LocalStorage | `ar-gallery-selection-202610` | `ar-gallery-selection-202610-r2` | `js-stamps.blade.php` |
+| LocalStorage | `ar-prize-exchanged-202610` | `ar-prize-exchanged-202610-r2` | `js-prize.blade.php` |
+| LocalStorage | `ar-prize-code-202610` | `ar-prize-code-202610-r2` | `js-prize.blade.php` |
+
+### 変更しないキー（意図的）
+- `marker-scan-cache-202610-{markerId}-{date}`: 日次スキャン去重キャッシュ。日付が変わるため `cleanupOldMarkerScanCache()` が自動で旧日付分を削除（リセット不要）。
+- `ar-camera-reload-202610`: カメラ制御用でラリー進行状態とは無関係。
+
+### 管理ダッシュボード期間
+- `AdminController::dashboard202610()` の集計期間を **2026-10-01 00:00:00 〜 2026-10-24 23:59:59（JST）** に変更（`$startDate` / `$endDate` 2行のみ）。
+- 別イベント `dashboard202609`（2026-09-24 〜 2026-09-27）は変更しない。
+
+### 影響範囲
+- **変更**: `js-prize.blade.php` / `js-stamps.blade.php` / `js-init.blade.php`（キー文字列のみ）＋ `AdminController::dashboard202610()`（期間のみ）。
+- **非変更**: 202609 等他キャンペーン、`StampRally202610Controller`（API）、DB スキーマ、`public/js/`。
+- **履歴保持**: `prize_exchanges` / `marker_scans` の既存レコードはそのまま（削除・更新なし）。

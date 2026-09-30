@@ -830,10 +830,10 @@ class AdminController extends Controller
      */
     public function dashboard202610(Request $request)
     {
-        // 2026年9月17日00:00:00 JST 〜 2026年10月31日23:59:59 JST（UTC変換）
-        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-09-17 00:00:00', 'Asia/Tokyo')
+        // 2026年10月1日00:00:00 JST 〜 2026年10月24日23:59:59 JST（UTC変換）
+        $startDate = Carbon::createFromFormat('Y-m-d H:i:s', '2026-10-01 00:00:00', 'Asia/Tokyo')
                            ->setTimezone('UTC');
-        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-10-31 23:59:59', 'Asia/Tokyo')
+        $endDate   = Carbon::createFromFormat('Y-m-d H:i:s', '2026-10-24 23:59:59', 'Asia/Tokyo')
                            ->setTimezone('UTC');
 
         // 景品交換の統計

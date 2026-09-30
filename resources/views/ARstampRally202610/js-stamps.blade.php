@@ -25,8 +25,8 @@
         const TOTAL_STAMP_SLOTS = 20;
 
         // LocalStorageキー (202610固有)
-        const LOCAL_STORAGE_KEY   = 'ar-stamp-rally-202610';
-        const CAPTURED_KEY        = 'ar-captured-animals-202610';
+        const LOCAL_STORAGE_KEY   = 'ar-stamp-rally-202610-r2';
+        const CAPTURED_KEY        = 'ar-captured-animals-202610-r2';
 
         // サウンド（P2-8: 初回使用時に遅延生成）
         var soundStamp01 = null;
@@ -81,7 +81,7 @@
 
         // ========== ギャラリー表示選択管理 ==========
 
-        var GALLERY_SELECTION_KEY = 'ar-gallery-selection-202610';
+        var GALLERY_SELECTION_KEY = 'ar-gallery-selection-202610-r2';
         var GALLERY_MAX_DISPLAY   = 4;
 
         function getGallerySelection() {

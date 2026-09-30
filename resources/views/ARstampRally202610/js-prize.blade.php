@@ -1,7 +1,7 @@
         // ========== IndexedDB / Cookie / UUID ヘルパー ==========
 
         var UserIdDB202610 = {
-            dbName:    'ARStampRallyDB202610',
+            dbName:    'ARStampRallyDB202610r2',
             storeName: 'userIdStore',
             version:   1,
             openDB: function () {
@@ -72,8 +72,8 @@
         }
 
         function getUserId202610() {
-            var storageKey = 'ar-user-id-202610';
-            var cookieName = 'ar_user_id_202610';
+            var storageKey = 'ar-user-id-202610-r2';
+            var cookieName = 'ar_user_id_202610_r2';
             var userId = localStorage.getItem(storageKey) || CookieHelper202610.get(cookieName);
             if (userId) {
                 localStorage.setItem(storageKey, userId);
@@ -242,8 +242,8 @@
                         body:   JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stampArr })
                     }).then(function (r) { return r.json(); }).then(function (data) {
                         if (data.success) {
-                            localStorage.setItem('ar-prize-exchanged-202610', 'true');
-                            localStorage.setItem('ar-prize-code-202610', data.prizeCode);
+                            localStorage.setItem('ar-prize-exchanged-202610-r2', 'true');
+                            localStorage.setItem('ar-prize-code-202610-r2', data.prizeCode);
                             updatePrizeButton();
                             showPrizeModal({ title:'🎉 景品交換完了！ 🎉', titleColor:'#4CAF50', subtitle:'以下のコードを受付でお見せください', code:data.prizeCode, codeFontSize:'32px', buttonBg:'#4CAF50' });
                         } else {
