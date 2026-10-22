@@ -1,25 +1,25 @@
         // ========== スタンプ定義 ==========
         const STAMPS = {
             'model_01': { name: 'ひつじ', icon: '🐾', model: '202610/Model_01.glb' },
-            'model_02': { name: 'いぬ', icon: '🐾', model: '202610/Model_02.glb' },
-            'model_03': { name: 'ハムスター', icon: '🐾', model: '202610/Model_03.glb' },
+            'model_02': { name: 'コウモリ', icon: '🐾', model: '202610/Model_02.glb' },
+            'model_03': { name: 'アジ', icon: '🐾', model: '202610/Model_03.glb' },
             'model_04': { name: 'コアラ', icon: '🐾', model: '202610/Model_04.glb' },
-            'model_05': { name: 'パンダ', icon: '🐾', model: '202610/Model_05.glb' },
-            'model_06': { name: 'ブタ', icon: '🐾', model: '202610/Model_06.glb' },
-            'model_07': { name: 'ぞう', icon: '🐾', model: '202610/Model_07.glb' },
-            'model_08': { name: 'ハリネズミ', icon: '🐾', model: '202610/Model_08.glb' },
-            'model_09': { name: 'ペンギン', icon: '🐾', model: '202610/Model_09.glb' },
-            'model_10': { name: 'ゴリラ', icon: '🐾', model: '202610/Model_10.glb' },
-            'model_11': { name: 'わに', icon: '🐾', model: '202610/Model_11.glb' },
-            'model_12': { name: 'ライオン', icon: '🐾', model: '202610/Model_12.glb' },
-            'model_13': { name: 'うま', icon: '🐾', model: '202610/Model_13.glb' },
+            'model_05': { name: 'あざらし', icon: '🐾', model: '202610/Model_05.glb' },
+            'model_06': { name: 'ぶた', icon: '🐾', model: '202610/Model_06.glb' },
+            'model_07': { name: 'モモンガ', icon: '🐾', model: '202610/Model_07.glb' },
+            'model_08': { name: 'ミーアキャット', icon: '🐾', model: '202610/Model_08.glb' },
+            'model_09': { name: 'こづめかわうそ', icon: '🐾', model: '202610/Model_09.glb' },
+            'model_10': { name: 'コンドル', icon: '🐾', model: '202610/Model_10.glb' },
+            'model_11': { name: 'ハリセンボン', icon: '🐾', model: '202610/Model_11.glb' },
+            'model_12': { name: 'カバ', icon: '🐾', model: '202610/Model_12.glb' },
+            'model_13': { name: 'カメレオン', icon: '🐾', model: '202610/Model_13.glb' },
             'model_14': { name: 'ウーパールーパー', icon: '🐾', model: '202610/Model_14.glb' },
-            'model_15': { name: 'とら', icon: '🐾', model: '202610/Model_15.glb' },
-            'model_16': { name: 'ねこ', icon: '🐾', model: '202610/Model_16.glb' },
-            'model_17': { name: 'うさぎ', icon: '🐾', model: '202610/Model_17.glb' },
-            'model_18': { name: 'おおかみ', icon: '🐾', model: '202610/Model_18.glb' },
-            'model_19': { name: 'さる', icon: '🐾', model: '202610/Model_19.glb' },
-            'model_20': { name: 'うし', icon: '🐾', model: '202610/Model_20.glb' }
+            'model_15': { name: '白いネコ', icon: '🐾', model: '202610/Model_15.glb' },
+            'model_16': { name: 'むささび', icon: '🐾', model: '202610/Model_16.glb' },
+            'model_17': { name: 'カラス', icon: '🐾', model: '202610/Model_17.glb' },
+            'model_18': { name: 'かわうそ', icon: '🐾', model: '202610/Model_18.glb' },
+            'model_19': { name: 'すずめ', icon: '🐾', model: '202610/Model_19.glb' },
+            'model_20': { name: 'キリン', icon: '🐾', model: '202610/Model_20.glb' }
         };
 
         const TOTAL_STAMP_SLOTS = 20;
