@@ -184,3 +184,78 @@ document.body.appendChild(B)   // ★ <a-scene> 配下ではなく body 直下
 - **変更**: `js-prize.blade.php` / `js-stamps.blade.php` / `js-init.blade.php`（キー文字列のみ）＋ `AdminController::dashboard202610()`（期間のみ）。
 - **非変更**: 202609 等他キャンペーン、`StampRally202610Controller`（API）、DB スキーマ、`public/js/`。
 - **履歴保持**: `prize_exchanges` / `marker_scans` の既存レコードはそのまま（削除・更新なし）。
+
+## 10. オフライン対応 設計（Service Worker・2026-10 追加）
+
+### 10.1 構成
+```
+[ブラウザ /stamp202610]
+   │  head.blade.php: navigator.serviceWorker.register('/sw-stamp202610.js')
+   ▼
+[Service Worker  public/sw-stamp202610.js]  scope = SW の配置ディレクトリ（'/' または '/find/'）
+   ├─ CACHE_HTML   ar202610-html-v1    … ページ HTML / オフラインページ
+   ├─ CACHE_CORE   ar202610-core-v1    … install 時の事前キャッシュ（必須セット）
+   └─ CACHE_ASSETS ar202610-assets-v1  … 実行時キャッシュ（GLB・画像等）
+```
+- ベースパスは SW 自身の URL から導出（`self.location.pathname.replace(/[^/]*$/, '')`）。
+  サブディレクトリデプロイ（`/find/…`）でも動くようにするため、キャッシュ対象 URL はすべて `BASE` 付きで組み立てる。
+
+### 10.2 事前キャッシュ（install / FR-20）
+| 種別 | 対象 |
+|---|---|
+| HTML | `{BASE}stamp202610`, `{BASE}stamp202610/offline` |
+| JS | `js/ar-engine.min.js`, `js/ar-tracking.min.js`, `js/geo-location.min.js`, `js/loaders/GLTFLoader.js`, `js/loaders/OBJLoader.js` |
+| CSS | `css/stampRally.css` |
+| マーカー | `cg/202610/pattern-maker00.patt` 〜 `pattern-maker20.patt`（21枚） |
+| モデル | `cg/202610/Model_00.glb`（ロード中モデル） |
+| その他 | `js/objects/ball.obj`, `js/objects/ball.mtl`, `js/sounds/loading.ogg`, `img/howToOperate.png` |
+
+- 21 体すべての GLB（59MB）は事前キャッシュしない（FR-21）。初回オンライン取得時に `CACHE_ASSETS` へ保存。
+  `lazy-model` の pre-fetch（`fetch(src, {cache:'default'})`）が SW 経由でキャッシュされるため、
+  オンラインで一度全マーカーを踏めば以降はオフラインで全モデルが表示可能。
+- install は `Promise.all` + 個別 try/catch（1件の 404 で install 失敗にしない）→ `skipWaiting()`。
+- activate は `ar202610-` 接頭辞の旧バージョンキャッシュを削除 → `clients.claim()`。
+
+### 10.3 フェッチ戦略（FR-22）
+| リクエスト | 戦略 |
+|---|---|
+| `method !== GET`（API POST 3種） | SW は介入しない（常にネットワーク。キャッシュしない） |
+| 同一オリジン以外 | 介入しない |
+| `mode === 'navigate'`（ページ） | network-first → 成功時は `CACHE_HTML` に保存 → 失敗時は `CACHE_HTML` → `offline` ページ → 504 |
+| `{BASE}(js|css|img|build|cg/202610)/…` | cache-first（`ignoreSearch: true`）→ 命中時は背景で再取得して更新（stale-while-revalidate）→ 非命中時はネットワーク → 失敗時 504 |
+| `{BASE}stamp202610/csrf` | 介入しない（常にネットワーク・`Cache-Control: no-store`） |
+| その他 GET | 介入しない（ブラウザ既定） |
+
+### 10.4 オフラインページ（FR-23）
+- ルート: `GET /stamp202610/offline` → `view('ARstampRally202610.offline')`（`web` グループ内）。
+- 外部アセット（CSS/JS/画像）に一切依存しない自己完結（インライン `<style>` / `<script>`）。
+- 表示内容: 見出し・説明・収集済み種別数（LocalStorage `ar-stamp-rally-202610-r2`）・未送信スキャン数（`ar-scan-queue-202610-r2`）・接続状態。
+- ボタン: 「AR を続ける」（`/stamp202610` へ。オフラインでもキャッシュから表示）／「再試行」（`location.reload()`）／「キャッシュ削除」（SW へ `{type:'CLEAR_CACHES'}` postMessage → 登録解除してリロード）。
+
+### 10.5 スキャン記録のオフラインキュー（FR-24 / FR-26）
+```
+recordMarkerScan(markerId, ...)
+  ├─ navigator.onLine === false → enqueueScan(payload)（LocalStorage）して resolve
+  ├─ fetch 成功 → 通常処理
+  └─ fetch 通信エラー → enqueueScan(payload)（HTTP 4xx/5xx は再送しない）
+window 'online' → refreshCsrfToken() → flushScanQueue()
+```
+- キューキー: `ar-scan-queue-202610-r2`（`-r2` 系と統一）。上限 200 件（超過は先頭＝最古を破棄）。
+- 各要素は送信 body そのもの（markerId / markerName / fingerprint / deviceInfo / captureType / scannedAt）を保持し、
+  再送時は元の `scannedAt` をそのまま使う（記録日時が現在時に化しない）。
+- `refreshCsrfToken()` は `GET /stamp202610/csrf`（`no-store`）で新トークンを取得し `meta[name=csrf-token]` を更新。
+  キャッシュ済み HTML で開いた場合のトークン陳腐化（セッション失効 → 419）に対する保険。
+- 再送が失敗した場合はキューへ戻して打ち切り（次回 `online` / 次回ロードで再試行）。
+- 景品交換（`exchange-prize`）はオフラインでは行わない（FR-27）。
+
+### 10.6 UI 状態表示（FR-25）
+- `ui.blade.php` に `#offline-banner`（`display:none` 初期）を追加、`head.blade.php` に CSS。
+- `js-init.blade.php` で `offline` / `online` イベントと初期 `navigator.onLine` を監視し表示切替、
+  `online` 時に `refreshCsrfToken()` → `flushScanQueue()` を実行。
+
+### 10.7 影響範囲
+- **新規**: `public/sw-stamp202610.js` / `resources/views/ARstampRally202610/offline.blade.php`
+- **変更**: `routes/web.php`（`/stamp202610/offline`・`/stamp202610/csrf` 追記）, `head.blade.php`（SW 登録＋CSS）,
+  `ui.blade.php`（バナー）, `js-prize.blade.php`（キュー＋トークン更新）, `js-init.blade.php`（online/offline 接続）
+- **非変更**: 202609 等他キャンペーン、`public/js/`, `public/service-worker.js`, `StampRally202610Controller` の API 仕様, DB スキーマ
+- **デバッグ**: `?sw=0` で SW 登録スキップ（FR-29）

@@ -72,3 +72,39 @@
 - 変更ファイル: `js-prize.blade.php` / `js-stamps.blade.php` / `js-init.blade.php`（キー文字列）＋ `AdminController.php`（`dashboard202610()` 期間）
 - 非変更: 202609 関連 / `StampRally202610Controller` / `public/js/` / `dashboard202609()`（別イベント）
 - 動作想定: 10/24 に初回アクセスで新 userId（→新 fingerprint）生成 ⇒ `prize_exchanges` の旧レコードと一致せず「未交換」⇒ 改めて 10 種収集後に再交換可。旧キーのデータは残存（履歴保持）
+
+## オフライン対応（Service Worker・2026-10）
+
+> 前段階のmdファイルを読み込みました。
+> 範囲: **202610 のみ**（分離原則）。既存キャンペーンの SW 登録・`public/js/`・`public/service-worker.js` は変更しない。
+> 仕様: `requirements.md` §8（FR-19〜FR-29）／設計: `design.md` §10
+
+### Phase 9: Service Worker 導入（オフライン対応）
+
+- [x] T30 `public/sw-stamp202610.js` を新規作成（202610 専用・キャッシュキー `ar202610-*`・BASE 導出・install 事前キャッシュ・navigation network-first・静的アセット cache-first・API 非キャッシュ・`CLEAR_CACHES` メッセージ対応）
+- [x] T31 `resources/views/ARstampRally202610/offline.blade.php` を新規作成（外部アセット依存なしの自己完結オフラインページ）
+- [x] T32 `routes/web.php` に `GET /stamp202610/offline` と `GET /stamp202610/csrf`（no-store）を追加
+- [x] T33 `head.blade.php` に SW 登録（`?sw=0` でスキップ）と `#offline-banner` CSS を追加
+- [x] T34 `ui.blade.php` に `#offline-banner` 要素を追加
+- [x] T35 `js-prize.blade.php` にオフラインスキャンキュー（`ar-scan-queue-202610-r2`・上限200）と `refreshCsrfToken()` / `flushScanQueue()` を追加し、`recordMarkerScan()` を接続
+- [x] T36 `js-init.blade.php` に `online` / `offline` イベント処理（バナー表示・トークン更新・キュー再送）を追加
+- [x] T37 検証: `php -l`（routes / blade 構文）／`node --check`（SW 構文）／ルート一覧／202609 未変更確認
+- [x] T38 ドキュメント更新: `requirements.md` §8・`design.md` §10・`tasks.md` 本節・`README.md`
+
+- [x] T39 Service Worker 挙動シミュレーション（`caches` / `fetch` / `self` をモックし install・fetch・activate・message を検証）
+- [x] T40 一時検証スクリプトと生成物（`_render_check.php` / `_jscheck.cjs` / `_sim_offline.cjs` / `_sim_sw.cjs` / `storage/app/_*`）の削除
+
+### 検証結果（オフライン対応・2026-10-27）
+
+- 構文: `node --check public/sw-stamp202610.js` → OK / Blade は Laravel コンパイルで描画確認（`ARstampRally202610` 215,461 bytes・`ARstampRally202610.offline` 6,047 bytes）
+- ルート一覧: `GET|HEAD /stamp202610`・`GET|HEAD /stamp202610/offline`・`GET|HEAD /stamp202610/csrf`・`POST /stamp202610/record-scan|check-prize|exchange-prize`（202610 の HTML ページは index / offline の 2 枚のみ = CORE_URLS と一致）
+- SW シミュレーション: 27 項目すべて PASS
+  - install: `CACHE_CORE` 34 件（必須13 + マーカー21）／`CACHE_HTML` 2 件（index・offline）
+  - navigation: オンラインは network-first（応答を `CACHE_HTML` へ保存）／オフラインはキャッシュ → 未訪問はオフラインページ → `CACHE_CORE` フォールバック → 最終手段 504
+  - 静的アセット: 軽量（js/css/img/build）は cache-first + 背景更新（オフライン時は更新失敗でもキャッシュ応答）／重量（cg/202610）は cache-first のみ
+  - 非介入: `/stamp202610/csrf`・POST API・外部オリジン
+  - activate: 旧 `ar202610-*-v0` のみ削除／`CLEAR_CACHES`: `ar202610-*` すべて削除、他キャンペーンキャッシュは保持
+- オフラインキューシミュレーション: 17 項目すべて PASS（オフラインはキュー投入のみ / 復帰後フラッシュ / 初回送信は旧トークンで 419 → `refreshCsrfToken()` → 以降 FRESH_TOKEN で成功 / サーバー 500 では送信中断して未送信分を保持 / fetch 例外はキューへ退避）
+- 修正: `js-prize.blade.php` の `flushScanQueue()` で成功時に `sent++` していなかった不具合（戻り値の送信件数が 0 になる）を修正
+- 非変更: 202609 関連 / `public/service-worker.js` / `public/js/`（分離原則）
+

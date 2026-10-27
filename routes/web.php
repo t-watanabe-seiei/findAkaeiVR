@@ -69,6 +69,21 @@ Route::match(['get', 'head'], '/stamp202610', function () {
 })->name('stamp202610.index');
 
 Route::prefix('stamp202610')->group(function () {
+    // オフライン専用ページ（Service Worker の最終フォールバック・FR-23）
+    // 外部アセット（CSS/JS/画像）に依存しない自己完結ビュー
+    Route::get('/offline', function () {
+        return response(view('ARstampRally202610.offline'), 200)
+            ->header('Cache-Control', 'public, max-age=0, must-revalidate')
+            ->header('X-Robots-Tag', 'noindex');
+    })->name('stamp202610.offline');
+
+    // CSRF トークン再取得（キャッシュ済み HTML のトークン陳腐化対策・FR-26）
+    Route::get('/csrf', function () {
+        return response()->json(['token' => csrf_token()])
+            ->header('Cache-Control', 'no-store')
+            ->header('X-Robots-Tag', 'noindex');
+    })->name('stamp202610.csrf');
+
     Route::post('/record-scan', [App\Http\Controllers\StampRally202610Controller::class, 'recordScan'])
         ->middleware('throttle:stamp202610_scan');
     Route::post('/check-prize', [App\Http\Controllers\StampRally202610Controller::class, 'checkStatus'])

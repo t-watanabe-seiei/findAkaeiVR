@@ -166,24 +166,136 @@
             }).catch(function (err) { console.warn('[AR202610] recordMarkerDetection error', err); });
         }
 
+        // ========== オフライン対応: スキャン記録キュー（FR-24）==========
+        // 通信不可時に record-scan を LocalStorage へ蓄積し、online 復帰時に自動送信する。
+        var SCAN_QUEUE_KEY = 'ar-scan-queue-202610-r2';
+        var SCAN_QUEUE_MAX = 200;
+        var _flushingScanQueue = false;
+
+        function readScanQueue() {
+            try {
+                var raw = localStorage.getItem(SCAN_QUEUE_KEY);
+                if (!raw) return [];
+                var arr = JSON.parse(raw);
+                return Array.isArray(arr) ? arr : [];
+            } catch (e) { return []; }
+        }
+        function writeScanQueue(arr) {
+            try { localStorage.setItem(SCAN_QUEUE_KEY, JSON.stringify(arr)); } catch (e) {}
+        }
+        function enqueueScan(payload) {
+            var arr = readScanQueue();
+            arr.push(payload);
+            if (arr.length > SCAN_QUEUE_MAX) arr = arr.slice(arr.length - SCAN_QUEUE_MAX);
+            writeScanQueue(arr);
+            console.log('[AR202610] scan queued offline:', payload.markerId, 'pending=' + arr.length);
+            if (typeof window.updateOfflineBanner === 'function') window.updateOfflineBanner();
+        }
+        function pendingScanCount() { return readScanQueue().length; }
+
+        // CSRF トークン再取得（キャッシュ済み HTML のトークン陳腐化対策・FR-26）
+        function refreshCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (!meta) return Promise.resolve(false);
+            return fetch('{{ url("/stamp202610/csrf") }}', {
+                method: 'GET', credentials: 'same-origin', cache: 'no-store'
+            }).then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (d) {
+                  if (d && d.token) { meta.setAttribute('content', d.token); return true; }
+                  return false;
+              }).catch(function () { return false; });
+        }
+
+        function postRecordScan(payload) {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return fetch('{{ url("/stamp202610/record-scan") }}', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': meta ? meta.content : '' },
+                body:    JSON.stringify(payload)
+            }).then(function (r) {
+                return { ok: r.ok, tokenExpired: r.status === 419, status: r.status };
+            });
+        }
+
+        // キューのフラッシュ（FR-24）: 時系列順に送信、失敗以降は未送信分を保持
+        function flushScanQueue() {
+            if (_flushingScanQueue) return Promise.resolve(0);
+            var queue = readScanQueue();
+            if (!queue.length) return Promise.resolve(0);
+            if (!navigator.onLine) return Promise.resolve(0);
+            _flushingScanQueue = true;
+            var sent = 0;
+
+            function step(i) {
+                if (i >= queue.length) return Promise.resolve(sent);
+                var item = queue[i];
+                return postRecordScan(item).then(function (res) {
+                    if (res.tokenExpired) {
+                        return refreshCsrfToken().then(function (ok) {
+                            if (!ok) return { ok: false };
+                            return postRecordScan(item);
+                        });
+                    }
+                    return res;
+                }).then(function (res) {
+                    if (res && res.ok) {
+                        sent++;
+                        return step(i + 1);
+                    }
+                    console.warn('[AR202610] flush stopped at', item.markerId);
+                    return sent;
+                }).catch(function (err) {
+                    console.warn('[AR202610] flush error', err);
+                    return sent;
+                });
+            }
+
+            return step(0).then(function (done) {
+                var left = queue.slice(done);
+                writeScanQueue(left);
+                _flushingScanQueue = false;
+                if (done > 0) console.log('[AR202610] flushed scans:', done, 'remaining:', left.length);
+                if (typeof window.updateOfflineBanner === 'function') window.updateOfflineBanner();
+                return done;
+            });
+        }
+
         function recordMarkerScan(markerId, markerName, captureType) {
             captureType = captureType || 'ball_hit';
-            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
-            if (!csrfMeta) return Promise.resolve();
-            var csrfToken = csrfMeta.content;
             return generateFingerprint().then(function (fingerprint) {
-                return fetch('{{ url("/stamp202610/record-scan") }}', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body:    JSON.stringify({
-                        markerId: markerId, markerName: markerName,
-                        fingerprint: fingerprint, deviceInfo: collectDeviceInfo(),
-                        captureType: captureType, scannedAt: new Date().toISOString()
-                    })
-                }).then(function (r) {
-                    if (!r.ok) { console.warn('[AR202610] recordMarkerScan HTTP ' + r.status); return null; }
-                    return r.json();
-                }).catch(function (err) { console.warn('[AR202610] recordMarkerScan error', err); });
+                var payload = {
+                    markerId: markerId, markerName: markerName,
+                    fingerprint: fingerprint, deviceInfo: collectDeviceInfo(),
+                    captureType: captureType, scannedAt: new Date().toISOString()
+                };
+
+                // オフライン時はキューへ蓄積（FR-24）
+                if (!navigator.onLine) {
+                    enqueueScan(payload);
+                    return { queued: true };
+                }
+
+                return postRecordScan(payload).then(function (res) {
+                    if (res.ok) return { sent: true };
+                    if (res.tokenExpired) {
+                        // トークン陳腐化: 更新して 1 回だけ再送（FR-26）
+                        return refreshCsrfToken().then(function (ok) {
+                            if (!ok) return { error: 'csrf' };
+                            return postRecordScan(payload).then(function (res2) {
+                                if (res2.ok) return { sent: true };
+                                enqueueScan(payload);
+                                return { queued: true };
+                            });
+                        });
+                    }
+                    console.warn('[AR202610] recordMarkerScan HTTP ' + res.status);
+                    return { error: 'HTTP ' + res.status };
+                }).catch(function (err) {
+                    // fetch 例外（通信断）: キューへ退避して後で再送
+                    console.warn('[AR202610] recordMarkerScan error', err);
+                    enqueueScan(payload);
+                    return { queued: true };
+                });
             });
         }
 
@@ -225,20 +337,31 @@
                 return;
             }
 
+            // オフライン時は交換不可（FR-27）: 通信が戻ってから再試行する
+            if (!navigator.onLine) {
+                alert('景品と交換するには通信が必要です。\nオンラインになってからもう一度お試しください。');
+                return;
+            }
+
             var deviceInfo = collectDeviceInfo();
             var csrfMeta   = document.querySelector('meta[name="csrf-token"]');
             if (!csrfMeta) { alert('エラー：ページをリロードしてください'); return; }
-            var csrfToken = csrfMeta.content;
 
             _exchanging = true;
-            checkPrizeExchangeStatus().then(function (serverStatus) {
+
+            // 交換前に送信待ちスキャンを送り切り、CSRF トークンを最新化する（FR-24 / FR-26）
+            var prep = (typeof window.flushScanQueue === 'function' ? window.flushScanQueue() : Promise.resolve(0))
+                .then(function () { return refreshCsrfToken(); });
+
+            prep.then(function () { return checkPrizeExchangeStatus(); })
+            .then(function (serverStatus) {
                 if (serverStatus.isRedeemed) { _exchanging = false; showPrizeModal({ title:'✅ すでに景品と交換済みです', titleColor:'#999', code:serverStatus.prizeCode, codeFontSize:'28px', label:'景品コード', dateTimeStr:_formatExchangeDateTime(serverStatus.exchangedAt), buttonBg:'#999' }); return; }
                 if (serverStatus.hasExchanged && serverStatus.prizeCode) { _exchanging = false; showPrizeModal({ title:'🎉 景品交換完了！ 🎉', titleColor:'#4CAF50', subtitle:'以下のコードを受付でお見せください', code:serverStatus.prizeCode, codeFontSize:'32px', buttonBg:'#4CAF50' }); return; }
 
                 return generateFingerprint().then(function (fp) {
                     return fetch('{{ url("/stamp202610/exchange-prize") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                         body:   JSON.stringify({ fingerprint: fp, deviceInfo: deviceInfo, stamps: stampArr })
                     }).then(function (r) { return r.json(); }).then(function (data) {
                         if (data.success) {

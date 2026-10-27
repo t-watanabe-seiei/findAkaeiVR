@@ -6,6 +6,11 @@
         </div>
     </div>
 
+    <!-- オフライン状態バナー（FR-25）: js-init.blade.php が online/offline で切替 -->
+    <div id="offline-banner" role="status" aria-live="polite">
+        <span id="offline-banner-text">オフラインです。スタンプはこの端末に保存され、通信が戻ったときに自動で送信されます</span>
+    </div>
+
     <!-- 左上ボタン列: スタンプ帳・ガイド・動画・写真 -->
     <div id="top-left-buttons">
         <button id="stamp-book-button" type="button" title="コレクションを見る" aria-label="コレクション">

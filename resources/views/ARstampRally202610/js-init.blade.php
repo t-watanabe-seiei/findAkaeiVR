@@ -663,5 +663,71 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof monitorCameraStartup === 'function') monitorCameraStartup(_camStartupTimeout);
     });
 
+    // ===== 19. オフライン対応: バナー表示・キュー再送（FR-24 / FR-25）=====
+    // head.blade.php の SW 登録と js-prize.blade.php のスキャンキューとを接続する。
+    var offlineBanner = document.getElementById('offline-banner');
+
+    function updateOfflineBanner() {
+        if (!offlineBanner) return;
+        var textEl = document.getElementById('offline-banner-text');
+        var pending = 0;
+        try {
+            if (typeof pendingScanCount === 'function') pending = pendingScanCount();
+        } catch (e) {}
+
+        // オンラインかつ送信待ちなし → 非表示
+        if (navigator.onLine && pending === 0) {
+            offlineBanner.classList.remove('visible');
+            return;
+        }
+        if (textEl) {
+            textEl.textContent = navigator.onLine
+                ? '送信待ちのスタンプ: ' + pending + ' 件（通信できるときに自動で送信します）'
+                : 'オフラインです。スタンプはこの端末に保存され、通信が戻ったときに自動で送信されます';
+        }
+        offlineBanner.classList.add('visible');
+    }
+    window.updateOfflineBanner = updateOfflineBanner;
+
+    window.addEventListener('offline', function () {
+        console.warn('[AR202610] offline');
+        updateOfflineBanner();
+    });
+
+    window.addEventListener('online', function () {
+        console.warn('[AR202610] online');
+        // 1) CSRF トークンを現在値へ更新（キャッシュ済み HTML の陳腐化対策・FR-26）
+        // 2) ため込んだスキャンを再送（FR-24）
+        var refresh = (typeof refreshCsrfToken === 'function')
+            ? refreshCsrfToken()
+            : Promise.resolve(false);
+        refresh.then(function () {
+            if (typeof flushScanQueue !== 'function') return 0;
+            return flushScanQueue();
+        }).then(function (done) {
+            if (done) console.log('[AR202610] flushed queued scans:', done);
+            updateOfflineBanner();
+        }).catch(function (err) {
+            console.warn('[AR202610] online recovery error', err);
+            updateOfflineBanner();
+        });
+    });
+
+    // 初回: 前回セッションの未送信キューがあれば表示（送信は online イベント or 初回試行で）
+    updateOfflineBanner();
+
+    // 前回セッションで残った送信待ちがあれば、オンライン時にまとめて送信する
+    if (navigator.onLine && typeof window.pendingScanCount === 'function' && window.pendingScanCount() > 0) {
+        window.flushScanQueue().then(function (done) {
+            if (done > 0) console.log('[AR202610] startup flush sent:', done);
+        });
+    }
+
+    if (!navigator.onLine) {
+        // 初回からオフラインで起動した場合、復帰後にまとめて送るためキューのみ確認
+        console.warn('[AR202610] started offline, pending scans:',
+            (typeof pendingScanCount === 'function') ? pendingScanCount() : 0);
+    }
+
 }); // end DOMContentLoaded
 </script>

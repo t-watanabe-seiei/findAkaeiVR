@@ -402,5 +402,47 @@
         @keyframes slideUp { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
         @keyframes celebratePop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.5); } 50% { transform: translate(-50%,-50%) scale(1.1); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        /* ===== オフライン状態バナー（FR-25） ===== */
+        #offline-banner {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 10020; display: none; max-width: 92vw;
+            background: rgba(198, 40, 40, 0.92); color: #fff;
+            padding: 8px 14px; border-radius: 999px;
+            font-size: 13px; font-weight: bold; line-height: 1.35; text-align: center;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3); pointer-events: none;
+        }
+        #offline-banner.visible { display: block; }
     </style>
+
+    <script>
+    // ========== Service Worker 登録（202610 専用・FR-19）==========
+    // 他キャンペーン（202605 / 202609 など）とは共有しない。
+    // デバッグ: URL に ?sw=0 を付けると登録をスキップする（FR-29）。
+    (function () {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            if (new URL(location.href).searchParams.get('sw') === '0') {
+                console.log('[AR202610] Service Worker skipped (?sw=0)');
+                return;
+            }
+        } catch (e) { /* URL パース失敗時は登録続行 */ }
+
+        window.addEventListener('load', function () {
+            var swUrl;
+            try {
+                swUrl = new URL('{{ asset('sw-stamp202610.js') }}', location.href);
+            } catch (e) { return; }
+            // scope は SW と同じディレクトリ（'/' または '/find/'）
+            var scope = swUrl.pathname.replace(/[^/]*$/, '') || '/';
+            navigator.serviceWorker.register(swUrl.href, { scope: scope })
+                .then(function (reg) {
+                    console.log('[AR202610] SW registered:', reg.scope);
+                })
+                .catch(function (err) {
+                    console.warn('[AR202610] SW registration failed:', err);
+                });
+        });
+    })();
+    </script>
 </head>

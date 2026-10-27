@@ -1657,3 +1657,20 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 
 **変更ファイル:** `resources/views/ARstampRally202609/js-stamps.blade.php` / `resources/views/ARstampRally202609/js-prize.blade.php` / `resources/views/ARstampRally202609/ui.blade.php`
 **影響範囲:** 202605 / 202606 への変更なし
+
+## ARstampRally202610 オフライン対応（Service Worker・2026-10-27）
+
+| # | 変更内容 | 詳細 |
+|---|---------|------|
+| T30 | 202610 専用 SW を新規作成 | `public/sw-stamp202610.js`（キャッシュキー `ar202610-{core,html,assets,heavy}-v1`）。install で CORE_URLS 34 件（必須13 + マーカー21）と HTML 2 枚（`/stamp202610`・`/stamp202610/offline`）を事前キャッシュ |
+| T31 | オフラインページ追加 | `resources/views/ARstampRally202610/offline.blade.php`（外部アセット依存なしの自己完結・残スキャン数表示・キャッシュ削除ボタン） |
+| T32 | ルート追加 | `routes/web.php` に `GET /stamp202610/offline` と `GET /stamp202610/csrf`（`Cache-Control: no-store`） |
+| T33 | SW 登録とバナー CSS | `head.blade.php`（`?sw=0` で登録スキップ、`#offline-banner` CSS） |
+| T34 | バナー要素 | `ui.blade.php` に `#offline-banner`（文言は `<span id="offline-banner-text">`） |
+| T35 | スキャンキュー | `js-prize.blade.php` に `ar-scan-queue-202610-r2`（上限200）と `refreshCsrfToken()` / `flushScanQueue()` / `pendingScanCount()`。賞品交換前にキューフラッシュ + トークン更新 |
+| T36 | online/offline 処理 | `js-init.blade.php` で起動時キュー再送、`online`/`offline` イベント、バナー文言の動的更新 |
+| T37-T39 | 検証 | SW 挙動 27 項目 / オフラインキュー 17 項目のシミュレーションで全 PASS（navigation network-first → キャッシュ → オフラインページ → 504、静的アセット cache-first、API・外部オリジン非介入、activate / `CLEAR_CACHES` で `ar202610-*` のみ削除） |
+
+**修正バグ:** `js-prize.blade.php` の `flushScanQueue()` が成功時に `sent++` しておらず、返却される送信件数が常に 0 になっていた。
+**影響範囲:** 202610 のみ。`public/service-worker.js`・`public/js/`・202609 関連は未変更（分離原則）。
+
