@@ -1726,13 +1726,75 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 
 - `php -l`: config / Controller / AdminController / routes / AppServiceProvider / migration / Model すべて OK
 - `php artisan migrate`: DONE（57.76 ms）。既存 `marker_scans` 188 件 / `prize_exchanges` 1 件は無傷（AC-11）
-- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: 作成時 **OK (13 tests, 53 assertions)** → 2026-10-29 再実行で **OK (15 tests, 78 assertions)**（管理画面と CSV エクスポートの 2 件を追加）。カバー: index の asset_dir（`cg/202610/…`）・offline / csrf ヘッダ・収集日内の `scannedAt` 採用と期間外の `now()` フォールバック・日次重複・9 種の 422 `not_eligible`・10 / 15 / 20 種の weight 1 / 2 / 3・`collect_end` 経過後の応募成功と `apply_deadline` 経過後の 422 `deadline_passed`・weight 自動昇格と非降格・email 正規化と一意性・`prize_exchanges` 無書き込み
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: 作成時 **OK (13 tests, 53 assertions)** → 2026-10-29 再実行で **OK (17 tests, 105 assertions)**（管理画面と CSV エクスポート、検証データ分離のテストを追加）。カバー: index の asset_dir（`cg/202610/…`）・offline / csrf ヘッダ・収集日内の `scannedAt` 採用と期間外の `now()` フォールバック・日次重複・9 種の 422 `not_eligible`・10 / 15 / 20 種の weight 1 / 2 / 3・`collect_end` 経過後の応募成功と `apply_deadline` 経過後の 422 `deadline_passed`・weight 自動昇格と非降格・email 正規化と一意性・`prize_exchanges` 無書き込み
 - Node.js（`vm` で SW を sandbox 化）によるシミュレーション: SW fetch 戦略 **48/48 PASS**（AC-4）・オフラインキュー **23/23 PASS**（AC-5）
 
-**T47 運営向け引継ぎメモ（本項目で対応）:** お菓子のガラポンは LocalStorage 管理でアプリは回数を記録しない → 会場スタッフが画面の引抽回数を確認する。市内共通商品券の抽選・当選連絡は `GET /admin/export-csv?dataset=voucherApplications202611` の CSV（`weight DESC, applied_at ASC`）を基に業者が行う。
+**T47 運営向け引継ぎメモ（本項目で対応）:** お菓子のガラポンは LocalStorage 管理でアプリは回数を記録しない → 会場スタッフが画面の引抽回数を確認する。市内共通商品券の抽選・当選連絡は `GET /admin/export?dataset=voucherApplications202611` の CSV（`weight DESC, applied_at ASC`）を基に業者が行う。
 
 **tasks.md の残務:** T11 / T16〜T19 / T26〜T32 / T41〜T46 は対応ファイルが本コミットに含まれているためチェック更新のみが残る。**未着手:** T20〜T25（iOS カメラ起動の根本修正）、T34〜T38（最終監査・`cg/202611` への切替手順）、T37（Android / iOS 実機検証）、T48（帰宅後応募の実機受け入れ）
 
 **注意点:** 検証用の一時ファイル 17 件（`_render202611.html`、`_render202611_script0-5.js`、`storage/_render202611.html`、`storage/_render202611_script0-5.js`、`_tmp_render202611.php`、`_tmp_render_out.txt`、`_tmp_voucher_test.cjs`／計約 16,000 行）は本コミットに含まれていた。アプリのコード（app / routes / resources / public / config / tests / database）から `_render202611` と `_tmp_*` への参照が 0 件であることを grep で確認し、2026-10-29 に削除した（`.gitignore` には追加しない）。
 
 **影響範囲:** 202611 のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/`・既存 Service Worker は未変更（分離原則）。
+
+## ARstampRally202611 検証データ分離（FR-54 / FR-55）と運用ガイド（2026-10-29）
+
+複数端末（開発機・テスト用スマホ）で本番 URL を使って検証した計測が、管理ダッシュボードの集計と
+業者提出用 CSV に混入する問題を、**DB スキーマを変えずに `fingerprint` の前置字で分離**した。
+
+### 1. 仕組み
+
+- 検証用 URL `/stamp202611?test=1` で生成する fingerprint に `test_` を前置する（`test_fp_xxxxxxxx`）。
+  blade（`js-prize.blade.php`）が `TEST_FP_PARAM` / `TEST_FP_PREFIX` 定数を注入し、`isTestMode()` が
+  **そのページの URL** から判定して `getUserId202611()` の解決値へ前置する。fingerprint は保存されず
+  送信ごとに生成されるため、`?test=1` 付きで読み込んだページから送信した分だけ test 扱いになる
+  （オフラインキューはスキャン時の fingerprint を保持するため再送時も `test_`。
+  オフラインページ `/stamp202611/offline` は fingerprint を生成しないため `?test=1` は効かない）
+- `AdminController::applyTestFilter()` が `fingerprint NOT LIKE 'test_%'` を適用し、
+  **既定で検証データを除外**する。`?show_test=1` を付けたリクエストだけ表示する
+- 除外対象: `dashboard202611` の総スキャン数・個別ユーザー数・動物別統計・最近のスキャン・日別統計・
+  日別個別ユーザー数・抽選応募の総数 / 倍率別 / 応募一覧、CSV の `voucherApplications202611` /
+  `recentScans` / `dailyScans` / `markerStats`。`marker_scans` を共有する他キャンペーン
+  （fingerprint は常に `fp_` 始まり）には影響しない
+
+### 2. 使い方
+
+| 用途 | URL |
+|------|-----|
+| 検証（テスト計測） | `/stamp202611?test=1`（毎回この URL で開く。`/stamp202611/offline` は fingerprint を生成しないため無効） |
+| 管理画面（既定＝検証分除外） | `/admin/dashboard202611` |
+| 管理画面で検証分を確認 | `/admin/dashboard202611?show_test=1`（画面上部のリンクで切替。検索・ページ送りも維持） |
+| **業者提出用 CSV（検証分を除外）** | `/admin/export?dataset=voucherApplications202611` |
+| 検証分も含めた CSV | `/admin/export?dataset=voucherApplications202611&show_test=1` |
+
+設定は `config/ar202611.php` の `test_param`（既定 `test`）と `test_prefix`（既定 `test_`）。
+詳細・端末リセット手順・限界（`?test=1` 付け忘れは本番計測になる／email 重複に注意）は
+`resources/views/ARstampRally202611/test-data-guide.md`。
+
+### 3. 変更したファイル（5 件）
+
+| # | ファイル | 変更内容 |
+|---|---------|---------|
+| 1 | `config/ar202611.php` | `test_param` / `test_prefix` を追加（`.env` で上書き可） |
+| 2 | `resources/views/ARstampRally202611/js-prize.blade.php` | `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`@json(config(...))`）と `isTestMode()` を追加。`generateFingerprint()` が `?test=1` 時に `getUserId202611()` の解決値へ前置（Cookie 復元時の userId 整形にも同じ前置を適用） |
+| 3 | `app/Http/Controllers/AdminController.php` | `applyTestFilter()` を追加し、`dashboard202611()` の全集計と `exportCsv()` の 4 dataset に適用（`show_test` は `withQueryString()` と CSV リンクで維持） |
+| 4 | `resources/views/admin/dashboard202611.blade.php` | 「検証データを表示 / 非表示」切替リンク・現在の状態（表示中 / 除外中 + 接頭辞）の表示・検索フォーム hidden とページネーション（`withQueryString()`）での `show_test` 維持 |
+| 5 | `tests/Feature/StampRally202611Test.php` | `test_admin_dashboard_and_csv_exclude_test_fingerprints`（dashboard 既定除外 → `?show_test=1` 表示 → CSV 既定除外 → `&show_test=1` 表示）と `test_prize_view_exposes_test_flag_and_prefix`（blade 注入値）を追加。`/stamp202611/prize` は存在しないため `/stamp202611` を検証 |
+
+### 4. 新規ガイド（2 件）
+
+| ファイル | 内容 |
+|---------|------|
+| `resources/views/ARstampRally202611/test-data-guide.md` | 検証用 URL・管理画面 / CSV の切替・検証用端末の準備とリセット・DB 整理（tinker）・限界と注意 |
+| `resources/views/ARstampRally202611/asset-swap-guide.md` | `cg/202610` → `cg/202611` 切替チェックリスト（FR-36）・配置ファイル一覧（`Model_00.glb`〜`Model_20.glb` / `pattern-maker00.patt`〜`pattern-maker20.patt`）・SW の `ASSET_DIR` / `VERSION` 更新・キャッシュ対処（`?sw=0`・「キャッシュ削除」）・ロールバック |
+
+### 5. 検証結果
+
+- `php -l`: `config/ar202611.php` / `AdminController.php` / `StampRally202611Test.php` すべて OK
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`:
+  **OK (17 tests, 105 assertions)**（FR-54 / FR-55 の 2 件を含む。テスト実行は `:memory:` を必ず併用 —
+  `RefreshDatabase` が `database/database.sqlite` を削除するため）
+- `php artisan route:list --path=stamp202611`: 8 ルート（`/stamp202611` 本体、`/stamp202611/prize` は存在しない）
+- **影響範囲**: 202611 のみ。`marker_scans` / `prize_exchanges` のスキーマ変更なし、他キャンペーンの
+  blade・SW・集計は未変更（分離原則）
+

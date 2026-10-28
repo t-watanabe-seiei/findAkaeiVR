@@ -28,8 +28,8 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 | POST | `/stamp202611/record-scan` | スキャン記録（分120回制限） |
 | POST | `/stamp202611/check-status` | 収集種数・ガラポン到達段階・抽選応募状態の確認（分120回制限） |
 | POST | `/stamp202611/apply-voucher` | 市内共通商品券の抽選応募（時10回制限・10 種以上・1 メール 1 回・倍率 1/2/3 はサーバー算出・**応募期限 `apply_deadline` 経過後は 422 `deadline_passed`**（Q-12 案A）） |
-| GET | `/admin/dashboard202611` | 管理ダッシュボード（収集期間 2026-11-01 〜 2026-11-15 JST・応募期限 2026-11-16 23:59・予定）＋ 抽選応募一覧 |
-| GET | `/admin/export-csv?dataset=voucherApplications202611` | 業者提出用 CSV（`name, email, stamp_count, weight, applied_at`） |
+| GET | `/admin/dashboard202611` | 管理ダッシュボード（収集期間 2026-11-01 〜 2026-11-15 JST・応募期限 2026-11-16 23:59・予定）＋ 抽選応募一覧。既定で検証データ（`test_` fingerprint）を除外（`?show_test=1` で表示・FR-55） |
+| GET | `/admin/export?dataset=voucherApplications202611` | 業者提出用 CSV（`name, email, stamp_count, weight, applied_at`）。既定で検証データ（`test_` fingerprint）を除外（FR-55） |
 
 ## 予定しているファイル構成
 - `resources/views/ARstampRally202611.blade.php` — エントリ（新規）

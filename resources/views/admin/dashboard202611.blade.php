@@ -255,9 +255,21 @@
         <h1>📊 ARスタンプラリー202611 管理ダッシュボード（全モデル統計）</h1>
         <div class="nav-links">
             <a href="{{ route('admin.dashboard') }}" class="nav-link">通常ダッシュボード</a>
+            @if($showTest)
+                <a href="{{ route('admin.dashboard202611') }}" class="nav-link" style="background:#e74c3c;">検証データを非表示</a>
+            @else
+                <a href="{{ route('admin.dashboard202611', ['show_test' => 1]) }}" class="nav-link" style="background:#f39c12;">検証データを表示</a>
+            @endif
             <a href="{{ route('admin.logout') }}" class="logout-btn">ログアウト</a>
         </div>
     </div>
+
+    <!-- 検証データ（FR-54）: ?test=1 を付けた URL で参加した端末（fingerprint が test_ 始まり）の計測 -->
+    <p style="margin:10px 20px 0; font-size:13px; color:#666;">
+        検証データは {{ $showTest ? '表示しています' : '除外しています' }}
+        （現在の接頭辞: <code>{{ config('ar202611.test_prefix') }}</code>）。
+        検証端末では参加 URL に <code>?{{ config('ar202611.test_param') }}=1</code> を付けてください。
+    </p>
 
     <!-- 市内共通商品券の抽選応募（FR-41〜FR-45・景品コードは発行しない） -->
     <div class="prizes-grid">
@@ -266,12 +278,16 @@
             <div style="margin:8px 0 16px; display:flex; gap:8px; align-items:center;">
                 <form method="GET" action="{{ route('admin.dashboard202611') }}" style="display:flex; gap:8px; align-items:center;">
                     <input type="search" name="q" placeholder="email / name で検索" value="{{ request('q') }}" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;" />
+                    {{-- 検索時も検証データの表示状態（FR-55）を維持 --}}
+                    @if($showTest)
+                        <input type="hidden" name="show_test" value="1" />
+                    @endif
                     <button type="submit" style="padding:6px 10px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">検索</button>
                     @if(request('q'))
                         <a href="{{ route('admin.dashboard202611') }}" style="padding:6px 10px; background:#e0e0e0; color:#333; border-radius:6px; text-decoration:none;">クリア</a>
                     @endif
                 </form>
-                <a href="{{ route('admin.export', ['dataset' => 'voucherApplications202611', 'start' => $startDate->toDateTimeString(), 'end' => $applyEnd->toDateTimeString()]) }}"
+                <a href="{{ route('admin.export', ['dataset' => 'voucherApplications202611', 'start' => $startDate->toDateTimeString(), 'end' => $applyEnd->toDateTimeString(), 'show_test' => $showTest ? 1 : 0]) }}"
                    style="padding:6px 10px; background:#28a745; color:white; border-radius:6px; text-decoration:none;">業者提出用 CSV ダウンロード</a>
             </div>
             <table>
@@ -301,7 +317,8 @@
                 </tbody>
             </table>
             <div class="pagination-wrapper">
-                {{ $voucherApplications->links() }}
+                {{-- show_test / q をページ送りでも維持 --}}
+                {{ $voucherApplications->withQueryString()->links() }}
             </div>
         </div>
     </div>
@@ -413,7 +430,7 @@
             </tbody>
         </table>
         <div class="pagination">
-            {{ $recentScans->links() }}
+            {{ $recentScans->withQueryString()->links() }}
         </div>
     </div>
 

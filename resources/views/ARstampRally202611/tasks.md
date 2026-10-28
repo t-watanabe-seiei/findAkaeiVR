@@ -45,7 +45,7 @@
 - [ ] T17 `resources/views/admin/dashboard202611.blade.php` を作成（202610 版のルート名・期間ラベル・見出しを 202611 化。応募一覧テーブルと「業者提出用 CSV ダウンロード」ボタンを配置）
 - [ ] T18 `routes/web.php` の admin グループに `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');` を追記
 - [ ] T46 `AdminController::exportCsv()` の `$allowed` に `voucherApplications202611` を追加し、`name, email, stamp_count, weight, applied_at` を `weight DESC, applied_at ASC`・`chunk(200)` で出力（design §5.6）
-- [ ] T19 検証: `php -l` → `GET /admin/dashboard202611` が 200 で収集期間表示が 2026-11-01 〜 2026-11-15・応募期限表示が 2026-11-16 23:59、`GET /admin/export-csv?dataset=voucherApplications202611` が CSV を返すこと（AC-1 / AC-2 / AC-12）
+- [ ] T19 検証: `php -l` → `GET /admin/dashboard202611` が 200 で収集期間表示が 2026-11-01 〜 2026-11-15・応募期限表示が 2026-11-16 23:59、`GET /admin/export?dataset=voucherApplications202611` が CSV を返すこと（AC-1 / AC-2 / AC-12）
 
 ## Phase 5: iOS カメラ起動（202610 §8 の根本修正を初期実装）
 - [ ] T20 `head.blade.php` の video セレクタを 3 箇所すべて `document.querySelector('video')` とする（`monitorCameraStartup` / `ensureCameraAccess` / `getUserMedia` 成功ハンドラ。`#ar-scene video` を書かない）
@@ -72,7 +72,9 @@
 - [ ] T37 実機検証: Android Chrome / iOS Safari（低スペック機含む）でカメラ起動・マーカー認識・ボール投擲・ガラポンボタン・抽選応募、機内モードで AR 継続とキュー再送（AC-8）
 - [ ] T47 運営向け引継ぎメモを README に追記: ガラポンは画面提示により会場スタッフが回数を確認する（アプリは回数を記録しない）、商品券の抽選・当選連絡は業者が CSV を基に行う
 - [ ] T48 **帰宅後応募の受け入れ検証（Q-12 案A 確定・AC-14 / AC-15 / AC-16）**: 機内モードで 10 種収集 → 解除してページ再読み込み → 未送信キューが自動再送され `marker_scans.scanned_at` が**収集日**で記録されることを tinker で確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功（**`collect_end`（2026-11-15 23:59:59）経過後・`apply_deadline`（2026-11-16 23:59:59）前の再送でも成功**することを確認）。未送信 1 件以上時は応募ボタン非表示＋`#pending-scans` 表示。期間外 / +24h 超の `scannedAt` は `now()` にフォールバック、`apply_deadline` 経過後は 422 `deadline_passed`
-- [ ] T38 `README.md` に完了状況と「`cg/202611` への切替手順」（design.md §3.3）を追記
+- [x] T49〜T52 **検証データ分離（FR-54 / FR-55）と運用手順ガイド**（`?test=1` → fingerprint 前置 / 管理画面・CSV の既定除外 / `?show_test=1` 切替 / `test-data-guide.md`・`asset-swap-guide.md`）→ 詳細は末尾の「追記（2026-10-29）」。テスト 17 件（105 assertions）PASS
+
+- [x] T38 `README.md` に完了状況と「`cg/202611` への切替手順」を追記（→ `asset-swap-guide.md` へ集約し README からリンク・T52 で完了）
 
 ## 検証結果（未実施）
 | 項目 | 結果 |
@@ -88,11 +90,14 @@
 | AC-9 ガラポン 4 回上限 | 未実施（T45） |
 | AC-10 応募 UI（email 重複・倍率表示） | 未実施（T45） |
 | AC-11 DB（migrate / UNIQUE） | 未実施（T39） |
-| AC-12 CSV 出力 | 未実施（T19 / T46） |
+| AC-12 CSV 出力 | 部分合格（T51: `test_admin_dashboard_and_csv_exclude_test_fingerprints` でヘッダ `name,email,stamp_count,weight,applied_at` と行数（検証分除外 / `show_test` 時 1 行）を検証。期間絞り込み（`start` / `end`）は未検証） |
 | AC-13 倍率の自動昇格 | 未実施（T45） |
 | AC-14 帰宅後応募（Q-12 案A） | 未実施（T48） |
 | AC-15 応募ボタン条件（未送信バナー） | 未実施（T48） |
 | AC-16 `scannedAt` ガード / `deadline_passed` | 未実施（T48） |
+| AC-17 検証データ除外（ダッシュボード / CSV） | 合格（T51: dashboard 既定除外 → `?show_test=1` 表示 → CSV 既定除外 → `&show_test=1` 表示、`/stamp202611` の `TEST_FP_PARAM` / `TEST_FP_PREFIX` / `isTestMode` 出力。2 テスト PASS） |
+| AC-18 ガイド（検証データ / アセット切替） | 合格（T52: `test-data-guide.md` / `asset-swap-guide.md` 作成・README からリンク） |
+
 
 ## 参考（202610 での実施履歴 = 本キャンペーンで初期実装に内包する内容）
 | 202610 | 内容 | 202611 での扱い |
@@ -102,3 +107,26 @@
 | T25〜T29 / §9 | 保存キー `-r2` 化による再交換 | Phase 2（T9）で新キー開始のため同等効果が最初から成立 |
 | 202610 の景品コード交換（`exchange-prize` / `prize_exchanges`） | 10 種以上で景品コード 1 枚と交換 | **202611 では廃止**。お菓子ガラポン 4 段階（LocalStorage）＋ 商品券抽選応募（新規テーブル）に置き換え（Phase 3B） |
 | Phase 9 / §10 | オフライン SW・offline ページ・csrf 再取得・キュー | Phase 6 で初期実装 |
+
+## 追記（2026-10-29）: 検証データ分離（FR-54 / FR-55）と運用ガイド
+
+- [x] T49 `config/ar202611.php` に `test_param`（既定 `test`）と `test_prefix`（既定 `test_`）を追加。
+      `js-prize.blade.php` が `@json(config(...))` で注入された `TEST_FP_PARAM` / `TEST_FP_PREFIX` 定数を
+      `isTestMode()` が読み、`?test=1` 時に `generateFingerprint()` が `getUserId202611()` の解決値へ `test_` を前置。
+      fingerprint は保存されないため「`?test=1` 付きで読み込んだページから送信した分だけ test 扱い」
+      （オフラインキューはスキャン時の fingerprint を保持 → 再送時も `test_`）
+- [x] T50 `AdminController` に `applyTestFilter()` を追加し、`dashboard202611()` の全集計（総数・個別ユーザー数・
+      マーカー別・最近のスキャン・日別統計・日別個別ユーザー数・応募総数・倍率別・応募一覧）と
+      `exportCsv()` の 4 dataset に適用。**既定で除外**し `?show_test=1` を付けたときだけ表示。
+      `dashboard202611.blade.php` に切替リンク・現在の状態（表示中 / 除外中 + 接頭辞）の表示・検索フォームの
+      hidden とページネーション（`withQueryString()`）での `show_test` 維持・CSV リンクへの `show_test` 付与を実装
+- [x] T51 テスト 2 件（`test_admin_dashboard_and_csv_exclude_test_fingerprints` /
+      `test_prize_view_exposes_test_flag_and_prefix`）で dashboard 既定除外 → `?show_test=1` 表示 →
+      CSV 既定除外 → `&show_test=1` 表示と blade 注入値を検証 → **17 tests / 105 assertions すべて PASS**
+      （`DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`）
+- [x] T52 `test-data-guide.md`（検証用 URL・管理画面の切替・CSV・端末リセット手順・限界）と
+      `asset-swap-guide.md`（`cg/202611` への切替チェックリスト・キャッシュ対処・ロールバック）を作成し README からリンク
+- **注意点**: `php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う。
+  `RefreshDatabase` が `database/database.sqlite` を削除するため `DB_DATABASE=:memory:` を必ず併用する
+- **残タスク**: T20〜T25（iOS カメラ起動の根本修正）、T34〜T37（最終監査・実機検証）、T48（帰宅後応募の実機受け入れ）
+

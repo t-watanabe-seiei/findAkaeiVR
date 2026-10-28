@@ -28,4 +28,11 @@ return [
     'collect_start'  => env('AR202611_COLLECT_START', '2026-11-01 00:00:00'),
     'collect_end'    => env('AR202611_COLLECT_END', '2026-11-15 23:59:59'),
     'apply_deadline' => env('AR202611_APPLY_DEADLINE', '2026-11-16 23:59:59'),
+    // ── 複数端末での検証（FR-54）──────────────────────────────────────────
+    // `?{test_param}=1` を付けた URL で参加すると fingerprint に test_prefix を接頭する。
+    // 管理画面と業者提出 CSV は通常その計測を除外し、`?show_test=1` を付けたときだけ表示する
+    // （design.md §3.4 / test-data-guide.md）
+    'test_param'  => env('AR202611_TEST_PARAM', 'test'),
+    'test_prefix' => env('AR202611_TEST_FP_PREFIX', 'test_'),
+
 ];

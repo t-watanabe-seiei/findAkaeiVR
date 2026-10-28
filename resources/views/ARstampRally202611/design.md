@@ -76,6 +76,10 @@ return [
     'voucher_threshold' => (int) env('AR202611_VOUCHER_THRESHOLD', 10),
     'voucher_weights'   => [10 => 1, 15 => 2, 20 => 3],
 
+    // 検証データ分離（FR-54 / FR-55）: ?{test_param}=1 で fingerprint に test_prefix を前置
+    'test_param'  => env('AR202611_TEST_PARAM', 'test'),
+    'test_prefix' => env('AR202611_TEST_FP_PREFIX', 'test_'),
+
     // ── Q-12 案A（2026-10-28 確定）: 収集期間と応募期限の分離（FR-50）──────
     // collect_* : 収集種数（ガラポン段階・倍率）の算出 / marker_scans の集計 / scanned_at の妥当性検証
     // apply_deadline : apply-voucher が受理する最終日時（帰宅後に再送して応募できる猶予）
@@ -111,6 +115,47 @@ return [
 2. `config/ar202611.php` の `asset_dir` を `'202611'` に変更（または `.env` の `AR202611_ASSET_DIR=202611`）→ `php artisan config:cache`（本番）
 3. `public/sw-stamp202611.js` の `ASSET_DIR` を `'202611'`、`VERSION` を `'v2'` に変更（precache 差し替えと旧キャッシュ破棄）
 4. 検証: `GET /stamp202611` の pattern / lazy-model URL が `cg/202611/` になっているか、SW の CORE_URLS が 21 枚分生成されるか
+
+### 3.4 検証（テスト）データの分離（FR-54 / FR-55）
+
+**方式**: DB 列を増やさず、`fingerprint` の前置字で判別する。`marker_scans` は他キャンペーンと共有で
+`stamp202611_voucher_applications` は UNIQUE 制約（email / fingerprint）を持つため、列追加・マイグレーションなしで
+既存の `fingerprint` ベース集計にそのまま乗る。
+
+```
+?test=1 を付けた URL で読み込んだページ（js-prize.blade.php）
+  const TEST_FP_PARAM  = @json(config('ar202611.test_param'));    // 'test'
+  const TEST_FP_PREFIX = @json(config('ar202611.test_prefix'));   // 'test_'
+  isTestMode(): new URLSearchParams(window.location.search).get(TEST_FP_PARAM) === '1'
+  generateFingerprint(): getUserId202611()（LocalStorage ar-user-id-202611 / Cookie ar_user_id_202611
+                         の userId）+ UA / language / screen / tz 等 → hash
+                       → (isTestMode() ? TEST_FP_PREFIX : '') + 'fp_' + Math.abs(hash).toString(36)
+                          本番: fp_xxxxxxxx      検証: test_fp_xxxxxxxx
+  recordScan / check-status / apply-voucher は送信のたびに generateFingerprint() を呼ぶ
+
+管理画面・CSV（AdminController）
+  applyTestFilter($query, $showTest)
+    $showTest = true  → 条件なし
+    $showTest = false → where('fingerprint', 'not like', 'test_%')
+```
+
+- **fingerprint は保存しない**（保存されるのは userId）。前置字は**ページを読み込んだときの URL** で決まる
+  → 検証端末は毎回 `?test=1` 付き URL を開く。付け忘れた送信は `fp_` 始まりで本番計測になる
+- base（`fp_…`）は同一端末で安定するため、`?test=1` の有無で同一端末の本番 / 検証アイデンティティが混在しうる。
+  本番計測を汚した場合は `test-data-guide.md` §4 で DB 側を整理する
+- 判別に使う列は `fingerprint` 1 本のみ。他キャンペーンの fingerprint は常に `fp_` 始まりのため除外条件に掛からない
+- 除外を適用する箇所: `dashboard202611()` の総スキャン数・個別ユーザー数・マーカー別統計・最近のスキャン・
+  日別統計・日別個別ユーザー数・応募総数・倍率別内訳・応募一覧、`exportCsv()`（`GET /admin/export`）の
+  `recentScans` / `dailyScans` / `markerStats` / `voucherApplications202611`
+- 表示切替は `?show_test=1`（既定は除外側）。応募一覧のページネーション（`withQueryString()`）、検索フォームの
+  hidden、ダッシュボードの CSV ダウンロードリンクは `show_test` を維持する
+- `test_prefix` を変更すると、それまでに保存された検証行は除外対象でなくなる
+- クライアント生成の値なので**改ざん対策ではない**（目的は検証データの誤計上防止）
+- 応募の重複判定は email ベースのまま。検証には専用 email を使う（`test-data-guide.md` §5）
+- オフラインページ（`/stamp202611/offline`）は fingerprint を生成しないため `?test=1` は効かない。
+  オフライン中のスキャンはキューに**スキャン時に生成した fingerprint** を保存するため、
+  `?test=1` 付きページで集めた分は再送時も `test_` のまま（§10 キュー仕様）
+
 
 ## 4. 202611 固有識別子（分離のための置換一覧）
 | 種別 | 202610 | 202611 |
@@ -217,20 +262,28 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 - オフラインでも動作（fetch なし）。サーバー記録はないため、ブラウザデータ削除で回数はリセットされる（FR-39 で許容）
 
 ### 5.6 CSV ダウンロード（業者提出用・FR-45 / FR-48）
-- ルート: 既存 `GET /admin/export-csv?dataset=voucherApplications202611&start=…&end=…`（`AdminController::exportCsv()` の `$allowed` に追加）
+- ルート: 既存 `GET /admin/export?dataset=voucherApplications202611&start=…&end=…`（`AdminController::exportCsv()` の `$allowed` に追加）
 - ヘッダ: `name, email, stamp_count, weight, applied_at`
 - ソート: `weight DESC, applied_at ASC`（倍率順で業者の抽選を容易にする）
 - 出力: 全応募（`applied_at` で期間絞り込み）。`chunk(200)` ストリーミング（既存 dataset と同一実装）
 - 文字コード: UTF-8（BOM 無し）。Excel で文字化けする場合は BOM 付きへ変更（Q-10 で未確定）
+- **検証データの扱い（FR-55）**: `exportCsv()` は `applyTestFilter()` を通すため、既定では `fingerprint` が
+  `test_` で始まる行を出力しない（`recentScans` / `dailyScans` / `markerStats` も同じ）。検証分も含めて確認する
+  場合は `&show_test=1` を付ける。**抽選実施直前は `show_test` を付けない CSV を提出する**（`test-data-guide.md` §2.3）
 
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）
 - 期間: `config('ar202611.start')` / `config('ar202611.end')` を `Asia/Tokyo` → `UTC` に変換（既定 2026-11-01 00:00:00 〜 2026-11-30 23:59:59）
 - 出力変数: `animalStats` / `recentScans` / `dailyStats` / `dailyUniqueUsers` / **`voucherTotal`** / **`voucherByWeight`**（weight 1/2/3 の人数）/ **`voucherApplications`**（ページネーション 20 件・`q` で name / email 検索）
-- CSV ボタン: `GET /admin/export-csv?dataset=voucherApplications202611&start=…&end=…`（§5.6）。画面上に「業者提出用 CSV ダウンロード」ボタンを配置し、admin 認証下でのみ個人情報を見せる（FR-47）
+- CSV ボタン: `GET /admin/export?dataset=voucherApplications202611&start=…&end=…`（§5.6）。画面上に「業者提出用 CSV ダウンロード」ボタンを配置し、admin 認証下でのみ個人情報を見せる（FR-47）
 - 景品交換（`prize_exchanges`）の集計ブロックは 202611 では**表示しない**（景品コード廃止・FR-8）
 - 動物リスト: `model_01`〜`model_20`（202610 と同一。`cg/202611` 差し替え後も動物名が同じ場合は変更不要）
 - ビュー: `resources/views/admin/dashboard202611.blade.php`（`dashboard202610.blade.php` の期間ラベル・ルート名を 202611 化）
+- **検証データ（FR-55）**: 上記の集計はすべて `applyTestFilter()` を経由し、既定で `test_` 始まりの fingerprint を除外する。
+  `?show_test=1` で含めて表示し、画面上部のリンクで切替（表示中は現在の状態と接頭辞を明示）。検索フォームは
+  hidden で `show_test` を引き継ぎ、ページネーションは `withQueryString()` で維持するため検索中や 2 ページ目
+  以降でも除外 / 表示の状態が切り替わらない
+
 
 ## 7. iOS カメラ起動（202610 §8 の根本修正を初期実装）
 | 論点 | 202611 の実装 |
@@ -350,6 +403,12 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 - ガラポンの引抽回数はサーバー側では検証しない（FR-39）。**会場での二重配布は運営の目視確認に依存する**ため、配布ルール（画面の「引いた段階」表示）を運営へ周知する必要がある。
 - 1 メールアドレス 1 回の制約は email 単位。家族で同一 email を共有するケースは 1 応募として扱われる（業者側で運用）。氏名の異なる重複を検出したい場合は管理画面の email 検索で確認する。
 - `check-status` は応募行の `stamp_count` / `tier` / `weight` を**上方更新する書き込みを伴う**（FR-43）。下方更新しない・応募者自身の 1 行のみ・`stamp202611_check`（分120回）で律速されるため負荷は小さい。自動昇格をやめたい場合は Q-11 を「応募時点固定」へ変更し §5.2 の UPDATE を削除する。
+- 検証データ分離（FR-54 / FR-55）: `test_admin_dashboard_and_csv_exclude_test_fingerprints`（dashboard 既定除外 →
+  `?show_test=1` で表示 → CSV 既定除外 → `&show_test=1` で表示）/
+  `test_prize_view_exposes_test_flag_and_prefix`（`/stamp202611` の HTML に
+  `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される）。
+  クラス全体で **17 tests / 105 assertions PASS**（実行手順は `test-data-guide.md` §7）
+
 - 202609 側に残る `#ar-scene video` 不具合（202610 §8 の既知未対応）は本キャンペーンでは扱わない（分離原則・Q-7）。
 - **Q-12（案A 確定・2026-10-28）の実装範囲**: `config/ar202611.php` の `collect_start`（`2026-11-01 00:00:00`）/ `collect_end`（`2026-11-15 23:59:59`）/ `apply_deadline`（`2026-11-16 23:59:59`）、`StampRally202611Controller` の `collectPeriod()` / `applyDeadline()` / `recordScan()` の `scanned_at` 規則、`js-gallery.blade.php` の応募ボタン条件（未送信バナー）が案A の実装点。**将来案B / 案C へ戻す場合は §10.1 の手順**（§5.1 のガードを 1 行戻し、`apply_deadline` 判定と未送信バナーを削除）。SW・キュー・応募フォーム・CSV は変更不要
 - **帰宅後応募の前提条件（案A）**: ①同一端末・同一ブラウザであること ②Service Worker が登録済みで `ar-scan-queue-202611` が残っていること（上限 200 件・超過は最古破棄）③`apply_deadline` 前にページを開くこと。いずれかを満たさない場合は種数が減り、応募できない（UI で未送信件数を明示する）
@@ -384,5 +443,7 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 | AC-14 帰宅後応募（Q-12 案A） | 機内モードで 10 種収集 → 機内モード解除後にページを再読み込み → `flushScanQueue202611()` が全件再送。`php artisan tinker` で `marker_scans.scanned_at` が**収集日**であることを確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功。**`collect_end` 経過後の再送でも成功**することを確認（`apply_deadline` 前） |
 | AC-15 応募ボタン条件（FR-52） | DevTools で `ar-scan-queue-202611` に 1 件残したままスタンプ帳を開く → 応募ボタン非表示・`#pending-scans` 表示 → フラッシュ完了後に `check-status` 再実行でボタン表示。LocalStorage 上だけ 10 種（サーバー 9 種）ではボタン非表示 |
 | AC-16 `scannedAt` ガード | curl / tinker で `scannedAt` を `2026-12-30T12:00:00Z`（収集期間外）や `now()+72h` で送信 → DB の `scanned_at` はサーバー `now()`。`apply_deadline` 経過後の `apply-voucher` は 422 `deadline_passed` |
+| AC-17 検証データ分離（FR-54 / FR-55） | `test_` 始まりの fingerprint 行を投入 → `GET /admin/dashboard202611` では総スキャン数・個別ユーザー数・応募一覧に出ず、`?show_test=1` だけで現れる。`GET /admin/export?dataset=voucherApplications202611` の CSV にも出ず、`&show_test=1` だけで出る。`/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX` / `isTestMode` が出力される。自動テスト 2 件（`test_admin_dashboard_and_csv_exclude_test_fingerprints` / `test_prize_view_exposes_test_flag_and_prefix`）が PASS |
+| AC-18 運用手順 | 検証用端末の準備・リセット手順（`?test=1` 付き URL の固定、LocalStorage / Cookie、検証応募行の削除）と「`?test=1` 付け忘れは本番計測になる」限界が `test-data-guide.md` に記載されている。`cg/202611` への切替手順は `asset-swap-guide.md` にチェックリスト化されている（FR-36） |
 
 

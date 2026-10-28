@@ -347,6 +347,82 @@ class StampRally202611Test extends TestCase
         // 倍率順（weight DESC）→ 3 倍（c2）が先に並ぶ（FR-45）
         $this->assertLessThan(strpos($csv, 'c1@example.com'), strpos($csv, 'c2@example.com'));
     }
+
+    /**
+     * FR-54: 複数端末での検証（?test=1）の計測をダッシュボードと業者提出 CSV から除外する。
+     */
+    public function test_admin_dashboard_and_csv_exclude_test_fingerprints(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        // 本番計測（10 種）
+        $this->seedScans('fp-real', 10, '2026-11-10 12:00:00');
+        $this->applyVoucher('fp-real', 'real@example.com')->assertStatus(200);
+
+        // 検証端末（?test=1 → fingerprint が test_ 始まり・20 種）
+        $this->seedScans('test_fp-device-b', 20, '2026-11-10 13:00:00');
+        $this->applyVoucher('test_fp-device-b', 'device-b@example.com')->assertStatus(200);
+
+        // 既定: 検証データを除外
+        $response = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/dashboard202611');
+
+        $response->assertStatus(200)
+            ->assertViewHas('totalScans', 10)
+            ->assertViewHas('uniqueScanners', 1)
+            ->assertViewHas('voucherTotal', 1)
+            ->assertViewHas('showTest', false);
+
+        $html = $response->getContent();
+        $this->assertStringContainsString('real@example.com', $html);
+        $this->assertStringNotContainsString('device-b@example.com', $html);
+
+        // 業者提出用 CSV にも検証データを混ぜない
+        $csv = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/export?dataset=voucherApplications202611')
+            ->streamedContent();
+        $this->assertStringContainsString('real@example.com', $csv);
+        $this->assertStringNotContainsString('device-b@example.com', $csv);
+
+        // ?show_test=1 では検証データも含めて表示（検証用）
+        $shown = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/dashboard202611?show_test=1');
+
+        $shown->assertStatus(200)
+            ->assertViewHas('totalScans', 30)
+            ->assertViewHas('uniqueScanners', 2)
+            ->assertViewHas('voucherTotal', 2)
+            ->assertViewHas('showTest', true);
+        $this->assertStringContainsString('device-b@example.com', $shown->getContent());
+
+        // 検索と併用しても show_test が維持される（検索フォームの hidden で引き継ぐ）
+        $searched = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/dashboard202611?show_test=1&q=device-b@example.com');
+        $searched->assertStatus(200)->assertViewHas('showTest', true);
+        $this->assertStringContainsString('device-b@example.com', $searched->getContent());
+        $this->assertStringContainsString('name="show_test" value="1"', $searched->getContent());
+
+        // 応募一覧のページネーションも show_test を引き継ぐ（blade の withQueryString）
+        $applications = $shown->viewData('voucherApplications');
+        $this->assertStringContainsString('show_test=1', $applications->url(2));
+
+        $csvAll = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/export?dataset=voucherApplications202611&show_test=1')
+            ->streamedContent();
+        $this->assertStringContainsString('device-b@example.com', $csvAll);
+    }
+
+    /**
+     * FR-54: 参加 URL の ?test=1 で fingerprint 接頭辞をクライアントへ注入する。
+     */
+    public function test_prize_view_exposes_test_flag_and_prefix(): void
+    {
+        $html = $this->get('/stamp202611')->getContent();
+        $this->assertStringContainsString('TEST_FP_PARAM', $html);
+        $this->assertStringContainsString('TEST_FP_PREFIX', $html);
+        $this->assertStringContainsString('"test_"', $html);
+        $this->assertStringContainsString('isTestMode', $html);
+    }
 }
 
 

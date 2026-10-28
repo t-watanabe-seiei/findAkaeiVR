@@ -111,6 +111,19 @@
             };
         }
 
+        // 検証モード（FR-54）: `?test=1` を付けた URL で読み込んだ端末だけ fingerprint に
+        // 接頭辞を付ける。サーバー側の集計・業者提出 CSV は通常これを除外する
+        const TEST_FP_PARAM  = @json(config('ar202611.test_param'));
+        const TEST_FP_PREFIX = @json(config('ar202611.test_prefix'));
+
+        function isTestMode() {
+            try {
+                return new URLSearchParams(window.location.search).get(TEST_FP_PARAM) === '1';
+            } catch (e) {
+                return false;      // URLSearchParams 非対応では検証モード無効
+            }
+        }
+
         function generateFingerprint() {
             return getUserId202611().then(function (userId) {
                 var data = [
@@ -129,7 +142,8 @@
                     hash = ((hash << 5) - hash) + c;
                     hash = hash & hash;
                 }
-                return 'fp_' + Math.abs(hash).toString(36);
+                // 検証モードでは test_ を接頭する（同一端末でも本計測とは別アイデンティティ）
+                return (isTestMode() ? TEST_FP_PREFIX : '') + 'fp_' + Math.abs(hash).toString(36);
             });
         }
 

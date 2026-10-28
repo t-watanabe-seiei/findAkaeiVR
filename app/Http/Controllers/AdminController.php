@@ -179,6 +179,8 @@ class AdminController extends Controller
         $dataset = $request->query('dataset', 'recentExchanges');
         $start = $request->query('start');
         $end = $request->query('end');
+        // FR-54: 業者提出 CSV に検証データ（test_ 始まり）を含めるかどうか
+        $showTest = $request->query('show_test') === '1';
 
         $allowed = ['recentExchanges', 'redeemedPrizes', 'allExchanges', 'recentScans', 'dailyScans', 'markerStats', 'voucherApplications202611'];
         if (!in_array($dataset, $allowed)) {
@@ -191,7 +193,7 @@ class AdminController extends Controller
 
         $filename = sprintf('dashboard_%s_%s.csv', $dataset, now()->format('Ymd_His'));
 
-        $callback = function () use ($dataset, $startDt, $endDt) {
+        $callback = function () use ($dataset, $startDt, $endDt, $showTest) {
             $handle = fopen('php://output', 'w');
 
             // ヘッダとストリーム内容
@@ -235,6 +237,9 @@ class AdminController extends Controller
                 if ($startDt) $query->where('scanned_at', '>=', $startDt);
                 if ($endDt) $query->where('scanned_at', '<=', $endDt);
 
+                // FR-54: 検証データ（test_ fingerprint）は既定で除外
+                $query = $this->applyTestFilter($query, $showTest);
+
                 $query->chunk(500, function ($rows) use ($handle) {
                     foreach ($rows as $row) {
                         fputcsv($handle, [
@@ -257,6 +262,9 @@ class AdminController extends Controller
                     ->groupBy('date')
                     ->orderBy('date', 'desc');
 
+                // FR-54: 検証データ（test_ fingerprint）は既定で除外
+                $query = $this->applyTestFilter($query, $showTest);
+
                 if ($startDt) $query->having('date', '>=', $startDt->toDateString());
                 if ($endDt) $query->having('date', '<=', $endDt->toDateString());
 
@@ -272,6 +280,9 @@ class AdminController extends Controller
                 $query = MarkerScan::query();
                 if ($startDt) $query->where('scanned_at', '>=', $startDt);
                 if ($endDt) $query->where('scanned_at', '<=', $endDt);
+
+                // FR-54: 検証データ（test_ fingerprint）は既定で除外
+                $query = $this->applyTestFilter($query, $showTest);
 
                 $rows = $query->select('marker_id', 'marker_name')
                     ->selectRaw('COUNT(*) as total_scans')
@@ -290,6 +301,9 @@ class AdminController extends Controller
                 fputcsv($handle, ['name', 'email', 'stamp_count', 'weight', 'applied_at']);
 
                 $query = Stamp202611VoucherApplication::query();
+                // FR-54: 業者提出用から検証データ（test_ fingerprint）を除外。
+                // 検証分を含めたいときは URL に ?show_test=1 を付ける
+                $query = $this->applyTestFilter($query, $showTest);
                 if ($startDt) $query->where('applied_at', '>=', $startDt);
                 if ($endDt) $query->where('applied_at', '<=', $endDt);
 
@@ -1001,19 +1015,29 @@ class AdminController extends Controller
         $applyStart = $startDate->copy();
         $applyEnd   = Carbon::parse((string) config('ar202611.apply_deadline'), 'Asia/Tokyo');
 
-        // 市内共通商品券の抽選応募（FR-41〜FR-44）
-        $voucherTotal = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd])->count();
+        // 検証データ（FR-54）: ?show_test=1 を付けたリクエストだけ test_ 計測を含める
+        $showTest = $request->query('show_test') === '1';
 
-        $voucherByWeight = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd])
-            ->selectRaw('weight, COUNT(*) as total')
-            ->groupBy('weight')
-            ->orderBy('weight')
-            ->get()
-            ->pluck('total', 'weight');
+        // 市内共通商品券の抽選応募（FR-41〜FR-44）
+        $voucherTotal = $this->applyTestFilter(
+            Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd]),
+            $showTest
+        )->count();
+
+        $voucherByWeight = $this->applyTestFilter(
+            Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd])
+                ->selectRaw('weight, COUNT(*) as total')
+                ->groupBy('weight')
+                ->orderBy('weight'),
+            $showTest
+        )->get()->pluck('total', 'weight');
 
         // 応募一覧（20 件ページネーション・q は email / name 検索）
         $q = $request->query('q');
-        $voucherQuery = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd]);
+        $voucherQuery = $this->applyTestFilter(
+            Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd]),
+            $showTest
+        );
         if ($q) {
             $voucherQuery->where(function ($query) use ($q) {
                 $query->where('email', 'like', '%' . $q . '%')
@@ -1023,13 +1047,17 @@ class AdminController extends Controller
         $voucherApplications = $voucherQuery->orderBy('weight', 'desc')
             ->orderBy('applied_at', 'asc')
             ->paginate(20, ['*'], 'voucher_page')
-            ->appends(['q' => $q]);
+            ->appends(['q' => $q, 'show_test' => $request->query('show_test')]);
 
         // 収集期間の全体統計
-        $totalScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])->count();
-        $uniqueScanners = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
-            ->distinct()
-            ->count('fingerprint');
+        $totalScans = $this->applyTestFilter(
+            MarkerScan::whereBetween('scanned_at', [$startDate, $endDate]),
+            $showTest
+        )->count();
+        $uniqueScanners = $this->applyTestFilter(
+            MarkerScan::whereBetween('scanned_at', [$startDate, $endDate]),
+            $showTest
+        )->distinct()->count('fingerprint');
 
         // 全モデルのリスト（202610 と同一アセット・同一 20 種）
         $animals = [
@@ -1055,30 +1083,20 @@ class AdminController extends Controller
             'model_20' => 'キリン',
         ];
 
-        // 各モデルの統計を収集
+        // 各モデルの統計を収集（1 marker あたり 1 ベースクエリから派生・FR-54 で検証分を除外）
         $animalStats = [];
         foreach ($animals as $markerId => $markerName) {
-            $markerScanCount = MarkerScan::where('marker_id', $markerId)
-                ->where('capture_type', 'marker_scan')
-                ->whereBetween('scanned_at', [$startDate, $endDate])
-                ->count();
+            $base = $this->applyTestFilter(
+                MarkerScan::where('marker_id', $markerId)
+                    ->whereBetween('scanned_at', [$startDate, $endDate]),
+                $showTest
+            );
 
-            $ballHitCount = MarkerScan::where('marker_id', $markerId)
-                ->where('capture_type', 'ball_hit')
-                ->whereBetween('scanned_at', [$startDate, $endDate])
-                ->count();
-
-            $totalCount = $markerScanCount + $ballHitCount;
-
-            $uniqueUsers = MarkerScan::where('marker_id', $markerId)
-                ->whereBetween('scanned_at', [$startDate, $endDate])
-                ->distinct('fingerprint')
-                ->count();
-
-            $lastScan = MarkerScan::where('marker_id', $markerId)
-                ->whereBetween('scanned_at', [$startDate, $endDate])
-                ->orderBy('scanned_at', 'desc')
-                ->first();
+            $markerScanCount = (clone $base)->where('capture_type', 'marker_scan')->count();
+            $ballHitCount    = (clone $base)->where('capture_type', 'ball_hit')->count();
+            $totalCount      = $markerScanCount + $ballHitCount;
+            $uniqueUsers     = (clone $base)->distinct('fingerprint')->count();
+            $lastScan        = $base->orderBy('scanned_at', 'desc')->first();
 
             $animalStats[] = [
                 'marker_id'        => $markerId,
@@ -1092,29 +1110,36 @@ class AdminController extends Controller
         }
 
         // 最近のスキャン履歴
-        $recentScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
-            ->orderBy('scanned_at', 'desc')
-            ->paginate(30, ['*'], 'recent_scans_page');
+        $recentScans = $this->applyTestFilter(
+            MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
+                ->orderBy('scanned_at', 'desc'),
+            $showTest
+        )->paginate(30, ['*'], 'recent_scans_page')
+            ->appends(['show_test' => $request->query('show_test')]);
 
         // 日別統計
-        $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
-            ->selectRaw('capture_type')
-            ->selectRaw('COUNT(*) as count')
-            ->whereBetween('scanned_at', [$startDate, $endDate])
-            ->groupBy('date', 'capture_type')
-            ->orderBy('date', 'desc')
-            ->get();
+        $dailyStatsRaw = $this->applyTestFilter(
+            MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+                ->selectRaw('capture_type')
+                ->selectRaw('COUNT(*) as count')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->groupBy('date', 'capture_type')
+                ->orderBy('date', 'desc'),
+            $showTest
+        )->get();
 
         $dailyStats = $dailyStatsRaw->groupBy('date');
 
         // 日別個別ユーザー数統計
-        $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
-            ->selectRaw('capture_type')
-            ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
-            ->whereBetween('scanned_at', [$startDate, $endDate])
-            ->groupBy('date', 'capture_type')
-            ->orderBy('date', 'desc')
-            ->get();
+        $dailyUniqueUsersRaw = $this->applyTestFilter(
+            MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+                ->selectRaw('capture_type')
+                ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->groupBy('date', 'capture_type')
+                ->orderBy('date', 'desc'),
+            $showTest
+        )->get();
 
         $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
 
@@ -1130,7 +1155,30 @@ class AdminController extends Controller
             'voucherApplications',
             'startDate',
             'endDate',
-            'applyEnd'
+            'applyEnd',
+            'showTest'
         ));
+    }
+
+    /**
+     * FR-54: 複数端末での検証（テスト）計測の除外。
+     *
+     * `?test=1` を付けた URL で参加した端末は fingerprint が test_prefix（既定 `test_`）で
+     * 始まる。通常はそれを集計から除外し、`?show_test=1` を付けたリクエストだけ表示する。
+     * LIKE の `_` は単一文字ワイルドカードだが、本番計測の fingerprint は常に `fp_` 始まり
+     * （js-prize.blade.php の generateFingerprint）のため混同しない。
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  bool  $showTest  true のとき検証データをそのまま含める
+     */
+    private function applyTestFilter($query, bool $showTest)
+    {
+        if ($showTest) {
+            return $query;
+        }
+
+        $prefix = (string) config('ar202611.test_prefix', 'test_');
+
+        return $query->where('fingerprint', 'not like', $prefix . '%');
     }
 }

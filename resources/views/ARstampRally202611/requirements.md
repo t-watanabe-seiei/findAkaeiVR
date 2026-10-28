@@ -4,6 +4,8 @@
 > 状態: **仕様確定**（ガラポンは LocalStorage 管理・商品券応募は 1 メール 1 回をサーバー側で強制・応募後の倍率昇格は `check-status` で自動）
 > 追加論点（2026-10-28）: **Q-12「オフラインでスタンプを集め、帰宅後に通信できる環境で応募する」を仕様として保証するか** → **案A で確定**（収集期間と応募期限の分離）。
 > 確定値（利用者回答・2026-10-28）: **収集 2026-11-01 00:00:00 〜 2026-11-15 23:59:59 / 応募期限 2026-11-16 23:59:59（JST）**。三案比較表は §10 に残置（FR-49〜FR-53 は案A 確定済み）。
+> 改訂（2026-10-29）: **複数端末での検証データを本番集計・業者提出 CSV から分離する要件を追加**（§3-4 FR-54 / FR-55・AC-17 / AC-18・`config` の `test_param` / `test_prefix`）。運用手順は `test-data-guide.md`。
+
 > 本ファイルの内容確定後に `design.md` → `tasks.md` の順で作成する。
 
 ## 1. 目的
@@ -51,7 +53,7 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | FR-42 | 応募完了時の画面表示は収集種数に応じて次とする（10〜14 種）「市内共通商品券の抽選会に応募しました。」／（15〜19 種）「市内共通商品券の抽選会に応募しました。（15個以上集めたので当選確率2倍です。）」／（20 種）「市内共通商品券の抽選会に応募しました。（20個すべて集めたので当選確率3倍です。）」 |
 | FR-43 | 当選倍率 `weight`（1 / 2 / 3）は**サーバー側で算出**して保存する（10〜14 種 → 1、15〜19 種 → 2、20 種 → 3）。クライアントが送る weight は無視する。応募後に種数が増加した場合は、**`check-status`（ページ読み込み時）でサーバーが `stamp_count` / `tier` / `weight` を自動で上方更新**する（下方更新しない。利用者が応募ボタンを再押下する必要はない。`apply-voucher` の冪等再呼び出しでも同じ更新を行う）。応募者には FR-42 の文言で現在倍率を表示する（利用者決定・2026-10-28） |
 | FR-44 | **1 メールアドレス 1 回のみ**を DB の UNIQUE 制約とサーバー側検証で強制する。email は前後空白除去 + 小文字化して保存・比較する。同一 email が既存の場合は HTTP 422（`already_applied`）を返し「すでに応募済みです」を表示する。`fingerprint` 単位でも 1 行のみ（UNIQUE） |
-| FR-45 | 管理画面 `GET /admin/dashboard202611` に応募一覧と **CSV ダウンロード**（`GET /admin/export-csv?dataset=voucherApplications202611`）を設置し、`name, email, stamp_count, weight, applied_at` を出力する。抽選・当選連絡は業者側で行う（アプリ側は抽選しない） |
+| FR-45 | 管理画面 `GET /admin/dashboard202611` に応募一覧と **CSV ダウンロード**（`GET /admin/export?dataset=voucherApplications202611`）を設置し、`name, email, stamp_count, weight, applied_at` を出力する。抽選・当選連絡は業者側で行う（アプリ側は抽選しない） |
 | FR-46 | 応募はオンライン必須（オフラインでは行わない）。応募直前にスキャンキューをフラッシュし CSRF トークンを更新する（FR-26 / FR-27 と同一手順） |
 
 ## 3-3. 機能要件（オフライン収集 → 帰宅後の応募・Q-12 案A 確定）
@@ -69,6 +71,18 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | FR-51 | **記録日時は収集日を保持する（案A）**: `record-scan` の `scanned_at` は、クライアントが送る `scannedAt` が **① `collect_start`〜`collect_end` の内 ② サーバー現在時刻より 24 時間以内の未来**という条件を満たす場合に限りそれを採用し、条件外（欠損・不正・期間外・大きく未来）の場合はサーバー `now()` へフォールバックする。これにより日別統計・動物別統計が**実際の収集日**で集計され、帰宅後の再送が 12 月へずれない。`applied_at`（応募日時）は常にサーバー `now()` のまま |
 | FR-52 | **応募ボタンはサーバー算出種数でのみ表示**: スタンプ帳内の抽選応募ボタンは `check-status` が返す `stampCount`（= サーバー記録済み）が `voucher_threshold` 以上の場合のみ表示する。クライアント LocalStorage の収集数や**未送信キュー件数だけでは表示しない**。未送信キューが 1 件以上ある場合は応募ボタンを抑制し「未送信のスタンプ N 件を自動送信します」バナーを表示する（送信完了後に `check-status` を再実行して反映） |
 | FR-53 | **スタンプ記録は端末内である旨の明示**: スタンプ収集状態は端末の LocalStorage / IndexedDB とサーバーの `marker_scans`（fingerprint 紐付け）に依存する。別ブラウザ・別端末・プライベートモード・ブラウザデータ削除では**引継ぎできない**ことを参加ページと README に明記する（案A/B/C 共通の必須要件） |
+### 3-4. 検証（テスト）データの分離（2026-10-29 追加）
+
+複数端末で本番と同じ URL を使って検証すると、その計測が `marker_scans` と
+`stamp202611_voucher_applications` に本番データとして混入し、管理画面の集計と業者提出用 CSV に現れる。
+**検証用 URL に `?test=1` を付けるだけで自動的に除外する**（DB スキーマは変更しない）。
+
+| # | 要件 |
+|---|---|
+| FR-54 | 参加ページの URL に `?{config.test_param}=1`（既定 `?test=1`）を付けたページで生成する fingerprint に `config('ar202611.test_prefix')`（既定 `test_`）を前置する。クエリ名と前置字は blade（`js-prize.blade.php`）が `@json(config(...))` で `TEST_FP_PARAM` / `TEST_FP_PREFIX` 定数として注入し、`isTestMode()` が現在の URL から判定する（JS 側へ直書きしない）。fingerprint は保存値ではなく**送信ごとに** LocalStorage `ar-user-id-202611`（Cookie `ar_user_id_202611`）の userId と端末属性から生成するため、`?test=1` 付きで読み込んだページから送信した分だけ test 扱いになる（付け忘れた送信は本番計測）。オフラインキューはスキャン時の fingerprint を保持するため再送時も `test_` のまま。Service Worker は navigation を network-first で取得するためクエリはサーバーへ届く。オフラインページ（`/stamp202611/offline`）は fingerprint を生成しないため `?test=1` は効かない |
+| FR-55 | 管理画面（`dashboard202611`）と CSV（`exportCsv`）は、fingerprint が `test_prefix` で始まる行を**既定で除外**する（総スキャン数・個別ユーザー数・動物別統計・最近のスキャン履歴・日別統計・日別個別ユーザー数・抽選応募の総数 / 倍率別 / 応募一覧、CSV の `voucherApplications202611` / `recentScans` / `dailyScans` / `markerStats`）。除外は `AdminController::applyTestFilter()` 1 箇所に集約し、`?show_test=1` を付けたリクエストだけ検証データを含めて表示する。ページネーション（`withQueryString()`）・検索フォーム（hidden）・CSV ダウンロードリンクは `show_test` を維持する。除外は `fingerprint` 列のみで行うため、`marker_scans` を共有する他キャンペーン（fingerprint は常に `fp_` 始まり）の集計には影響しない。運用手順は `test-data-guide.md` |
+
+
 
 ## 4. 機能要件（iOS カメラ起動・202610 §7/§8 の確定形を初期実装）
 | # | 要件 |
@@ -109,7 +123,7 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | FR-30 | 集計項目: 動物別スキャン数（`marker_scan` / `ball_hit`）・個別ユーザー数（`fingerprint`）・最近のスキャン履歴・日別統計（スキャン数／個別ユーザー数）・**抽選応募実績**（応募者数・倍率 1 / 2 / 3 の内訳・最近の応募一覧） |
 | FR-31 | 動物リストは `model_01`〜`model_20`（202610 と同一。アセット流用中は動物名リストも同一） |
 | FR-47 | 応募一覧は検索（名前 / email / 倍率）とページネーション（20 件）を持つ。個人情報（email・name）を CSV / 画面で出力するのは **admin 認証下のみ**とする |
-| FR-48 | CSV ダウンロードは `GET /admin/export-csv?dataset=voucherApplications202611`（既存 `exportCsv` の dataset 分岐に追加）で提供し、`name, email, stamp_count, weight, applied_at` を UTF-8（BOM 無し・`fputcsv`）で出力する。期間絞り込み（`start` / `end`）は `applied_at` に適用する |
+| FR-48 | CSV ダウンロードは `GET /admin/export?dataset=voucherApplications202611`（既存 `exportCsv` の dataset 分岐に追加）で提供し、`name, email, stamp_count, weight, applied_at` を UTF-8（BOM 無し・`fputcsv`）で出力する。期間絞り込み（`start` / `end`）は `applied_at` に適用する |
 
 ## 8. アセット切替の単一点（本キャンペーンの重要要件）
 ### 8.1 方針
@@ -126,6 +140,9 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | `voucher_weights` | `[10 => 1, 15 => 2, 20 => 3]` | 収集種数ごとの当選倍率。サーバーが算出して `weight` に保存（FR-43） |
 | `collect_start` / `collect_end` | `2026-11-01 00:00:00` / `2026-11-15 23:59:59` | **収集期間（Q-12 案A・確定）**: 収集種数（ガラポン段階・倍率）の算出、`marker_scans` の集計、`scanned_at` の妥当性検証に使用（FR-50 / FR-51） |
 | `apply_deadline` | `2026-11-16 23:59:59` | **応募期限（Q-12 案A・確定）**: `apply-voucher` が受理する最終日時。`collect_end` より後ろ（帰宅後に再送して応募できる猶予 1 日）。期限外は 422 `deadline_passed`（FR-49 / FR-50） |
+| `test_param` | `test` | 検証モードを起動するクエリ名（`?test=1`）。付けたリクエストで生成する fingerprint に `test_prefix` を前置（FR-54） |
+| `test_prefix` | `test_` | 検証データの fingerprint 前置字。管理画面・CSV は既定でこの前置字の行を除外（FR-55 / `test-data-guide.md`） |
+
 
 ### 8.3 機能要件
 | # | 要件 |
@@ -197,7 +214,7 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | # | 条件 |
 |---|---|
 | AC-1 | `php -l` が新規・変更 PHP すべてで通過する |
-| AC-2 | `php artisan route:list` に 202611 の 6 ルート（index / offline / csrf / record-scan / check-status / apply-voucher）＋ admin（dashboard202611 / export-csv）が存在し、既存キャンペーンのルートに変化がない |
+| AC-2 | `php artisan route:list` に 202611 の 6 ルート（index / offline / csrf / record-scan / check-status / apply-voucher）＋ admin（`/admin/dashboard202611` と既存 `/admin/export` の dataset 追加）が存在し、既存キャンペーンのルートに変化がない |
 | AC-3 | 202611 の blade / JS に `202610` 識別子（LocalStorage キー・API URL・console プレフィックス・SW 名）が残存していない |
 | AC-4 | SW のフェッチ戦略（navigation network-first / 静的 cache-first / API 非介入 / 外部オリジン非介入 / offline フォールバック）がシミュレーション検証で全 PASS |
 | AC-5 | スキャンキュー（上限 200・最古破棄・`scannedAt` 維持・4xx/5xx 非再送・online 復帰再送・応募前フラッシュ）がシミュレーション検証で全 PASS |
@@ -212,3 +229,6 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | AC-14 | **帰宅後応募（Q-12 案A）**: 機内モードで 10 種収集 → 機内モードを解除してページを再読み込み（自宅 Wi-Fi を模擬）→ 未送信キューが自動再送され、**`marker_scans.scanned_at` が収集日（機内モード当時の `scannedAt`）**で記録される。`check-status` の `stampCount` が 10 になり、`apply_deadline` 前なら `apply-voucher` が成功する（収集期間終了後の再送でも成功することを確認） |
 | AC-15 | **応募ボタンの表示条件（FR-52）**: 未送信キューが 1 件以上ある間は応募ボタンが非表示で「未送信のスタンプ N 件を自動送信します」バナーを表示。送信完了後の `check-status` でボタンが有効化される。LocalStorage 上だけ 10 種（サーバー記録 9 種）の場合はボタンが表示されない |
 | AC-16 | **`scannedAt` ガード**: 収集期間外（例 2026-12-30）や現在 +24h を超える `scannedAt` を送っても DB はサーバー `now()` で記録され、種数や日別統計が操作されないこと（curl / tinker で検証）。`apply_deadline` 経過後の `apply-voucher` は 422 `deadline_passed` |
+| AC-17 | **検証データ分離（FR-54 / FR-55）**: `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される。`test_` 始まりの行は `dashboard202611` の集計（総数・個別ユーザー数・応募一覧）と `GET /admin/export?dataset=voucherApplications202611` に**出ず**、`?show_test=1`（CSV は `&show_test=1`）を付けたときだけ現れる。検索（`q`）と併用しても `show_test` が維持され（検索フォームの hidden）、応募一覧のページネーション URL にも `show_test` が引き継がれる。`StampRally202611Test` の `test_admin_dashboard_and_csv_exclude_test_fingerprints` / `test_prize_view_exposes_test_flag_and_prefix` が PASS（クラス 17 tests / 105 assertions） |
+| AC-18 | 検証用端末の準備・リセット手順（LocalStorage / Cookie の削除、検証応募行の削除）と「`?test=1` 付け忘れは本番計測になる」限界が `test-data-guide.md` に記載されている。`cg/202611` への切替手順は `asset-swap-guide.md` にチェックリスト化されている（FR-36） |
+
