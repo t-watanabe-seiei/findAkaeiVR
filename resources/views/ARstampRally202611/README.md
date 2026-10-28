@@ -8,13 +8,14 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 - AR（マーカー走査 / ボール投擲）で隠れたキャラクター（20種 + Model_00）を捕まえるスタンプラリー
 - **お菓子のガラポン**: 5 / 10 / 15 / 20 種到達ごとに 1 回、会場内のガラポンを引く（最大 4 回）。アプリ内にくじ引き機能は持たず、スタンプ帳（コレクション）内のボタン（最大 4 回押下）と会場スタッフへの提示用画面のみ。引抽回数は LocalStorage で管理
 - **市内共通商品券の抽選**: 10 種以上で email / name を入力して応募（**1 メールアドレス 1 回**・サーバー側で強制）。15 種で「当選確率 2 倍」、20 種で「当選確率 3 倍」を画面に表示。応募者一覧は CSV でダウンロードし業者（抽選・当選連絡）へ提出
-- オフライン（通信不可）でも AR を継続でき、スキャン記録はキューに蓄積して自動再送する（抽選応募はオンライン必須）
+- オフライン（通信不可）でも AR を継続でき、スキャン記録はキューに蓄積して自動再送する（抽選応募はオンライン必須）。**会場がオフラインでも、帰宅後に同一端末でページを開けば自動送信されて応募できる**設計を Q-12 で確定済み（**案A**: 収集 2026-11-01 00:00 〜 2026-11-15 23:59 / 応募期限 2026-11-16 23:59 JST）
 - 集計・抽選応募実績は管理ダッシュボードで確認可能
 
 ## 現在の状態（2026-10-28 時点）
-- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-48 / AC-1〜AC-13）・`design.md`（§1〜§11）・`tasks.md`（T1〜T47 / Phase 1〜7 ＋ Phase 3B）。
+- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-53 / AC-1〜AC-16）・`design.md`（§1〜§11 ＋ §10.1）・`tasks.md`（T1〜T48 / Phase 1〜7 ＋ Phase 3B）。
 - 仕様の確定状況: **Q-1（期間）／Q-2（景品閾値）／Q-5（景品仕様）／Q-11（倍率の自動昇格: `check-status` で自動）は確定**。
   **未確定: Q-8（4 会場の扱い）／Q-9（2 日間開催に集計期間を合わせるか）／Q-10（CSV の文字コード）**。
+  **Q-12 は 2026-10-28 に案A で確定**（収集 `2026-11-01 00:00:00` 〜 `2026-11-15 23:59:59` / 応募期限 `2026-11-16 23:59:59` JST）。Phase 2 以降は Q-9 確定時でも config の 3 値書き換えのみで対応可能。
 - **コード実装は未着手**（Phase 2〜7）。`resources/views/ARstampRally202611/` の blade、Controller、SW、`config/ar202611.php`、抽選応募テーブルのマイグレーションはいずれも未作成。
   設計確定前に作っていたドラフト 4 ファイルは 2026-10-28 に削除済み（下記「更新内容」参照）。**DB へのマイグレーションは未実行**。
 
@@ -26,8 +27,8 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 | GET | `/stamp202611/csrf` | CSRF トークン再取得（no-store） |
 | POST | `/stamp202611/record-scan` | スキャン記録（分120回制限） |
 | POST | `/stamp202611/check-status` | 収集種数・ガラポン到達段階・抽選応募状態の確認（分120回制限） |
-| POST | `/stamp202611/apply-voucher` | 市内共通商品券の抽選応募（時10回制限・10 種以上・1 メール 1 回・倍率 1/2/3 はサーバー算出） |
-| GET | `/admin/dashboard202611` | 管理ダッシュボード（期間 2026-11-01 〜 2026-11-30 JST・予定）＋ 抽選応募一覧 |
+| POST | `/stamp202611/apply-voucher` | 市内共通商品券の抽選応募（時10回制限・10 種以上・1 メール 1 回・倍率 1/2/3 はサーバー算出・**応募期限 `apply_deadline` 経過後は 422 `deadline_passed`**（Q-12 案A）） |
+| GET | `/admin/dashboard202611` | 管理ダッシュボード（収集期間 2026-11-01 〜 2026-11-15 JST・応募期限 2026-11-16 23:59・予定）＋ 抽選応募一覧 |
 | GET | `/admin/export-csv?dataset=voucherApplications202611` | 業者提出用 CSV（`name, email, stamp_count, weight, applied_at`） |
 
 ## 予定しているファイル構成
@@ -35,12 +36,12 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 - `resources/views/ARstampRally202611/` — パーシャル11（head / ui / scene / aframe-components / js-stamps / js-prize / js-throw / js-gallery / js-camera / js-init / **offline**）（新規）
 - `resources/views/ARstampRally202611/requirements.md` — 要件定義（**作成済み**）
 - `resources/views/ARstampRally202611/design.md` — 設計書 §1〜§11（**作成済み**）
-- `resources/views/ARstampRally202611/tasks.md` — 作業タスク T1〜T47 / Phase 1〜7 ＋ Phase 3B（**作成済み**・Phase 1 のみ完了）
+- `resources/views/ARstampRally202611/tasks.md` — 作業タスク T1〜T48 / Phase 1〜7 ＋ Phase 3B（**作成済み**・Phase 1 のみ完了）
 - `public/sw-stamp202611.js` — 202611 専用 Service Worker（新規・予定）
 - `app/Http/Controllers/StampRally202611Controller.php` — スキャン記録 / 状態確認 / 抽選応募 API（新規・予定）
 - `app/Models/Stamp202611VoucherApplication.php` — 抽選応募モデル（新規・予定）
 - `database/migrations/2026_11_XX_XXXXXX_create_stamp202611_voucher_applications_table.php` — 抽選応募テーブル（`email` / `fingerprint` UNIQUE・新規・予定）
-- `config/ar202611.php` — アセットディレクトリ / ガラポン段階 / 応募閾値 / 当選倍率 / 期間の単一切替点（新規・予定）
+- `config/ar202611.php` — アセットディレクトリ / ガラポン段階 / 応募閾値 / 当選倍率 / **収集期間（`collect_start` `2026-11-01 00:00:00` / `collect_end` `2026-11-15 23:59:59`）と応募期限（`apply_deadline` `2026-11-16 23:59:59`）**の単一切替点（新規・予定・**Q-12 案A 確定**）
 - `routes/web.php` / `app/Providers/AppServiceProvider.php` / `app/Http/Controllers/AdminController.php` — 追記のみ（予定）
 
 ## 202611 固有の識別子（分離・予定）
@@ -138,8 +139,27 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 `app/Http/Controllers/StampRally202611Controller.php`）は**削除した**（`php -l` 検証で Controller が parse error）。
 Phase 2 / 3 / 3B の承認後に design.md §3・§5.4 の内容で作り直す。**マイグレーションは未実行**（`stamp202611_voucher_applications` テーブルは未作成）。
 
+### 2026-10-28 — Q-12 起案（オフライン収集 → 帰宅後の応募）
+
+**背景**: 会場では通信が不安定でオフラインになりうるが、利用者は**帰宅後の自宅 Wi-Fi で応募したい**。
+202610 の実装では `recordScan()` が `scanned_at` を**サーバー `now()`** で記録し、`stampCountFor()` が集計期間内のみ数えるため、
+**イベント当日にオフラインで集めたスタンプを期間終了後に再送すると 0 種扱いになり応募できない**（設計上の欠陥）。
+オフライン収集とキューの自動再送自体は 202610 で既に動作している（`js-init.blade.php` の起動時 `flushScanQueue()`）。
+
+**三案比較表を `requirements.md` §10 に追加**（案A: 収集期間と応募期限の分離／案B: 期間統一＋`scannedAt` 採用／案C: 開催 2 日間に統一）。**推奨は案A**。
+
+**案A を前提に追加した要件・設計**
+- `requirements.md`: §3-3（**FR-49** 帰宅後応募の保証／**FR-50** `collect_start`・`collect_end`・`apply_deadline` の分離／**FR-51** `scanned_at` の条件付き採用／**FR-52** 応募ボタンはサーバー種数でのみ表示／**FR-53** スタンプは端末内記録である旨の明示）、§8.2 に config キー、**AC-14〜AC-16**、Q-12 行
+- `design.md`: §3 config（`collect_start` / `collect_end` / `apply_deadline`）、§3.1（`collectPeriod()` / `applyDeadline()`）、§5.1（`scannedAt` 採用規則とガード）、§5.2（収集期間で種数算出）、§5.3（422 `deadline_passed`）、§8.5（帰宅後シナリオ）、§8.6（`#pending-scans` バナー）、§9（端末依存）、§10＋**§10.1**（リスクと案B / 案C への変更手順）、§11（AC-14〜AC-16）
+- `tasks.md`: **T5c**（完了）、T6 / T12 / T16 / T31 / T32 / T43 改訂、**T48**（帰宅後応募の受け入れ検証）新規、検証結果表に AC-14〜AC-16、Phase 2 のブロッカー明記
+
+**確定（2026-10-28 利用者回答）**: Q-12 は**案A**（収集期間と応募期限の分離）。`collect_start` `2026-11-01 00:00:00`／`collect_end` `2026-11-15 23:59:59`／`apply_deadline` `2026-11-16 23:59:59`（JST）。**Q-9（2 日間開催）が確定した場合はこの 3 値を書き換えるだけで対応**（案B / 案C への差し替え手順は design.md §10.1）
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。
 - スキャンデータは `marker_scans` を既存キャンペーンと共用する。抽選応募（email / name）は 202611 専用の `stamp202611_voucher_applications` にのみ保存し、`prize_exchanges` は使用しない（景品コード廃止）。
 - ガラポンの引抽回数はアプリ側（LocalStorage）にしか残らないため、**会場での配布回数確認は運営の目視**に依存する（ブラウザデータ削除で回数はリセットされる）。
+- **スタンプの収集記録は端末内に依存する**: 別ブラウザ・別端末・プライベートモード・ブラウザデータ削除ではスタンプもガラポン回数も**引継ぎできない**（参加ページにも明記する）。
+- **オフライン収集 → 帰宅後の応募（Q-12 案A 確定済みの運用）**: 会場通信が不可でもスキャンは `ar-scan-queue-202611` に蓄積され、**帰宅後に同一端末でページを開くだけで自動送信**される（手動操作不要）。送信は収集日として記録されるため日別統計は実際の収集日に計上され、**応募期限（`apply_deadline` = 2026-11-16 23:59:59 JST）前なら収集期間（2026-11-15 23:59:59 まで）終了後でも応募できる**。参加者への案内は「通信できない場所でもそのまま集めてください。帰宅後に同じブラウザで開き直すと送信されます」
+- 応募ボタンは**サーバーが把握している種数**でのみ表示される。未送信のスタンプがある間は「未送信のスタンプ N 件を自動送信します」バナーが表示され、応募ボタンは出ない（送信完了後に自動で反映）

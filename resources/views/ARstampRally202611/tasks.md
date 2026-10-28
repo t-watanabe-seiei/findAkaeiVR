@@ -1,8 +1,9 @@
 # ARstampRally202611 作業タスク
 
 > 進め方: 1タスクずつ実施し、各ステップで検証してから次へ進む（小刻み変更・各段階で `php -l` / ルート確認）。
-> **ステータス: Phase 1 完了（ドキュメント・景品仕様改訂・Q-11 確定込み）／Phase 2 以降は未着手（2026-10-28）**
-> 依存: `requirements.md`（FR-1〜FR-48）→ `design.md`（§1〜§11）
+> **ステータス: Phase 1 完了（ドキュメント・景品仕様改訂・Q-11 / Q-12 確定）／Phase 2 以降は未着手（2026-10-28）**
+> **ブロッカー: なし**（Q-12 は 2026-10-28 に**案A で確定**: 収集 `2026-11-01 00:00:00` 〜 `2026-11-15 23:59:59` / 応募期限 `2026-11-16 23:59:59` JST。T6 / T12 / T31 / T32 / T43 が案A の影響を受ける）
+> 依存: `requirements.md`（FR-1〜FR-53 / AC-1〜AC-16）→ `design.md`（§1〜§11 ＋ §10.1 Q-12 変更手順）
 
 ## Phase 1: ドキュメント作成
 - [x] T1 `requirements.md` 作成（FR-1〜FR-36 / AC-1〜AC-8 / 未確定 Q-1〜Q-7）
@@ -11,9 +12,10 @@
 - [x] T4 `tasks.md` 作成（本ファイル）
 - [x] T5 `README.md` 作成・更新内容の記録
 - [x] T5b **景品仕様の改訂（2026-10-28）**: お菓子ガラポン 4 段階（5 / 10 / 15 / 20・LocalStorage 管理）＋ 市内共通商品券抽選応募（10 種以上・15 種 2 倍・20 種 3 倍・1 email 1 回・CSV 出力）を requirements §3-2 / design §5.3〜§5.6 / tasks Phase 3B に反映。景品コード（`prize_exchanges`）は廃止
+- [x] T5c **Q-12 三案比較の起案 → 案A で確定（2026-10-28）**: 「オフラインで集めて帰宅後に応募する」の可否を requirements §10（Q-12 行＋案A/B/C 比較表）に起案し、**利用者回答により案A を採用**（`collect_start` `2026-11-01 00:00:00` / `collect_end` `2026-11-15 23:59:59` / `apply_deadline` `2026-11-16 23:59:59` JST＋クライアント `scannedAt` の条件付き採用）。FR-49〜FR-53 / AC-14〜AC-16 を確定（**Q-9 確定時は 3 値の書き換えのみで吸収**）
 
 ## Phase 2: 基盤（設定とビュー複製）
-- [ ] T6 `config/ar202611.php` を作成（design.md §3 の内容。`asset_dir` 既定 `202610` / `marker_count` 20 / **`candy_tiers` `[5,10,15,20]`** / **`voucher_threshold` 10** / **`voucher_weights` `[10=>1, 15=>2, 20=>3]`** / `start` `2026-11-01 00:00:00` / `end` `2026-11-30 23:59:59`）
+- [ ] T6 `config/ar202611.php` を作成（design.md §3 の内容。`asset_dir` 既定 `202610` / `marker_count` 20 / **`candy_tiers` `[5,10,15,20]`** / **`voucher_threshold` 10** / **`voucher_weights` `[10=>1, 15=>2, 20=>3]`** / **Q-12 案A 確定: `collect_start` `2026-11-01 00:00:00` / `collect_end` `2026-11-15 23:59:59` / `apply_deadline` `2026-11-16 23:59:59`**）★Q-9（2 日間開催）確定時は 3 値の書き換えのみ
 - [ ] T7 `resources/views/ARstampRally202611.blade.php` を作成（202610 エントリの複製 → 識別子 202611 化）
 - [ ] T8 `resources/views/ARstampRally202611/` にパーシャル10個を複製（head / ui / scene / aframe-components / js-stamps / js-prize / js-throw / js-gallery / js-camera / js-init）
 - [ ] T9 識別子を 202611 化（design.md §4 の置換一覧。LocalStorage / IndexedDB / Cookie / API URL / console `[AR202611]` / JS 関数名。**サフィックスなし**）
@@ -22,6 +24,7 @@
 
 ## Phase 3: サーバー側（API・レートリミット）
 - [ ] T12 `app/Http/Controllers/StampRally202611Controller.php` を作成（202610 版を複製し、`const PRIZE_EXCHANGE_THRESHOLD` と `exchange()` を**削除** → `checkStatus()`（design §5.2）と `applyVoucher()`（design §5.3）へ置換。`voucherThreshold()` / `weightFor()` / `stampCountFor()` / **`syncVoucherWeight()`（check-status と apply-voucher 共通の倍率上方更新ヘルパー・FR-43）** を静的メソッドで実装し、email は `trim` + `strtolower` で正規化。セッションキーは `ar_fingerprint_202611`。`PrizeExchange` の import は削除）
+  - **Q-12 案A 確定（FR-50 / FR-51）**: 静的メソッド **`collectPeriod(): array`**（`collect_start` `2026-11-01 00:00:00` / `collect_end` `2026-11-15 23:59:59` を JST→UTC）と **`applyDeadline(): Carbon`**（`2026-11-16 23:59:59` を JST→UTC）を追加。`stampCountFor()` は `collectPeriod()` で絞り、`recordScan()` の `scanned_at` は design §5.1 の 3 条件（parse 可能・収集期間内・`now()+24h` 以下）を満たす client `scannedAt` を採用し条件外は `now()`（日次重複の `whereDate` は採用した日付で行う）。`applyVoucher()` は `now() > applyDeadline()` → 422 `deadline_passed`（案B/案C への差し替えは design §10.1 の表参照）
 - [ ] T13 `routes/web.php` に 202611 群を追記（`Route::match(['get','head'], '/stamp202611', …)` + `Route::prefix('stamp202611')` 内に offline / csrf / record-scan / **check-status** / **apply-voucher**）
 - [ ] T14 `app/Providers/AppServiceProvider.php` にレートリミッター3種を追記（`stamp202611_scan` / `stamp202611_check` = `Limit::perMinute(120)`、**`stamp202611_apply` = `Limit::perHour(10)`**、key は既存 `$key($request)` 方式踏襲）
 - [ ] T15 検証: `php -l`（T12 / T13 / T14 / T39 / T40）→ `php artisan route:list --path=stamp202611`（6ルート）（AC-1 / AC-2）
@@ -31,16 +34,17 @@
 - [ ] T40 `app/Models/Stamp202611VoucherApplication.php` を作成（`$table = 'stamp202611_voucher_applications'`、`$fillable` = session_id / fingerprint / email / name / stamp_count / tier / weight / user_agent / ip_address / device_info / applied_at、`device_info` は array cast）
 - [ ] T41 `js-gallery.blade.php` に**ガラポンボタン**を実装（`const CANDY_TIERS = @json(config('ar202611.candy_tiers'));`、到達済み段階を `ar-gacha-draws-202611` に保存、未到達段階は非表示・4 回で `disabled`、design §5.5）。**サーバー送信なし・お菓子の種類は記録しない**
 - [ ] T42 ガラポン押下後に「会場スタッフにこの画面を見せてガラポンを回してください」の案内を表示（FR-40）
-- [ ] T43 `js-gallery.blade.php` に**抽選応募ボタン**（10 種以上で表示）と email / name 入力フォーム、`js-prize.blade.php` に `applyVoucher202611()`（応募前に `flushScanQueue202611()` → `refreshCsrfToken202611()`）と `ar-voucher-applied-202611` キャッシュ（**応募済みフラグのみ保存し weight は保存しない**）を実装
+- [ ] T43 `js-gallery.blade.php` に**抽選応募ボタン**と email / name 入力フォーム、`js-prize.blade.php` に `applyVoucher202611()`（応募前に `flushScanQueue202611()` → `refreshCsrfToken202611()`）と `ar-voucher-applied-202611` キャッシュ（**応募済みフラグのみ保存し weight は保存しない**）を実装
+  - **応募ボタンの表示条件（Q-12 案A 確定・FR-52）**: `check-status` の `stampCount >= VOUCHER_THRESHOLD` を正本とする（LocalStorage の収集数では表示しない）。`ar-scan-queue-202611` に 1 件以上残る間はボタンを非表示にし `#pending-scans`（「未送信のスタンプ N 件を自動送信します」）を表示。フラッシュ完了 → `checkStatus202611()` 再実行 → 反映。`apply_deadline`（blade 注入・`2026-11-16 23:59`）経過時はボタン非表示、サーバーの 422 `deadline_passed` には「応募期限を過ぎたため応募できません」を表示
 - [ ] T44 応募完了メッセージの倍率切替は**常に `check-status` の応答 `voucher.weight`** で描画（1 → 「市内共通商品券の抽選会に応募しました。」／2 → 「市内共通商品券の抽選会に応募しました。（15個以上集めたので当選確率2倍です。）」／3 → 「市内共通商品券の抽選会に応募しました。（20個すべて集めたので当選確率3倍です。）」）。15 / 20 種到達後は**応募ボタンを再押下せずページ読み込みだけで昇格表示**（FR-43）。422 `already_applied` → 「すでに応募済みです」
 - [ ] T45 検証: 9 / 10 / 15 / 20 種のスタンプを `php artisan tinker` で作って apply-voucher の 422 / `weight` 1 / 2 / 3 を確認。さらに 10 種応募後に 15 / 20 種へ増やして **`check-status` だけ**で `stamp_count` / `weight` が昇格することと下方更新しないことを確認。ブラウザでガラポン 4 回上限（`ar-gacha-draws-202611`）と倍率表示を確認（AC-6 / AC-9 / AC-10 / AC-13）
 
 ## Phase 4: 管理ダッシュボード
-- [ ] T16 `AdminController::dashboard202611()` を追記（202610 版を複製し、期間を `config('ar202611.start'|'end')` の `Asia/Tokyo`→`UTC` 変換に置換。動物リスト `model_01`〜`model_20`。**景品交換の集計は削除**し、`voucherTotal` / `voucherByWeight` / `voucherApplications`（20 件ページネーション・`q` 検索）を追加）
+- [ ] T16 `AdminController::dashboard202611()` を追記（202610 版を複製し、期間を **`config('ar202611.collect_start'|'collect_end')`（Q-12 案A 確定）** の `Asia/Tokyo`→`UTC` 変換に置換。動物リスト `model_01`〜`model_20`。**景品交換の集計は削除**し、`voucherTotal` / `voucherByWeight` / `voucherApplications`（20 件ページネーション・`q` 検索）を追加。応募実績は **`applied_at` ベースの別枠集計**（収集期間後に応募されうる）とし、画面上に収集期間（〜 2026-11-15）と応募期限（2026-11-16 23:59）を併記）
 - [ ] T17 `resources/views/admin/dashboard202611.blade.php` を作成（202610 版のルート名・期間ラベル・見出しを 202611 化。応募一覧テーブルと「業者提出用 CSV ダウンロード」ボタンを配置）
 - [ ] T18 `routes/web.php` の admin グループに `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');` を追記
 - [ ] T46 `AdminController::exportCsv()` の `$allowed` に `voucherApplications202611` を追加し、`name, email, stamp_count, weight, applied_at` を `weight DESC, applied_at ASC`・`chunk(200)` で出力（design §5.6）
-- [ ] T19 検証: `php -l` → `GET /admin/dashboard202611` が 200 で期間表示が 2026-11-01 〜 2026-11-30、`GET /admin/export-csv?dataset=voucherApplications202611` が CSV を返すこと（AC-1 / AC-2 / AC-12）
+- [ ] T19 検証: `php -l` → `GET /admin/dashboard202611` が 200 で収集期間表示が 2026-11-01 〜 2026-11-15・応募期限表示が 2026-11-16 23:59、`GET /admin/export-csv?dataset=voucherApplications202611` が CSV を返すこと（AC-1 / AC-2 / AC-12）
 
 ## Phase 5: iOS カメラ起動（202610 §8 の根本修正を初期実装）
 - [ ] T20 `head.blade.php` の video セレクタを 3 箇所すべて `document.querySelector('video')` とする（`monitorCameraStartup` / `ensureCameraAccess` / `getUserMedia` 成功ハンドラ。`#ar-scene video` を書かない）
@@ -56,8 +60,8 @@
 - [ ] T28 `routes/web.php` の prefix group に `/offline`（`no-store` 相当 + `noindex`）と `/csrf`（`no-store` + `noindex`）を追加（T13 と同一グループ）
 - [ ] T29 `head.blade.php` に SW 登録（`?sw=0` スキップ）と `#offline-banner` CSS を追加
 - [ ] T30 `ui.blade.php` に `#offline-banner` / `#offline-banner-text` を追加
-- [ ] T31 `js-prize.blade.php` にオフラインキュー（`ar-scan-queue-202611`・上限200・`scannedAt` 保持・4xx/5xx 非再送）と `refreshCsrfToken202611()`、応募直前の `flushScanQueue202611()` → `refreshCsrfToken202611()` を追加
-- [ ] T32 `js-init.blade.php` に online/offline 監視（初期 `navigator.onLine`、`online` 時にトークン更新 → キュー再送、バナー文言に未送信件数）
+- [ ] T31 `js-prize.blade.php` にオフラインキュー（`ar-scan-queue-202611`・上限200・`scannedAt` 保持・4xx/5xx 非再送）と `refreshCsrfToken202611()`、応募直前の `flushScanQueue202611()` → `refreshCsrfToken202611()` を追加。**`scannedAt` は収集時の日時を保持したまま再送する**（サーバー側で収集日として記録される・FR-24 / FR-51）
+- [ ] T32 `js-init.blade.php` に online/offline 監視（初期 `navigator.onLine`、`online` 時にトークン更新 → キュー再送、バナー文言に未送信件数）＋ **ページ起動時にも `refreshCsrfToken202611()` → `flushScanQueue202611()` → `checkStatus202611()` を実行**（帰宅後にページを開くだけで未送信分が自動再送され、種数と応募可否が反映される・FR-49 / AC-14）
 - [ ] T33 検証: SW fetch 戦略シミュレーション（navigate / 静的 cache-first / API 非介入 / 外部オリジン非介入 / offline フォールバック）とキューシミュレーション（AC-4 / AC-5）
 
 ## Phase 7: 最終検証・完了報告
@@ -66,6 +70,7 @@
 - [ ] T36 分離監査: `git status --short` で既存キャンペーン（202603 / 202605 / 202606 / 202609 / 202610）と `public/js/`・既存 SW が未変更であることを確認（AC-7）
 - [ ] T37 実機検証: Android Chrome / iOS Safari（低スペック機含む）でカメラ起動・マーカー認識・ボール投擲・ガラポンボタン・抽選応募、機内モードで AR 継続とキュー再送（AC-8）
 - [ ] T47 運営向け引継ぎメモを README に追記: ガラポンは画面提示により会場スタッフが回数を確認する（アプリは回数を記録しない）、商品券の抽選・当選連絡は業者が CSV を基に行う
+- [ ] T48 **帰宅後応募の受け入れ検証（Q-12 案A 確定・AC-14 / AC-15 / AC-16）**: 機内モードで 10 種収集 → 解除してページ再読み込み → 未送信キューが自動再送され `marker_scans.scanned_at` が**収集日**で記録されることを tinker で確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功（**`collect_end`（2026-11-15 23:59:59）経過後・`apply_deadline`（2026-11-16 23:59:59）前の再送でも成功**することを確認）。未送信 1 件以上時は応募ボタン非表示＋`#pending-scans` 表示。期間外 / +24h 超の `scannedAt` は `now()` にフォールバック、`apply_deadline` 経過後は 422 `deadline_passed`
 - [ ] T38 `README.md` に完了状況と「`cg/202611` への切替手順」（design.md §3.3）を追記
 
 ## 検証結果（未実施）
@@ -84,6 +89,9 @@
 | AC-11 DB（migrate / UNIQUE） | 未実施（T39） |
 | AC-12 CSV 出力 | 未実施（T19 / T46） |
 | AC-13 倍率の自動昇格 | 未実施（T45） |
+| AC-14 帰宅後応募（Q-12 案A） | 未実施（T48） |
+| AC-15 応募ボタン条件（未送信バナー） | 未実施（T48） |
+| AC-16 `scannedAt` ガード / `deadline_passed` | 未実施（T48） |
 
 ## 参考（202610 での実施履歴 = 本キャンペーンで初期実装に内包する内容）
 | 202610 | 内容 | 202611 での扱い |

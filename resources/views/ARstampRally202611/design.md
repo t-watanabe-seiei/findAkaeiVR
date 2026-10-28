@@ -1,6 +1,8 @@
 # ARstampRally202611 設計書
 
-> 前提: `requirements.md`（FR-1〜FR-48 / AC-1〜AC-12）。Q-1（期間）・Q-2（景品閾値）・Q-5（景品仕様）・Q-11（倍率の上方更新）は確定。Q-8（会場）/ Q-9（2日間開催）/ Q-10（CSV 文字コード）は未確定。
+> 前提: `requirements.md`（FR-1〜FR-53 / AC-1〜AC-16）。Q-1（期間）・Q-2（景品閾値）・Q-5（景品仕様）・Q-11（倍率の上方更新）は確定。Q-8（会場）/ Q-9（2日間開催）/ Q-10（CSV 文字コード）は未確定。
+> **Q-12（オフライン収集 → 帰宅後の応募）は 2026-10-28 に案A で確定**（`collect_start` `2026-11-01 00:00:00` / `collect_end` `2026-11-15 23:59:59` / `apply_deadline` `2026-11-16 23:59:59` JST）。
+> 本書は確定した案A（収集期間と応募期限の分離＋クライアント `scannedAt` の条件付き採用）で記述している。案B / 案C への差し替え手順は §10.1 に残置。
 > 実装の基準は **ARstampRally202610 の完成形**（`ARstampRally202610/design.md` §1〜§10、コミット `stamp20261027_01 offline service worker`）。
 > **状態: 設計（実装前）**
 
@@ -43,7 +45,7 @@
 | `app/Http/Controllers/StampRally202611Controller.php` | 新規 | recordScan / checkStatus / **applyVoucher**（閾値・倍率・ガラポン段階は config 経由） |
 | `app/Models/Stamp202611VoucherApplication.php` | 新規 | 抽選応募モデル（テーブル `stamp202611_voucher_applications`） |
 | `database/migrations/2026_11_XX_XXXXXX_create_stamp202611_voucher_applications_table.php` | 新規 | 抽選応募テーブル（`email` / `fingerprint` UNIQUE） |
-| `config/ar202611.php` | 新規 | アセットディレクトリ・マーカー数・ガラポン段階・応募閾値・当選倍率・集計期間の単一切替点 |
+| `config/ar202611.php` | 新規 | アセットディレクトリ・マーカー数・ガラポン段階・応募閾値・当選倍率・**収集期間（`collect_start` / `collect_end`）・応募期限（`apply_deadline`）**の単一切替点（Q-12 案A） |
 | `resources/views/admin/dashboard202611.blade.php` | 新規 | 管理画面（`admin/dashboard202610.blade.php` 基準）＋ 抽選応募一覧・CSV ダウンロードボタン |
 | `routes/web.php` | 変更（追記） | `/stamp202611`（index）+ prefix group（offline / csrf / API3）+ admin ルート |
 | `app/Providers/AppServiceProvider.php` | 変更（追記） | `stamp202611_scan` / `_check` / `_apply` |
@@ -74,8 +76,14 @@ return [
     'voucher_threshold' => (int) env('AR202611_VOUCHER_THRESHOLD', 10),
     'voucher_weights'   => [10 => 1, 15 => 2, 20 => 3],
 
-    'start'        => env('AR202611_START', '2026-11-01 00:00:00'),
-    'end'          => env('AR202611_END', '2026-11-30 23:59:59'),
+    // ── Q-12 案A（2026-10-28 確定）: 収集期間と応募期限の分離（FR-50）──────
+    // collect_* : 収集種数（ガラポン段階・倍率）の算出 / marker_scans の集計 / scanned_at の妥当性検証
+    // apply_deadline : apply-voucher が受理する最終日時（帰宅後に再送して応募できる猶予）
+    // 確定値: 収集 2026-11-01 00:00:00 〜 2026-11-15 23:59:59 / 応募期限 2026-11-16 23:59:59（JST）
+    // Q-9（2 日間開催）確定時はこの 3 値の書き換えのみで吸収する（design §10.1 に案B / 案C 手順を残置）
+    'collect_start'  => env('AR202611_COLLECT_START', '2026-11-01 00:00:00'),
+    'collect_end'    => env('AR202611_COLLECT_END', '2026-11-15 23:59:59'),
+    'apply_deadline' => env('AR202611_APPLY_DEADLINE', '2026-11-16 23:59:59'),
 ];
 ```
 
@@ -86,7 +94,10 @@ return [
 | `js-stamps.blade.php` | `'model_01': { name: 'ひつじ', icon: '🐾', model: '{{ $dir }}/Model_01.glb' }` | FR-32 |
 | `js-gallery.blade.php` | `const CANDY_TIERS = @json(config('ar202611.candy_tiers'));` / `const VOUCHER_THRESHOLD = {{ (int) config('ar202611.voucher_threshold') }};`（ガラポンボタン・抽選応募ボタンの有効化） | FR-34 / FR-40 |
 | `StampRally202611Controller` | `private static function voucherThreshold(): int { return (int) config('ar202611.voucher_threshold', 10); }` / `private static function weightFor(int $stampCount): int`（`config('ar202611.voucher_weights')` の `<= $stampCount` の最大キー） | FR-34 / FR-43 |
-| `AdminController::dashboard202611()` | `Carbon::createFromFormat('Y-m-d H:i:s', config('ar202611.start'), 'Asia/Tokyo')->setTimezone('UTC')`（end も同様） | FR-29 / FR-35 |
+| `StampRally202611Controller::collectPeriod()` | `private static function collectPeriod(): array`（`collect_start` / `collect_end` を `Asia/Tokyo` → `UTC` に変換した 2 要素配列）。**`stampCountFor()` の種数算出・`recordScan()` の日次重複判定・`scannedAt` の妥当性検証**が使用する | FR-50 / FR-51 |
+| `StampRally202611Controller::applyDeadline()` | `private static function applyDeadline(): Carbon`（`config('ar202611.apply_deadline')` を `Asia/Tokyo` → `UTC`）。`applyVoucher()` で `now() > applyDeadline()` → HTTP 422 `deadline_passed` | FR-49 / FR-50 |
+| `js-gallery.blade.php`（応募ボタン） | 応募ボタンの有効化は **`check-status` の `stampCount`** でのみ行う（LocalStorage の収集数・未送信キュー件数では有効化しない）。`apply_deadline` は案内文言用に `@json()` で注入 | FR-52 |
+| `AdminController::dashboard202611()` | `Carbon::createFromFormat('Y-m-d H:i:s', config('ar202611.collect_start'), 'Asia/Tokyo')->setTimezone('UTC')`（`collect_end` も同様）。**抽選応募実績は `applied_at` で別枠集計**（応募は収集期間後になりうる） | FR-29 / FR-35 / FR-50 |
 | `sw-stamp202611.js` | 先頭 `var ASSET_DIR = '202610';`（静的アセット判定は `cg/` 配下全般） | FR-33 |
 
 ### 3.2 注意（PHP の `const` では config を使えない）
@@ -138,11 +149,26 @@ return [
 - `session(['ar_fingerprint_202611' => $fingerprint])` でセッションとフィンガープリントを紐付け（check-status / apply-voucher で同一識別。202610 の `ar_fingerprint` は使用しない）
 - `capture_type === 'marker_scan'` は当日重複を `whereDate('scanned_at', today)` で除外 → `{'success':false,'duplicate':true}`
 - `scan_count` は「session_id OR fingerprint」+ marker + capture_type の累積 + 1
-- `scanned_at` は `now()`（クライアントの `scannedAt` は validate のみ使用。キュー再送時は元の `scannedAt` を body で送るが、DB 記録時刻はサーバー基準になる点に注意）
+- **`scanned_at` の採用規則（Q-12 案A・FR-51）**: クライアントが送る `scannedAt` を**次のすべてを満たす場合に限り**採用し、それ以外はサーバー `now()` へフォールバックする
+  1. `validate` の `date` を通過（parse 可能）
+  2. `collectPeriod()` の範囲内（`collect_start` 〜 `collect_end`、UTC 変換後）
+  3. `now()->addHours(24)` 以下（クライアント時計ずれ・未来日付の混入防止。過去への大幅遡りは 2 で除外）
+  ```php
+  [$collectStart, $collectEnd] = self::collectPeriod();          // JST → UTC
+  $client = Carbon::parse($data['scannedAt']);
+  $scannedAt = ($client->between($collectStart, $collectEnd) && $client->lte(now()->addHours(24)))
+      ? $client : now();
+  ```
+  - 効果: **11/10 にオフラインで収集 → 11/16（応募期限当日）に再送**でも `scanned_at` は 11/10 のまま（日別統計・動物別統計が実際の収集日に計上され、帰宅後の再送が 11/16 へずれない）
+  - 日次重複判定（`capture_type === 'marker_scan'` の `whereDate('scanned_at', ...)`）は**採用した `scannedAt` の日付**で行う（クライアントの `marker-scan-cache-202611-*` と同一日になる）
+  - 案B / 案C は 2026-10-28 に不採用（§10.1 参照）。将来案B へ戻す場合は条件 2 を外して `scannedAt` を優先、案C は `now()` 固定（1 行の差し替え）
+  - `applied_at`（応募日時）は**常にサーバー `now()`**。`scannedAt` を採用しても応募日時・`created_at` は変更しない
 
 ### 5.2 checkStatus（読み取り＋**倍率の自動昇格**・202610 の check-prize 相当）
 - `session('ar_fingerprint_202611') ?: $request->input('fingerprint')`
-- 収集種数は**サーバー側**で算出: `MarkerScan::where('session_id', $sid)->orWhere('fingerprint', $fp)->distinct()->count('marker_id')`（`scanned_at` を `config('ar202611.start')` / `end`（JST→UTC）で絞る）
+- 収集種数は**サーバー側**で算出: `MarkerScan::where('session_id', $sid)->orWhere('fingerprint', $fp)->distinct()->count('marker_id')`（`scanned_at` を **`self::collectPeriod()` = `collect_start` / `collect_end`（JST→UTC）**で絞る。FR-50）
+  - **帰宅後応募の成立点**: オフライン収集分は次回ロード時に自動再送されるため、`collect_end` までに再送されていれば（記録日時が収集日であることと併せて）この種数に含まれる。案A では `scanned_at` が収集日なので、**再送が `collect_end` をまたいでいても**種数は減らない（`apply_deadline` 前なら応募可能）
+  - 未送信キュー（クライアント LocalStorage）の分は**この種数に含まれない**（サーバー未着信のため）。FR-52 で応募ボタンを抑制する根拠
 - 応募状態: `Stamp202611VoucherApplication::where('fingerprint', $fp)->first()`
 - **倍率の自動上方更新（FR-43・利用者決定 2026-10-28）**: 応募行が存在する場合、応答前に共通ヘルパー `syncVoucherWeight($application, $stampCount)` を呼び、現在種数が `stamp_count` より大きければ `stamp_count` / `tier` / `weight` を UPDATE する（**下方更新しない**）。利用者は応募ボタンを再押下せず、**ページを読み込むだけで 2 倍 / 3 倍へ昇格する**
 - 返却: `{ success, stampCount, candyTiers: [5,10,15,20], voucher: { applied, weight, stampCount, appliedAt, updated } }`（`updated` はこの応答で昇格 occurred か）
@@ -150,7 +176,8 @@ return [
 ### 5.3 applyVoucher（商品券抽選の応募・冪等）
 - validate: `fingerprint` 必須 string、`deviceInfo` 必須 array、`email` 必須 `email|max:190`、`name` 必須 `string|max:100`
   - email は `trim` + `strtolower` で正規化して保存・比較する（FR-44）
-- 収集種数は**サーバー側**の `marker_scans` から算出する（クライアントの `stamps` 配列は信用しない）
+- 収集種数は**サーバー側**の `marker_scans` から算出する（クライアントの `stamps` 配列は信用しない。期間は `self::collectPeriod()`）
+- **応募期限の判定（Q-12 案A・FR-50）**: `now()->gt(self::applyDeadline())` → HTTP 422（`deadline_passed`）→ クライアントは「応募期限（`apply_deadline` を JST で表示）を過ぎたため応募できません」を表示。期限前であれば**収集期間（`collect_end`）経過後でも応募成功**する（帰宅後応募の保証・FR-49）
 - 未応募かつ `stampCount < voucher_threshold()` → HTTP 422（`not_eligible`）
 - 応募作成: `weight = self::weightFor($stampCount)`（`config('ar202611.voucher_weights')` の `<= stampCount` の最大キー）→ INSERT
 - 既存応募がある場合:
@@ -264,18 +291,35 @@ recordMarkerScan202611(markerId, ...)
   ├─ navigator.onLine === false → enqueueScan202611(payload)（LocalStorage）して resolve
   ├─ fetch 成功 → 通常処理
   └─ fetch 通信エラー → enqueueScan202611(payload)（HTTP 4xx/5xx は再送しない）
-window 'online' → refreshCsrfToken202611() → flushScanQueue202611()
+ページ起動時（js-init）→ refreshCsrfToken202611() → flushScanQueue202611() → checkStatus202611()
+window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → checkStatus202611()
 応募直前 → flushScanQueue202611() → refreshCsrfToken202611() → apply-voucher
 ```
+
+#### 帰宅後応募のシナリオ（Q-12 案A・FR-49 / AC-14）
+```
+[会場] 通信不可 → AR 継続（SW cache-first）・収集は LocalStorage、スキャンは ar-scan-queue-202611 に蓄積
+[帰宅] 自宅 Wi-Fi で /stamp202611 を開く（機内モードを解除していればよい・手動の送信操作は不要）
+   → refreshCsrfToken202611() → flushScanQueue202611()（元の scannedAt を保ったまま再送）
+   → サーバーは scanned_at = 収集日で INSERT（§5.1 の規則）
+   → checkStatus202611() が収集期間内の種数を返す（例 stampCount: 10）
+   → 応募ボタン有効化 → apply-voucher（apply_deadline 前なら成功）
+```
+- **ページを再度開くだけでよい**（202610 の `js-init.blade.php` にある起動時 `flushScanQueue()` を 202611 でも初期実装に内包する）。利用者が「送信」操作を行う必要はない
+- 収集期間（`collect_end`）経過後の再送も、`scanned_at` が収集日であれば種数に計上される（案A の要点）。案B / 案C ではこの成立が崩れる
+- 同一マーカーの当日重複はクライアント `marker-scan-cache-202611-{markerId}-{YYYY-MM-DD}` とサーバー `whereDate('scanned_at', 収集日)` の二重で去重される（FR-3）
 - キューキー `ar-scan-queue-202611`、上限 200 件（超過は先頭＝最古を破棄）。
 - 各要素は送信 body そのもの（markerId / markerName / fingerprint / deviceInfo / captureType / scannedAt）を保持し、再送時は元の `scannedAt` を使う。
 - `refreshCsrfToken202611()` は `GET /stamp202611/csrf`（`no-store`）で新トークンを取得し `meta[name=csrf-token]` を更新（キャッシュ済み HTML のトークン陳腐化 = 419 対策）。
 - 再送失敗時はキューへ戻して打ち切り（次回 `online` / 次回ロードで再試行）。
 - 抽選応募はオフラインでは行わない。ガラポンボタンはオフラインでも押下可（LocalStorage のみ・fetch なし）。
 
-### 8.6 UI 状態表示（FR-25）
+### 8.6 UI 状態表示（FR-25 / FR-52）
 - `ui.blade.php` に `#offline-banner`（初期 `display:none`、文言は `#offline-banner-text`）、CSS は `head.blade.php`。
-- `js-init.blade.php` で `offline` / `online` イベントと初期 `navigator.onLine` を監視して表示切替、`online` 時に `refreshCsrfToken202611()` → `flushScanQueue202611()`。未送信キュー件数を文言に反映。
+- `js-init.blade.php` で `offline` / `online` イベントと初期 `navigator.onLine` を監視して表示切替、`online` 時に `refreshCsrfToken202611()` → `flushScanQueue202611()` → `checkStatus202611()`。未送信キュー件数を文言に反映。
+- **未送信キューのバナー（FR-52）**: `ar-scan-queue-202611` の件数が 1 以上の場合、スタンプ帳内に `#pending-scans`（「未送信のスタンプ N 件を自動送信します」）を表示し、**その間は抽選応募ボタンを非表示**にする。フラッシュ完了 → `checkStatus202611()` 再実行 → サーバーの `stampCount` が閾値以上なら応募ボタンを表示
+- **応募ボタンの正本はサーバー応答**: LocalStorage の収集数（`ar-stamp-rally-202611`）だけで応募ボタンを表示しない（未着信分を含めて「10 種」表示 → 応募時に 422 `not_eligible` となる不整合を避ける）
+- 応募期限の案内: `check-status` の応答（または blade 注入の `apply_deadline`）を「応募期限: 2026-11-16 23:59」形式でスタンプ帳に表示。期限経過後は応募ボタンを非表示し、`apply-voucher` は 422 `deadline_passed`
 
 ### 8.7 デバッグ導線（FR-28）
 - `?sw=0` で SW 登録をスキップ（head.blade.php）。
@@ -290,6 +334,9 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611()
 - `ar-voucher-applied-202611` には**応募済みフラグのみ**保存し、`weight` / `stampCount` は保存しない。
   倍率の文言（FR-42）は**常に `check-status` の応答**から描画する（自動昇格が即座に画面へ反映されるため・FR-43）
 - ガラポンの回数は正本が LocalStorage のみ（FR-39）。ブラウザデータ削除でリセットされる仕様であることを README に明記する
+- **収集状態は端末内に依存する（FR-53）**: 収集済み種別は LocalStorage / IndexedDB、サーバー側の紐付けは `fingerprint`（userId 由来）。
+  **別ブラウザ・別端末・プライベートモード・ブラウザデータ削除ではスタンプもガラポン回数も引継ぎできない**。
+  帰宅後応募（FR-49）も「会場と同じ端末・同じブラウザでページを開くこと」が前提になる（参加ページと README に明記）
 - 既存レコード（`marker_scans` / `prize_exchanges`）は削除・更新しない（履歴保持）。
 - 同一キャンペーン内で再度リセットが必要な場合のみ 202610 と同じ運用で `-r2` を付与する（本フェーズでは実施しない）。
 
@@ -303,6 +350,19 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611()
 - 1 メールアドレス 1 回の制約は email 単位。家族で同一 email を共有するケースは 1 応募として扱われる（業者側で運用）。氏名の異なる重複を検出したい場合は管理画面の email 検索で確認する。
 - `check-status` は応募行の `stamp_count` / `tier` / `weight` を**上方更新する書き込みを伴う**（FR-43）。下方更新しない・応募者自身の 1 行のみ・`stamp202611_check`（分120回）で律速されるため負荷は小さい。自動昇格をやめたい場合は Q-11 を「応募時点固定」へ変更し §5.2 の UPDATE を削除する。
 - 202609 側に残る `#ar-scene video` 不具合（202610 §8 の既知未対応）は本キャンペーンでは扱わない（分離原則・Q-7）。
+- **Q-12（案A 確定・2026-10-28）の実装範囲**: `config/ar202611.php` の `collect_start`（`2026-11-01 00:00:00`）/ `collect_end`（`2026-11-15 23:59:59`）/ `apply_deadline`（`2026-11-16 23:59:59`）、`StampRally202611Controller` の `collectPeriod()` / `applyDeadline()` / `recordScan()` の `scanned_at` 規則、`js-gallery.blade.php` の応募ボタン条件（未送信バナー）が案A の実装点。**将来案B / 案C へ戻す場合は §10.1 の手順**（§5.1 のガードを 1 行戻し、`apply_deadline` 判定と未送信バナーを削除）。SW・キュー・応募フォーム・CSV は変更不要
+- **帰宅後応募の前提条件（案A）**: ①同一端末・同一ブラウザであること ②Service Worker が登録済みで `ar-scan-queue-202611` が残っていること（上限 200 件・超過は最古破棄）③`apply_deadline` 前にページを開くこと。いずれかを満たさない場合は種数が減り、応募できない（UI で未送信件数を明示する）
+- **クライアント時刻ずれ**: `scannedAt` を採用するため、端末時計が大きくずれていると当日分が前日扱いになりうる（±数時間程度。`collect_*` が広いため実害は小さい）。大幅な未来・過去は §5.1 のガードで `now()` にフォールバック
+- **集計の二重期間**: 収集実績（`scanned_at` ベース・〜 `2026-11-15 23:59:59`）と応募実績（`applied_at` ベース・〜 `2026-11-16 23:59:59`）の期間がずれる。ダッシュボードと CSV に「応募日時」列がある旨を明記し、運営が 11/16 の応募行を見失わないようにする
+
+### 10.1 Q-12 変更手順（**案A 確定済み**。将来案B / 案C へ切り替える場合の参考）
+| 変更箇所 | 案A（**確定**） | 案B（不採用） | 案C（不採用） |
+|---|---|---|---|
+| `config/ar202611.php` | `collect_start` / `collect_end` / `apply_deadline` | `start` / `end`（`apply_deadline` 削除） | `start` / `end`（開催 2 日間） |
+| `recordScan()` の `scanned_at` | `scannedAt` 条件付き採用 | `scannedAt` 優先（期間ガードなし） | `now()` 固定 |
+| `stampCountFor()` / `checkStatus()` の期間 | `collectPeriod()` | `start`/`end` | `start`/`end` |
+| `applyVoucher()` の期限判定 | `applyDeadline()` → 422 `deadline_passed` | 判定なし | 判定なし |
+| `js-gallery.blade.php` | 未送信バナー＋サーバー種数で応募ボタン | 未送信バナーのみ（FR-52 は維持推奨） | 未送信バナーのみ |
 
 ## 11. 検証計画（requirements.md §11 対応）
 | 検証 | 方法 |
@@ -318,7 +378,10 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611()
 | AC-9 ガラポン | 5 / 10 / 15 / 20 到達時に 1 回ずつ押下 → `ar-gacha-draws-202611` に `[5,10,15,20]`。4 回目以降はボタン `disabled`。同一段階の再押下不可（DevTools で localStorage 確認） |
 | AC-10 応募 UI | 10 種未満は応募ボタン非表示。同一 email（`Foo@x.com` と `foo@x.com`、前後空白付き）で 2 回目 → 422 `already_applied` → 「すでに応募済みです」。15 / 20 到達後に再訪すると「当選確率2倍 / 3倍」表示に変わる |
 | AC-11 DB | `php artisan migrate` で `stamp202611_voucher_applications` 作成、`migrate:rollback` で削除。`marker_scans` / `prize_exchanges` のカラム・インデックスが不変であること（`SHOW CREATE TABLE` 比較）。UNIQUE 制約の検証（同一 email の直接 INSERT で例外） |
-| AC-12 CSV | 管理画面から `dataset=voucherApplications202611` をダウンロードし、`name, email, stamp_count, weight, applied_at` の全応募行と `weight DESC` 順を確認。期間 `start` / `end` 絞り込みが動作すること |
+| AC-12 CSV | 管理画面から `dataset=voucherApplications202611` をダウンロードし、`name, email, stamp_count, weight, applied_at` の全応募行と `weight DESC` 順を確認。収集期間 `collect_start` / `collect_end`（2026-11-01 〜 2026-11-15）の絞り込みが動作すること |
 | AC-13 自動昇格 | 10 種で応募 → tinker で 15 種へ増やして `POST /stamp202611/check-status` のみを呼ぶと DB の `stamp_count` が 15・`weight` が 2 に更新され `updated: true`。20 種で 3 倍。種数を減らしても更新されない（下方更新なし）。応募ボタンは再押下しない |
+| AC-14 帰宅後応募（Q-12 案A） | 機内モードで 10 種収集 → 機内モード解除後にページを再読み込み → `flushScanQueue202611()` が全件再送。`php artisan tinker` で `marker_scans.scanned_at` が**収集日**であることを確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功。**`collect_end` 経過後の再送でも成功**することを確認（`apply_deadline` 前） |
+| AC-15 応募ボタン条件（FR-52） | DevTools で `ar-scan-queue-202611` に 1 件残したままスタンプ帳を開く → 応募ボタン非表示・`#pending-scans` 表示 → フラッシュ完了後に `check-status` 再実行でボタン表示。LocalStorage 上だけ 10 種（サーバー 9 種）ではボタン非表示 |
+| AC-16 `scannedAt` ガード | curl / tinker で `scannedAt` を `2026-12-30T12:00:00Z`（収集期間外）や `now()+72h` で送信 → DB の `scanned_at` はサーバー `now()`。`apply_deadline` 経過後の `apply-voucher` は 422 `deadline_passed` |
 
 
