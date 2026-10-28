@@ -1,0 +1,160 @@
+    <!-- ローディング -->
+    <div class="arjs-loader" id="arjs-loader">
+        <div>
+            <p>AR を起動中...</p>
+            <p style="font-size:0.8em; opacity:0.7;">Loading AR...</p>
+        </div>
+    </div>
+
+    <!-- オフライン状態バナー（FR-25）: js-init.blade.php が online/offline で切替 -->
+    <div id="offline-banner" role="status" aria-live="polite">
+        <span id="offline-banner-text">オフラインです。スタンプはこの端末に保存され、通信が戻ったときに自動で送信されます</span>
+    </div>
+
+    <!-- 左上ボタン列: スタンプ帳・ガイド・動画・写真 -->
+    <div id="top-left-buttons">
+        <button id="stamp-book-button" type="button" title="コレクションを見る" aria-label="コレクション">
+            🎯
+            <span class="badge" id="stamp-badge" style="display:none;">0</span>
+        </button>
+        <button id="guide-button" type="button" title="遊び方を見る" aria-label="遊び方">❓</button>
+        <button id="video-button" type="button" title="動画を撮る" aria-label="動画撮影">📹</button>
+        <button id="camera-button" type="button" title="写真を撮る" aria-label="写真撮影">📷</button>
+    </div>
+
+    <!-- スタンプ帳モーダル -->
+    <div id="stamp-book-modal" role="dialog" aria-labelledby="stamp-book-title" aria-modal="true">
+        <div id="stamp-book-content">
+            <h2 id="stamp-book-title">🎯 コレクション 🎯</h2>
+            <div class="progress">
+                <span id="collected-count">0</span> / <span id="total-slots">20</span> 種類
+            </div>
+            <div id="complete-message-container"></div>
+            <div class="stamps-grid" id="stamps-grid">
+                <!-- スタンプアイテムはJavaScriptで動的生成 -->
+            </div>
+            <!-- 未送信スキャンの自動送信案内（FR-52）: 1件以上ある間は抽選応募ボタンを非表示 -->
+            <div id="pending-scans" role="status" aria-live="polite"></div>
+
+            <!-- お菓子のガラポン（5 / 10 / 15 / 20 種・各1回・最大4回・LocalStorage のみ・サーバー送信なし・FR-37〜FR-40） -->
+            <div id="gacha-section">
+                <div class="gacha-title">🍬 お菓子のガラポン</div>
+                <div id="gacha-buttons"></div>
+                <div id="gacha-note"></div>
+            </div>
+
+            <!-- 市内共通商品券の抽選応募（10種以上・応募期限は config/ar202611.php・FR-41〜FR-44） -->
+            <div id="voucher-section">
+                <div class="gacha-title">🎫 市内共通商品券の抽選会</div>
+                <div id="voucher-status"></div>
+                <button id="voucher-apply-button" type="button">商品券抽選に応募する</button>
+                <div id="voucher-form" style="display:none;">
+                    <label for="voucher-email">メールアドレス（1アドレスにつき1口）</label>
+                    <input id="voucher-email" type="email" inputmode="email" autocomplete="email" placeholder="example@example.com" />
+                    <label for="voucher-name">お名前（抽選結果の連絡用）</label>
+                    <input id="voucher-name" type="text" autocomplete="name" placeholder="山田 太郎" />
+                    <div class="voucher-form-row">
+                        <button id="voucher-submit" type="button">応募する</button>
+                        <button id="voucher-cancel" type="button">やめる</button>
+                    </div>
+                    <div id="voucher-error" role="alert"></div>
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button id="close-stamp-book" type="button">閉じる</button>
+                <button id="clear-stamps" type="button">キャラクターを逃がす</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作説明モーダル -->
+    <div id="guide-modal" aria-hidden="true" role="dialog" aria-labelledby="guide-title" aria-modal="true">
+        <div id="guide-content">
+            <button id="close-guide-top" class="close-guide-x" type="button" aria-label="Close">×</button>
+            <div id="stamp-rally-note" class="guide-note" aria-hidden="false" style="margin-bottom:10px;"></div>
+            <div class="guide-header">
+                <h2 id="guide-title">How to play</h2>
+                <div class="lang-switch" id="guide-lang-switch" role="tablist" aria-label="言語切替">
+                    <button id="lang-jp" class="lang-btn active" aria-pressed="true">日本語</button>
+                    <button id="lang-en" class="lang-btn" aria-pressed="false">English</button>
+                </div>
+            </div>
+            <div class="guide-steps">
+                <div class="step main">
+                    <img class="howto-main" src="{{ asset('img/howToOperate.png') }}" alt="操作ガイド" loading="lazy" decoding="async" />
+                </div>
+                <div class="step" id="guide-step-find"></div>
+                <div class="step" id="guide-step-zoom"></div>
+                <div class="step" id="guide-step-photo"></div>
+                <div class="step" id="guide-step-throw"></div>
+                <div class="step" id="guide-step-prize"></div>
+                <div class="step" id="guide-step-others"></div>
+                <div class="step" id="guide-step-hints"></div>
+            </div>
+            <div class="guide-close-row">
+                <button id="close-guide" type="button">close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 捕獲済みメッセージ -->
+    <div id="captured-message" class="captured-message" aria-live="polite">
+        <h2>🎉 捕まえました！ 🎉</h2>
+        <div class="animal-name" id="captured-animal-name"></div>
+        <p style="margin-top:15px;font-size:14px;color:#ccc;">
+            コレクションの「キャラクターを逃がす」ボタンで<br>全てリセットできます
+        </p>
+    </div>
+
+    <!-- 確認ダイアログ（スタンプ削除など） -->
+    <div id="confirm-overlay" aria-hidden="true"></div>
+    <div id="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-message">
+        <div class="confirm-message" id="confirm-message"></div>
+        <div class="confirm-buttons">
+            <button class="confirm-yes" id="confirm-yes" type="button">はい</button>
+            <button class="confirm-no" id="confirm-no" type="button">いいえ</button>
+        </div>
+    </div>
+
+    <!-- カメラ権限エラーUI -->
+    <div id="camera-error" style="display:none; position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.75); color:#fff; z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="max-width:420px; text-align:center; padding:20px;">
+            <h2 style="margin-top:0;">カメラの起動を確認しています</h2>
+            <!-- 2026-09-11 修正（FR-11）:
+                 低スペック機（iPhone7/SE3 等）では起動に時間がかかることがあり、
+                 実際には起動済みでもこの画面が一時的に残ることがあるため、
+                 「タップで再開されることがあります」導線を追加。 -->
+            <p>カメラの起動に時間がかかる場合があり、実際にはすでに動いていることがあります。<br>
+            しばらくお待ちいただくか、下の「再試行」をタップすると自動的に再開されることがあります。<br>
+            それでも続く場合、設定からカメラの許可を確認してください。</p>
+            <div style="margin-top:12px;">
+                <button id="retry-camera" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#0078D4;color:#fff;border:none;margin-right:8px;">再試行</button>
+                <button id="retry-camera-lowres" style="padding:10px 16px;font-size:16px;border-radius:6px;background:#ff8c00;color:#fff;border:none;display:none;">低解像度で再試行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- カメラヘルプモーダル -->
+    <div id="camera-help-modal" style="display:none;" aria-hidden="true">
+        <div class="camera-help-content">
+            <h3 id="camera-help-title">カメラの許可が必要です</h3>
+            <div id="camera-help-body"></div>
+            <div class="camera-help-actions">
+                <button id="camera-help-ok" type="button" style="padding:8px 16px;background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer;">OK</button>
+                <button id="camera-help-close" type="button" style="padding:8px 16px;background:#999;color:#fff;border:none;border-radius:6px;cursor:pointer;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- フラッシュ（写真撮影エフェクト） -->
+    <div id="flash" aria-hidden="true"></div>
+
+    <!-- 写真プレビュー -->
+    <div id="photo-preview" style="display:none;" role="dialog" aria-modal="true" aria-label="写真プレビュー">
+        <img id="preview-image" src="" alt="撮影した写真">
+        <div class="buttons">
+            <button id="download-button" type="button">ダウンロード</button>
+            <button id="close-button" type="button">閉じる</button>
+        </div>
+    </div>

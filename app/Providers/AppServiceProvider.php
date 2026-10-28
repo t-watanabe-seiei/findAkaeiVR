@@ -35,5 +35,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('stamp202610_scan', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
         RateLimiter::for('stamp202610_check', fn (Request $request) => Limit::perMinute(120)->by($key($request)));
         RateLimiter::for('stamp202610_redeem', fn (Request $request) => Limit::perHour(10)->by($key($request)));
+
+        // ARstampRally202611 専用のレートリミッター。
+        // セッションキーは 202611 固有の ar_fingerprint_202611（202610 と分離・AC-3）。
+        $key202611 = fn (Request $request) => $request->session()->get('ar_fingerprint_202611') ?: $request->ip();
+
+        RateLimiter::for('stamp202611_scan', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
+        RateLimiter::for('stamp202611_check', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
+        RateLimiter::for('stamp202611_apply', fn (Request $request) => Limit::perHour(10)->by($key202611($request)));
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MarkerScan;
 use App\Models\PrizeExchange;
+use App\Models\Stamp202611VoucherApplication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -179,7 +180,7 @@ class AdminController extends Controller
         $start = $request->query('start');
         $end = $request->query('end');
 
-        $allowed = ['recentExchanges', 'redeemedPrizes', 'allExchanges', 'recentScans', 'dailyScans', 'markerStats'];
+        $allowed = ['recentExchanges', 'redeemedPrizes', 'allExchanges', 'recentScans', 'dailyScans', 'markerStats', 'voucherApplications202611'];
         if (!in_array($dataset, $allowed)) {
             return abort(400, 'Invalid dataset');
         }
@@ -283,6 +284,29 @@ class AdminController extends Controller
                 foreach ($rows as $r) {
                     fputcsv($handle, [$r->marker_id, $r->marker_name, $r->total_scans, $r->unique_users, $r->last_scan]);
                 }
+
+            } elseif ($dataset === 'voucherApplications202611') {
+                // 市内共通商品券の抽選応募（業者提出用・design §5.6 / FR-45 / FR-48）
+                fputcsv($handle, ['name', 'email', 'stamp_count', 'weight', 'applied_at']);
+
+                $query = Stamp202611VoucherApplication::query();
+                if ($startDt) $query->where('applied_at', '>=', $startDt);
+                if ($endDt) $query->where('applied_at', '<=', $endDt);
+
+                // 倍率順（weight DESC, applied_at ASC）で業者の抽選を容易にする
+                $query->orderBy('weight', 'desc')
+                    ->orderBy('applied_at', 'asc')
+                    ->chunk(200, function ($rows) use ($handle) {
+                        foreach ($rows as $row) {
+                            fputcsv($handle, [
+                                $row->name,
+                                $row->email,
+                                $row->stamp_count,
+                                $row->weight,
+                                $row->applied_at ? $row->applied_at->toDateTimeString() : '',
+                            ]);
+                        }
+                    });
             }
 
             fclose($handle);
@@ -957,6 +981,156 @@ class AdminController extends Controller
             'pendingExchanges',
             'recentExchanges',
             'redeemedPrizes'
+        ));
+    }
+
+    /**
+     * ARstampRally202611 管理ダッシュボード
+     *
+     * Q-12 案A（FR-50）: 収集期間（config/ar202611.collect_start 〜 collect_end）で
+     * スキャンを、応募期限（apply_deadline）までを応募実績（applied_at）として別枠集計する。
+     * 景品交換（prize_exchanges）の集計は持たない（FR-8）。
+     */
+    public function dashboard202611(Request $request)
+    {
+        // 収集期間（JST 壁時計。marker_scans.scanned_at と同一の保存系・design §5.1 注記）
+        $startDate = Carbon::parse((string) config('ar202611.collect_start'), 'Asia/Tokyo');
+        $endDate   = Carbon::parse((string) config('ar202611.collect_end'), 'Asia/Tokyo');
+
+        // 応募実績は applied_at ベース（収集期間後に応募されうるため apply_deadline まで見る）
+        $applyStart = $startDate->copy();
+        $applyEnd   = Carbon::parse((string) config('ar202611.apply_deadline'), 'Asia/Tokyo');
+
+        // 市内共通商品券の抽選応募（FR-41〜FR-44）
+        $voucherTotal = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd])->count();
+
+        $voucherByWeight = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd])
+            ->selectRaw('weight, COUNT(*) as total')
+            ->groupBy('weight')
+            ->orderBy('weight')
+            ->get()
+            ->pluck('total', 'weight');
+
+        // 応募一覧（20 件ページネーション・q は email / name 検索）
+        $q = $request->query('q');
+        $voucherQuery = Stamp202611VoucherApplication::whereBetween('applied_at', [$applyStart, $applyEnd]);
+        if ($q) {
+            $voucherQuery->where(function ($query) use ($q) {
+                $query->where('email', 'like', '%' . $q . '%')
+                      ->orWhere('name', 'like', '%' . $q . '%');
+            });
+        }
+        $voucherApplications = $voucherQuery->orderBy('weight', 'desc')
+            ->orderBy('applied_at', 'asc')
+            ->paginate(20, ['*'], 'voucher_page')
+            ->appends(['q' => $q]);
+
+        // 収集期間の全体統計
+        $totalScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])->count();
+        $uniqueScanners = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
+            ->distinct()
+            ->count('fingerprint');
+
+        // 全モデルのリスト（202610 と同一アセット・同一 20 種）
+        $animals = [
+            'model_01' => 'ひつじ',
+            'model_02' => 'コウモリ',
+            'model_03' => 'アジ',
+            'model_04' => 'コアラ',
+            'model_05' => 'あざらし',
+            'model_06' => 'ぶた',
+            'model_07' => 'モモンガ',
+            'model_08' => 'ミーアキャット',
+            'model_09' => 'こづめかわうそ',
+            'model_10' => 'コンドル',
+            'model_11' => 'ハリセンボン',
+            'model_12' => 'カバ',
+            'model_13' => 'カメレオン',
+            'model_14' => 'ウーパールーパー',
+            'model_15' => '白いネコ',
+            'model_16' => 'むささび',
+            'model_17' => 'カラス',
+            'model_18' => 'かわうそ',
+            'model_19' => 'すずめ',
+            'model_20' => 'キリン',
+        ];
+
+        // 各モデルの統計を収集
+        $animalStats = [];
+        foreach ($animals as $markerId => $markerName) {
+            $markerScanCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'marker_scan')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->count();
+
+            $ballHitCount = MarkerScan::where('marker_id', $markerId)
+                ->where('capture_type', 'ball_hit')
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->count();
+
+            $totalCount = $markerScanCount + $ballHitCount;
+
+            $uniqueUsers = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->distinct('fingerprint')
+                ->count();
+
+            $lastScan = MarkerScan::where('marker_id', $markerId)
+                ->whereBetween('scanned_at', [$startDate, $endDate])
+                ->orderBy('scanned_at', 'desc')
+                ->first();
+
+            $animalStats[] = [
+                'marker_id'        => $markerId,
+                'marker_name'      => $markerName,
+                'marker_scan_count'=> $markerScanCount,
+                'ball_hit_count'   => $ballHitCount,
+                'total_count'      => $totalCount,
+                'unique_users'     => $uniqueUsers,
+                'last_scan'        => $lastScan ? $lastScan->scanned_at : null,
+            ];
+        }
+
+        // 最近のスキャン履歴
+        $recentScans = MarkerScan::whereBetween('scanned_at', [$startDate, $endDate])
+            ->orderBy('scanned_at', 'desc')
+            ->paginate(30, ['*'], 'recent_scans_page');
+
+        // 日別統計
+        $dailyStatsRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
+            ->selectRaw('COUNT(*) as count')
+            ->whereBetween('scanned_at', [$startDate, $endDate])
+            ->groupBy('date', 'capture_type')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $dailyStats = $dailyStatsRaw->groupBy('date');
+
+        // 日別個別ユーザー数統計
+        $dailyUniqueUsersRaw = MarkerScan::select(DB::raw('DATE(scanned_at) as date'))
+            ->selectRaw('capture_type')
+            ->selectRaw('COUNT(DISTINCT fingerprint) as unique_users')
+            ->whereBetween('scanned_at', [$startDate, $endDate])
+            ->groupBy('date', 'capture_type')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $dailyUniqueUsers = $dailyUniqueUsersRaw->groupBy('date');
+
+        return view('admin.dashboard202611', compact(
+            'animalStats',
+            'recentScans',
+            'dailyStats',
+            'dailyUniqueUsers',
+            'totalScans',
+            'uniqueScanners',
+            'voucherTotal',
+            'voucherByWeight',
+            'voucherApplications',
+            'startDate',
+            'endDate',
+            'applyEnd'
         ));
     }
 }

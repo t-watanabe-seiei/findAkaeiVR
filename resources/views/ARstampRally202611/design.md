@@ -151,22 +151,23 @@ return [
 - `scan_count` は「session_id OR fingerprint」+ marker + capture_type の累積 + 1
 - **`scanned_at` の採用規則（Q-12 案A・FR-51）**: クライアントが送る `scannedAt` を**次のすべてを満たす場合に限り**採用し、それ以外はサーバー `now()` へフォールバックする
   1. `validate` の `date` を通過（parse 可能）
-  2. `collectPeriod()` の範囲内（`collect_start` 〜 `collect_end`、UTC 変換後）
+  2. `collectPeriod()` の範囲内（`collect_start` 〜 `collect_end`、**JST 壁時計**）
   3. `now()->addHours(24)` 以下（クライアント時計ずれ・未来日付の混入防止。過去への大幅遡りは 2 で除外）
   ```php
-  [$collectStart, $collectEnd] = self::collectPeriod();          // JST → UTC
-  $client = Carbon::parse($data['scannedAt']);
+  [$collectStart, $collectEnd] = self::collectPeriod();          // Asia/Tokyo の壁時計
+  $client = Carbon::parse($data['scannedAt']);                   // UTC ISO8601 でも可（比較は絶対時刻）
   $scannedAt = ($client->between($collectStart, $collectEnd) && $client->lte(now()->addHours(24)))
-      ? $client : now();
+      ? $client->setTimezone('Asia/Tokyo') : now();
   ```
   - 効果: **11/10 にオフラインで収集 → 11/16（応募期限当日）に再送**でも `scanned_at` は 11/10 のまま（日別統計・動物別統計が実際の収集日に計上され、帰宅後の再送が 11/16 へずれない）
   - 日次重複判定（`capture_type === 'marker_scan'` の `whereDate('scanned_at', ...)`）は**採用した `scannedAt` の日付**で行う（クライアントの `marker-scan-cache-202611-*` と同一日になる）
   - 案B / 案C は 2026-10-28 に不採用（§10.1 参照）。将来案B へ戻す場合は条件 2 を外して `scannedAt` を優先、案C は `now()` 固定（1 行の差し替え）
   - `applied_at`（応募日時）は**常にサーバー `now()`**。`scannedAt` を採用しても応募日時・`created_at` は変更しない
+  - **実装注記（2026-10-28・T12）**: `APP_TIMEZONE=Asia/Tokyo` で `marker_scans.scanned_at` は **JST 壁時計の文字列**として保存されている（既存 188 件で確認）。そのため `collectPeriod()` / `applyDeadline()` は **`Asia/Tokyo` で parse してそのまま比較**し、UTC へ変換しない。UTC 変換を挟むと `whereBetween` のバインドが 9 時間ずれて収集期間末尾（15 日 15:00 以降）が種数からこぼれる。Carbon の `between` / `lte` は絶対時刻比較なのでクライアントの UTC ISO8601 と混線しない
 
 ### 5.2 checkStatus（読み取り＋**倍率の自動昇格**・202610 の check-prize 相当）
 - `session('ar_fingerprint_202611') ?: $request->input('fingerprint')`
-- 収集種数は**サーバー側**で算出: `MarkerScan::where('session_id', $sid)->orWhere('fingerprint', $fp)->distinct()->count('marker_id')`（`scanned_at` を **`self::collectPeriod()` = `collect_start` / `collect_end`（JST→UTC）**で絞る。FR-50）
+- 収集種数は**サーバー側**で算出: `MarkerScan::where('session_id', $sid)->orWhere('fingerprint', $fp)->distinct()->count('marker_id')`（`scanned_at` を **`self::collectPeriod()` = `collect_start` / `collect_end`（JST 壁時計のまま・§5.1 の実装注記）**で絞る。FR-50）
   - **帰宅後応募の成立点**: オフライン収集分は次回ロード時に自動再送されるため、`collect_end` までに再送されていれば（記録日時が収集日であることと併せて）この種数に含まれる。案A では `scanned_at` が収集日なので、**再送が `collect_end` をまたいでいても**種数は減らない（`apply_deadline` 前なら応募可能）
   - 未送信キュー（クライアント LocalStorage）の分は**この種数に含まれない**（サーバー未着信のため）。FR-52 で応募ボタンを抑制する根拠
 - 応募状態: `Stamp202611VoucherApplication::where('fingerprint', $fp)->first()`

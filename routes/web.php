@@ -92,6 +92,36 @@ Route::prefix('stamp202610')->group(function () {
         ->middleware('throttle:stamp202610_redeem');
 });
 
+// ARstampRally202611 専用API（web グループ: CSRF + セッション有効）
+// 収集種数と当選倍率をサーバー側で算出・強制し、レートリミッターも適用する。他キャンペーンには影響しない。
+Route::match(['get', 'head'], '/stamp202611', function () {
+    return view('ARstampRally202611');
+})->name('stamp202611.index');
+
+Route::prefix('stamp202611')->group(function () {
+    // オフライン専用ページ（Service Worker の最終フォールバック・FR-23）
+    // 外部アセット（CSS/JS/画像）に依存しない自己完結ビュー
+    Route::get('/offline', function () {
+        return response(view('ARstampRally202611.offline'), 200)
+            ->header('Cache-Control', 'public, max-age=0, must-revalidate')
+            ->header('X-Robots-Tag', 'noindex');
+    })->name('stamp202611.offline');
+
+    // CSRF トークン再取得（キャッシュ済み HTML のトークン陳腐化対策・FR-26）
+    Route::get('/csrf', function () {
+        return response()->json(['token' => csrf_token()])
+            ->header('Cache-Control', 'no-store')
+            ->header('X-Robots-Tag', 'noindex');
+    })->name('stamp202611.csrf');
+
+    Route::post('/record-scan', [App\Http\Controllers\StampRally202611Controller::class, 'recordScan'])
+        ->middleware('throttle:stamp202611_scan');
+    Route::post('/check-status', [App\Http\Controllers\StampRally202611Controller::class, 'checkStatus'])
+        ->middleware('throttle:stamp202611_check');
+    Route::post('/apply-voucher', [App\Http\Controllers\StampRally202611Controller::class, 'applyVoucher'])
+        ->middleware('throttle:stamp202611_apply');
+});
+
 Route::match(['get', 'head'], '/number', function () {
     return view('ARstampNumber');
 })->name('stamp.index');
@@ -229,5 +259,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard202609', [AdminController::class, 'dashboard202609'])->name('admin.dashboard202609');
         // ARstampRally202610用のダッシュボード
         Route::get('/dashboard202610', [AdminController::class, 'dashboard202610'])->name('admin.dashboard202610');
+
+        // ARstampRally202611用のダッシュボード（収集期間と応募期限を分離して表示・FR-50）
+        Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');
     });
 });
