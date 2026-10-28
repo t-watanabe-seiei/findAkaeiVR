@@ -1674,3 +1674,65 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 **修正バグ:** `js-prize.blade.php` の `flushScanQueue()` が成功時に `sent++` しておらず、返却される送信件数が常に 0 になっていた。
 **影響範囲:** 202610 のみ。`public/service-worker.js`・`public/js/`・202609 関連は未変更（分離原則）。
 
+## ARstampRally202611 新規作成（2026-10-29 / commit 873ae65）
+
+**コミット:** `873ae653c011adb216599d1d26cee79b76f1486c` — `stamp202611 Create 01`（2026-10-29 05:46 JST / 実作業 2026-10-28）
+**規模:** 41 files changed（新規 36・変更 5、+24,290 / -22）
+**目的:** 2026年11月開催の AR スタンプラリーを 202610 を基に新設。お菓子は会場でのガラポン（10 / 15 / 20 個）、市内共通商品券は 10 個以上で抽選応募（15 個で 2 倍・20 個で 3 倍）。既存キャンペーン（202603 / 202605 / 202606 / 202609 / 202610）と `marker_scans` / `prize_exchanges` の仕様は変更しない。
+
+### 1. 追加したファイル（キャンペーン本体 19 件）
+
+| # | ファイル | 内容 |
+|---|---------|------|
+| 1 | `config/ar202611.php` | 設定の単一点。収集期間 `2026-11-01 00:00` 〜 `2026-11-15 23:59:59`、応募期限 `2026-11-16 23:59:59`、`asset_dir='cg/202610'`（202611 用アセットは未作成のため 202610 を流用）、`marker_count=20`、ガラポン 4 段階、`voucher_threshold=10` / `voucher_weights=[9=>1, 14=>2, 20=>3]` |
+| 2 | `app/Models/Stamp202611VoucherApplication.php` | 商品券抽選応募モデル（テーブル `stamp202611_voucher_applications`） |
+| 3 | `database/migrations/2026_11_01_000000_create_stamp202611_voucher_applications_table.php` | 202611 専用テーブル。`fingerprint` / `email` に UNIQUE（1 人 1 応募）、`weight`+`applied_at` に複合 index。`marker_scans` / `prize_exchanges` には触れない |
+| 4 | `app/Http/Controllers/StampRally202611Controller.php` | `recordScan` / `checkStatus` / `applyVoucher` と期間・倍率ヘルパー（`collectPeriod()` / `applyDeadline()` / `weightFor()` / `tierFor()` / `normalizeEmail()`）。収集種数と当選倍率はサーバー側で算出・強制 |
+| 5 | `resources/views/ARstampRally202611.blade.php` | 本体ビュー（head / ui / scene / aframe-components / js-* を include） |
+| 6 | `…/ARstampRally202611/head.blade.php` | AR.js / A-Frame 読み込み、カメラ起動処理、Service Worker 登録、CSS |
+| 7 | `…/ui.blade.php` | ガラポン・抽選応募 UI、`#offline-banner` |
+| 8 | `…/scene.blade.php` | A-Frame シーン定義 |
+| 9 | `…/aframe-components.blade.php` | スタンプ・ボール等の A-Frame カスタムコンポーネント |
+| 10 | `…/js-stamps.blade.php` | `STAMPS`（`model_01`〜`model_20`／パスは `config('ar202611.asset_dir')` 起点）、LocalStorage キー `ar-stamp-rally-202611` / `ar-captured-animals-202611` |
+| 11 | `…/js-prize.blade.php` | 種数照会・ガラポン（`CANDY_TIERS` / `ar-gacha-draws-202611`・4 回上限・サーバー送信なし）・抽選応募 `applyVoucher202611()`・オフラインキュー `ar-scan-queue-202611`（上限 200・`scannedAt` 保持・4xx 非再送）・`refreshCsrfToken202611()` の本体 |
+| 12 | `…/js-gallery.blade.php` | maker00 ギャラリー（Model_00 を固定表示し捕獲済み最大 4 体を `GALLERY_POSITIONS` に配置・ボールヒット時 anime02 → anime03） |
+| 13 | `…/js-throw.blade.php` | ポケボール投擲（タップ即投げ・GLB プリロードプール）。命中記録は `js-stamps.blade.php` 側で `recordMarkerScan(stampId, name, 'ball_hit')` |
+| 14 | `…/js-camera.blade.php` | カメラ制御 |
+| 15 | `…/js-init.blade.php` | 起動処理、online/offline 監視、起動時に「トークン更新 → キュー再送 → 種数照会」 |
+| 16 | `…/offline.blade.php` | オフラインフォールバックページ（外部アセット依存なしの自己完結） |
+| 17 | `public/sw-stamp202611.js` | 202611 専用 SW（`ar202611-{html,core,assets}-v1`・precache 29 件・重量アセット cache-first・API と外部オリジン非介入） |
+| 18 | `resources/views/admin/dashboard202611.blade.php` | 管理ダッシュボード（収集期間と応募期限を併記、応募一覧 20 件ページネーション + `q` 検索、CSV ダウンロードリンク） |
+| 19 | `tests/Feature/StampRally202611Test.php` | サーバー側自動テスト 15 メソッド |
+
+### 2. 変更したファイル（5 件）
+
+| # | ファイル | 変更内容 |
+|---|---------|---------|
+| 1 | `routes/web.php` | `GET /stamp202611`（本体）、`GET /stamp202611/offline`（`noindex`）、`GET /stamp202611/csrf`（`no-store`）、`POST /stamp202611/record-scan`・`/check-status`・`/apply-voucher`（レートリミッター付き）、`GET /admin/dashboard202611` を追加 |
+| 2 | `app/Http/Controllers/AdminController.php` | `dashboard202611()` を追加（スキャンは `scanned_at`、応募実績は `applied_at` で**別枠集計**、景品交換の集計は持たない）。`exportCsv()` の `$allowed` に `voucherApplications202611` を追加（`name, email, stamp_count, weight, applied_at` を `weight DESC, applied_at ASC`・`chunk(200)`） |
+| 3 | `app/Providers/AppServiceProvider.php` | `stamp202611_scan`（120/min）・`stamp202611_check`（120/min）・`stamp202611_apply`（10/hour）を追加。キーは 202611 固有の `ar_fingerprint_202611`（202610 と分離） |
+| 4 | `resources/views/ARstampRally202611/design.md` | §5.1 の `scanned_at` 採用規則を「**JST 壁時計のまま比較**（UTC 変換しない）」へ修正。`APP_TIMEZONE=Asia/Tokyo` で `scanned_at` が JST 文字列保存のため、UTC 変換を挟むと `whereBetween` が 9 時間ずれて収集期間末尾（11/15 15:00 以降）が種数からこぼれる |
+| 5 | `resources/views/ARstampRally202611/tasks.md` | T6〜T10 / T12〜T15 / T33 / T39 / T40 / T47 の 13 項目を完了（`[x]`）へ更新、AC-4・AC-5 を「合格」へ更新 |
+
+### 3. 主な設計ポイント
+
+- **帰宅後応募（Q-12 案A）**: オフライン収集分を再送しても `scanned_at` は**収集日**を保持（クライアント送信値が収集期間内かつ `now()+24h` 以下の場合のみ採用、条件外はサーバー `now()`）。`collect_end` をまたいで再送されても種数は減らず、`apply_deadline`（11/16 23:59）前なら応募可能。`applied_at` は常にサーバー `now()`。
+- **JST 壁時計で比較**: `APP_TIMEZONE=Asia/Tokyo` で `marker_scans.scanned_at` は JST 壁時計の文字列。クライアントの UTC ISO8601（`new Date().toISOString()`）は保存前に `setTimezone('Asia/Tokyo')` して既存データと同一の壁時計系へ揃え、`collectPeriod()` / `applyDeadline()` は UTC 変換を挟まず比較。
+- **倍率の自動昇格**: `check-status` 応答時に応募行の `weight` を上方更新（下方更新なし）。15 / 20 種到達後は応募ボタンを再押下せずページ読み込みだけで 2 倍 / 3 倍へ昇格。
+- **1 人 1 応募**: `fingerprint` / `email` UNIQUE + 422 `already_applied`。email は小文字化して保存。
+- **ガラポンはクライアント側のみ**: 4 回上限を `ar-gacha-draws-202611` で管理しサーバーには送らない（会場でスタッフが画面の回数を確認）。202610 の景品コード交換（`exchange-prize` / `prize_exchanges`）は 202611 では**廃止**。
+
+### 4. 検証結果
+
+- `php -l`: config / Controller / AdminController / routes / AppServiceProvider / migration / Model すべて OK
+- `php artisan migrate`: DONE（57.76 ms）。既存 `marker_scans` 188 件 / `prize_exchanges` 1 件は無傷（AC-11）
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: 作成時 **OK (13 tests, 53 assertions)** → 2026-10-29 再実行で **OK (15 tests, 78 assertions)**（管理画面と CSV エクスポートの 2 件を追加）。カバー: index の asset_dir（`cg/202610/…`）・offline / csrf ヘッダ・収集日内の `scannedAt` 採用と期間外の `now()` フォールバック・日次重複・9 種の 422 `not_eligible`・10 / 15 / 20 種の weight 1 / 2 / 3・`collect_end` 経過後の応募成功と `apply_deadline` 経過後の 422 `deadline_passed`・weight 自動昇格と非降格・email 正規化と一意性・`prize_exchanges` 無書き込み
+- Node.js（`vm` で SW を sandbox 化）によるシミュレーション: SW fetch 戦略 **48/48 PASS**（AC-4）・オフラインキュー **23/23 PASS**（AC-5）
+
+**T47 運営向け引継ぎメモ（本項目で対応）:** お菓子のガラポンは LocalStorage 管理でアプリは回数を記録しない → 会場スタッフが画面の引抽回数を確認する。市内共通商品券の抽選・当選連絡は `GET /admin/export-csv?dataset=voucherApplications202611` の CSV（`weight DESC, applied_at ASC`）を基に業者が行う。
+
+**tasks.md の残務:** T11 / T16〜T19 / T26〜T32 / T41〜T46 は対応ファイルが本コミットに含まれているためチェック更新のみが残る。**未着手:** T20〜T25（iOS カメラ起動の根本修正）、T34〜T38（最終監査・`cg/202611` への切替手順）、T37（Android / iOS 実機検証）、T48（帰宅後応募の実機受け入れ）
+
+**注意点:** 検証用の一時ファイル 17 件（`_render202611.html`、`_render202611_script0-5.js`、`storage/_render202611.html`、`storage/_render202611_script0-5.js`、`_tmp_render202611.php`、`_tmp_render_out.txt`、`_tmp_voucher_test.cjs`／計約 16,000 行）は本コミットに含まれていた。アプリのコード（app / routes / resources / public / config / tests / database）から `_render202611` と `_tmp_*` への参照が 0 件であることを grep で確認し、2026-10-29 に削除した（`.gitignore` には追加しない）。
+
+**影響範囲:** 202611 のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/`・既存 Service Worker は未変更（分離原則）。
