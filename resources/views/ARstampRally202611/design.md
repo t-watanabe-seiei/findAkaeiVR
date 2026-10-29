@@ -142,7 +142,7 @@ return [
 - **fingerprint は保存しない**（保存されるのは userId）。前置字は**ページを読み込んだときの URL** で決まる
   → 検証端末は毎回 `?test=1` 付き URL を開く。付け忘れた送信は `fp_` 始まりで本番計測になる
 - base（`fp_…`）は同一端末で安定するため、`?test=1` の有無で同一端末の本番 / 検証アイデンティティが混在しうる。
-  本番計測を汚した場合は `test-data-guide.md` §4 で DB 側を整理する
+  本番計測を汚した場合は `test-data-guide.md` §5 で DB 側を整理する
 - 判別に使う列は `fingerprint` 1 本のみ。他キャンペーンの fingerprint は常に `fp_` 始まりのため除外条件に掛からない
 - 除外を適用する箇所: `dashboard202611()` の総スキャン数・個別ユーザー数・マーカー別統計・最近のスキャン・
   日別統計・日別個別ユーザー数・応募総数・倍率別内訳・応募一覧、`exportCsv()`（`GET /admin/export`）の
@@ -150,8 +150,17 @@ return [
 - 表示切替は `?show_test=1`（既定は除外側）。応募一覧のページネーション（`withQueryString()`）、検索フォームの
   hidden、ダッシュボードの CSV ダウンロードリンクは `show_test` を維持する
 - `test_prefix` を変更すると、それまでに保存された検証行は除外対象でなくなる
+- **付け忘れ分の事後整理**（`test-data-guide.md` §5）: base が安定しているため、同一 userId の端末で
+  `?test=1` あり / なしの `generateFingerprint()` 末尾を突き合わせて付け忘れ fingerprint を特定できる。
+  整理は **`fingerprint` 完全一致**を条件に、`test_` 前置への `update()`（非破壊・推奨。
+  `applyTestFilter()` に集約された除外条件へ即反映される）または `delete()`（応募 → スキャンの順）を行う。
+  `LIKE 'fp_%'` 等のバッチ削除は実参加者を消すため禁止。`stamp202611_voucher_applications.fingerprint` は
+  UNIQUE(64) なので、変更先が既存検証行と衝突する場合のみ `test_orphan_…`（`test_` を含む別前置）を使う
+- 隠蔽・削除しても `stampCountFor()` は `session_id` OR `fingerprint` で種数を数えるため、同一 `session_id` を
+  使い続けた検証端末自身の種数には残る。検証端末を本番へ回す場合は LocalStorage / Cookie のリセットが先
+- 付け忘れの検知はサーバー側では不可能なため、検証ログ（日時・機種・開いた URL・fingerprint・email）で補う
 - クライアント生成の値なので**改ざん対策ではない**（目的は検証データの誤計上防止）
-- 応募の重複判定は email ベースのまま。検証には専用 email を使う（`test-data-guide.md` §5）
+- 応募の重複判定は email ベースのまま。検証には専用 email を使う（`test-data-guide.md` §7）
 - オフラインページ（`/stamp202611/offline`）は fingerprint を生成しないため `?test=1` は効かない。
   オフライン中のスキャンはキューに**スキャン時に生成した fingerprint** を保存するため、
   `?test=1` 付きページで集めた分は再送時も `test_` のまま（§10 キュー仕様）
@@ -407,7 +416,7 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
   `?show_test=1` で表示 → CSV 既定除外 → `&show_test=1` で表示）/
   `test_prize_view_exposes_test_flag_and_prefix`（`/stamp202611` の HTML に
   `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される）。
-  クラス全体で **17 tests / 105 assertions PASS**（実行手順は `test-data-guide.md` §7）
+  クラス全体で **17 tests / 105 assertions PASS**（実行手順は `test-data-guide.md` §9）
 
 - 202609 側に残る `#ar-scene video` 不具合（202610 §8 の既知未対応）は本キャンペーンでは扱わない（分離原則・Q-7）。
 - **Q-12（案A 確定・2026-10-28）の実装範囲**: `config/ar202611.php` の `collect_start`（`2026-11-01 00:00:00`）/ `collect_end`（`2026-11-15 23:59:59`）/ `apply_deadline`（`2026-11-16 23:59:59`）、`StampRally202611Controller` の `collectPeriod()` / `applyDeadline()` / `recordScan()` の `scanned_at` 規則、`js-gallery.blade.php` の応募ボタン条件（未送信バナー）が案A の実装点。**将来案B / 案C へ戻す場合は §10.1 の手順**（§5.1 のガードを 1 行戻し、`apply_deadline` 判定と未送信バナーを削除）。SW・キュー・応募フォーム・CSV は変更不要

@@ -1766,9 +1766,11 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 | 管理画面で検証分を確認 | `/admin/dashboard202611?show_test=1`（画面上部のリンクで切替。検索・ページ送りも維持） |
 | **業者提出用 CSV（検証分を除外）** | `/admin/export?dataset=voucherApplications202611` |
 | 検証分も含めた CSV | `/admin/export?dataset=voucherApplications202611&show_test=1` |
+| `?test=1` を付け忘れた分の整理 | `test_` 前置へ `update()` して隠す（推奨）または fingerprint 完全一致で `delete()` → `test-data-guide.md` §5 |
 
 設定は `config/ar202611.php` の `test_param`（既定 `test`）と `test_prefix`（既定 `test_`）。
-詳細・端末リセット手順・限界（`?test=1` 付け忘れは本番計測になる／email 重複に注意）は
+詳細・端末リセット手順・限界（`?test=1` 付け忘れは本番計測になる／email 重複に注意）・
+付け忘れ時の事後整理（fingerprint 特定 → 前置変更 / 削除）と検証ログは
 `resources/views/ARstampRally202611/test-data-guide.md`。
 
 ### 3. 変更したファイル（5 件）
@@ -1785,7 +1787,7 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 
 | ファイル | 内容 |
 |---------|------|
-| `resources/views/ARstampRally202611/test-data-guide.md` | 検証用 URL・管理画面 / CSV の切替・検証用端末の準備とリセット・DB 整理（tinker）・限界と注意 |
+| `resources/views/ARstampRally202611/test-data-guide.md` | 検証用 URL・管理画面 / CSV の切替・検証用端末の準備とリセット・DB 整理（tinker）・`?test=1` 付け忘れ時の事後整理（fingerprint 特定 → `test_` 前置で隠蔽 / 削除）・検証ログ・限界と注意 |
 | `resources/views/ARstampRally202611/asset-swap-guide.md` | `cg/202610` → `cg/202611` 切替チェックリスト（FR-36）・配置ファイル一覧（`Model_00.glb`〜`Model_20.glb` / `pattern-maker00.patt`〜`pattern-maker20.patt`）・SW の `ASSET_DIR` / `VERSION` 更新・キャッシュ対処（`?sw=0`・「キャッシュ削除」）・ロールバック |
 
 ### 5. 検証結果

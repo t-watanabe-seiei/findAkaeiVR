@@ -4,7 +4,7 @@
 > 状態: **仕様確定**（ガラポンは LocalStorage 管理・商品券応募は 1 メール 1 回をサーバー側で強制・応募後の倍率昇格は `check-status` で自動）
 > 追加論点（2026-10-28）: **Q-12「オフラインでスタンプを集め、帰宅後に通信できる環境で応募する」を仕様として保証するか** → **案A で確定**（収集期間と応募期限の分離）。
 > 確定値（利用者回答・2026-10-28）: **収集 2026-11-01 00:00:00 〜 2026-11-15 23:59:59 / 応募期限 2026-11-16 23:59:59（JST）**。三案比較表は §10 に残置（FR-49〜FR-53 は案A 確定済み）。
-> 改訂（2026-10-29）: **複数端末での検証データを本番集計・業者提出 CSV から分離する要件を追加**（§3-4 FR-54 / FR-55・AC-17 / AC-18・`config` の `test_param` / `test_prefix`）。運用手順は `test-data-guide.md`。
+> 改訂（2026-10-29）: **複数端末での検証データを本番集計・業者提出 CSV から分離する要件を追加**（§3-4 FR-54 / FR-55・AC-17 / AC-18・`config` の `test_param` / `test_prefix`）。運用手順は `test-data-guide.md`（付け忘れた分の事後整理・検証ログを含む）。
 
 > 本ファイルの内容確定後に `design.md` → `tasks.md` の順で作成する。
 
@@ -79,7 +79,7 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 
 | # | 要件 |
 |---|---|
-| FR-54 | 参加ページの URL に `?{config.test_param}=1`（既定 `?test=1`）を付けたページで生成する fingerprint に `config('ar202611.test_prefix')`（既定 `test_`）を前置する。クエリ名と前置字は blade（`js-prize.blade.php`）が `@json(config(...))` で `TEST_FP_PARAM` / `TEST_FP_PREFIX` 定数として注入し、`isTestMode()` が現在の URL から判定する（JS 側へ直書きしない）。fingerprint は保存値ではなく**送信ごとに** LocalStorage `ar-user-id-202611`（Cookie `ar_user_id_202611`）の userId と端末属性から生成するため、`?test=1` 付きで読み込んだページから送信した分だけ test 扱いになる（付け忘れた送信は本番計測）。オフラインキューはスキャン時の fingerprint を保持するため再送時も `test_` のまま。Service Worker は navigation を network-first で取得するためクエリはサーバーへ届く。オフラインページ（`/stamp202611/offline`）は fingerprint を生成しないため `?test=1` は効かない |
+| FR-54 | 参加ページの URL に `?{config.test_param}=1`（既定 `?test=1`）を付けたページで生成する fingerprint に `config('ar202611.test_prefix')`（既定 `test_`）を前置する。クエリ名と前置字は blade（`js-prize.blade.php`）が `@json(config(...))` で `TEST_FP_PARAM` / `TEST_FP_PREFIX` 定数として注入し、`isTestMode()` が現在の URL から判定する（JS 側へ直書きしない）。fingerprint は保存値ではなく**送信ごとに** LocalStorage `ar-user-id-202611`（Cookie `ar_user_id_202611`）の userId と端末属性から生成するため、`?test=1` 付きで読み込んだページから送信した分だけ test 扱いになる（付け忘れた送信は本番計測）。オフラインキューはスキャン時の fingerprint を保持するため再送時も `test_` のまま。Service Worker は navigation を network-first で取得するためクエリはサーバーへ届く。オフラインページ（`/stamp202611/offline`）は fingerprint を生成しないため `?test=1` は効かない（オフラインページの「AR を続ける / やり直す / キャッシュ削除」リンクは `?test=1` を復元しない）。**付け忘れた行の事後整理**: 同一 userId を使う端末で `?test=1` あり / なしの `generateFingerprint()` 末尾一致から付け忘れ fingerprint を特定し、`fingerprint` 完全一致で `test_` 前置へ `update()`（隠蔽・推奨）または `delete()` できること。バッチ削除（`LIKE 'fp_%'` 等）は実参加者を消すため禁止（手順は `test-data-guide.md` §5） |
 | FR-55 | 管理画面（`dashboard202611`）と CSV（`exportCsv`）は、fingerprint が `test_prefix` で始まる行を**既定で除外**する（総スキャン数・個別ユーザー数・動物別統計・最近のスキャン履歴・日別統計・日別個別ユーザー数・抽選応募の総数 / 倍率別 / 応募一覧、CSV の `voucherApplications202611` / `recentScans` / `dailyScans` / `markerStats`）。除外は `AdminController::applyTestFilter()` 1 箇所に集約し、`?show_test=1` を付けたリクエストだけ検証データを含めて表示する。ページネーション（`withQueryString()`）・検索フォーム（hidden）・CSV ダウンロードリンクは `show_test` を維持する。除外は `fingerprint` 列のみで行うため、`marker_scans` を共有する他キャンペーン（fingerprint は常に `fp_` 始まり）の集計には影響しない。運用手順は `test-data-guide.md` |
 
 
@@ -229,6 +229,6 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | AC-14 | **帰宅後応募（Q-12 案A）**: 機内モードで 10 種収集 → 機内モードを解除してページを再読み込み（自宅 Wi-Fi を模擬）→ 未送信キューが自動再送され、**`marker_scans.scanned_at` が収集日（機内モード当時の `scannedAt`）**で記録される。`check-status` の `stampCount` が 10 になり、`apply_deadline` 前なら `apply-voucher` が成功する（収集期間終了後の再送でも成功することを確認） |
 | AC-15 | **応募ボタンの表示条件（FR-52）**: 未送信キューが 1 件以上ある間は応募ボタンが非表示で「未送信のスタンプ N 件を自動送信します」バナーを表示。送信完了後の `check-status` でボタンが有効化される。LocalStorage 上だけ 10 種（サーバー記録 9 種）の場合はボタンが表示されない |
 | AC-16 | **`scannedAt` ガード**: 収集期間外（例 2026-12-30）や現在 +24h を超える `scannedAt` を送っても DB はサーバー `now()` で記録され、種数や日別統計が操作されないこと（curl / tinker で検証）。`apply_deadline` 経過後の `apply-voucher` は 422 `deadline_passed` |
-| AC-17 | **検証データ分離（FR-54 / FR-55）**: `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される。`test_` 始まりの行は `dashboard202611` の集計（総数・個別ユーザー数・応募一覧）と `GET /admin/export?dataset=voucherApplications202611` に**出ず**、`?show_test=1`（CSV は `&show_test=1`）を付けたときだけ現れる。検索（`q`）と併用しても `show_test` が維持され（検索フォームの hidden）、応募一覧のページネーション URL にも `show_test` が引き継がれる。`StampRally202611Test` の `test_admin_dashboard_and_csv_exclude_test_fingerprints` / `test_prize_view_exposes_test_flag_and_prefix` が PASS（クラス 17 tests / 105 assertions） |
+| AC-17 | **検証データ分離（FR-54 / FR-55）**: `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される。`test_` 始まりの行は `dashboard202611` の集計（総数・個別ユーザー数・応募一覧）と `GET /admin/export?dataset=voucherApplications202611` に**出ず**、`?show_test=1`（CSV は `&show_test=1`）を付けたときだけ現れる。検索（`q`）と併用しても `show_test` が維持され（検索フォームの hidden）、応募一覧のページネーション URL にも `show_test` が引き継がれる。`StampRally202611Test` の `test_admin_dashboard_and_csv_exclude_test_fingerprints` / `test_prize_view_exposes_test_flag_and_prefix` が PASS（クラス 17 tests / 105 assertions）。**付け忘れた分の確認**: `fingerprint` 完全一致で `test_` 前置へ `update()` した行が、既定表示・CSV から消え `?show_test=1` でのみ現れることを手動確認する（`test-data-guide.md` §5 / §6） |
 | AC-18 | 検証用端末の準備・リセット手順（LocalStorage / Cookie の削除、検証応募行の削除）と「`?test=1` 付け忘れは本番計測になる」限界が `test-data-guide.md` に記載されている。`cg/202611` への切替手順は `asset-swap-guide.md` にチェックリスト化されている（FR-36） |
 

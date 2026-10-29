@@ -72,7 +72,7 @@
 - [ ] T37 実機検証: Android Chrome / iOS Safari（低スペック機含む）でカメラ起動・マーカー認識・ボール投擲・ガラポンボタン・抽選応募、機内モードで AR 継続とキュー再送（AC-8）
 - [ ] T47 運営向け引継ぎメモを README に追記: ガラポンは画面提示により会場スタッフが回数を確認する（アプリは回数を記録しない）、商品券の抽選・当選連絡は業者が CSV を基に行う
 - [ ] T48 **帰宅後応募の受け入れ検証（Q-12 案A 確定・AC-14 / AC-15 / AC-16）**: 機内モードで 10 種収集 → 解除してページ再読み込み → 未送信キューが自動再送され `marker_scans.scanned_at` が**収集日**で記録されることを tinker で確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功（**`collect_end`（2026-11-15 23:59:59）経過後・`apply_deadline`（2026-11-16 23:59:59）前の再送でも成功**することを確認）。未送信 1 件以上時は応募ボタン非表示＋`#pending-scans` 表示。期間外 / +24h 超の `scannedAt` は `now()` にフォールバック、`apply_deadline` 経過後は 422 `deadline_passed`
-- [x] T49〜T52 **検証データ分離（FR-54 / FR-55）と運用手順ガイド**（`?test=1` → fingerprint 前置 / 管理画面・CSV の既定除外 / `?show_test=1` 切替 / `test-data-guide.md`・`asset-swap-guide.md`）→ 詳細は末尾の「追記（2026-10-29）」。テスト 17 件（105 assertions）PASS
+- [x] T49〜T53 **検証データ分離（FR-54 / FR-55）と運用手順ガイド**（`?test=1` → fingerprint 前置 / 管理画面・CSV の既定除外 / `?show_test=1` 切替 / `test-data-guide.md`・`asset-swap-guide.md` / 付け忘れ時の事後整理）→ 詳細は末尾の「追記（2026-10-29）」。テスト 17 件（105 assertions）PASS
 
 - [x] T38 `README.md` に完了状況と「`cg/202611` への切替手順」を追記（→ `asset-swap-guide.md` へ集約し README からリンク・T52 で完了）
 
@@ -126,6 +126,11 @@
       （`DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`）
 - [x] T52 `test-data-guide.md`（検証用 URL・管理画面の切替・CSV・端末リセット手順・限界）と
       `asset-swap-guide.md`（`cg/202611` への切替チェックリスト・キャッシュ対処・ロールバック）を作成し README からリンク
+- [x] T53 `test-data-guide.md` に **§5 `?test=1` 付け忘れ時の事後整理**（fingerprint 末尾一致での特定 →
+      `test_` 前置への `update()`（非破壊・推奨）/ `fingerprint` 完全一致での `delete()`（応募 → スキャンの順）/
+      期間 + `user_agent` での候補特定 / 実施前チェック）と **§6 検証ログ**、§2.1 に「付け忘れが起きる実パターン」表を追加
+      （docs のみ・アプリコード変更なし）。README / `requirements.md`（FR-54・AC-17）/ `design.md` §3.4 へ反映し、
+      旧 §5〜§7 を §7〜§9 へ繰り下げて相互参照を修正
 - **注意点**: `php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う。
   `RefreshDatabase` が `database/database.sqlite` を削除するため `DB_DATABASE=:memory:` を必ず併用する
 - **残タスク**: T20〜T25（iOS カメラ起動の根本修正）、T34〜T37（最終監査・実機検証）、T48（帰宅後応募の実機受け入れ）
