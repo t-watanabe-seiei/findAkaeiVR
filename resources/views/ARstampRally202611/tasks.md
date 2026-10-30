@@ -97,6 +97,7 @@
 | AC-16 `scannedAt` ガード / `deadline_passed` | 未実施（T48） |
 | AC-17 検証データ除外（ダッシュボード / CSV） | 合格（T51: dashboard 既定除外 → `?show_test=1` 表示 → CSV 既定除外 → `&show_test=1` 表示、`/stamp202611` の `TEST_FP_PARAM` / `TEST_FP_PREFIX` / `isTestMode` 出力。2 テスト PASS） |
 | AC-18 ガイド（検証データ / アセット切替） | 合格（T52: `test-data-guide.md` / `asset-swap-guide.md` 作成・README からリンク） |
+| AC-19 端末別種数（FR-56 / FR-57） | 合格（T55 / T56 / T57: `deviceStampCountFor()` と `device_*` 列で判定、backfill は遡及降格なし。T58 の 6 テスト追加でクラス 23 tests / 182 assertions PASS） |
 
 
 ## 参考（202610 での実施履歴 = 本キャンペーンで初期実装に内包する内容）
@@ -134,4 +135,38 @@
 - **注意点**: `php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う。
   `RefreshDatabase` が `database/database.sqlite` を削除するため `DB_DATABASE=:memory:` を必ず併用する
 - **残タスク**: T20〜T25（iOS カメラ起動の根本修正）、T34〜T37（最終監査・実機検証）、T48（帰宅後応募の実機受け入れ）
+
+
+---
+
+## 追記（2026-10-30）: 応募資格・当選倍率を 1 端末（fingerprint）単位へ（FR-56 / FR-57・AC-19）
+
+背景: 2026-11-01 に同一ブラウザ（同一 `session_id`）で 2 端末を使った利用者が合算 15 種で 2 倍を取得した。
+`stampCountFor()` の `session_id` OR `fingerprint` 集計が別端末の種数を自端末へ誤帰属させた（design.md §3.5）。
+
+### Phase 7 追加: 端末単位の正本列と grandfathering
+
+- [x] **T54** migration `2026_11_02_000000_add_device_stamp_columns_to_stamp202611_voucher_applications_table`:
+  `device_stamp_count` / `device_tier` / `device_weight`（nullable）を `stamp_count` の後ろに追加、
+  `(device_weight, applied_at)` index。既存の `stamp_count` / `tier` / `weight` は合算値として保持（非破壊）
+- [x] **T55** `StampRally202611Controller` へ `deviceStampCountFor()` / `syncDeviceVoucherWeight()` を追加し、
+  `checkStatus()` / `applyVoucher()` の応募可否・倍率を 1 端末種数で判定。API へ `deviceStampCount` /
+  `voucher.deviceWeight` / `voucher.deviceStampCount` / `voucher.stampCount` を追加
+  （`syncVoucherWeight()` は合算列だけ更新し、weight の合算昇格は `device_weight` が NULL の行だけ）
+- [x] **T56** `app/Console/Commands/BackfillStamp202611DeviceWeight.php`（`stamp202611:backfill-device-weight [--dry-run]`）で
+  既存応募行の `device_*` を `marker_scans` から埋め戻す。`max(既存 weight, weightFor(1 端末種数))` で遡及降格せず冪等
+- [x] **T57** `admin/dashboard202611` に「1端末種数（正本）」列を併記（合算との差分種数・grandfathering 注記）、
+  CSV `voucherApplications202611` へ `device_stamp_count` / `device_weight` を追加
+- [x] **T58** `StampRally202611Test` へ 6 テスト追加（`test_voucher_eligibility_and_weight_are_per_device` /
+  `test_check_status_upgrades_weight_only_from_own_device_count` / `test_device_sync_never_downgrades_granted_weight` /
+  `test_backfill_command_fills_device_columns_without_downgrading_weight` /
+  `test_check_status_keeps_grandfathered_weight` / `test_admin_dashboard_lists_both_aggregate_and_device_counts`）
+  → クラス **23 tests / 182 assertions PASS**
+
+### 残（FR-56 / FR-57 関連の運用）
+
+- [ ] 本番 DB への migration 適用 → `stamp202611:backfill-device-weight --dry-run` で差分確認 → 本実行
+  （実行前に `stamp202611_voucher_applications` をバックアップ。手順は `test-data-guide.md`）
+- [ ] 業者提出 CSV の `weight`（= `device_weight`）で抽選を行うことを運営へ周知。
+  合算のみで閾値へ到達した応募者を 1 端末基準で差し戻す運用は行わない（FR-57）
 

@@ -165,6 +165,49 @@ return [
   オフライン中のスキャンはキューに**スキャン時に生成した fingerprint** を保存するため、
   `?test=1` 付きページで集めた分は再送時も `test_` のまま（§10 キュー仕様）
 
+### 3.5 応募資格・倍率の正本を 1 端末（fingerprint）単位へ（FR-56 / FR-57・2026-10-30 追加）
+
+**背景**: 2026-11-01 に「同一ブラウザ（同一 `session_id`）で 2 端末を使った利用者」が合算 15 種で 2 倍を取得した。
+`stampCountFor()` は `session_id` OR `fingerprint` で種数を数えるため、同一機種 + 同一 `userId` など
+`fingerprint` が一致しやすい別端末の種数が自端末へ誤帰属する。応募可否と抽選倍率は 1 端末の実績で判定する。
+
+```
+stampCountFor(session_id, fingerprint)   … 合算（監査・表示用 / stamp_count・tier に保存）
+deviceStampCountFor(fingerprint)         … 1 端末単位（正本 / device_* 列に保存）
+    MarkerScan::where('fingerprint', $fingerprint)
+      ->whereBetween('scanned_at', collectPeriod())
+      ->distinct()->count('marker_id')
+```
+
+**列（migration `2026_11_02_000000_add_device_stamp_columns_to_stamp202611_voucher_applications_table`）**:
+`stamp202611_voucher_applications` へ `device_stamp_count`（unsignedSmallInteger・nullable）/
+`device_tier` / `device_weight`（unsignedTinyInteger・nullable）を `stamp_count` の後ろに追加し、
+`(device_weight, applied_at)` の index（`stamp202611_voucher_device_weight_idx`）を付ける。
+既存の `stamp_count` / `tier` / `weight` は削除せず合算値のまま残す（非破壊）。
+
+**同期ヘルパー**（`check-status` / `apply-voucher` の両方で呼ぶ・どちらも上方更新のみ）:
+
+| ヘルパー | 更新内容 | 備考 |
+|---|---|---|
+| `syncVoucherWeight($application, $stampCount)` | 合算列 `stamp_count` / `tier` を上方更新 | `weight` は `device_weight === null`（grandfathering 対象）の行だけ合算で昇格させる |
+| `syncDeviceVoucherWeight($application, $deviceCount)` | `device_*` を上方更新し `weight = device_weight = max(既存 weight, weightFor($deviceCount))` | `$deviceCount <= device_stamp_count` なら更新しない。返り値は「倍率昇格があったか」 |
+
+**応募可否**: `apply-voucher` は `deviceCount < voucher_threshold` で 422 `not_eligible`（`deviceStampCount` を返す）。
+合算 15 種でも 1 端末 5 種なら応募不可。新規作成時の `weight` / `device_weight` はどちらも `max(1, weightFor($deviceCount))`。
+
+**API 応答**: `check-status` は `stampCount`（合算）/ `deviceStampCount`（正本）/ `voucher.weight`（抽選の正本で
+`device_*` 設定済みなら `device_weight` と一致）/ `voucher.deviceWeight` / `voucher.deviceStampCount` / `voucher.stampCount`。
+`apply-voucher` は `weight` / `deviceWeight` / `stampCount` / `deviceStampCount`。
+
+**grandfathering（FR-57）**: `device_*` が NULL の行は列導入前に合算基準で運用された応募で、付与済み `weight` を正本として維持する。
+`php artisan stamp202611:backfill-device-weight [--dry-run]`（`app/Console/Commands/BackfillStamp202611DeviceWeight.php`）が
+`marker_scans` から `device_*` を埋め戻す。`device_weight = max(既存 weight, weightFor(1 端末種数))` なので遡及降格せず、
+再実行しても値が変わらない（冪等）。`--dry-run` は差分表示のみで DB を変更しない。
+
+**管理画面・CSV**: ダッシュボードの応募一覧は「収集種数（合算・参考）」と「1端末種数（正本）」を併記し、合算が大きい場合は
+差分種数、`device_weight` が NULL の行は「合算基準の既存応募（grandfathering）」注記を出す。CSV `voucherApplications202611` の列は
+`name, email, stamp_count, weight, applied_at, device_stamp_count, device_weight`（業者への抽選は `weight` = `device_weight` で行う）。
+
 
 ## 4. 202611 固有識別子（分離のための置換一覧）
 | 種別 | 202610 | 202611 |
@@ -416,7 +459,13 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
   `?show_test=1` で表示 → CSV 既定除外 → `&show_test=1` で表示）/
   `test_prize_view_exposes_test_flag_and_prefix`（`/stamp202611` の HTML に
   `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される）。
-  クラス全体で **17 tests / 105 assertions PASS**（実行手順は `test-data-guide.md` §9）
+  クラス全体で **23 tests / 182 assertions PASS**（実行手順は `test-data-guide.md` §9）。
+  端末別種数（FR-56 / FR-57・§3.5）は `test_voucher_eligibility_and_weight_are_per_device`（合算 15 種でも 1 端末 5 種は
+  `not_eligible`）/ `test_check_status_upgrades_weight_only_from_own_device_count`（合算 15 種で昇格しない）/
+  `test_device_sync_never_downgrades_granted_weight`（遡及降格しない）/
+  `test_backfill_command_fills_device_columns_without_downgrading_weight`（冪等・`--dry-run`）/
+  `test_check_status_keeps_grandfathered_weight`（legacy 行の weight 維持）/
+  `test_admin_dashboard_lists_both_aggregate_and_device_counts`（ダッシュボードの併記）
 
 - 202609 側に残る `#ar-scene video` 不具合（202610 §8 の既知未対応）は本キャンペーンでは扱わない（分離原則・Q-7）。
 - **Q-12（案A 確定・2026-10-28）の実装範囲**: `config/ar202611.php` の `collect_start`（`2026-11-01 00:00:00`）/ `collect_end`（`2026-11-15 23:59:59`）/ `apply_deadline`（`2026-11-16 23:59:59`）、`StampRally202611Controller` の `collectPeriod()` / `applyDeadline()` / `recordScan()` の `scanned_at` 規則、`js-gallery.blade.php` の応募ボタン条件（未送信バナー）が案A の実装点。**将来案B / 案C へ戻す場合は §10.1 の手順**（§5.1 のガードを 1 行戻し、`apply_deadline` 判定と未送信バナーを削除）。SW・キュー・応募フォーム・CSV は変更不要
@@ -454,5 +503,6 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 | AC-16 `scannedAt` ガード | curl / tinker で `scannedAt` を `2026-12-30T12:00:00Z`（収集期間外）や `now()+72h` で送信 → DB の `scanned_at` はサーバー `now()`。`apply_deadline` 経過後の `apply-voucher` は 422 `deadline_passed` |
 | AC-17 検証データ分離（FR-54 / FR-55） | `test_` 始まりの fingerprint 行を投入 → `GET /admin/dashboard202611` では総スキャン数・個別ユーザー数・応募一覧に出ず、`?show_test=1` だけで現れる。`GET /admin/export?dataset=voucherApplications202611` の CSV にも出ず、`&show_test=1` だけで出る。`/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX` / `isTestMode` が出力される。自動テスト 2 件（`test_admin_dashboard_and_csv_exclude_test_fingerprints` / `test_prize_view_exposes_test_flag_and_prefix`）が PASS |
 | AC-18 運用手順 | 検証用端末の準備・リセット手順（`?test=1` 付き URL の固定、LocalStorage / Cookie、検証応募行の削除）と「`?test=1` 付け忘れは本番計測になる」限界が `test-data-guide.md` に記載されている。`cg/202611` への切替手順は `asset-swap-guide.md` にチェックリスト化されている（FR-36） |
+| AC-19 端末別種数 | `check-status` の `deviceStampCount` は自端末（`fingerprint` 一致）の種数だけ返し、`stampCount` は合算になる（同一 `session_id` に別 fingerprint を積む）。5 種の端末は合算 15 種でも `not_eligible`。倍率昇格は 1 端末種数だけで起き、付与済み `weight` は遡及降格しない。`stamp202611:backfill-device-weight` は冪等で `--dry-run` は DB を変更しない（FR-56 / FR-57・§3.5） |
 
 

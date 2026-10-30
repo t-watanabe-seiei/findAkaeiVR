@@ -12,7 +12,7 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 - 集計・抽選応募実績は管理ダッシュボードで確認可能
 
 ## 現在の状態（2026-10-28 時点）
-- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-53 / AC-1〜AC-16）・`design.md`（§1〜§11 ＋ §10.1）・`tasks.md`（T1〜T48 / Phase 1〜7 ＋ Phase 3B）。
+- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-57 / AC-1〜AC-19）・`design.md`（§1〜§11 ＋ §10.1）・`tasks.md`（T1〜T58 / Phase 1〜7 ＋ Phase 3B）。
 - 仕様の確定状況: **Q-1（期間）／Q-2（景品閾値）／Q-5（景品仕様）／Q-11（倍率の自動昇格: `check-status` で自動）は確定**。
   **未確定: Q-8（4 会場の扱い）／Q-9（2 日間開催に集計期間を合わせるか）／Q-10（CSV の文字コード）**。
   **Q-12 は 2026-10-28 に案A で確定**（収集 `2026-11-01 00:00:00` 〜 `2026-11-15 23:59:59` / 応募期限 `2026-11-16 23:59:59` JST）。Phase 2 以降は Q-9 確定時でも config の 3 値書き換えのみで対応可能。
@@ -154,6 +154,25 @@ Phase 2 / 3 / 3B の承認後に design.md §3・§5.4 の内容で作り直す�
 - `tasks.md`: **T5c**（完了）、T6 / T12 / T16 / T31 / T32 / T43 改訂、**T48**（帰宅後応募の受け入れ検証）新規、検証結果表に AC-14〜AC-16、Phase 2 のブロッカー明記
 
 **確定（2026-10-28 利用者回答）**: Q-12 は**案A**（収集期間と応募期限の分離）。`collect_start` `2026-11-01 00:00:00`／`collect_end` `2026-11-15 23:59:59`／`apply_deadline` `2026-11-16 23:59:59`（JST）。**Q-9（2 日間開催）が確定した場合はこの 3 値を書き換えるだけで対応**（案B / 案C への差し替え手順は design.md §10.1）
+
+### 2026-10-30 — 応募資格・当選倍率を 1 端末（fingerprint）単位へ（FR-56 / FR-57）
+
+2026-11-01 に同一ブラウザ（同一 `session_id`）で 2 端末を使った利用者が合算 15 種で 2 倍を取得した件を受け、
+応募可否と抽選倍率の正本を **1 端末（`fingerprint`）単位の収集種数** へ切り替えた
+（`requirements.md` FR-56 / FR-57・AC-19 ／ `design.md` §3.5 ／ `tasks.md` T54〜T58）。
+
+| # | 対象 | 変更内容 |
+|---|------|---------|
+| 1 | `app/Http/Controllers/StampRally202611Controller.php` | `deviceStampCountFor($fingerprint)`（`fingerprint` 一致の distinct `marker_id`・収集期間内）と `syncDeviceVoucherWeight()` を追加。`checkStatus()` / `applyVoucher()` の応募可否・倍率は 1 端末種数で判定し、`syncVoucherWeight()` は合算列（`stamp_count` / `tier`）だけ更新する（weight の合算昇格は `device_weight` が NULL の行のみ） |
+| 2 | `database/migrations/2026_11_02_000000_add_device_stamp_columns_to_stamp202611_voucher_applications_table.php` | `device_stamp_count` / `device_tier` / `device_weight`（nullable）を `stamp_count` の後ろに追加、`(device_weight, applied_at)` index。既存の `stamp_count` / `tier` / `weight` は合算値のまま保持（非破壊） |
+| 3 | `app/Console/Commands/BackfillStamp202611DeviceWeight.php` | `php artisan stamp202611:backfill-device-weight [--dry-run]`。既存応募行の `device_*` を `marker_scans` から埋め戻す。`max(既存 weight, weightFor(1 端末種数))` なので遡及降格せず、再実行しても値が変わらない（冪等） |
+| 4 | API | `check-status` は `deviceStampCount` と `voucher.deviceWeight` / `voucher.deviceStampCount` / `voucher.stampCount` を追加で返す（`voucher.weight` は正本）。`apply-voucher` は `deviceWeight` / `deviceStampCount`。1 端末種数が閾値未満なら 422 `not_eligible`（合算 15 種でも 1 端末 5 種なら応募不可） |
+| 5 | 管理画面 / CSV | `admin/dashboard202611` の応募一覧に「1端末種数（正本）」列を併記（合算との差分種数・grandfathering 注記）。CSV `voucherApplications202611` へ `device_stamp_count` / `device_weight` を追加 |
+| 6 | `tests/Feature/StampRally202611Test.php` | 6 テスト追加（端末別種数／合算での昇格なし／遡及降格なし／backfill の冪等と `--dry-run`／grandfathering／ダッシュボードの併記）→ クラス **23 tests / 182 assertions PASS** |
+
+**本番適用手順**: ① `php artisan migrate` → ② `php artisan stamp202611:backfill-device-weight --dry-run` で差分確認 →
+③ 本実行 → ④ ダッシュボードで合算 / 1 端末種数の差を確認（実行前に `stamp202611_voucher_applications` をバックアップ）。
+付与済み `weight` は下がらない（FR-57）。
 
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。

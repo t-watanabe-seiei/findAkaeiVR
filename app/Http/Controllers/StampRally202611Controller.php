@@ -124,7 +124,30 @@ class StampRally202611Controller extends Controller
     }
 
     /**
-     * 応募行の倍率を現在種数へ上方更新する（FR-43）。下方更新は行わない。
+     * 1 端末（= 1 fingerprint）単位の収集種数（FR-56・応募資格と倍率の正本）。
+     *
+     * session_id を条件に含めない。同一機種 + 同一 userId では fingerprint が一致するため、
+     * session_id 経由の合算は別端末の種数を自端末へ誤帰属させる（2026-11-01 の 15 種 2 名）。
+     */
+    public static function deviceStampCountFor(?string $fingerprint): int
+    {
+        if (!$fingerprint) {
+            return 0;
+        }
+
+        [$start, $end] = self::collectPeriod();
+
+        return MarkerScan::where('fingerprint', $fingerprint)
+            ->whereBetween('scanned_at', [$start, $end])
+            ->distinct()
+            ->count('marker_id');
+    }
+
+    /**
+     * 応募行の合算列（stamp_count / tier）を現在種数へ上方更新する。下方更新は行わない。
+     *
+     * weight は device_* が未設定の行（grandfathering 対象・未 backfill）だけ合算値で昇格させる（FR-43）。
+     * device_* を持つ行の weight は正本 device_weight 側が管理する（FR-56）。
      *
      * @return bool 更新が発生したか
      */
@@ -136,10 +159,43 @@ class StampRally202611Controller extends Controller
 
         $application->stamp_count = $stampCount;
         $application->tier = self::tierFor($stampCount);
-        $application->weight = max(1, self::weightFor($stampCount));
+
+        if ($application->device_weight === null) {
+            $application->weight = max((int) $application->weight, max(1, self::weightFor($stampCount)));
+        }
+
         $application->save();
 
         return true;
+    }
+
+    /**
+     * 応募行の device_* を現在種数から上方更新し、抽選列 weight を正本 device_weight と揃える（FR-43 / FR-56）。
+     *
+     * 既に付与済みの倍率へは遡及降格しないため device_weight = max(既存 weight, weightFor(現在種数)) とする（FR-57）。
+     *
+     * @return bool 倍率の昇格が発生したか（device_* の初期化＝backfill は含めない）
+     */
+    public static function syncDeviceVoucherWeight(Stamp202611VoucherApplication $application, int $deviceCount): bool
+    {
+        $current = $application->device_stamp_count === null
+            ? -1
+            : (int) $application->device_stamp_count;
+
+        if ($deviceCount <= $current) {
+            return false;
+        }
+
+        $granted = max(1, (int) $application->weight);
+        $deviceWeight = max($granted, max(1, self::weightFor($deviceCount)));
+
+        $application->device_stamp_count = $deviceCount;
+        $application->device_tier = self::tierFor($deviceCount);
+        $application->device_weight = $deviceWeight;
+        $application->weight = $deviceWeight;
+        $application->save();
+
+        return $deviceWeight > $granted;
     }
 
     /**
@@ -241,6 +297,8 @@ class StampRally202611Controller extends Controller
         $sessionId = session()->getId();
 
         $stampCount = self::stampCountFor($sessionId, $fingerprint);
+        // 応募資格・倍率の正本は 1 端末（fingerprint）単位。合算値は表示・監査用の参考値（FR-56）
+        $deviceCount = self::deviceStampCountFor($fingerprint);
 
         $application = $fingerprint
             ? Stamp202611VoucherApplication::where('fingerprint', $fingerprint)->first()
@@ -250,19 +308,28 @@ class StampRally202611Controller extends Controller
             $application = Stamp202611VoucherApplication::where('session_id', $sessionId)->first();
         }
 
-        $updated = $application
-            ? self::syncVoucherWeight($application, $stampCount)
-            : false;
+        $updated = false;
+        if ($application) {
+            $aggregateUpdated = self::syncVoucherWeight($application, $stampCount);
+            $deviceUpdated = self::syncDeviceVoucherWeight($application, $deviceCount);
+            $updated = $aggregateUpdated || $deviceUpdated;
+        }
 
         return response()->json([
             'success' => true,
             'stampCount' => $stampCount,
+            'deviceStampCount' => $deviceCount,
             'candyTiers' => array_map('intval', (array) config('ar202611.candy_tiers')),
             'voucherThreshold' => self::voucherThreshold(),
             'applyDeadline' => self::applyDeadline()->toIso8601String(),
             'voucher' => [
                 'applied' => $application !== null,
+                // weight は抽選の正本（device_* 設定済みなら device_weight と一致する）
                 'weight' => $application ? (int) $application->weight : 0,
+                'deviceWeight' => $application
+                    ? (int) ($application->device_weight ?? $application->weight)
+                    : 0,
+                'deviceStampCount' => $application ? (int) $application->device_stamp_count : 0,
                 'stampCount' => $application ? (int) $application->stamp_count : 0,
                 'appliedAt' => $application && $application->applied_at
                     ? $application->applied_at->toIso8601String()
@@ -305,37 +372,43 @@ class StampRally202611Controller extends Controller
 
         session(['ar_fingerprint_202611' => $fingerprint]);
 
-        // 収集種数はサーバー側の marker_scans から算出する（クライアント値は信用しない）
+        // 収集種数はサーバー側の marker_scans から算出する（クライアント値は信用しない）。
+        // 応募資格の判定は 1 端末（fingerprint）単位（FR-56）。合算値は stamp_count に監査用として保存する。
         $stampCount = self::stampCountFor($sessionId, $fingerprint);
+        $deviceCount = self::deviceStampCountFor($fingerprint);
 
         // 同一 fingerprint の応募は倍率の上方更新のみ（FR-43）。
         // session_id では引かない（別 fingerprint での再応募は email の UNIQUE で止める・FR-44）
         $existing = Stamp202611VoucherApplication::where('fingerprint', $fingerprint)->first();
 
         if ($existing) {
-            $updated = self::syncVoucherWeight($existing, $stampCount);
+            $aggregateUpdated = self::syncVoucherWeight($existing, $stampCount);
+            $deviceUpdated = self::syncDeviceVoucherWeight($existing, $deviceCount);
 
             return response()->json([
                 'success' => true,
                 'applied' => true,
-                'updated' => $updated,
+                'updated' => $aggregateUpdated || $deviceUpdated,
                 'weight' => (int) $existing->weight,
+                'deviceWeight' => (int) ($existing->device_weight ?? $existing->weight),
                 'stampCount' => (int) $existing->stamp_count,
+                'deviceStampCount' => (int) ($existing->device_stamp_count ?? 0),
                 'appliedAt' => $existing->applied_at ? $existing->applied_at->toIso8601String() : null,
                 'message' => 'すでに応募済みです',
             ]);
         }
 
-        if ($stampCount < self::voucherThreshold()) {
+        if ($deviceCount < self::voucherThreshold()) {
             return response()->json([
                 'success' => false,
                 'error' => 'not_eligible',
                 'stampCount' => $stampCount,
+                'deviceStampCount' => $deviceCount,
                 'voucherThreshold' => self::voucherThreshold(),
                 'message' => sprintf(
-                    '抽選応募には%d種類以上のスタンプが必要です（現在%d種）',
+                    '抽選応募には1端末で%d種類以上のスタンプが必要です（現在%d種）',
                     self::voucherThreshold(),
-                    $stampCount
+                    $deviceCount
                 ),
             ], 422);
         }
@@ -357,7 +430,11 @@ class StampRally202611Controller extends Controller
                 'name' => $name,
                 'stamp_count' => $stampCount,
                 'tier' => self::tierFor($stampCount),
-                'weight' => max(1, self::weightFor($stampCount)),
+                // 抽選列 weight は正本（1 端末単位）で決める（FR-56）
+                'weight' => max(1, self::weightFor($deviceCount)),
+                'device_stamp_count' => $deviceCount,
+                'device_tier' => self::tierFor($deviceCount),
+                'device_weight' => max(1, self::weightFor($deviceCount)),
                 'user_agent' => $request->userAgent(),
                 'ip_address' => $request->ip(),
                 'device_info' => $validated['deviceInfo'],
@@ -377,7 +454,9 @@ class StampRally202611Controller extends Controller
             'applied' => true,
             'updated' => false,
             'weight' => (int) $application->weight,
+            'deviceWeight' => (int) $application->device_weight,
             'stampCount' => (int) $application->stamp_count,
+            'deviceStampCount' => (int) $application->device_stamp_count,
             'appliedAt' => $application->applied_at->toIso8601String(),
             'message' => '市内共通商品券の抽選会に応募しました',
         ]);

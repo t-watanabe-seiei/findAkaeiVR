@@ -295,7 +295,8 @@
                     <tr>
                         <th>氏名</th>
                         <th>email</th>
-                        <th>収集種数</th>
+                        <th>収集種数<br><small>（合算・参考）</small></th>
+                        <th>1端末種数<br><small>（正本・FR-56）</small></th>
                         <th>当選倍率</th>
                         <th>応募日時</th>
                     </tr>
@@ -306,12 +307,23 @@
                         <td>{{ $application->name }}</td>
                         <td style="font-size: 13px;">{{ $application->email }}</td>
                         <td>{{ $application->stamp_count }}種</td>
-                        <td style="font-weight: bold; color: {{ $application->weight >= 3 ? '#e74c3c' : ($application->weight >= 2 ? '#e67e22' : '#28a745') }};">{{ $application->weight }}倍</td>
+                        <td>
+                            {{ $application->device_stamp_count !== null ? $application->device_stamp_count . '種' : '−' }}
+                            @if($application->device_stamp_count !== null && $application->device_stamp_count < $application->stamp_count)
+                                <br><small style="color:#888;">合算より {{ $application->stamp_count - $application->device_stamp_count }}種多い</small>
+                            @endif
+                        </td>
+                        <td style="font-weight: bold; color: {{ $application->weight >= 3 ? '#e74c3c' : ($application->weight >= 2 ? '#e67e22' : '#28a745') }};">
+                            {{ $application->weight }}倍
+                            @if($application->device_weight === null)
+                                <br><small style="color:#888;font-weight:normal;">合算基準の既存応募（grandfathering・FR-57）</small>
+                            @endif
+                        </td>
                         <td>{{ $application->applied_at ? $application->applied_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') : '-' }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #999;">データがありません</td>
+                        <td colspan="6" style="text-align: center; color: #999;">データがありません</td>
                     </tr>
                     @endforelse
                 </tbody>

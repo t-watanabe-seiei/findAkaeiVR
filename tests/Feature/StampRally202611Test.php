@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\StampRally202611Controller;
 use App\Models\MarkerScan;
 use App\Models\Stamp202611VoucherApplication;
 use Carbon\Carbon;
@@ -21,14 +22,34 @@ class StampRally202611Test extends TestCase
     /**
      * 収集期間内の日付に N 種のマーカー収集記録を作る（JST 壁時計で保存される）。
      */
-    private function seedScans(string $fingerprint, int $kinds, string $jst = '2026-11-10 12:00:00'): void
-    {
+    private function seedScans(
+        string $fingerprint,
+        int $kinds,
+        string $jst = '2026-11-10 12:00:00',
+        string $prefix = 'model'
+    ): void {
+        $this->seedScansUnderSession($fingerprint, $kinds, 'seed-' . $fingerprint, $jst, $prefix);
+    }
+
+    /**
+     * session_id を指定して収集記録を作る（同一ブラウザ＝別端末の合算を再現する・FR-56）。
+     * prefix を変えると別端末が別のマーカー種を収集した状況を再現できる。
+     */
+    private function seedScansUnderSession(
+        string $fingerprint,
+        int $kinds,
+        string $sessionId,
+        string $jst = '2026-11-10 12:00:00',
+        string $prefix = 'model'
+    ): void {
         for ($i = 1; $i <= $kinds; $i++) {
+            $marker = $prefix . '_' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
             MarkerScan::create([
-                'session_id' => 'seed-' . $fingerprint,
+                'session_id' => $sessionId,
                 'fingerprint' => $fingerprint,
-                'marker_id' => 'model_' . str_pad((string) $i, 2, '0', STR_PAD_LEFT),
-                'marker_name' => 'model_' . $i,
+                'marker_id' => $marker,
+                'marker_name' => $marker,
                 'scan_count' => 1,
                 'capture_type' => 'marker_scan',
                 'scanned_at' => Carbon::parse($jst, 'Asia/Tokyo'),
@@ -37,6 +58,36 @@ class StampRally202611Test extends TestCase
                 'device_info' => ['isIOS' => false],
             ]);
         }
+    }
+
+    /**
+     * 応募行（legacy 相当: device_* は NULL）を作る。運用中の行の再現に使う。
+     */
+    private function seedLegacyApplication(
+        string $fingerprint,
+        string $email,
+        int $stampCount,
+        int $weight,
+        string $sessionId = 'sess-legacy'
+    ): Stamp202611VoucherApplication {
+        return Stamp202611VoucherApplication::create([
+            'session_id' => $sessionId,
+            'fingerprint' => $fingerprint,
+            'email' => $email,
+            'name' => 'Legacy 太郎',
+            'stamp_count' => $stampCount,
+            'tier' => StampRally202611Controller::tierFor($stampCount),
+            'weight' => $weight,
+            'user_agent' => 'phpunit',
+            'ip_address' => '127.0.0.1',
+            'device_info' => ['isIOS' => false],
+            'applied_at' => Carbon::parse('2026-11-16 10:00:00', 'Asia/Tokyo'),
+        ]);
+    }
+
+    private function checkStatus(string $fingerprint)
+    {
+        return $this->postJson('/stamp202611/check-status', ['fingerprint' => $fingerprint]);
     }
 
     private function applyVoucher(string $fingerprint, string $email)
@@ -316,10 +367,20 @@ class StampRally202611Test extends TestCase
         $this->assertStringContainsString('ad@example.com', $html);
         $this->assertStringContainsString('15種', $html);
         $this->assertStringContainsString('2倍', $html);
-        // 収集期間と応募期限の併記（Q-12 案A）
-        $this->assertStringContainsString('2026/11/01 00:00', $html);
-        $this->assertStringContainsString('2026/11/15 23:59', $html);
-        $this->assertStringContainsString('2026/11/16 23:59', $html);
+        // 収集期間と応募期限の併記（Q-12 案A・blade の表示は Y/m/d H:i / config 値へ追従させる）
+        $period = StampRally202611Controller::collectPeriod();
+        $this->assertStringContainsString(
+            Carbon::parse((string) $period[0], 'Asia/Tokyo')->format('Y/m/d H:i'),
+            $html
+        );
+        $this->assertStringContainsString(
+            Carbon::parse((string) $period[1], 'Asia/Tokyo')->format('Y/m/d H:i'),
+            $html
+        );
+        $this->assertStringContainsString(
+            Carbon::parse((string) config('ar202611.apply_deadline'), 'Asia/Tokyo')->format('Y/m/d H:i'),
+            $html
+        );
         // 景品コードの redeem UI は残さない
         $this->assertStringNotContainsString('redeemPrize(', $html);
     }
@@ -423,6 +484,234 @@ class StampRally202611Test extends TestCase
         $this->assertStringContainsString('"test_"', $html);
         $this->assertStringContainsString('isTestMode', $html);
     }
-}
+    /**
+     * FR-56: 応募資格と当選倍率は 1 端末（fingerprint）単位で判定する。
+     * 同一ブラウザ（同一 session_id）で 2 端末を使った場合、合算種数を別端末へ帰属させない。
+     */
+    public function test_voucher_eligibility_and_weight_are_per_device(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
 
+        // 端末 A（fp-dev-a）: 10 種 → 応募可・weight 1
+        $this->seedScansUnderSession('fp-dev-a', 10, 'sess-browser-1');
+        $this->applyVoucher('fp-dev-a', 'dev-a@example.com')
+            ->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'stampCount' => 10,
+                'weight' => 1,
+                'deviceStampCount' => 10,
+            ]);
+
+        // 同一ブラウザの別端末（fp-dev-b）: 5 種（合算 then 15 種）
+        $this->seedScansUnderSession('fp-dev-b', 5, 'sess-browser-1', '2026-11-10 12:00:00', 'other');
+
+        $this->assertSame(15, StampRally202611Controller::stampCountFor('sess-browser-1', 'fp-dev-b'));
+        $this->assertSame(5, StampRally202611Controller::deviceStampCountFor('fp-dev-b'));
+
+        // 応募資格は 1 端末種数で判定 → 合算 15 種でも不可
+        $this->applyVoucher('fp-dev-b', 'dev-b@example.com')
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'error' => 'not_eligible',
+                'deviceStampCount' => 5,
+            ]);
+
+        $this->assertSame(0, Stamp202611VoucherApplication::where('fingerprint', 'fp-dev-b')->count());
+
+        // 自端末で 10 種の端末は合算に依存せず応募可
+        $this->seedScans('fp-dev-c', 10);
+        $this->applyVoucher('fp-dev-c', 'dev-c@example.com')
+            ->assertStatus(200)
+            ->assertJson(['weight' => 1, 'deviceStampCount' => 10]);
+
+        $row = Stamp202611VoucherApplication::where('fingerprint', 'fp-dev-c')->first();
+        $this->assertSame(10, (int) $row->device_stamp_count);
+        $this->assertSame(10, (int) $row->device_tier);
+        $this->assertSame(1, (int) $row->device_weight);
+        $this->assertSame(1, (int) $row->weight);
+    }
+
+    /**
+     * FR-56: check-status の倍率昇格は 1 端末種数のみを使う（合算種数は参考列だけ更新）。
+     */
+    public function test_check_status_upgrades_weight_only_from_own_device_count(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-12 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScansUnderSession('fp-up2', 10, 'sess-browser-2');
+        $this->applyVoucher('fp-up2', 'up2@example.com')
+            ->assertStatus(200)
+            ->assertJson(['weight' => 1, 'deviceStampCount' => 10]);
+
+        $application = Stamp202611VoucherApplication::where('fingerprint', 'fp-up2')->first();
+
+        // 同一ブラウザの別端末が 5 種 → 合算 then 15 種 / 自端末 10 種
+        $this->seedScansUnderSession('fp-share-b', 5, 'sess-browser-2', '2026-11-10 12:00:00', 'other');
+        $this->assertSame(15, StampRally202611Controller::stampCountFor('sess-browser-2', 'fp-up2'));
+        $this->assertSame(10, StampRally202611Controller::deviceStampCountFor('fp-up2'));
+
+        // 合算 15 種を weight へ反映しない（device_* 設定済み）
+        $this->assertTrue(StampRally202611Controller::syncVoucherWeight($application, 15));
+        $this->assertSame(15, (int) $application->stamp_count);
+        $this->assertSame(1, (int) $application->weight);
+        $this->assertFalse(StampRally202611Controller::syncDeviceVoucherWeight($application, 10));
+        $this->assertSame(1, (int) $application->weight);
+
+        // check-status でも weight 1 のまま
+        $this->checkStatus('fp-up2')->assertStatus(200)->assertJson([
+            'deviceStampCount' => 10,
+            'voucher' => ['applied' => true, 'weight' => 1, 'updated' => false, 'deviceStampCount' => 10],
+        ]);
+        $this->assertSame(1, (int) $application->fresh()->weight);
+
+        // 自端末が 15 種になった時点で昇格
+        $this->seedScans('fp-up2', 15, '2026-11-12 09:00:00');
+        $this->checkStatus('fp-up2')->assertStatus(200)->assertJson([
+            'stampCount' => 15,
+            'deviceStampCount' => 15,
+            'voucher' => ['weight' => 2, 'updated' => true, 'deviceStampCount' => 15],
+        ]);
+
+        $application->refresh();
+        $this->assertSame(15, (int) $application->device_stamp_count);
+        $this->assertSame(15, (int) $application->device_tier);
+        $this->assertSame(2, (int) $application->device_weight);
+        $this->assertSame(2, (int) $application->weight);
+    }
+
+    /**
+     * FR-57: 付与済みの倍率は遡及降格しない（1 端末種数が減っても元 weight を維持）。
+     */
+    public function test_device_sync_never_downgrades_granted_weight(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        // 合算 15 種で weight 3 付与済み・自端末は 5 種
+        $application = $this->seedLegacyApplication('fp-no-down', 'no-down@example.com', 15, 3, 'sess-legacy-3');
+        $this->seedScans('fp-no-down', 5);
+
+        $deviceCount = StampRally202611Controller::deviceStampCountFor('fp-no-down');
+        $this->assertSame(5, $deviceCount);
+
+        $this->assertFalse(StampRally202611Controller::syncDeviceVoucherWeight($application, $deviceCount));
+        $this->assertSame(3, (int) $application->weight);
+        $this->assertSame(5, (int) $application->device_stamp_count);
+        $this->assertSame(0, (int) $application->device_tier);
+        $this->assertSame(3, (int) $application->device_weight);
+
+        // device_* 未設定（legacy）行では合算列の昇格が weight を上げる（FR-43）
+        $legacy = $this->seedLegacyApplication('fp-legacy-4', 'legacy4@example.com', 10, 1, 'sess-legacy-4');
+        $this->assertTrue(StampRally202611Controller::syncVoucherWeight($legacy, 15));
+        $this->assertSame(15, (int) $legacy->stamp_count);
+        $this->assertSame(2, (int) $legacy->weight);
+        $this->assertNull($legacy->device_weight);
+    }
+
+    /**
+     * FR-57: backfill コマンドは device_* 列を埋めるが weight を遡及降格しない（冪等）。
+     */
+    public function test_backfill_command_fills_device_columns_without_downgrading_weight(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        // 合算 15 種で weight 2 付与済み・自端末（fp-bf-a）10 種 + 同一ブラウザの別端末 5 種
+        $application = $this->seedLegacyApplication('fp-bf-a', 'bf-a@example.com', 15, 2, 'sess-legacy');
+        $other = $this->seedLegacyApplication('fp-bf-b', 'bf-b@example.com', 15, 2, 'sess-legacy');
+        $this->seedScans('fp-bf-a', 10);
+        $this->seedScansUnderSession('fp-bf-b', 5, 'sess-legacy', '2026-11-10 12:00:00', 'other');
+
+        $this->artisan('stamp202611:backfill-device-weight', ['--dry-run' => true])
+            ->assertExitCode(0);
+        $this->assertSame(0, Stamp202611VoucherApplication::whereNotNull('device_stamp_count')->count());
+
+        $this->artisan('stamp202611:backfill-device-weight')->assertExitCode(0);
+
+        $application->refresh();
+        $this->assertSame(10, (int) $application->device_stamp_count);
+        $this->assertSame(10, (int) $application->device_tier);
+        $this->assertSame(2, (int) $application->device_weight);
+        $this->assertSame(2, (int) $application->weight);
+        $this->assertSame(15, (int) $application->stamp_count);
+
+        $other->refresh();
+        $this->assertSame(5, (int) $other->device_stamp_count);
+        $this->assertSame(0, (int) $other->device_tier);
+        $this->assertSame(2, (int) $other->device_weight);
+        $this->assertSame(2, (int) $other->weight);
+
+        // 2 回目実行でも変化しない（冪等）
+        $this->artisan('stamp202611:backfill-device-weight')->assertExitCode(0);
+        $application->refresh();
+        $this->assertSame(10, (int) $application->device_stamp_count);
+        $this->assertSame(2, (int) $application->weight);
+    }
+
+    /**
+     * FR-43: legacy 行（device_* NULL）は付与済み weight を維持し、device_* は 1 端末種数で埋まる。
+     */
+    public function test_check_status_keeps_grandfathered_weight(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        $application = $this->seedLegacyApplication('fp-gf-a', 'gf-a@example.com', 15, 2, 'sess-legacy-2');
+        $this->seedScans('fp-gf-a', 10);
+
+        $this->checkStatus('fp-gf-a')->assertStatus(200)->assertJson([
+            'stampCount' => 10,
+            'deviceStampCount' => 10,
+            'voucher' => ['applied' => true, 'weight' => 2, 'stampCount' => 15, 'updated' => false],
+        ]);
+
+        $application->refresh();
+        $this->assertSame(2, (int) $application->weight);
+        $this->assertSame(15, (int) $application->stamp_count);
+        $this->assertSame(10, (int) $application->device_stamp_count);
+        $this->assertSame(2, (int) $application->device_weight);
+
+        // 同一ブラウザの別端末 5 種（合算 15 種）では昇格しない
+        $this->seedScansUnderSession('fp-gf-b', 5, 'sess-legacy-2', '2026-11-10 12:00:00', 'other');
+        $this->assertSame(15, StampRally202611Controller::stampCountFor('sess-legacy-2', 'fp-gf-a'));
+
+        $this->checkStatus('fp-gf-a')->assertStatus(200)->assertJson([
+            'voucher' => ['weight' => 2, 'updated' => false],
+        ]);
+        $this->assertSame(2, (int) $application->fresh()->weight);
+    }
+
+    /**
+     * FR-57: ダッシュボードは合算種数（参考）と 1 端末種数（正本）を併記する。
+     */
+    public function test_admin_dashboard_lists_both_aggregate_and_device_counts(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        // 合算 15 種で weight 2 付与済みの legacy 行（device_* NULL）
+        $application = $this->seedLegacyApplication('fp-dash', 'dash@example.com', 15, 2, 'sess-dash');
+        $this->seedScans('fp-dash', 10);
+        $this->seedScansUnderSession('fp-dash-share', 5, 'sess-dash', '2026-11-10 12:00:00', 'other');
+
+        $this->assertSame(15, StampRally202611Controller::stampCountFor('sess-dash', 'fp-dash'));
+
+        $this->artisan('stamp202611:backfill-device-weight')->assertExitCode(0);
+
+        $application->refresh();
+        $this->assertSame(10, (int) $application->device_stamp_count);
+        $this->assertSame(2, (int) $application->device_weight);
+
+        $response = $this->withSession(['admin_authenticated' => true])
+            ->get('/admin/dashboard202611');
+
+        $response->assertStatus(200)
+            ->assertViewIs('admin.dashboard202611')
+            ->assertViewHas('voucherTotal', 1);
+
+        $html = $response->getContent();
+        $this->assertStringContainsString('1端末種数', $html);
+        $this->assertStringContainsString('15種', $html);
+        $this->assertStringContainsString('10種', $html);
+        $this->assertStringContainsString('合算より 5種多い', $html);
+    }
+}
 
