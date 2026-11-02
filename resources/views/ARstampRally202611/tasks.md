@@ -163,10 +163,16 @@
   `test_check_status_keeps_grandfathered_weight` / `test_admin_dashboard_lists_both_aggregate_and_device_counts`）
   → クラス **23 tests / 182 assertions PASS**
 
+- [x] **T59**（追加）`test-data-guide.md` へ **§10「応募倍率の 1 端末基準化（FR-56 / FR-57）を本番 DB へ
+  反映する手順」**を追加（バックアップ → `php artisan migrate` → `stamp202611:backfill-device-weight --dry-run`
+  での差分確認 → 本実行 → ダッシュボード / CSV での確認。検証行（`test_`）も backfill 対象である注意）。
+  併せて §5.6 の注記を「応募可否・倍率は 1 端末単位（`deviceStampCountFor()`）／`stampCountFor()` は合算で
+  監査・表示用」へ更新し、§9 のテスト実績を 23 tests / 182 assertions へ更新
+
 ### 残（FR-56 / FR-57 関連の運用）
 
 - [ ] 本番 DB への migration 適用 → `stamp202611:backfill-device-weight --dry-run` で差分確認 → 本実行
-  （実行前に `stamp202611_voucher_applications` をバックアップ。手順は `test-data-guide.md`）
+  （実行前に `stamp202611_voucher_applications` をバックアップ。手順は `test-data-guide.md` §10）
 - [ ] 業者提出 CSV の `weight`（= `device_weight`）で抽選を行うことを運営へ周知。
   合算のみで閾値へ到達した応募者を 1 端末基準で差し戻す運用は行わない（FR-57）
 

@@ -187,8 +187,9 @@ php artisan tinker
 3. 可能なら `DB::transaction(function () { … })` でまとめる
 4. 実施後に `/admin/dashboard202611?show_test=1` で「隠れた（または消えた）」ことを確認し、
    既定表示（`show_test` なし）でも総スキャン数・応募数が期待どおりか確認する
-5. **`stampCountFor()` は `session_id` OR `fingerprint` で種数を数える**（`StampRally202611Controller`）。
-   隠蔽・削除しても、同一 `session_id` を使い続けた検証端末自身の種数には残る。
+5. **応募可否・当選倍率は 1 端末（`fingerprint`）単位**（`deviceStampCountFor()` / FR-56）。
+   `stampCountFor()` は `session_id` OR `fingerprint` の**合算**で、監査・表示用に残すだけ。
+   隠蔽・削除しても、同一 `session_id` を使い続けた検証端末自身の合算種数には残る。
    検証端末を本番へ回す場合は §4 の LocalStorage / Cookie リセットを先に行う
 
 ### 5.7 実行環境の注意
@@ -246,4 +247,35 @@ php artisan tinker
 DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test
 ```
 
+クラス全体は **23 tests / 182 assertions**（2026-10-30 時点）。1 端末基準（FR-56 / FR-57）の
+テスト 6 件の一覧は `design.md` §10。
+
 （`php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う）
+
+## 10. 応募倍率の 1 端末基準化（FR-56 / FR-57）を本番 DB へ反映する手順
+
+`device_stamp_count` / `device_tier` / `device_weight`（migration `2026_11_02_000000_…`）と
+`stamp202611:backfill-device-weight` を本番へ適用する手順。**抽選確定前に 1 回**実行する。
+
+1. **バックアップ**: `stamp202611_voucher_applications` を退避する（sqlite なら
+   `database/database.sqlite` をコピー、MySQL なら `mysqldump … stamp202611_voucher_applications`）
+2. **migration 反映**: `php artisan migrate`（未適用の 1 本だけ走る。既存列と既存値は変わらない）
+3. **差分確認（DB 更新なし）**:
+
+```
+php artisan stamp202611:backfill-device-weight --dry-run
+```
+
+   1 応募 1 行で `id=… <email> 合算N種 → 1端末M種 / weight X → Y [grandfathering]`、末尾は
+   `dry-run: 対象 N 件 / 更新 M 件（grandfathering G 件）`。`[grandfathering]` は合算基準で
+   付与済みの倍率が 1 端末基準より高かった行（**下げない**）を示す。
+4. **本実行**: 同じコマンドから `--dry-run` を外すだけ。冪等なので再実行しても差分は出ない
+5. **確認**: `/admin/dashboard202611` の「1 端末種数（正本）」列と `weight`、CSV
+   （`GET /admin/export?dataset=voucherApplications202611` の `device_stamp_count` /
+   `device_weight`）が dry-run 出力と一致すること。業者への抽選は `weight`（= `device_weight`）で行う
+
+- **検証行（`test_` 前置）も backfill 対象**になる（除外オプションはない）。検証行を整理してから
+  （§5）実行するか、`?show_test=1` 表示で切り分けて確認する
+- 列導入前に応募した行（`device_*` が NULL）は付与済み `weight` を正本として維持する（FR-57）。
+  1 端末種数が足りないことを理由に応募を差し戻す運用は行わない
+- 集計確認は §5.7 のとおり `php artisan tinker` を使わず、このコマンドと管理画面で行う
