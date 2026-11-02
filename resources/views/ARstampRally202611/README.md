@@ -12,7 +12,7 @@ Service Worker によるオフライン対応を織り込んだ状態）をク�
 - 集計・抽選応募実績は管理ダッシュボードで確認可能
 
 ## 現在の状態（2026-10-28 時点）
-- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-57 / AC-1〜AC-19）・`design.md`（§1〜§11 ＋ §10.1）・`tasks.md`（T1〜T58 / Phase 1〜7 ＋ Phase 3B）。
+- **ドキュメント3点 + README 確定**。`requirements.md`（FR-1〜FR-57 / AC-1〜AC-19）・`design.md`（§1〜§11 ＋ §10.1）・`tasks.md`（T1〜T59 / Phase 1〜7 ＋ Phase 3B）。
 - 仕様の確定状況: **Q-1（期間）／Q-2（景品閾値）／Q-5（景品仕様）／Q-11（倍率の自動昇格: `check-status` で自動）は確定**。
   **未確定: Q-8（4 会場の扱い）／Q-9（2 日間開催に集計期間を合わせるか）／Q-10（CSV の文字コード）**。
   **Q-12 は 2026-10-28 に案A で確定**（収集 `2026-11-01 00:00:00` 〜 `2026-11-15 23:59:59` / 応募期限 `2026-11-16 23:59:59` JST）。Phase 2 以降は Q-9 確定時でも config の 3 値書き換えのみで対応可能。
@@ -159,7 +159,7 @@ Phase 2 / 3 / 3B の承認後に design.md §3・§5.4 の内容で作り直す�
 
 2026-11-01 に同一ブラウザ（同一 `session_id`）で 2 端末を使った利用者が合算 15 種で 2 倍を取得した件を受け、
 応募可否と抽選倍率の正本を **1 端末（`fingerprint`）単位の収集種数** へ切り替えた
-（`requirements.md` FR-56 / FR-57・AC-19 ／ `design.md` §3.5 ／ `tasks.md` T54〜T58）。
+（`requirements.md` FR-56 / FR-57・AC-19 ／ `design.md` §3.5 ／ `tasks.md` T54〜T59 ／ 手順 `test-data-guide.md` §10）。
 
 | # | 対象 | 変更内容 |
 |---|------|---------|
@@ -172,7 +172,8 @@ Phase 2 / 3 / 3B の承認後に design.md §3・§5.4 の内容で作り直す�
 
 **本番適用手順**: ① `php artisan migrate` → ② `php artisan stamp202611:backfill-device-weight --dry-run` で差分確認 →
 ③ 本実行 → ④ ダッシュボードで合算 / 1 端末種数の差を確認（実行前に `stamp202611_voucher_applications` をバックアップ）。
-付与済み `weight` は下がらない（FR-57）。
+付与済み `weight` は下がらない（FR-57）。検証行（`test_` 前置）も backfill 対象になる点など、
+詳細手順は `test-data-guide.md` §10。
 
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
