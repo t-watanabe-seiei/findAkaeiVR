@@ -1800,3 +1800,38 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 - **影響範囲**: 202611 のみ。`marker_scans` / `prize_exchanges` のスキーマ変更なし、他キャンペーンの
   blade・SW・集計は未変更（分離原則）
 
+## ARstampRally202611 抽選 UI の参考値行を検証モード限定へ（FR-59・AC-21 / 2026-11-02）
+
+本番のスタンプ帳（`/stamp202611`）に出ていた次の 3 行を、**`?test=1` を付けた検証ページだけ**の表示へ変えた。
+
+- 「この端末が見つけたマーカー: M 種（抽選には含めません）」
+- 「同一ブラウザの合算: K 種（参考）」
+- 「マーカーを M 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます」
+
+FR-58 の収集 / 検出判定そのもの（サーバー側）、`check-status` / `apply-voucher` の返却値、
+管理ダッシュボードと CSV の参考値列（`device_stamp_count` / `deviceDetectedCount` / `stamp_count`）は変更していない。
+
+### 1. 変更したファイル
+
+| ファイル | 内容 |
+|---------|------|
+| `resources/views/ARstampRally202611/js-prize.blade.php` | `isTestMode()` の直後へ `const VOUCHER_DIAGNOSTICS_202611 = isTestMode();`（FR-54 の fingerprint 前置字と同じ単一ソース）を追加。`updateVoucherUI202611()` の参考値行 3 箇所を `VOUCHER_DIAGNOSTICS_202611 && ...` でゲート |
+| `resources/views/ARstampRally202611/ui.blade.php` | `#voucher-section` のコメントに FR-59 の表示範囲を明記（DOM 変更なし） |
+| `tests/Feature/StampRally202611Test.php` | `test_voucher_diagnostics_lines_are_gated_to_test_mode` を追加（`/stamp202611` と `/stamp202611?test=1` の HTML でゲート定義と 3 文言の位置を検査） |
+| `requirements.md` / `design.md` / `tasks.md` / `test-data-guide.md` | FR-59 / AC-21、§8.6 の表示仕様、§10 のテスト一覧、`test-data-guide.md` §2.4（本番 / 検証で見える行の一覧）、Phase 追記 |
+
+### 2. 本番適用手順
+
+1. `js-prize.blade.php` / `ui.blade.php` をデプロイ
+2. `php artisan optimize:clear`（compiled views の破棄。OPcache 利用時は `opcache_reset()` か PHP 再起動）
+3. `/stamp202611` で 3 行が消えること、`/stamp202611?test=1` で 3 行が戻ることを実機で確認（`test-data-guide.md` §2.4）
+4. 抽選の合否・倍率は変わらないため DB 変更や `stamp202611:backfill-device-weight` の再実行は不要
+
+### 3. 検証結果
+
+- `php -l`: `js-prize.blade.php` / `ui.blade.php` / `StampRally202611Test.php` すべて OK
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`:
+  **OK (28 tests, 226 assertions)**（FR-59 の 1 件を含む）
+- **影響範囲**: 202611 の抽選表示のみ。他キャンペーンの blade・SW・集計、`marker_scans` /
+  `prize_exchanges` のスキーマは未変更
+

@@ -478,6 +478,7 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 - **未送信キューのバナー（FR-52）**: `ar-scan-queue-202611` の件数が 1 以上の場合、スタンプ帳内に `#pending-scans`（「未送信のスタンプ N 件を自動送信します」）を表示し、**その間は抽選応募ボタンを非表示**にする。フラッシュ完了 → `checkStatus202611()` 再実行 → サーバーの `deviceStampCount`（収集種数）が閾値以上なら応募ボタンを表示
 - **応募ボタンの正本はサーバー応答**: LocalStorage の収集数（`ar-stamp-rally-202611`）だけで応募ボタンを表示しない（未着信分を含めて「10 種」表示 → 応募時に 422 `not_eligible` となる不整合を避ける）
 - **収集と検出を分けて表示する（FR-58）**: `#voucher-status` は「この端末の収集: N 種（抽選の基準・この端末 X 種）」を正本行とし、検出が 1 種以上あれば「この端末が見つけたマーカー: M 種（抽選には含めません）」、合算が収集より大きい場合のみ「同一ブラウザの合算: K 種（参考）」を併記する。収集が閾値未満で検出が閾値以上のときはボタンを disabled にし「マーカーを M 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます」を追加表示する（ガラポンの到達判定は LocalStorage の収集種数のまま）
+- **参考値行は検証モードだけに表示（FR-59）**: 上の 3 行（検出種数・同一ブラウザ合算・閾値未満時の注意文）は `js-prize.blade.php` の `const VOUCHER_DIAGNOSTICS_202611 = isTestMode();`（FR-54 の fingerprint 前置字と同じ単一ソース）でゲートし、`?test=1` を付けたページだけで描画する。本番 URL では正本行（収集種数）と応募期限・応募ボタンのみを表示。`check-status` の `deviceDetectedCount` / `stampCount` と管理画面・CSV の参考値列はそのまま残す（スタッフ説明・監査用）。クライアント側の描画制御であり秘匿ではない（文言は blade 内 JS に残る）。元に戻すには 3 箇所の `VOUCHER_DIAGNOSTICS_202611 && ` を外すだけ
 - 応募期限の案内: `check-status` の応答（または blade 注入の `apply_deadline`）を「応募期限: 2026-11-16 23:59」形式でスタンプ帳に表示。期限経過後は応募ボタンを非表示し、`apply-voucher` は 422 `deadline_passed`
 
 ### 8.7 デバッグ導線（FR-28）
@@ -512,7 +513,11 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
   `?show_test=1` で表示 → CSV 既定除外 → `&show_test=1` で表示）/
   `test_prize_view_exposes_test_flag_and_prefix`（`/stamp202611` の HTML に
   `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される）。
-  クラス全体で **27 tests / 212 assertions PASS**（実行手順は `test-data-guide.md` §9）。
+  参考値行の検証モード限定（FR-59・§8.6）は `test_voucher_diagnostics_lines_are_gated_to_test_mode`
+  （`VOUCHER_DIAGNOSTICS_202611 = isTestMode();` が出力されること、検出種数・同一ブラウザ合算・注意文の
+  3 文言がすべて `VOUCHER_DIAGNOSTICS_202611` ゲート内侧にあることを `/stamp202611` と
+  `/stamp202611?test=1` の HTML で検査）。
+  クラス全体で **28 tests / 226 assertions PASS**（実行手順は `test-data-guide.md` §9）。
   端末別種数（FR-56 / FR-57・§3.5）は `test_voucher_eligibility_and_weight_are_per_device`（合算 15 種でも 1 端末 5 種は
   `not_eligible`）/ `test_check_status_upgrades_weight_only_from_own_device_count`（合算 15 種で昇格しない）/
   `test_device_sync_never_downgrades_granted_weight`（遡及降格しない）/
@@ -562,5 +567,6 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 | AC-18 運用手順 | 検証用端末の準備・リセット手順（`?test=1` 付き URL の固定、LocalStorage / Cookie、検証応募行の削除）と「`?test=1` 付け忘れは本番計測になる」限界が `test-data-guide.md` に記載されている。`cg/202611` への切替手順は `asset-swap-guide.md` にチェックリスト化されている（FR-36） |
 | AC-19 端末別種数 | `check-status` の `deviceStampCount` は自端末（`fingerprint` 一致）の種数だけ返し、`stampCount` は合算になる（同一 `session_id` に別 fingerprint を積む）。5 種の端末は合算 15 種でも `not_eligible`。倍率昇格は 1 端末種数だけで起き、付与済み `weight` は遡及降格しない。`stamp202611:backfill-device-weight` は冪等で `--dry-run` は DB を変更しない（FR-56 / FR-57・§3.5） |
 | AC-20 収集のみで判定 | `capture_type='marker_scan'` だけの行（検出 11 種）は `check-status` で `deviceStampCount: 0` / `deviceDetectedCount: 11` を返し `apply-voucher` は 422 `not_eligible`。収集 9 種 + 検出 11 種も `not_eligible`、収集 10 種 + 検出 5 種は `weight: 1`、収集 15 種 + 検出 20 種は `weight: 2`。tinker で `device_stamp_count = 11` / `weight = 2` の行を作り `stamp202611:backfill-device-weight --recount-device-count` → `device_stamp_count` は 7 へ是正、`weight` は 2 のまま、`stamp_count` は保持（FR-58・§3.6） |
+| AC-21 参考値行の非表示 | 検出 11 種・収集 9 種の端末で `/stamp202611` を開く → `#voucher-status` に「この端末が見つけたマーカー」「同一ブラウザの合算」「マーカーを M 種見つけていますが…」の 3 行が出ない（収集種数・応募期限・disabled の応募ボタンだけ）。同じ端末で `/stamp202611?test=1` を開くと 3 行が戻る。自動テスト `test_voucher_diagnostics_lines_are_gated_to_test_mode` が PASS（FR-59・§8.6・`test-data-guide.md` §2.4） |
 
 

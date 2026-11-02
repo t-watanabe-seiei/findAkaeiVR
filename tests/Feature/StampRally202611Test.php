@@ -500,6 +500,41 @@ class StampRally202611Test extends TestCase
         $this->assertStringContainsString('"test_"', $html);
         $this->assertStringContainsString('isTestMode', $html);
     }
+
+    /**
+     * FR-59: 抽選の参考値行（検出種数・同一ブラウザ合算・注意文）は検証モード限定の表示。
+     * 本番 URL（/stamp202611）では描画されず、?test=1 のページだけに表示する。
+     * 案A（クライアント側）のため文言は JS 中に残るが、すべて VOUCHER_DIAGNOSTICS_202611
+     * ゲート内侧で出力されることを検査する。
+     */
+    public function test_voucher_diagnostics_lines_are_gated_to_test_mode(): void
+    {
+        $gate    = 'VOUCHER_DIAGNOSTICS_202611';
+        $phrases = [
+            'この端末が見つけたマーカー',
+            '同一ブラウザの合算',
+            '見つけていますが、抽選にはボールを当てて収集した種数だけ使えます',
+        ];
+
+        foreach (['/stamp202611', '/stamp202611?test=1'] as $url) {
+            $html = $this->get($url)->getContent();
+            // ゲートは isTestMode()（fingerprint 前置字と同じ判定）から作る
+            $this->assertStringContainsString($gate . ' = isTestMode();', $html);
+
+            foreach ($phrases as $phrase) {
+                $pos = strpos($html, $phrase);
+                $this->assertNotFalse($pos, "{$phrase} が出力されていない（{$url}）");
+                $window = substr($html, max(0, $pos - 300), 300);
+                $this->assertStringContainsString(
+                    $gate,
+                    $window,
+                    "{$phrase} が検証モードゲートで守られていない（{$url}）"
+                );
+            }
+        }
+    }
+
+
     /**
      * FR-56: 応募資格と当選倍率は 1 端末（fingerprint）単位で判定する。
      * 同一ブラウザ（同一 session_id）で 2 端末を使った場合、合算種数を別端末へ帰属させない。

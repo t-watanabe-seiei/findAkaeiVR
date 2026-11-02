@@ -68,6 +68,27 @@
 `recentScans` / `dailyScans` / `markerStats` の CSV でも `show_test` は同じく効く。
 **抽選実施直前は、`show_test` を付けない URL（＝除外側）で CSV を提出したかを確認する。**
 
+### 2.4 抽選 UI の参考値行（FR-59）
+
+`#voucher-status` の参考値行（検出種数・同一ブラウザ合算・閾値未満時の注意文）は
+**`?test=1` を付けたページだけ**に表示する（`js-prize.blade.php` の
+`const VOUCHER_DIAGNOSTICS_202611 = isTestMode();`）。
+
+| 表示 | `/stamp202611`（本番） | `/stamp202611?test=1`（検証） |
+|---|---|---|
+| この端末の収集: N 種（抽選の基準・この端末 X 種） | 表示 | 表示 |
+| 応募期限・応募ボタン（可否 / disabled の文言） | 表示 | 表示 |
+| この端末が見つけたマーカー: M 種（抽選には含めません） | **非表示** | 表示 |
+| 同一ブラウザの合算: K 種（参考） | **非表示** | 表示 |
+| マーカーを M 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます | **非表示** | 表示 |
+
+- 応募可否・当選倍率・`check-status` の `deviceDetectedCount` / `stampCount`・管理画面 / CSV の参考値列は
+  どちらの URL でも同じ（FR-58 の判定は変わらない）。**表示だけ**が変わる
+- FR-58 の収集 / 検出を検証で確認するときは必ず `?test=1` 付きで開く（付け忘れた行には表示されない）
+- 判定はページ読み込み時の URL のみ。読み込み済みのページに `?test=1` を追記しても反映されない（§2.1）
+- 文言は blade 内 JS に残るため DevTools / view-source からは参照できる（表示の秘匿ではない）。
+  元に戻すには 3 箇所の `VOUCHER_DIAGNOSTICS_202611 && ` を外すだけ
+
 ## 3. 除外が効いている箇所
 
 | 画面・データ | 実装箇所 |
@@ -237,6 +258,7 @@ php artisan tinker
 |---|---|
 | `test_admin_dashboard_and_csv_exclude_test_fingerprints` | 検証行（`test_fp_…`）が `dashboard202611` の `totalScans` / `uniqueScanners` / 応募一覧に出ない → `?show_test=1` で現れる → CSV（`dataset=voucherApplications202611`）に出ない → `&show_test=1` で出る。`?show_test=1&q=…` の検索でも `show_test` が維持され（検索フォームの hidden）、応募一覧のページネーション URL にも `show_test` が残る |
 | `test_prize_view_exposes_test_flag_and_prefix` | `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される |
+| `test_voucher_diagnostics_lines_are_gated_to_test_mode` | `/stamp202611` と `/stamp202611?test=1` の HTML に `VOUCHER_DIAGNOSTICS_202611 = isTestMode();` が出力され、参考値行 3 文言（検出種数 / 同一ブラウザ合算 / 閾値未満時の注意文）がすべて `VOUCHER_DIAGNOSTICS_202611` ゲート内侧にある（FR-59・§2.4） |
 
 §5 の事後整理（前置変更 / 削除）は運用手順であり自動テストにはしていない。実施後は
 `/admin/dashboard202611?show_test=1` と既定表示の差分、および CSV の行数で手動確認する。
@@ -247,9 +269,10 @@ php artisan tinker
 DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test
 ```
 
-クラス全体は **27 tests / 212 assertions**（2026-11-02 時点）。1 端末基準（FR-56 / FR-57）の
-テスト 6 件と、収集のみで判定する FR-58 のテスト 4 件（検出のみで応募不可／収集・検出の併記／
-閾値と倍率／`--recount-device-count` の是正）の一覧は `design.md` §10。
+クラス全体は **28 tests / 226 assertions**（2026-11-02 時点）。1 端末基準（FR-56 / FR-57）の
+テスト 6 件、収集のみで判定する FR-58 のテスト 4 件（検出のみで応募不可／収集・検出の併記／
+閾値と倍率／`--recount-device-count` の是正）、参考値行の表示ゲート FR-59 のテスト 1 件の
+一覧は `design.md` §10。
 
 （`php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う）
 

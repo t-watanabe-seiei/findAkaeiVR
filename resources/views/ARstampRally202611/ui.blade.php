@@ -43,7 +43,9 @@
                 <div id="gacha-note"></div>
             </div>
 
-            <!-- 市内共通商品券の抽選応募（1 端末で 10 種収集・応募期限は config/ar202611.php・FR-41〜FR-44 / FR-58） -->
+            <!-- 市内共通商品券の抽選応募（1 端末で 10 種収集・応募期限は config/ar202611.php・FR-41〜FR-44 / FR-58）
+                 #voucher-status の参考値行（検出種数・同一ブラウザ合算・注意文）は
+                 検証モード（?test=1）のページだけに表示する（FR-59） -->
             <div id="voucher-section">
                 <div class="gacha-title">🎫 市内共通商品券の抽選会</div>
                 <div id="voucher-status"></div>

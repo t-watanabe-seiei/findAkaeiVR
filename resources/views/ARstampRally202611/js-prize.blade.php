@@ -124,6 +124,11 @@
             }
         }
 
+        // 抽選の参考値行（検出種数・同一ブラウザ合算・注意文）は検証モードのページだけに表示する（FR-59）。
+        // fingerprint へ test_prefix を前置する判定（isTestMode）と同じ単一ソースを使い、
+        // 「test_ で計測される端末」と「参考値が見える端末」が食い違わないようにする
+        const VOUCHER_DIAGNOSTICS_202611 = isTestMode();
+
         function generateFingerprint() {
             return getUserId202611().then(function (userId) {
                 var data = [
@@ -577,7 +582,8 @@
             }
 
             // 正本はこの端末の「収集種数」（サーバー算出・capture_type='ball_hit'・FR-56 / FR-58）。
-            // 合算値（検出込み）とマーカー検出種数は参考値としてのみ表示する。
+            // 合算値（検出込み）とマーカー検出種数は参考値としてのみ表示し、
+            // その参考値行は検証モード（?test=1）のページだけに表示する（FR-59）。
             var voucher  = (_voucherStatus && _voucherStatus.voucher) ? _voucherStatus.voucher : null;
             var deviceCount   = _voucherStatus ? parseInt(_voucherStatus.deviceStampCount, 10) : NaN;
             if (isNaN(deviceCount) && voucher) deviceCount = parseInt(voucher.deviceStampCount, 10);
@@ -594,10 +600,10 @@
             lines.push('この端末の収集: '
                 + (deviceCount === null ? '読み込み中…' : deviceCount + ' 種')
                 + '（抽選の基準・この端末 ' + collectedCount202611() + ' 種）');
-            if (detectedCount !== null && detectedCount > 0) {
+            if (VOUCHER_DIAGNOSTICS_202611 && detectedCount !== null && detectedCount > 0) {
                 lines.push('この端末が見つけたマーカー: ' + detectedCount + ' 種（抽選には含めません）');
             }
-            if (aggregateCount !== null && deviceCount !== null && aggregateCount > deviceCount) {
+            if (VOUCHER_DIAGNOSTICS_202611 && aggregateCount !== null && deviceCount !== null && aggregateCount > deviceCount) {
                 lines.push('同一ブラウザの合算: ' + aggregateCount + ' 種（参考）');
             }
             lines.push('応募期限: ' + deadline);
@@ -633,7 +639,7 @@
             } else if (deviceCount < VOUCHER_THRESHOLD) {
                 disabled = true;
                 button.textContent = '抽選応募には' + VOUCHER_THRESHOLD + '種の収集が必要（現在' + deviceCount + '種）';
-                if (detectedCount !== null && detectedCount >= VOUCHER_THRESHOLD) {
+                if (VOUCHER_DIAGNOSTICS_202611 && detectedCount !== null && detectedCount >= VOUCHER_THRESHOLD) {
                     var hint = document.createElement('p');
                     hint.textContent = 'マーカーを ' + detectedCount + ' 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます。';
                     statusEl.appendChild(hint);

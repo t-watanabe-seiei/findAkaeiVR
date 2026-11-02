@@ -237,6 +237,33 @@
 - [ ] **T65-5** ダッシュボード（`device_stamp_count` 列）と CSV `voucherApplications202611`
   （`device_stamp_count` / `device_weight`）で是正結果を確認。業者提出は `device_weight` を正本とする
 
+---
+
+## 追記（2026-11-02）: 抽選 UI の参考値行を検証モード限定へ（FR-59・AC-21）
+
+背景: 本番のスタンプ帳に「この端末が見つけたマーカー 11 種」「同一ブラウザの合算 11 種（参考）」などの
+参考値行が出ており、利用者へ「検出しても抽選対象にならない」説明が先回りになっていた。
+検証時は FR-58 の収集 / 検出判定を確認するため同じ行が必要なので、**検証モードだけに表示**する。
+
+### Phase 7 追加: 参考値行の表示ゲート（案A・クライアント側）
+
+- [x] **T66** `js-prize.blade.php`: `isTestMode()` の直後へ `const VOUCHER_DIAGNOSTICS_202611 = isTestMode();`
+  を追加（fingerprint 前置字と同じ単一ソース）。`updateVoucherUI202611()` の参考値行 3 箇所
+  （検出種数 / 同一ブラウザ合算 / 閾値未満時の注意文）を `VOUCHER_DIAGNOSTICS_202611 && ...` で囲む。
+  正本行（収集種数）・応募期限・応募ボタン、`check-status` の返却値、管理画面 / CSV は変更しない
+- [x] **T67** `StampRally202611Test`: `test_voucher_diagnostics_lines_are_gated_to_test_mode` を追加
+  （`/stamp202611` と `/stamp202611?test=1` の HTML で、ゲート定義の出力と 3 文言がすべて
+  `VOUCHER_DIAGNOSTICS_202611` ゲート内侧にあることを検査）→ クラス **28 tests / 226 assertions PASS**
+- [x] **T68** ドキュメント: `requirements.md` へ FR-59 / AC-21、`design.md` へ §8.6 の表示仕様と §10 の
+  テスト一覧・AC-21 行、`test-data-guide.md` へ §2.4（本番 / 検証で見える行の一覧）と §9 のテスト数、
+  `ui.blade.php` の `#voucher-section` コメント、`README.md` へ 2026-11-02 節を追記
+- [x] **T69** 検証: `php -l`（`js-prize.blade.php` / `ui.blade.php` / `StampRally202611Test.php`）すべて OK、
+  `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test` →
+  **OK (28 tests, 226 assertions)**
+- [ ] **T69-1** 本番反映: `php artisan optimize:clear`（非 TTY では T65-2 の BufferedOutput 方法。
+  OPcache 利用時は `opcache_reset()` か PHP 再起動）→ `/stamp202611` で参考値行 3 行が消えること、
+  `/stamp202611?test=1` で 3 行が戻ることを実機で目視確認（`test-data-guide.md` §2.4）
+
 ### 残（FR-58 関連の運用）
 
 - [ ] 検出のみで閾値へ到達していた応募者へ「収集種数ベースで抽選倍率が下がった（または応募資格が消えた）」旨を
