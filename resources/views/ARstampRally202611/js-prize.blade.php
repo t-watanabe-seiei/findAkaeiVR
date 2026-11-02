@@ -576,22 +576,35 @@
                     : '';
             }
 
-            var serverCount = _voucherStatus ? parseInt(_voucherStatus.stampCount, 10) : null;
-            if (isNaN(serverCount)) serverCount = null;
+            // 正本はこの端末の「収集種数」（サーバー算出・capture_type='ball_hit'・FR-56 / FR-58）。
+            // 合算値（検出込み）とマーカー検出種数は参考値としてのみ表示する。
             var voucher  = (_voucherStatus && _voucherStatus.voucher) ? _voucherStatus.voucher : null;
+            var deviceCount   = _voucherStatus ? parseInt(_voucherStatus.deviceStampCount, 10) : NaN;
+            if (isNaN(deviceCount) && voucher) deviceCount = parseInt(voucher.deviceStampCount, 10);
+            if (isNaN(deviceCount)) deviceCount = null;
+            var detectedCount = _voucherStatus ? parseInt(_voucherStatus.deviceDetectedCount, 10) : NaN;
+            if (isNaN(detectedCount)) detectedCount = null;
+            var aggregateCount = _voucherStatus ? parseInt(_voucherStatus.stampCount, 10) : NaN;
+            if (isNaN(aggregateCount)) aggregateCount = null;
             var applied  = voucher ? (voucher.applied === true) : isVoucherAppliedLocal202611();
             var weight   = voucher ? (parseInt(voucher.weight, 10) || 0) : 0;
             var deadline = formatDeadline202611();
 
             var lines = [];
-            lines.push('サーバー上の収集: '
-                + (serverCount === null ? '読み込み中…' : serverCount + ' 種')
-                + '（この端末: ' + collectedCount202611() + ' 種）');
+            lines.push('この端末の収集: '
+                + (deviceCount === null ? '読み込み中…' : deviceCount + ' 種')
+                + '（抽選の基準・この端末 ' + collectedCount202611() + ' 種）');
+            if (detectedCount !== null && detectedCount > 0) {
+                lines.push('この端末が見つけたマーカー: ' + detectedCount + ' 種（抽選には含めません）');
+            }
+            if (aggregateCount !== null && deviceCount !== null && aggregateCount > deviceCount) {
+                lines.push('同一ブラウザの合算: ' + aggregateCount + ' 種（参考）');
+            }
             lines.push('応募期限: ' + deadline);
             if (applied) {
                 lines.push(voucherMessage202611(weight));
-            } else if (serverCount !== null && serverCount >= VOUCHER_THRESHOLD) {
-                lines.push('抽選応募が可能です（' + VOUCHER_THRESHOLD + '種以上）');
+            } else if (deviceCount !== null && deviceCount >= VOUCHER_THRESHOLD) {
+                lines.push('抽選応募が可能です（1端末で' + VOUCHER_THRESHOLD + '種以上収集）');
             }
 
             statusEl.innerHTML = '';
@@ -602,6 +615,7 @@
             });
 
             // ボタンの表示可否（応募済み / 未送信あり / 期限経過後 / 応答なし は非表示）
+            // 応募可否の判定は収集種数（deviceStampCount）のみで行う（FR-58）
             var showButton = true;
             var disabled   = false;
 
@@ -614,11 +628,16 @@
                 var over = document.createElement('p');
                 over.textContent = '応募期限（' + deadline + '）を過ぎたため応募できません';
                 statusEl.appendChild(over);
-            } else if (serverCount === null) {
+            } else if (deviceCount === null) {
                 showButton = false;
-            } else if (serverCount < VOUCHER_THRESHOLD) {
+            } else if (deviceCount < VOUCHER_THRESHOLD) {
                 disabled = true;
-                button.textContent = '抽選応募には' + VOUCHER_THRESHOLD + '種以上必要（現在' + serverCount + '種）';
+                button.textContent = '抽選応募には' + VOUCHER_THRESHOLD + '種の収集が必要（現在' + deviceCount + '種）';
+                if (detectedCount !== null && detectedCount >= VOUCHER_THRESHOLD) {
+                    var hint = document.createElement('p');
+                    hint.textContent = 'マーカーを ' + detectedCount + ' 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます。';
+                    statusEl.appendChild(hint);
+                }
             } else {
                 button.textContent = '商品券抽選に応募する';
             }

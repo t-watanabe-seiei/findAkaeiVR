@@ -98,6 +98,7 @@
 | AC-17 検証データ除外（ダッシュボード / CSV） | 合格（T51: dashboard 既定除外 → `?show_test=1` 表示 → CSV 既定除外 → `&show_test=1` 表示、`/stamp202611` の `TEST_FP_PARAM` / `TEST_FP_PREFIX` / `isTestMode` 出力。2 テスト PASS） |
 | AC-18 ガイド（検証データ / アセット切替） | 合格（T52: `test-data-guide.md` / `asset-swap-guide.md` 作成・README からリンク） |
 | AC-19 端末別種数（FR-56 / FR-57） | 合格（T55 / T56 / T57: `deviceStampCountFor()` と `device_*` 列で判定、backfill は遡及降格なし。T58 の 6 テスト追加でクラス 23 tests / 182 assertions PASS） |
+| AC-20 収集のみで応募資格（FR-58） | 合格（T60 / T61 / T62: `deviceStampCountFor()` が `capture_type='ball_hit'` だけ数え、`detectedStampCountFor()` は参考値。T63 の 4 テスト追加でクラス 27 tests / 212 assertions PASS。T65 の本番 DB への recount は実施前） |
 
 
 ## 参考（202610 での実施履歴 = 本キャンペーンで初期実装に内包する内容）
@@ -175,4 +176,72 @@
   （実行前に `stamp202611_voucher_applications` をバックアップ。手順は `test-data-guide.md` §10）
 - [ ] 業者提出 CSV の `weight`（= `device_weight`）で抽選を行うことを運営へ周知。
   合算のみで閾値へ到達した応募者を 1 端末基準で差し戻す運用は行わない（FR-57）
+
+
+---
+
+## 追記（2026-11-02）: 応募資格と倍率は「収集（ball_hit）」だけで判定（FR-58・AC-20）
+
+背景: `deviceStampCountFor()` が `capture_type` を絞らず distinct `marker_id` を数えていたため、
+ボールを当ててコレクションに入った種数ではなく **マーカーを見つけた種数（`marker_scan`）** だけで
+閾値へ到達・2 倍化していた応募者が発生していた（design.md §3.6）。
+
+### Phase 7 追加: 収集 / 検出の分離
+
+- [x] **T60** `StampRally202611Controller`: `deviceStampCountFor()` に `where('capture_type', 'ball_hit')` を追加
+  （応募資格・倍率の正本）。`detectedStampCountFor()`（`capture_type='marker_scan'` の distinct 数）を新設し、
+  `checkStatus()` の応答へ `deviceDetectedCount`、`applyVoucher()` の 422 `not_eligible` へ
+  `deviceStampCount` / `deviceDetectedCount` / `voucherThreshold` と収集基準の文言を追加。
+  合算 `stampCountFor()` は検出込みのまま監査・表示用として保持（`stamp_count` / `tier` に保存）
+- [x] **T61** `js-prize.blade.php`（`updateVoucherUI202611()`）: 応募可否を `deviceStampCount` だけで判定。
+  スタンプ帳の `#voucher-status` を「この端末の収集: N 種（抽選の基準・この端末 X 種）」を正本行とし、
+  検出 1 種以上なら「この端末が見つけたマーカー: M 種（抽選には含めません）」、
+  合算 > 収集 のときだけ「同一ブラウザの合算: K 種（参考）」を併記。
+  収集が閾値未満で検出が閾値以上のときはボタンを `disabled` にし
+  「マーカーを M 種見つけていますが、抽選にはボールを当てて収集した種数だけ使えます」を表示
+  （ガラポンの到達判定は LocalStorage の収集種数のまま・FR-38 / FR-39）
+- [x] **T62** `BackfillStamp202611DeviceWeight`: `device_stamp_count` / `device_tier` の算出を `ball_hit` 基準へ変更。
+  既定モードは上方更新のみ（FR-57 踏襲）で、水増し値の是正はスキップして `--recount-device-count` へ委ねる。
+  **`--recount-device-count`**（新設）は `device_stamp_count` / `device_tier` を収集基準で再集計し**下方更新も許容**するが、
+  付与済みの `weight` / `device_weight` は降格させない（grandfathering 維持）。`--dry-run` と併用可・冪等
+- [x] **T63** `StampRally202611Test`: `seedScansUnderSession()` を既定 `ball_hit` にし、検出専用の
+  `seedDetections()` ヘルパーを追加。回帰テスト 4 件
+  （`test_marker_scan_only_records_do_not_qualify_for_voucher` /
+  `test_check_status_reports_collected_and_detected_counts` /
+  `test_collected_count_at_threshold_qualifies_even_with_extra_detections` /
+  `test_backfill_recount_corrects_inflated_device_count_without_downgrading_weight`）
+  → クラス **27 tests / 212 assertions PASS**
+  （`DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`）
+- [x] **T64** `requirements.md` へ FR-58 / AC-20、`design.md` へ §3.6（収集と検出の分離・API 応答・
+  backfill の 2 モード）、§5.2 / §5.3 の返却値、§8.6 の表示仕様、§10 のテスト一覧、AC-20 行を追記。
+  `README.md` へ 2026-11-02 節（変更一覧と本番適用手順）、`test-data-guide.md` へ §9 のテスト数更新と
+  §10.1（`--recount-device-count` の手順）を追記
+
+### T65 本番反映手順（FR-58）
+
+- [x] **T65-0** 検証: `php -l`（コントローラ / コマンド / テスト）と
+  `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`
+  → **27 tests / 212 assertions PASS**。クラス全体（`./vendor/bin/phpunit`）は 31 tests 中
+  `Tests\Feature\ExampleTest`（`GET /` が 404）だけが残存失敗（本変更とは無関係の既存失敗）
+- [x] **T65-1** ローカル: `database/database.sqlite` を退避 → 実行後に削除（応募行 0 件で DB 変更なし）
+- [x] **T65-2** ローカル: `optimize:clear` を実行（cache / compiled / config / events / routes / views すべて DONE）。
+  非 TTY シェルでは `php artisan …` が "stdout is not a tty" で失敗するため、
+  `bootstrap/app.php` を読む一時スクリプトから `$kernel->call('optimize:clear', [], new BufferedOutput())` を実行した
+- [x] **T65-3** ローカル: `stamp202611:backfill-device-weight --recount-device-count --dry-run`
+  → `dry-run / recount-device-count: 対象 0 件 / 更新 0 件（grandfathering 0 件・下方更新スキップ 0 件）`
+  （ローカル DB には 202611 の応募行・収集期間内の `marker_scans` がなく、是正対象なし）
+- [ ] **T65-4** **本番 DB での実行（未実施）**: ① バックアップ → ② `php artisan optimize:clear`
+  （OPcache を使っている場合は `opcache_reset()` か PHP / Web サーバー再起動）→
+  ③ `stamp202611:backfill-device-weight --recount-device-count --dry-run` で「収集基準で減る行」と
+  「weight はそのまま」を確認 → ④ `--dry-run` を外して本実行 → ⑤ 再度 `--dry-run` で差分 0（冪等）を確認
+- [ ] **T65-5** ダッシュボード（`device_stamp_count` 列）と CSV `voucherApplications202611`
+  （`device_stamp_count` / `device_weight`）で是正結果を確認。業者提出は `device_weight` を正本とする
+
+### 残（FR-58 関連の運用）
+
+- [ ] 検出のみで閾値へ到達していた応募者へ「収集種数ベースで抽選倍率が下がった（または応募資格が消えた）」旨を
+  運営が案内するかどうか決定する（FR-57 の「遡及降格しない」は **付与済み weight** に限定され、
+  `device_stamp_count` の是正は FR-58 で行うことを運営へ周知）
+- [ ] `capture_type` の運用（`marker_scan` は検出のみ・`ball_hit` は収集完了）がクライアント実装と一致していることを
+  実機で確認（T37 / T48 と併せて実施）
 

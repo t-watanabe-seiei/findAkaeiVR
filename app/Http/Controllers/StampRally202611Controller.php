@@ -19,6 +19,9 @@ use Illuminate\Http\Request;
  *  - Q-12 案A（FR-50 / FR-51）: 収集期間（collect_start 〜 collect_end）と
  *    応募期限（apply_deadline）を分離し、オフラインで収集した日付を保持したまま
  *    帰宅後に応募できる。
+ *  - FR-56: 応募資格・倍率は 1 端末（fingerprint）単位。
+ *  - FR-58: 収集種数は capture_type='ball_hit'（ボールを当ててコレクションに入った種数）のみ。
+ *    マーカーを検出しただけの 'marker_scan' は応募資格・倍率に含めず、表示用の参考値とする。
  *
  * タイムゾーンの実務注記:
  *   APP_TIMEZONE=Asia/Tokyo で marker_scans.scanned_at は JST 壁時計の文字列として
@@ -101,8 +104,11 @@ class StampRally202611Controller extends Controller
     }
 
     /**
-     * サーバー側で算出した収集種数（マーカー種の distinct 数・FR-50）。
+     * 同一ブラウザ（session_id）または同一端末（fingerprint）の合算種数（監査用の参考値・FR-50）。
      * クライアントが送る stamps 配列は信用しない。
+     *
+     * capture_type を絞らないため「マーカーを見つけた種数」も含まれる。
+     * 応募資格と倍率の正本は deviceStampCountFor()（収集のみ・FR-58）。
      */
     public static function stampCountFor(?string $sessionId, ?string $fingerprint): int
     {
@@ -128,6 +134,9 @@ class StampRally202611Controller extends Controller
      *
      * session_id を条件に含めない。同一機種 + 同一 userId では fingerprint が一致するため、
      * session_id 経由の合算は別端末の種数を自端末へ誤帰属させる（2026-11-01 の 15 種 2 名）。
+     *
+     * capture_type = 'ball_hit'（ボールを当ててコレクションに入った種数）のみ数える（FR-58）。
+     * マーカーを検出しただけの 'marker_scan' は応募資格・倍率に含めない。
      */
     public static function deviceStampCountFor(?string $fingerprint): int
     {
@@ -138,6 +147,26 @@ class StampRally202611Controller extends Controller
         [$start, $end] = self::collectPeriod();
 
         return MarkerScan::where('fingerprint', $fingerprint)
+            ->where('capture_type', 'ball_hit')
+            ->whereBetween('scanned_at', [$start, $end])
+            ->distinct()
+            ->count('marker_id');
+    }
+
+    /**
+     * 1 端末単位の「マーカー検出種数」（capture_type = 'marker_scan'・FR-58）。
+     * 応募資格には使わず、画面表示とスタッフ説明用の参考値。
+     */
+    public static function detectedStampCountFor(?string $fingerprint): int
+    {
+        if (!$fingerprint) {
+            return 0;
+        }
+
+        [$start, $end] = self::collectPeriod();
+
+        return MarkerScan::where('fingerprint', $fingerprint)
+            ->where('capture_type', 'marker_scan')
             ->whereBetween('scanned_at', [$start, $end])
             ->distinct()
             ->count('marker_id');
@@ -297,8 +326,10 @@ class StampRally202611Controller extends Controller
         $sessionId = session()->getId();
 
         $stampCount = self::stampCountFor($sessionId, $fingerprint);
-        // 応募資格・倍率の正本は 1 端末（fingerprint）単位。合算値は表示・監査用の参考値（FR-56）
+        // 応募資格・倍率の正本は 1 端末（fingerprint）単位の「収集種数」。合算値は表示・監査用の参考値（FR-56 / FR-58）
         $deviceCount = self::deviceStampCountFor($fingerprint);
+        // マーカーを検出しただけの種数は応募資格に含めないが、利用者の説明用に返す（FR-58）
+        $deviceDetectedCount = self::detectedStampCountFor($fingerprint);
 
         $application = $fingerprint
             ? Stamp202611VoucherApplication::where('fingerprint', $fingerprint)->first()
@@ -317,8 +348,12 @@ class StampRally202611Controller extends Controller
 
         return response()->json([
             'success' => true,
+            // 合算（同一ブラウザの session_id / fingerprint・検出込みの参考値）
             'stampCount' => $stampCount,
+            // 正本: この端末がボールを当てて収集した種数（FR-56 / FR-58）
             'deviceStampCount' => $deviceCount,
+            // この端末がマーカーを見つけた種数（応募資格には含めない・FR-58）
+            'deviceDetectedCount' => $deviceDetectedCount,
             'candyTiers' => array_map('intval', (array) config('ar202611.candy_tiers')),
             'voucherThreshold' => self::voucherThreshold(),
             'applyDeadline' => self::applyDeadline()->toIso8601String(),
@@ -373,7 +408,8 @@ class StampRally202611Controller extends Controller
         session(['ar_fingerprint_202611' => $fingerprint]);
 
         // 収集種数はサーバー側の marker_scans から算出する（クライアント値は信用しない）。
-        // 応募資格の判定は 1 端末（fingerprint）単位（FR-56）。合算値は stamp_count に監査用として保存する。
+        // 応募資格の判定は 1 端末（fingerprint）単位の収集種数（FR-56 / FR-58）。
+        // 合算値（検出込み）は stamp_count に監査用として保存する。
         $stampCount = self::stampCountFor($sessionId, $fingerprint);
         $deviceCount = self::deviceStampCountFor($fingerprint);
 
@@ -404,9 +440,10 @@ class StampRally202611Controller extends Controller
                 'error' => 'not_eligible',
                 'stampCount' => $stampCount,
                 'deviceStampCount' => $deviceCount,
+                'deviceDetectedCount' => self::detectedStampCountFor($fingerprint),
                 'voucherThreshold' => self::voucherThreshold(),
                 'message' => sprintf(
-                    '抽選応募には1端末で%d種類以上のスタンプが必要です（現在%d種）',
+                    '抽選応募には1端末で%d種類の収集（ボールを当ててコレクションに入った数）が必要です（現在%d種）',
                     self::voucherThreshold(),
                     $deviceCount
                 ),

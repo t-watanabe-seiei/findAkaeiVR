@@ -175,6 +175,27 @@ Phase 2 / 3 / 3B の承認後に design.md §3・§5.4 の内容で作り直す�
 付与済み `weight` は下がらない（FR-57）。検証行（`test_` 前置）も backfill 対象になる点など、
 詳細手順は `test-data-guide.md` §10。
 
+### 2026-11-02 — 応募資格・倍率は「収集（`capture_type='ball_hit'`）」だけで判定（FR-58）
+
+Android 実機で「収集 7 種 / 検出 11 種」の端末が 10 種到達として応募できた件を受け、
+`deviceStampCountFor()` が `capture_type` を絞らず distinct `marker_id` を数えていた問題を是正した
+（`requirements.md` FR-58・AC-20 ／ `design.md` §3.6 ／ `tasks.md` T60〜T65 ／ 手順 `test-data-guide.md` §10.1）。
+
+| # | 対象 | 変更内容 |
+|---|------|---------|
+| 1 | `app/Http/Controllers/StampRally202611Controller.php` | `deviceStampCountFor()` に `where('capture_type', 'ball_hit')` を追加（応募資格・倍率の正本は**ボールを当ててコレクションに入った種数**のみ）。`detectedStampCountFor()`（`capture_type='marker_scan'` の distinct 数）を新設。`stampCountFor()`（合算・検出込み）は監査・表示用として `stamp_count` / `tier` に保持 |
+| 2 | API | `check-status` へ `deviceDetectedCount`（検出・参考）を追加。`apply-voucher` の 422 `not_eligible` は `deviceStampCount` / `deviceDetectedCount` / `voucherThreshold` を返し、文言は「1端末で N 種類の収集（ボールを当ててコレクションに入った数）が必要です（現在 M 種）」 |
+| 3 | `resources/views/ARstampRally202611/js-prize.blade.php` | `updateVoucherUI202611()` の応募可否を `deviceStampCount` だけで判定。スタンプ帳に「この端末の収集: N 種（抽選の基準・この端末 X 種）」を正本行とし、検出 1 種以上なら「この端末が見つけたマーカー: M 種（抽選には含めません）」、合算 > 収集 のときだけ「同一ブラウザの合算: K 種（参考）」を併記。収集が閾値未満で検出が閾値以上ならボタンを `disabled` にして注意文を表示（ガラポンの到達判定は LocalStorage の収集種数のまま） |
+| 4 | `app/Console/Commands/BackfillStamp202611DeviceWeight.php` | 収集基準で算出。既定モードは上方更新のみ（FR-57 踏襲・小さい行は `下方更新スキップ` に計上）。**`--recount-device-count`** を追加し、検出込みで水増しした `device_stamp_count` / `device_tier` を**下方更新で是正**する（付与済み `weight` / `device_weight` と合算列 `stamp_count` / `tier` は下げない）。`--dry-run` 併用可・冪等 |
+| 5 | `tests/Feature/StampRally202611Test.php` | `seedScansUnderSession()` を既定 `ball_hit` に変更し `seedDetections()` を追加。回帰テスト 4 件（検出のみで応募不可／収集・検出の併記／閾値と倍率／`--recount-device-count` の是正）→ クラス **27 tests / 212 assertions PASS** |
+
+**本番適用手順**: ① `php artisan optimize:clear`（`cache:clear` だけでは集計ロジックの変更が反映されない。
+OPcache を使っている場合は `opcache_reset()` か PHP / Web サーバーの再起動）→
+② `php artisan stamp202611:backfill-device-weight --recount-device-count --dry-run` で差分確認 →
+③ `--dry-run` を外して本実行 → ④ 再度 `--dry-run` で「更新 0 件」を確認（冪等）。
+実行前に `stamp202611_voucher_applications` をバックアップし、付与済み `weight` は下がらない（FR-57）。
+詳細は `test-data-guide.md` §10.1。
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。

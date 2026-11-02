@@ -247,8 +247,9 @@ php artisan tinker
 DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test
 ```
 
-クラス全体は **23 tests / 182 assertions**（2026-10-30 時点）。1 端末基準（FR-56 / FR-57）の
-テスト 6 件の一覧は `design.md` §10。
+クラス全体は **27 tests / 212 assertions**（2026-11-02 時点）。1 端末基準（FR-56 / FR-57）の
+テスト 6 件と、収集のみで判定する FR-58 のテスト 4 件（検出のみで応募不可／収集・検出の併記／
+閾値と倍率／`--recount-device-count` の是正）の一覧は `design.md` §10。
 
 （`php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う）
 
@@ -279,3 +280,49 @@ php artisan stamp202611:backfill-device-weight --dry-run
 - 列導入前に応募した行（`device_*` が NULL）は付与済み `weight` を正本として維持する（FR-57）。
   1 端末種数が足りないことを理由に応募を差し戻す運用は行わない
 - 集計確認は §5.7 のとおり `php artisan tinker` を使わず、このコマンドと管理画面で行う
+
+### 10.1 収集基準への是正（FR-58・`--recount-device-count`）
+
+`deviceStampCountFor()` は `capture_type='ball_hit'`（ボールを当てて収集した種数）だけ数えるようになった。
+**検出（`marker_scan`）込みで水増しされていた `device_stamp_count` を是正する**のが `--recount-device-count` で、
+§10 の 2（migration 適用）の後か、既に backfill を済ませた後のいずれかで 1 回実行する。
+
+```
+php artisan stamp202611:backfill-device-weight --recount-device-count --dry-run
+php artisan stamp202611:backfill-device-weight --recount-device-count
+```
+
+- 出力は 1 行 1 応募で `id=… <email> 合算N種 → 1端末収集M種（検出K種） / weight X → Y [recount]`。
+  `[recount]` は収集基準で**下げた**行、`[grandfathering]` は付与済みの倍率が収集基準の倍率より高く
+  **上げない / 下げない**行を示す。末尾は
+  `dry-run / recount-device-count: 対象 N 件 / 更新 M 件（grandfathering G 件・下方更新スキップ S 件）`
+  （`--recount-device-count` 時は下方更新スキップ 0 件になる）
+- **`weight` / `device_weight` は下げない**（FR-57 の grandfathering を維持）。検出のみで閾値へ到達して
+  2 倍・3 倍が付与済みの行も倍率はそのまま残るため、抽選で使い直すかどうかは運営が手動で判断する
+- 合算列 `stamp_count` / `tier` は検出込みの値を監査用に保持する（このコマンドは変更しない）
+- 既定モード（`--recount-device-count` なし）は上方更新のみで、収集基準で**小さい値へは更新しない**。
+  水増し分の是正は必ず `--recount-device-count` を使う
+- 冪等: 本実行後に再度 `--recount-device-count --dry-run` を走らせて「更新 0 件」になれば完了
+- **コントローラのロジック変更はキャッシュクリアが必須**: `php artisan optimize:clear`
+  （`cache:clear` だけでは PHP 側の古いロジックが残り、応募可否が旧基準で返ることがある）
+- 非 TTY のシェル（CI・一部 SSH 環境）では `php artisan …` が "stdout is not a tty" で失敗する。
+  その場合は §5.7 と同じく一時的スクリプトで Kernel を直接呼ぶ（実行後に削除）:
+
+  ```php
+  <?php // storage/app/tmp_recount.php（実行: php storage/app/tmp_recount.php・完了後に削除）
+  require __DIR__.'/../vendor/autoload.php';
+  $app = require __DIR__.'/../bootstrap/app.php';
+  $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+  $kernel->bootstrap();
+  foreach ([
+      ['optimize:clear', []],
+      ['stamp202611:backfill-device-weight', ['--recount-device-count' => true, '--dry-run' => true]],
+  ] as [$name, $options]) {
+      $buffer = new Symfony\Component\Console\Output\BufferedOutput();
+      $exit = $kernel->call($name, $options, $buffer);
+      file_put_contents(__DIR__.'/tmp_recount.txt',
+          $name.' exit:'.$exit.PHP_EOL.$buffer->fetch().PHP_EOL, FILE_APPEND);
+  }
+  ```
+
+  差分確認後、`--dry-run` を `false` に変えて本実行し、もう 1 回 `--dry-run` を走らせて「更新 0 件」を確認する

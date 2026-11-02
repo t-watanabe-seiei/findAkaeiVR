@@ -21,14 +21,29 @@ class StampRally202611Test extends TestCase
 
     /**
      * 収集期間内の日付に N 種のマーカー収集記録を作る（JST 壁時計で保存される）。
+     * 既定の capture_type は 'ball_hit'（ボールを当てて収集）。応募資格の正本はこれ（FR-58）。
      */
     private function seedScans(
         string $fingerprint,
         int $kinds,
         string $jst = '2026-11-10 12:00:00',
+        string $prefix = 'model',
+        string $captureType = 'ball_hit'
+    ): void {
+        $this->seedScansUnderSession($fingerprint, $kinds, 'seed-' . $fingerprint, $jst, $prefix, $captureType);
+    }
+
+    /**
+     * マーカーを検出だけした記録（capture_type='marker_scan'）を作る。
+     * 応募資格・倍率には使わない（FR-58）。表示・監査用の参考値の確認に使う。
+     */
+    private function seedDetections(
+        string $fingerprint,
+        int $kinds,
+        string $jst = '2026-11-10 12:00:00',
         string $prefix = 'model'
     ): void {
-        $this->seedScansUnderSession($fingerprint, $kinds, 'seed-' . $fingerprint, $jst, $prefix);
+        $this->seedScansUnderSession($fingerprint, $kinds, 'seed-' . $fingerprint, $jst, $prefix, 'marker_scan');
     }
 
     /**
@@ -40,7 +55,8 @@ class StampRally202611Test extends TestCase
         int $kinds,
         string $sessionId,
         string $jst = '2026-11-10 12:00:00',
-        string $prefix = 'model'
+        string $prefix = 'model',
+        string $captureType = 'ball_hit'
     ): void {
         for ($i = 1; $i <= $kinds; $i++) {
             $marker = $prefix . '_' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
@@ -51,7 +67,7 @@ class StampRally202611Test extends TestCase
                 'marker_id' => $marker,
                 'marker_name' => $marker,
                 'scan_count' => 1,
-                'capture_type' => 'marker_scan',
+                'capture_type' => $captureType,
                 'scanned_at' => Carbon::parse($jst, 'Asia/Tokyo'),
                 'user_agent' => 'phpunit',
                 'ip_address' => '127.0.0.1',
@@ -712,6 +728,138 @@ class StampRally202611Test extends TestCase
         $this->assertStringContainsString('15種', $html);
         $this->assertStringContainsString('10種', $html);
         $this->assertStringContainsString('合算より 5種多い', $html);
+    }
+
+    /**
+     * FR-58: マーカーを検出だけした記録（capture_type='marker_scan'）は応募資格に使わない。
+     * 検出 11 種だけでも収集 0 種なら 422 not_eligible。
+     */
+    public function test_marker_scan_only_records_do_not_qualify_for_voucher(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedDetections('fp-detect-only', 11);
+
+        $this->assertSame(11, StampRally202611Controller::stampCountFor('seed-fp-detect-only', 'fp-detect-only'));
+        $this->assertSame(0, StampRally202611Controller::deviceStampCountFor('fp-detect-only'));
+        $this->assertSame(11, StampRally202611Controller::detectedStampCountFor('fp-detect-only'));
+
+        $this->applyVoucher('fp-detect-only', 'detect-only@example.com')
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'error' => 'not_eligible',
+                'stampCount' => 11,
+                'deviceStampCount' => 0,
+                'deviceDetectedCount' => 11,
+            ]);
+
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+    }
+
+    /**
+     * FR-58: check-status は収集種数（正本）と検出種数（参考）を分けて返す。
+     */
+    public function test_check_status_reports_collected_and_detected_counts(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-12 10:00:00', 'Asia/Tokyo'));
+
+        // 収集 7 種（model_01〜07）・検出 11 種（model_01〜11）
+        $this->seedScans('fp-mix', 7);
+        $this->seedDetections('fp-mix', 11);
+
+        $this->checkStatus('fp-mix')->assertStatus(200)->assertJson([
+            'stampCount' => 11,
+            'deviceStampCount' => 7,
+            'deviceDetectedCount' => 11,
+            'voucher' => ['applied' => false, 'weight' => 0, 'deviceStampCount' => 0],
+        ]);
+    }
+
+    /**
+     * FR-58: 応募可否と倍率は収集種数だけで決まる（検出種数は閾値へ影響しない）。
+     */
+    public function test_collected_count_at_threshold_qualifies_even_with_extra_detections(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        // 収集 10 種 + 検出 5 種（収集と同一種）→ 収集 10 種で応募可・weight 1
+        $this->seedScans('fp-edge', 10);
+        $this->seedDetections('fp-edge', 5);
+
+        $this->applyVoucher('fp-edge', 'edge@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'weight' => 1, 'deviceStampCount' => 10]);
+
+        // 収集 9 種 + 検出 11 種 → 合算 11 種でも収集 9 種なので不可（2026-11-01 の水増しケース）
+        $this->seedScans('fp-short', 9);
+        $this->seedDetections('fp-short', 11);
+
+        $this->assertSame(11, StampRally202611Controller::stampCountFor('seed-fp-short', 'fp-short'));
+        $this->assertSame(9, StampRally202611Controller::deviceStampCountFor('fp-short'));
+
+        $this->applyVoucher('fp-short', 'short@example.com')
+            ->assertStatus(422)
+            ->assertJson([
+                'error' => 'not_eligible',
+                'stampCount' => 11,
+                'deviceStampCount' => 9,
+                'deviceDetectedCount' => 11,
+            ]);
+
+        // 収集 15 種（検出 20 種）は weight 2 のまま（検出は倍率を上げない）
+        $this->seedScans('fp-weight', 15);
+        $this->seedDetections('fp-weight', 20);
+
+        $this->applyVoucher('fp-weight', 'weight@example.com')
+            ->assertStatus(200)
+            ->assertJson(['weight' => 2, 'deviceStampCount' => 15, 'deviceWeight' => 2]);
+    }
+
+    /**
+     * FR-58: --recount-device-count は検出込みで水増しした device_stamp_count を収集基準へ是正する。
+     * 付与済みの weight / 合算列 stamp_count は降格させない。既定モードは下方更新しない。
+     */
+    public function test_backfill_recount_corrects_inflated_device_count_without_downgrading_weight(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-17 12:00:00', 'Asia/Tokyo'));
+
+        // 検出込み 11 種で device_stamp_count = 11 / weight 2 が付与済みの行（2026-11-01 の水増し相当）
+        $application = $this->seedLegacyApplication('fp-inflated', 'inflated@example.com', 11, 2, 'sess-inflated');
+        $application->device_stamp_count = 11;
+        $application->device_tier = 10;
+        $application->device_weight = 2;
+        $application->save();
+
+        // 実際の収集は 7 種（model_01〜07）・検出は 11 種（model_01〜11）
+        $this->seedScans('fp-inflated', 7);
+        $this->seedDetections('fp-inflated', 11);
+
+        // 既定モード（FR-57 踏襲）は下方更新しない
+        $this->artisan('stamp202611:backfill-device-weight')->assertExitCode(0);
+        $application->refresh();
+        $this->assertSame(11, (int) $application->device_stamp_count);
+        $this->assertSame(2, (int) $application->weight);
+
+        // dry-run は DB を変更しない
+        $this->artisan('stamp202611:backfill-device-weight --recount-device-count --dry-run')->assertExitCode(0);
+        $application->refresh();
+        $this->assertSame(11, (int) $application->device_stamp_count);
+
+        // recount で収集基準へ是正（weight は降格しない）
+        $this->artisan('stamp202611:backfill-device-weight --recount-device-count')->assertExitCode(0);
+        $application->refresh();
+        $this->assertSame(7, (int) $application->device_stamp_count);
+        $this->assertSame(0, (int) $application->device_tier);
+        $this->assertSame(2, (int) $application->device_weight);
+        $this->assertSame(2, (int) $application->weight);
+        $this->assertSame(11, (int) $application->stamp_count);
+
+        // 冪等: 再実行しても変化しない
+        $this->artisan('stamp202611:backfill-device-weight --recount-device-count')->assertExitCode(0);
+        $application->refresh();
+        $this->assertSame(7, (int) $application->device_stamp_count);
+        $this->assertSame(2, (int) $application->weight);
     }
 }
 
