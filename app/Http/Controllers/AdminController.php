@@ -300,7 +300,7 @@ class AdminController extends Controller
                 // 市内共通商品券の抽選応募（業者提出用・design §5.6 / FR-45 / FR-48）
                 // weight は抽選の正本（1 端末単位の device_weight と一致する・FR-56）。
                 // stamp_count は session_id / fingerprint の合算値で、device_* は監査用の参考値（FR-57）。
-                fputcsv($handle, ['name', 'email', 'stamp_count', 'weight', 'applied_at', 'device_stamp_count', 'device_weight']);
+                fputcsv($handle, ['name', 'email', 'stamp_count', 'weight', 'applied_at', 'device_stamp_count', 'device_weight', 'email_verified_at']);
 
                 $query = Stamp202611VoucherApplication::query();
                 // FR-54: 業者提出用から検証データ（test_ fingerprint）を除外。
@@ -322,6 +322,8 @@ class AdminController extends Controller
                                 $row->applied_at ? $row->applied_at->toDateTimeString() : '',
                                 $row->device_stamp_count,
                                 $row->device_weight,
+                                // メールアドレス確認の日時（FR-61・確認導入以前の応募は applied_at と同じ）
+                                $row->email_verified_at ? $row->email_verified_at->toDateTimeString() : '',
                             ]);
                         }
                     });

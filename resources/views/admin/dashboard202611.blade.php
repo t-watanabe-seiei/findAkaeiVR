@@ -298,6 +298,7 @@
                         <th>収集種数<br><small>（合算・参考）</small></th>
                         <th>1端末種数<br><small>（正本・FR-56）</small></th>
                         <th>当選倍率</th>
+                        <th>メール確認<br><small>（FR-61）</small></th>
                         <th>応募日時</th>
                     </tr>
                 </thead>
@@ -319,11 +320,22 @@
                                 <br><small style="color:#888;font-weight:normal;">合算基準の既存応募（grandfathering・FR-57）</small>
                             @endif
                         </td>
+                        <td>
+                            {{-- メールアドレス確認の状態（FR-61）・確認導入以前の応募は「確認済み」 --}}
+                            @if($application->isEmailVerified())
+                                <span style="color: #28a745; font-weight: bold;">確認済み</span>
+                                @if($application->isLegacyEmailApplication())
+                                    <br><small style="color:#888;font-weight:normal;">確認導入以前の応募</small>
+                                @endif
+                            @else
+                                <span style="color: #b00020; font-weight: bold;">未確認</span>
+                            @endif
+                        </td>
                         <td>{{ $application->applied_at ? $application->applied_at->tz('Asia/Tokyo')->format('Y/m/d H:i:s') : '-' }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #999;">データがありません</td>
+                        <td colspan="7" style="text-align: center; color: #999;">データがありません</td>
                     </tr>
                     @endforelse
                 </tbody>

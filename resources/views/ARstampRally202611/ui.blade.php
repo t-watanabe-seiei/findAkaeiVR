@@ -39,6 +39,8 @@
             <!-- お菓子のガラポン（5 / 10 / 15 / 20 種・各1回・最大4回・LocalStorage のみ・サーバー送信なし・FR-37〜FR-40） -->
             <div id="gacha-section">
                 <div class="gacha-title">🍬 お菓子のガラポン</div>
+                <!-- ガラポンは会場本部でのみ回せる（FR-60） -->
+                <div class="gacha-staff-note">ガラポンは会場本部スタッフにこの画面をお見せください</div>
                 <div id="gacha-buttons"></div>
                 <div id="gacha-note"></div>
             </div>
@@ -51,13 +53,34 @@
                 <div id="voucher-status"></div>
                 <button id="voucher-apply-button" type="button">商品券抽選に応募する</button>
                 <div id="voucher-form" style="display:none;">
-                    <label for="voucher-email">メールアドレス（1アドレスにつき1口）</label>
-                    <input id="voucher-email" type="email" inputmode="email" autocomplete="email" placeholder="example@example.com" />
-                    <label for="voucher-name">お名前（抽選結果の連絡用）</label>
-                    <input id="voucher-name" type="text" autocomplete="name" placeholder="山田 太郎" />
-                    <div class="voucher-form-row">
-                        <button id="voucher-submit" type="button">応募する</button>
-                        <button id="voucher-cancel" type="button">やめる</button>
+                    <!-- ステップ1: メールアドレス入力と送信先確認（FR-61） -->
+                    <div id="voucher-step-email">
+                        <label for="voucher-email">メールアドレス（1アドレスにつき1口）</label>
+                        <input id="voucher-email" type="email" inputmode="email" autocomplete="email" placeholder="example@example.com" />
+                        <p class="voucher-input-note">全角で入力しても自動で半角に直します</p>
+                        <label for="voucher-name">お名前（抽選結果の連絡用）</label>
+                        <input id="voucher-name" type="text" autocomplete="name" placeholder="山田 太郎" />
+                        <div id="voucher-email-confirm" class="voucher-email-confirm" style="display:none;">
+                            <p style="margin:0;">送信先: <strong id="voucher-email-confirm-target"></strong></p>
+                            <p style="margin:4px 0 0;">間違っていなければ「このアドレスに送信」をもう一度押してください。</p>
+                        </div>
+                        <div class="voucher-form-row">
+                            <button id="voucher-send-code" type="button">確認コードを送信</button>
+                            <button id="voucher-cancel" type="button">やめる</button>
+                        </div>
+                    </div>
+                    <!-- ステップ2: メールで届いた 6 桁の確認コードを入力して応募（FR-61） -->
+                    <div id="voucher-step-code" style="display:none;">
+                        <p class="voucher-code-target">確認コードを <strong id="voucher-code-email"></strong> に送信しました。<span id="voucher-code-ttl"></span> 分以内に入力してください。</p>
+                        <label for="voucher-code">届いた 6 桁の確認コード</label>
+                        <input id="voucher-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" />
+                        <div class="voucher-form-row">
+                            <button id="voucher-submit" type="button">応募する</button>
+                            <button id="voucher-resend-code" type="button">コードを再送信</button>
+                        </div>
+                        <div class="voucher-form-row">
+                            <button id="voucher-edit-email" type="button">メールアドレスを変更</button>
+                        </div>
                     </div>
                     <div id="voucher-error" role="alert"></div>
                 </div>

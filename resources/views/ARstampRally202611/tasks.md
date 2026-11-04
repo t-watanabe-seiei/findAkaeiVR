@@ -291,3 +291,61 @@
 - [ ] `capture_type` の運用（`marker_scan` は検出のみ・`ball_hit` は収集完了）がクライアント実装と一致していることを
   実機で確認（T37 / T48 と併せて実施）
 
+
+## 追記（2026-11-04）: ガラポンのスタッフ案内・倍率バッジ（FR-60）と応募のメールアドレス確認（FR-61・AC-22）
+
+背景: ①ガラポンは会場本部でのみ回せるため、スタンプ帳に「スタッフにこの画面をお見せください」が常時必要で、
+当選倍率（2 倍 / 3 倍）が視認しにくい。②抽選応募がメールアドレス入力のだけで、未実在アドレスの応募が
+業者提出 CSV に混ざる。そこで ①UI の強調、②6 桁コードによるメールアドレス確認を導入する。
+
+### Phase 3B 追加: UI の強調（FR-60）
+
+- [x] **T70** `ui.blade.php`: `#gacha-section` へ `.gacha-staff-note`（「ガラポンは会場本部スタッフにこの画面をお見せください」）を常時表示
+- [x] **T71** `head.blade.php`: `.voucher-weight-badge`（`--x2` 橙 / `--x3` 赤 / `--base` グレー小型）と `.gacha-staff-note` の CSS を追加。`js-prize.blade.php` の `VOUCHER_WEIGHT_INFO202611` / `voucherWeightBadge202611()` / `voucherToastHTML202611()` がバッジ要素で倍率を描画（文言は固定値のみ・外部入力を挿入しない）
+
+### Phase 3B 追加: メールアドレス確認（FR-61）
+
+- [x] **T72** migration `2026_11_04_000000_add_email_verification_to_stamp202611_voucher_applications_table`:
+  `email_code_sent_at` / `email_verified_at`（nullable）を追加し、既存行へ `email_verified_at = applied_at`（grandfathering）
+- [x] **T73** `Stamp202611VoucherApplication`: 2 列を fillable / datetime cast へ追加、`isEmailVerified()` / `isLegacyEmailApplication()`
+- [x] **T74** `config/ar202611.php`: `email_verification`（`enabled` / `code_ttl` 900 / `max_attempts` 5 / `resend_interval` 30 / `dns_check`）を env 付きで追加
+- [x] **T75** `App\Mail\Stamp202611VoucherCodeMail` + `resources/views/emails/stamp202611/voucher-code.blade.php`（同期送信・コードは本文のみ）
+- [x] **T76** `StampRally202611Controller`: `requestEmailCode()`（期限 → 資格 → 応募済み → 送信間隔の順で検証し Cache へ 6 桁を TTL 付き保持）、
+  `consumeEmailCode()`（`hash_equals` 一致で Cache 削除・試行回数管理）、`applyVoucher()` は一致後に応募行を作る（`code` は `nullable|max:10`）。
+  `check-status` へ `voucher.emailVerified`、`maskEmail()` でマスク済みアドレスのみ返す
+- [x] **T77** `routes/web.php` へ `POST /voucher-email-code`（`throttle:stamp202611_email_code`）、`AppServiceProvider` へ RateLimiter（1 分 6 回 / fingerprint）
+- [x] **T78** `ui.blade.php` / `js-prize.blade.php`: 2 ステップフォーム（`#voucher-step-email` → `#voucher-email-confirm`（送信先を 2 押し込み確認）→ `#voucher-step-code`）、
+  `normalizeEmailInput202611()`（全角 → 半角・スペース除去）、`requestVoucherEmailCode202611()`（CSRF 陳腐化は 1 回だけ再試行）、
+  `applyVoucher202611(email, name, code)`、`verification_required: false` は step2 スキップ。`head.blade.php` に 2 ステップ用の CSS
+- [x] **T79** 管理画面 / CSV: `dashboard202611` の応募一覧に確認状態（確認済み / 旧方式 / 未確認）、`AdminController::exportCsv()` の
+  `voucherApplications202611` へ `email_verified_at` 列
+
+### 検証（T80）
+
+- [x] `php -l`: `StampRally202611Controller.php` / `AdminController.php` / `Stamp202611VoucherApplication.php` / `StampRally202611Test.php` すべて OK
+- [x] `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test` → **OK (37 tests, 294 assertions)**
+  （追加 8 件: コード送信と Cache 保持／コード一致で応募完了（未送信・空・誤コードは 422）／試行上限で破棄／
+  再送信間隔 429／資格なしは送信しない／応募済みアドレスは送信しない／`check-status` の `emailVerified`／grandfathering、
+  ほかメール本文の描画確認 1 件）
+- [x] 全スイート: 既存の `Tests\Feature\ExampleTest`（`GET /` → 404）以外の失敗なし（`/` ルートを持たない既存の既知失敗）
+
+### T81 本番反映手順（FR-61）
+
+- [ ] `.env` へ SMTP 設定: `MAIL_MAILER=smtp` / `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_ENCRYPTION` /
+  `MAIL_FROM_ADDRESS=subscription@seiei.online` / `MAIL_FROM_NAME`（現在の `.env` は `MAIL_MAILER=log` = コードがメールで届かない）
+- [ ] `php artisan migrate --force`（2 列追加 + 既存行の `email_verified_at = applied_at`）。実行前に `stamp202611_voucher_applications` をバックアップし、
+  実行後に `SELECT COUNT(*) WHERE email_verified_at IS NULL` が 0 であることを確認（grandfathering 完了）
+- [ ] `php artisan optimize:clear`（非 TTY での実行方法は T65-2 参照。OPcache 利用時は `opcache_reset()` か PHP 再起動）
+- [ ] 実機確認: 10 種以上の端末で「確認コードを送信」→ 送信先確認 → メール受信 → コード入力 → 応募完了トースト（倍率バッジ表示）。
+  誤コード 1 回で「残り N 回」表示、60 秒未満の再送信で「送信間隔です」表示
+- [ ] 管理画面で `email_verified_at` が「確認済み」、既存応募が「旧方式（grandfathering）」と表示されること、
+  CSV に `email_verified_at` 列が入ることを確認
+- [ ] メールが届かない場合の切り分け: `MAIL_FROM_ADDRESS` のドメイン権限 → SMTP 認証（502 `mail_failed` が返る）→
+  一時的に `AR202611_EMAIL_VERIFICATION=false` へ（応募は 1 ステップに戻る）
+
+### 残（FR-61 関連の運用）
+
+- [ ] 確認コードのメール文面（差出人・件名・本文）を運営へ確認してもらう（`resources/views/emails/stamp202611/voucher-code.blade.php`）
+- [ ] 抽選実施前に `email_verified_at` が NULL の行（未確認）が存在しないこと運用で確認する（FR-61 では未確認行を作らないため 0 件のはず）
+- [ ] `dns_check=true` が参加者のドメインで誤検知しないか（DNS 解決できないドメインで 422 になる）を本番初日に監視する
+

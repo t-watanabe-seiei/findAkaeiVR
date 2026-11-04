@@ -332,6 +332,25 @@
         }
         .gacha-button:disabled { background-color: #ccc; color: #666; cursor: not-allowed; }
         #gacha-note { margin-top: 8px; font-size: 13px; color: #555; }
+        /* ガラポンは会場本部でのみ回せることの案内（FR-60） */
+        .gacha-staff-note {
+            margin-bottom: 8px; padding: 8px 10px; border-radius: 8px;
+            background: #fff8e1; border: 1px solid #f0c674; color: #7a5c00;
+            font-size: 13px; font-weight: bold; line-height: 1.4; text-align: center;
+        }
+        /* 当選確率の倍率バッジ（FR-60・2倍/3倍を色と太さで強調） */
+        .voucher-weight-badge {
+            display: inline-block; margin: 4px 0 2px; padding: 6px 14px;
+            border-radius: 999px; font-size: 16px; font-weight: 800;
+            line-height: 1.3; letter-spacing: .02em;
+        }
+        .voucher-weight-badge--x2 { background: #ffe9b0; border: 2px solid #e8a33d; color: #7a4b00; }
+        .voucher-weight-badge--x3 { background: #ffd0d6; border: 2px solid #e0426a; color: #8c1030; }
+        .voucher-weight-badge--base {
+            background: #eef2f7; border: 1px solid #c9d4e2; color: #33475f;
+            font-size: 13px; font-weight: 600;
+        }
+        .voucher-toast-note { margin-top: 6px; font-size: 13px; opacity: .9; }
         /* 市内共通商品券の抽選応募（FR-41〜FR-44） */
         #voucher-section { margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
         #voucher-status { font-size: 14px; color: #333; }
@@ -359,6 +378,25 @@
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
         }
         #voucher-error { margin-top: 8px; font-size: 13px; color: #b00020; font-weight: bold; }
+        /* メールアドレス確認の 2 ステップフォーム（FR-61） */
+        .voucher-input-note { margin: 4px 0 0; font-size: 12px; color: #777; }
+        .voucher-email-confirm {
+            margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+            background: #eaf4ff; border: 1px solid #9ec9f5; color: #14416e;
+            font-size: 14px; line-height: 1.5;
+        }
+        .voucher-code-target { margin: 10px 0 0; font-size: 13px; color: #14416e; }
+        #voucher-code { letter-spacing: .3em; font-weight: bold; text-align: center; }
+        #voucher-send-code {
+            flex: 1; padding: 12px; background-color: #1e88e5; color: #fff; border: none;
+            border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
+        }
+        #voucher-send-code:disabled { background-color: #999; cursor: not-allowed; }
+        #voucher-resend-code, #voucher-edit-email {
+            flex: 1; padding: 12px; background-color: #78909c; color: #fff; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        #voucher-resend-code:disabled, #voucher-edit-email:disabled { background-color: #b0bec5; cursor: not-allowed; }
         #clear-stamps {
             flex: 1; padding: 12px; background-color: #f44336; color: white; border: none;
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;

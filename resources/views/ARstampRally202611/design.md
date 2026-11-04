@@ -377,6 +377,52 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
   `test_` で始まる行を出力しない（`recentScans` / `dailyScans` / `markerStats` も同じ）。検証分も含めて確認する
   場合は `&show_test=1` を付ける。**抽選実施直前は `show_test` を付けない CSV を提出する**（`test-data-guide.md` §2.3）
 
+### 5.7 応募のメールアドレス確認（FR-61・2026-11-04 追加）
+
+**目的**: 実在するメールアドレスへ応募させる（未確認行を業者提出 CSV に混ぜない）。コードは DB に残さず Cache だけ保持して個人情報を増やさない。
+
+#### 送信 `POST /stamp202611/voucher-email-code`（`requestEmailCode()`）
+- ルート: `routes/web.php` の admin 配下グループ内、`->middleware('throttle:stamp202611_email_code')`（`AppServiceProvider::boot()` で 1 分 6 回 / fingerprint）
+- validate: `fingerprint` 必須 string、`email` 必須 `email|max:190`（`dns_check` が true のとき `|dns` を連結）
+- 順序（無駄なメールを送らない）: ①応募期限経過 → 422 `deadline_passed` ②`deviceStampCountFor() < voucher_threshold()` → 422 `not_eligible` ③`email` 既存応募あり → 422 `already_applied` ④`enabled=false` → `{success:true, verification_required:false}`（送信なし）⑤`resend_interval` 以内の再送信 → 429 `too_soon`（`waitSeconds`）
+- コード生成・保持: `random_int(100000, 999999)` を Cache キー `ar202611:voucher-email-code:{fingerprint}` に `{email, code, sent_at, expires_at, attempts: 0}` で `code_ttl` 秒。単位は fingerprint（応募と同一単位）
+- 送信: `Mail::to($email)->send(new Stamp202611VoucherCodeMail($code, $ttlMinutes))`（**同期送信**。`ShouldQueue` を付けない = Xserver でキューワーカーを常駐させない）。`Throwable` を捕まえて Cache を破棄し 502 `mail_failed`（`report()` でログ）
+- 返却: `{success, verification_required: true, email: maskEmail($email), ttlMinutes, resendInterval}`。`maskEmail()` は `t***@example.com` 形式で**完全なアドレスを画面へ返さない**
+
+#### 応募 `applyVoucher()` 内の確認（`consumeEmailCode()`）
+- validate へ `code`（`nullable|string|max:10`）を追加。`email` は trim + strtolower（FR-44）
+- Cache entry 無し / 期限切れ / 送信時と異なる `email` → 422 `code_expired`（entry 削除）
+- `code` 空 → 422 `code_required`（`remainingAttempts`）
+- `attempts >= max_attempts` → 422 `code_expired`（entry 削除）
+- 不一致（`hash_equals`）→ 422 `code_invalid` + `remainingAttempts`。`attempts` を +1 して**TTL は延長せず**同一期限で再保持し、残り 0 で entry 削除
+- 一致 → Cache を削除（使い捨て）→ 応募行を INSERT（`email_code_sent_at = sent_at`、`email_verified_at = now()`）
+- 同一 `fingerprint` の再応募（倍率の上方更新・FR-43）は**確認済み行への操作**のため `code` を要求しない
+
+#### 列と grandfathering
+- migration `2026_11_04_000000_add_email_verification_to_stamp202611_voucher_applications_table`: `email_code_sent_at` / `email_verified_at`（nullable・`device_info` の後）
+- `up()` は既存行へ `UPDATE ... SET email_verified_at = applied_at WHERE email_verified_at IS NULL AND applied_at IS NOT NULL`（**確認導入前の利用者へ再確認を要求しない**）
+- `down()` は 2 列の `dropColumn` のみ。既存列・既存データへ触れない
+- モデル: `isEmailVerified()`（`email_verified_at !== null`）/ `isLegacyEmailApplication()`（`email_code_sent_at === null` = 確認導入以前の行）
+
+#### メール本文
+- `App\Mail\Stamp202611VoucherCodeMail`（`public readonly string $code` / `int $ttlMinutes`）→ `resources/views/emails/stamp202611/voucher-code.blade.php`（インラインスタイルの HTML・コードは本文のみ）
+- 件名「【ARスタンプラリー202611】商品券抽選の確認コード」。送信元は `config('mail.from.address')`
+
+#### クライアント（`js-prize.blade.php` / `ui.blade.php`）
+- `#voucher-step-email`（アドレス + お名前）→ `#voucher-email-confirm`（**2 押し込み**で送信先を目視確認 → 「このアドレスに送信」）→ `#voucher-step-code`（6 桁入力・`autocomplete="one-time-code"`・再送信 / メールアドレス変更）
+- `normalizeEmailInput202611()`: 全角英数記号（U+FF01〜U+FF5E）を半角へ、全角 / 半角スペースを除去して lowercase。補正した場合は「半角に直しました: …」を表示
+- `verification_required: false`（確認無効の設定）は step2 を飛ばして `applyVoucher202611(email, name, '')` を呼ぶ
+- エラー種別は `voucherCodeErrorText202611()` で文言化（`too_soon` は `waitSeconds` 秒表示、`code_invalid` は残り回数を表示して入力欄を空にする）
+
+#### 管理画面 / CSV
+- `dashboard202611` の応募一覧に確認状態（確認済み / 旧方式（grandfathering）/ 未確認）を表示
+- CSV `voucherApplications202611` へ `email_verified_at` を追加（`name, email, stamp_count, weight, applied_at, email_verified_at`）
+
+#### 本番の SMTP（`.env`）
+- `MAIL_MAILER=smtp` + `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_ENCRYPTION`（Xserver の SMTP 情報）、`MAIL_FROM_ADDRESS` は送信元アドレス（`subscription@seiei.online`）
+- 確認を一時的に止める: `AR202611_EMAIL_VERIFICATION=false`（応募は従来どおり 1 ステップへ戻る）。`MAIL_MAILER=log` の開発環境ではコードが `storage/logs/laravel.log` にしか出ないため確認フローを実機検証できない
+- `dns_check=true` は DNS 参照を伴うため、SMTP とは別に解決できないドメインがある場合だけ `AR202611_EMAIL_DNS_CHECK=false` で切る
+
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）
 - 期間: `config('ar202611.start')` / `config('ar202611.end')` を `Asia/Tokyo` → `UTC` に変換（既定 2026-11-01 00:00:00 〜 2026-11-30 23:59:59）

@@ -118,6 +118,9 @@ Route::prefix('stamp202611')->group(function () {
         ->middleware('throttle:stamp202611_scan');
     Route::post('/check-status', [App\Http\Controllers\StampRally202611Controller::class, 'checkStatus'])
         ->middleware('throttle:stamp202611_check');
+    // 抽選応募のメールアドレス確認コード送信（FR-61・design §5.7）
+    Route::post('/voucher-email-code', [App\Http\Controllers\StampRally202611Controller::class, 'requestEmailCode'])
+        ->middleware('throttle:stamp202611_email_code');
     Route::post('/apply-voucher', [App\Http\Controllers\StampRally202611Controller::class, 'applyVoucher'])
         ->middleware('throttle:stamp202611_apply');
 });

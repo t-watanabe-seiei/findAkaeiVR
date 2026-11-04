@@ -30,6 +30,19 @@ return [
     'collect_start'  => env('AR202611_COLLECT_START', '2026-10-29 00:00:00'),
     'collect_end'    => env('AR202611_COLLECT_END', '2026-11-15 23:59:59'),
     'apply_deadline' => env('AR202611_APPLY_DEADLINE', '2026-11-16 23:59:59'),
+    // ── メールアドレス確認（FR-61）────────────────────────────────────────
+    // 抽選応募時に 6 桁の確認コードをメール送信して本人確認する。
+    // enabled = false は確認を省略する開発用フォールバック（SMTP 未設定環境など）。
+    // 送信元は config('mail.from.address')。本番（Xserver）は
+    // MAIL_MAILER=smtp / MAIL_USERNAME=MAIL_FROM_ADDRESS=subscription@seiei.online を必須（design.md §5.7）。
+    'email_verification' => [
+        'enabled'         => env('AR202611_EMAIL_VERIFICATION', true),
+        'code_ttl'        => (int) env('AR202611_EMAIL_CODE_TTL', 900),        // 確認コードの有効期限（秒・既定 15 分）
+        'max_attempts'    => (int) env('AR202611_EMAIL_MAX_ATTEMPTS', 5),      // 1 コードあたりの入力試行上限
+        'resend_interval' => (int) env('AR202611_EMAIL_RESEND_INTERVAL', 30),  // 再送信の間隔（秒）
+        'dns_check'       => env('AR202611_EMAIL_DNS_CHECK', true),            // email:rfc,dns でドメイン存在を確認
+    ],
+
     // ── 複数端末での検証（FR-54）──────────────────────────────────────────
     // `?{test_param}=1` を付けた URL で参加すると fingerprint に test_prefix を接頭する。
     // 管理画面と業者提出 CSV は通常その計測を除外し、`?show_test=1` を付けたときだけ表示する

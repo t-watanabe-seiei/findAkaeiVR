@@ -43,5 +43,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('stamp202611_scan', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
         RateLimiter::for('stamp202611_check', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
         RateLimiter::for('stamp202611_apply', fn (Request $request) => Limit::perHour(10)->by($key202611($request)));
+        // 確認コード送信（FR-61）: 1 端末（fingerprint）あたり 1 時間 3 回まで
+        RateLimiter::for('stamp202611_email_code', fn (Request $request) => Limit::perHour(3)->by($key202611($request)));
     }
 }

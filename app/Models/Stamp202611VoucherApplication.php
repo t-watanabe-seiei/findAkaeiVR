@@ -37,6 +37,8 @@ class Stamp202611VoucherApplication extends Model
         'ip_address',
         'device_info',
         'applied_at',
+        'email_code_sent_at',
+        'email_verified_at',
     ];
 
     protected $casts = [
@@ -45,5 +47,25 @@ class Stamp202611VoucherApplication extends Model
         'tier' => 'integer',
         'weight' => 'integer',
         'applied_at' => 'datetime',
+        'email_code_sent_at' => 'datetime',
+        'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * メールアドレス確認が完了しているか（FR-61）。
+     * 確認導入以前の行は migration で email_verified_at = applied_at が入っているため true（grandfathering）。
+     */
+    public function isEmailVerified(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    /**
+     * 確認コード送信を経由して作成された応募か（管理画面表示用）。
+     * 確認導入以前の行（grandfathering）は email_code_sent_at が NULL のまま残る。
+     */
+    public function isLegacyEmailApplication(): bool
+    {
+        return $this->email_code_sent_at === null;
+    }
 }

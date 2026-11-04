@@ -3,10 +3,17 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\StampRally202611Controller;
+use App\Mail\Stamp202611VoucherCodeMail;
 use App\Models\MarkerScan;
 use App\Models\Stamp202611VoucherApplication;
 use Carbon\Carbon;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -18,6 +25,75 @@ use Tests\TestCase;
 class StampRally202611Test extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * 既定ではメールアドレス確認（FR-61）を無効にする。
+     * 確認導入以前の応募フローを検証する既存テストをそのまま通すためで、
+     * 確認フロー自体のテストは enableEmailVerification() で有効化する。
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'ar202611.email_verification.enabled' => false,
+            'ar202611.email_verification.dns_check' => false,
+        ]);
+    }
+
+    /**
+     * メールアドレス確認を有効化する（既定で dns_check はオフ = テストで DNS 参照しない）。
+     * $overrides は config/ar202611 の email_verification 配下のキー名で上書きする。
+     *
+     * @param array<string, mixed> $overrides 例: ['max_attempts' => 2, 'resend_interval' => 60]
+     */
+    private function enableEmailVerification(array $overrides = []): void
+    {
+        $values = array_merge([
+            'enabled' => true,
+            'dns_check' => false,
+            'code_ttl' => 900,
+            'max_attempts' => 5,
+            'resend_interval' => 30,
+        ], $overrides);
+
+        foreach ($values as $key => $value) {
+            config(['ar202611.email_verification.' . $key => $value]);
+        }
+    }
+
+    /**
+     * サーバーが Cache に保持している確認コードを取り出す（テスト内のコード一致確認用）。
+     *
+     * @return array{email:string,code:string,sent_at:int,expires_at:int,attempts:int}|null
+     */
+    private function cachedEmailCode(string $fingerprint): ?array
+    {
+        $entry = Cache::get('ar202611:voucher-email-code:' . $fingerprint);
+
+        return is_array($entry) ? $entry : null;
+    }
+
+    /** 確認コード送信 API（FR-61） */
+    private function requestEmailCode(string $fingerprint, string $email)
+    {
+        return $this->postJson('/stamp202611/voucher-email-code', [
+            'fingerprint' => $fingerprint,
+            'email' => $email,
+        ]);
+    }
+
+    /** 確認コード付きの応募（FR-61） */
+    private function applyVoucherWithCode(string $fingerprint, string $email, string $code)
+    {
+        return $this->postJson('/stamp202611/apply-voucher', [
+            'fingerprint' => $fingerprint,
+            'deviceInfo' => ['isIOS' => false],
+            'email' => $email,
+            'name' => 'テスト 太郎',
+            'code' => $code,
+        ]);
+    }
 
     /**
      * 収集期間内の日付に N 種のマーカー収集記録を作る（JST 壁時計で保存される）。
@@ -898,6 +974,259 @@ class StampRally202611Test extends TestCase
         $application->refresh();
         $this->assertSame(7, (int) $application->device_stamp_count);
         $this->assertSame(2, (int) $application->weight);
+    }
+
+    // ── メールアドレス確認（FR-61 / design §5.7）─────────────────────────
+
+    /**
+     * FR-61: 確認コードはメール送信され Cache に保持される。応募行はこの時点で作らない。
+     */
+    public function test_email_code_is_sent_and_held_in_cache(): void
+    {
+        $this->enableEmailVerification();
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-verify', 12);
+
+        $this->requestEmailCode('fp-verify', 'Verify@Example.com')
+            ->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'verification_required' => true,
+                'email' => 'v*****@example.com',
+                'ttlMinutes' => 15,
+            ]);
+
+        Mail::assertSent(Stamp202611VoucherCodeMail::class, function (Stamp202611VoucherCodeMail $mail) {
+            return $mail->hasTo('verify@example.com') && preg_match('/^\d{6}$/', $mail->code) === 1;
+        });
+
+        $entry = $this->cachedEmailCode('fp-verify');
+        $this->assertIsArray($entry);
+        $this->assertSame('verify@example.com', $entry['email']);
+        $this->assertSame(0, (int) $entry['attempts']);
+        $this->assertSame((int) $entry['sent_at'] + 900, (int) $entry['expires_at']);
+
+        // コード送信だけでは応募行を作らない（未確認行を抽選 CSV に混ぜない）
+        $this->assertSame(0, Stamp202611VoucherApplication::where('fingerprint', 'fp-verify')->count());
+    }
+
+    /**
+     * FR-61: 確認コードが無い・一致しない応募は行を作らない。正しいコードで応募完了する。
+     */
+    public function test_apply_voucher_requires_valid_email_code(): void
+    {
+        $this->enableEmailVerification();
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-code', 10);
+
+        // コード未送信のままの応募は code_expired（Cache に entry が無い）
+        $this->applyVoucherWithCode('fp-code', 'code@example.com', '123456')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_expired']);
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+
+        $this->requestEmailCode('fp-code', 'code@example.com')->assertStatus(200);
+        $entry = $this->cachedEmailCode('fp-code');
+        $this->assertIsArray($entry);
+
+        // コード空 → code_required
+        $this->applyVoucher('fp-code', 'code@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_required', 'remainingAttempts' => 5]);
+
+        // 誤ったコード → code_invalid（残り回数が減る）
+        $this->applyVoucherWithCode('fp-code', 'code@example.com', '000000')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_invalid', 'remainingAttempts' => 4]);
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+
+        // 正しいコード → 応募成功
+        $this->applyVoucherWithCode('fp-code', 'code@example.com', (string) $entry['code'])
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'applied' => true, 'weight' => 1]);
+
+        $application = Stamp202611VoucherApplication::where('fingerprint', 'fp-code')->firstOrFail();
+        $this->assertTrue($application->isEmailVerified());
+        $this->assertFalse($application->isLegacyEmailApplication());
+        $this->assertNotNull($application->email_code_sent_at);
+        $this->assertNotNull($application->email_verified_at);
+
+        // 消費済みコードは Cache から消える（再利用できない）
+        $this->assertNull($this->cachedEmailCode('fp-code'));
+    }
+
+    /**
+     * FR-61: 誤入力が続く場合はコードを破棄し、新しい送信を要求する（総当たり対策）。
+     */
+    public function test_email_code_attempts_are_limited(): void
+    {
+        $this->enableEmailVerification(['max_attempts' => 2, 'resend_interval' => 0]);
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-attempts', 12);
+        $this->requestEmailCode('fp-attempts', 'attempts@example.com')->assertStatus(200);
+        $entry = $this->cachedEmailCode('fp-attempts');
+        $this->assertIsArray($entry);
+
+        $this->applyVoucherWithCode('fp-attempts', 'attempts@example.com', '000000')
+            ->assertStatus(422)
+            ->assertJson(['error' => 'code_invalid', 'remainingAttempts' => 1]);
+
+        $this->applyVoucherWithCode('fp-attempts', 'attempts@example.com', '000001')
+            ->assertStatus(422)
+            ->assertJson(['error' => 'code_invalid', 'remainingAttempts' => 0]);
+
+        // 上限到達でコードは破棄済み → 正しいコードでも code_expired
+        $this->assertNull($this->cachedEmailCode('fp-attempts'));
+        $this->applyVoucherWithCode('fp-attempts', 'attempts@example.com', (string) $entry['code'])
+            ->assertStatus(422)
+            ->assertJson(['error' => 'code_expired']);
+
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+    }
+
+    /**
+     * FR-61: 再送信は resend_interval まで断る（送信コスト対策）。
+     */
+    public function test_email_code_resend_is_rate_limited(): void
+    {
+        $this->enableEmailVerification(['resend_interval' => 60]);
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-resend', 12);
+
+        $this->requestEmailCode('fp-resend', 'resend@example.com')->assertStatus(200);
+        $first = $this->cachedEmailCode('fp-resend');
+
+        $this->requestEmailCode('fp-resend', 'resend@example.com')
+            ->assertStatus(429)
+            ->assertJson(['success' => false, 'error' => 'too_soon', 'waitSeconds' => 60]);
+        Mail::assertSentCount(1);
+
+        // 間隔経過後は再送信できる（コードは作り直す）
+        $this->travelTo(Carbon::parse('2026-11-14 10:01:01', 'Asia/Tokyo'));
+        $this->requestEmailCode('fp-resend', 'resend@example.com')->assertStatus(200);
+        Mail::assertSentCount(2);
+
+        $second = $this->cachedEmailCode('fp-resend');
+        $this->assertIsArray($second);
+        $this->assertNotSame($first['code'], $second['code']);
+    }
+
+    /**
+     * FR-61: 応募資格が無い端末にはコードを送らない（無駄なメールを送らない）。
+     */
+    public function test_request_email_code_rejects_ineligible_device(): void
+    {
+        $this->enableEmailVerification();
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-poor', 9);
+
+        $this->requestEmailCode('fp-poor', 'poor@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'not_eligible', 'deviceStampCount' => 9]);
+
+        Mail::assertNothingSent();
+        $this->assertNull($this->cachedEmailCode('fp-poor'));
+    }
+
+    /**
+     * FR-61 / FR-44: 応募済みのメールアドレスにはコードを送らない。
+     */
+    public function test_request_email_code_rejects_email_already_applied(): void
+    {
+        $this->enableEmailVerification();
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-a', 10);
+        $this->seedScans('fp-b', 12);
+
+        $this->requestEmailCode('fp-a', 'dup@example.com')->assertStatus(200);
+        $entry = $this->cachedEmailCode('fp-a');
+        $this->assertIsArray($entry);
+        $this->applyVoucherWithCode('fp-a', 'dup@example.com', (string) $entry['code'])->assertStatus(200);
+
+        $this->requestEmailCode('fp-b', 'DUP@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'already_applied']);
+        $this->assertNull($this->cachedEmailCode('fp-b'));
+    }
+
+    /**
+     * FR-61: check-status は確認状態を返す（未確認行を作らないため applied 時のみ true）。
+     */
+    public function test_check_status_reports_email_verification_state(): void
+    {
+        $this->enableEmailVerification();
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-status', 15);
+
+        $this->checkStatus('fp-status')
+            ->assertStatus(200)
+            ->assertJson(['voucher' => ['applied' => false, 'emailVerified' => false]]);
+        $this->assertNull($this->cachedEmailCode('fp-status'));
+
+        $this->requestEmailCode('fp-status', 'status@example.com')->assertStatus(200);
+        $entry = $this->cachedEmailCode('fp-status');
+        $this->assertIsArray($entry);
+        $this->applyVoucherWithCode('fp-status', 'status@example.com', (string) $entry['code'])->assertStatus(200);
+
+        $this->checkStatus('fp-status')
+            ->assertStatus(200)
+            ->assertJson(['voucher' => ['applied' => true, 'emailVerified' => true]]);
+    }
+
+    /**
+     * FR-61 grandfathering: 確認導入以前の応募行は email_verified_at = applied_at で確認済み扱い。
+     */
+    public function test_migration_grandfathers_existing_applications(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 12:00:00', 'Asia/Tokyo'));
+
+        // 確認導入前の状態に戻す（列を落とし、マイグレーション記録も消す）
+        $this->seedLegacyApplication('fp-old', 'old@example.com', 15, 2);
+        Schema::table('stamp202611_voucher_applications', function (Blueprint $table) {
+            $table->dropColumn(['email_code_sent_at', 'email_verified_at']);
+        });
+        DB::table('migrations')
+            ->where('migration', '2026_11_04_000000_add_email_verification_to_stamp202611_voucher_applications_table')
+            ->delete();
+
+        Artisan::call('migrate', [
+            '--path' => base_path('database/migrations/2026_11_04_000000_add_email_verification_to_stamp202611_voucher_applications_table.php'),
+            '--realpath' => true,
+            '--force' => true,
+        ]);
+
+        $application = Stamp202611VoucherApplication::where('fingerprint', 'fp-old')->firstOrFail();
+        $this->assertTrue($application->isEmailVerified());
+        $this->assertTrue($application->isLegacyEmailApplication());
+        $this->assertSame(
+            $application->applied_at->toDateTimeString(),
+            $application->email_verified_at->toDateTimeString()
+        );
+    }
+
+    /**
+     * FR-61: 確認コードメールの本文が描画される（Blade テンプレートの健全性チェック）。
+     */
+    public function test_email_code_mail_renders_code_and_ttl(): void
+    {
+        $html = (new Stamp202611VoucherCodeMail('123456', 15))->render();
+
+        $this->assertStringContainsString('123456', $html);
+        $this->assertStringContainsString('15 分', $html);
     }
 }
 

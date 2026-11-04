@@ -196,6 +196,28 @@ OPcache を使っている場合は `opcache_reset()` か PHP / Web サーバー
 実行前に `stamp202611_voucher_applications` をバックアップし、付与済み `weight` は下がらない（FR-57）。
 詳細は `test-data-guide.md` §10.1。
 
+### 2026-11-04 — ガラポンのスタッフ案内・倍率バッジ（FR-60）と応募のメールアドレス確認（FR-61）
+
+ガラポンは会場本部でのみ回せる案内をスタンプ帳へ常時表示し、当選倍率はバッジで強調する。
+抽選応募は 6 桁の確認コード（メール送信）を挟み、**未確認の応募行を業者提出 CSV に混ぜない**
+（`requirements.md` FR-60 / FR-61・AC-22 ／ `design.md` §5.7 ／ `tasks.md` T70〜T81）。
+
+| # | 対象 | 変更内容 |
+|---|------|---------|
+| 1 | `ui.blade.php` / `head.blade.php` | `#gacha-section` に「ガラポンは会場本部スタッフにこの画面をお見せください」（`.gacha-staff-note`）。倍率は `.voucher-weight-badge`（2 倍 = 橙 / 3 倍 = 赤 / 1 倍 = グレー小型）で `#voucher-status` と応募完了トーストに表示 |
+| 2 | migration `2026_11_04_000000_add_email_verification_to_...` | `email_code_sent_at` / `email_verified_at`（nullable）を追加。既存行は `email_verified_at = applied_at`（**確認導入前の利用者へ再確認を要求しない**） |
+| 3 | `StampRally202611Controller` | `POST /stamp202611/voucher-email-code`（`requestEmailCode()`）で 6 桁コードを Cache（`ar202611:voucher-email-code:{fingerprint}`・TTL 900 秒）へ保持して送信。`apply-voucher` は `consumeEmailCode()` の一致後に応募行を作る（`code_expired` / `code_required` / `code_invalid` / 429 `too_soon` / 502 `mail_failed`）。`check-status` へ `voucher.emailVerified` |
+| 4 | `App\Mail\Stamp202611VoucherCodeMail` + `resources/views/emails/stamp202611/voucher-code.blade.php` | 確認コードメール（同期送信・コードは本文のみ・DB 保存なし）。送信元は `config('mail.from.address')` |
+| 5 | `js-prize.blade.php` / `ui.blade.php` | 2 ステップ応募（アドレス入力 → **送信先の目視確認** → コード入力）。全角英数記号は自動で半角へ、スペースは除去。確認無効設定（`verification_required: false`）は従来どおり 1 ステップ |
+| 6 | `dashboard202611.blade.php` / `AdminController` | 応募一覧に確認状態（確認済み / 旧方式 / 未確認）。CSV `voucherApplications202611` へ `email_verified_at` 列を追加 |
+| 7 | `tests/Feature/StampRally202611Test.php` | 確認系 9 テスト追加（送信と Cache 保持／コード一致で応募完了／試行上限／再送信間隔／資格なし・応募済みは送信しない／`emailVerified`／grandfathering／メール本文）→ クラス **37 tests / 294 assertions PASS** |
+
+**本番適用手順**: ① `.env` へ SMTP 設定（`MAIL_MAILER=smtp` / `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` /
+`MAIL_ENCRYPTION` / `MAIL_FROM_ADDRESS=subscription@seiei.online`。現在のローカル `.env` は `MAIL_MAILER=log` でコードがメールで届かない）
+→ ② `php artisan migrate --force`（実行前に `stamp202611_voucher_applications` をバックアップ、実行後に `email_verified_at IS NULL` が 0 件であることを確認）
+→ ③ `php artisan optimize:clear` → ④ 実機で 2 ステップ応募と倍率バッジ表示を確認。
+確認を一時的に止めるなら `AR202611_EMAIL_VERIFICATION=false`（応募は 1 ステップに戻る）。
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。
