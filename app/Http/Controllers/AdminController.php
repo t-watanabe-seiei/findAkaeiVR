@@ -1087,7 +1087,7 @@ class AdminController extends Controller
             'model_16' => 'かわうそ',
             'model_17' => 'カピバラ',
             'model_18' => 'きつね',
-            'model_19' => 'なかけもの',
+            'model_19' => 'なまけもの',
             'model_20' => 'バーガー',
         ];
 

@@ -25,7 +25,7 @@
             'model_16': { name: 'かわうそ', icon: '🐾', model: '{{ $dir }}/Model_16.glb' },
             'model_17': { name: 'カピバラ', icon: '🐾', model: '{{ $dir }}/Model_17.glb' },
             'model_18': { name: 'きつね', icon: '🐾', model: '{{ $dir }}/Model_18.glb' },
-            'model_19': { name: 'なかけもの', icon: '🐾', model: '{{ $dir }}/Model_19.glb' },
+            'model_19': { name: 'なまけもの', icon: '🐾', model: '{{ $dir }}/Model_19.glb' },
             'model_20': { name: 'バーガー', icon: '🐾', model: '{{ $dir }}/Model_20.glb' }
         };
 
