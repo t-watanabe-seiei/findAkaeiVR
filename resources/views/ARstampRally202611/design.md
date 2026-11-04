@@ -61,12 +61,13 @@
 | ARstampRally202611
 |--------------------------------------------------------------------------
 | アセット差し替え・閾値・集計期間の単一切替点。
-| cg/202611 へ切り替える場合は asset_dir を変更し、
+| 202611 専用アセット（cg/202611）へ切替済み（2026-11-04・T60）。
+| 差し替える場合は asset_dir を変更し、
 | public/sw-stamp202611.js の ASSET_DIR と VERSION を同期する（FR-36）。
 */
 
 return [
-    'asset_dir'    => env('AR202611_ASSET_DIR', '202610'),
+    'asset_dir'    => env('AR202611_ASSET_DIR', '202611'),
     'marker_count' => (int) env('AR202611_MARKER_COUNT', 20),
 
     // お菓子のガラポン: 到達段階（各 1 回・最大 4 回）。回数はクライアント LocalStorage で管理（FR-37〜FR-40）
@@ -110,11 +111,12 @@ return [
 `applyVoucher()` 内で `self::voucherThreshold()` / `self::weightFor($stampCount)` を使用する（422 の文言も同メソッドから生成）。
 ガラポン段階 `candy_tiers` は blade の `@json()` でクライアントへ注入し、JS 側に数値を直書きしない。
 
-### 3.3 `cg/202611` への切替手順（FR-36）
-1. `public/cg/202611/` に `Model_00.glb`〜`Model_20.glb` と `pattern-maker00.patt`〜`pattern-maker20.patt` を配置（同名規則 Q-6）
-2. `config/ar202611.php` の `asset_dir` を `'202611'` に変更（または `.env` の `AR202611_ASSET_DIR=202611`）→ `php artisan config:cache`（本番）
-3. `public/sw-stamp202611.js` の `ASSET_DIR` を `'202611'`、`VERSION` を `'v2'` に変更（precache 差し替えと旧キャッシュ破棄）
-4. 検証: `GET /stamp202611` の pattern / lazy-model URL が `cg/202611/` になっているか、SW の CORE_URLS が 21 枚分生成されるか
+### 3.3 `cg/202611` への切替手順（FR-36）→ **実施済み（2026-11-04・tasks.md T60）**
+1. `public/cg/202611/` に `Model_00.glb`〜`Model_20.glb` と `pattern-maker00.patt`〜`pattern-maker20.patt` を配置（同名規則 Q-6）→ **42 点配置済み**
+2. `config/ar202611.php` の `asset_dir` を `'202611'` に変更（または `.env` の `AR202611_ASSET_DIR=202611`）→ `php artisan config:cache`（本番）→ **変更済み**
+3. `public/sw-stamp202611.js` の `ASSET_DIR` を `'202611'`、`VERSION` を `'v2'` に変更（precache 差し替えと旧キャッシュ破棄）→ **変更済み**
+4. 検証: `GET /stamp202611` の pattern / lazy-model URL が `cg/202611/` になっているか、SW の CORE_URLS が 21 枚分生成されるか → **合格**（render 出力 `cg/202611/` 43 箇所・`cg/202610/` 0 箇所 / `CORE_URLS` は `ASSET_DIR` 展開で 21 枚）
+5. 動物名が変わる場合は `js-stamps.blade.php` の `STAMPS[].name` と `AdminController::dashboard202611()` の `$animals` を**同時に**更新する（202611 名の一覧は `asset-swap-guide.md` §2.1）→ **更新済み**
 
 ### 3.4 検証（テスト）データの分離（FR-54 / FR-55）
 
@@ -278,7 +280,7 @@ detectedStampCountFor(fingerprint)       … 検出のみ（表示・スタッ�
 | クラス / メソッド | `StampRally202610Controller` / `dashboard202610()` | `StampRally202611Controller` / `dashboard202611()` |
 | JS 関数・グローバル | `getUserId202610` / `CookieHelper202610` / `generateUUID202610` / `STAMPS` 等の 202610 系 | `getUserId202611` / `CookieHelper202611` / `generateUUID202611` 等へ |
 | console プレフィックス | `[AR202610]` | `[AR202611]` |
-| アセット参照 | `cg/202610/`（直書き） | `cg/{config('ar202611.asset_dir')}/`（既定 `202610`） |
+| アセット参照 | `cg/202610/`（直書き） | `cg/{config('ar202611.asset_dir')}/`（既定 `202611`・T60 で切替済み） |
 
 - 置換漏れは AC-3（`grep -n "202610" resources/views/ARstampRally202611/` がコメント中の参照を除き 0 件）で検出する。
 - 共用で残す意図的な識別子: `cg/poke_ball_seinei2.glb`、`cg/sound_stamp01.mp3` / `sound_stamp02.mp3`、`js/objects/ball.obj|ball.mtl`、`js/sounds/loading.ogg`、`img/howToOperate.png`、`css/stampRally.css`、`js/ar-engine.min.js` 等の共有ライブラリ（変更しない）。
@@ -381,7 +383,8 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 - 出力変数: `animalStats` / `recentScans` / `dailyStats` / `dailyUniqueUsers` / **`voucherTotal`** / **`voucherByWeight`**（weight 1/2/3 の人数）/ **`voucherApplications`**（ページネーション 20 件・`q` で name / email 検索）
 - CSV ボタン: `GET /admin/export?dataset=voucherApplications202611&start=…&end=…`（§5.6）。画面上に「業者提出用 CSV ダウンロード」ボタンを配置し、admin 認証下でのみ個人情報を見せる（FR-47）
 - 景品交換（`prize_exchanges`）の集計ブロックは 202611 では**表示しない**（景品コード廃止・FR-8）
-- 動物リスト: `model_01`〜`model_20`（202610 と同一。`cg/202611` 差し替え後も動物名が同じ場合は変更不要）
+- 動物リスト: `model_01`〜`model_20`（キーは 202610 と同一。ラベルは 202611 専用素材の動物名へ更新済み・T60。
+  `js-stamps.blade.php` の `STAMPS[].name` と同一にする / 一覧は `asset-swap-guide.md` §2.1）
 - ビュー: `resources/views/admin/dashboard202611.blade.php`（`dashboard202610.blade.php` の期間ラベル・ルート名を 202611 化）
 - **検証データ（FR-55）**: 上記の集計はすべて `applyTestFilter()` を経由し、既定で `test_` 始まりの fingerprint を除外する。
   `?show_test=1` で含めて表示し、画面上部のリンクで切替（表示中は現在の状態と接頭辞を明示）。検索フォームは

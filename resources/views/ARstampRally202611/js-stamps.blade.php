@@ -3,27 +3,30 @@
     $dir = config('ar202611.asset_dir');
 @endphp
         // ========== スタンプ定義 ==========
+        // name は 202611 専用アセット（cg/202611/Model_NN.glb）の動物名。
+        // AdminController::dashboard202611() の $animals と必ず同一にする（管理画面のラベルと一致させる）。
+        // キー model_NN（= marker_id / hitbox stampId）と model パスは変更しない。
         const STAMPS = {
-            'model_01': { name: 'ひつじ', icon: '🐾', model: '{{ $dir }}/Model_01.glb' },
-            'model_02': { name: 'コウモリ', icon: '🐾', model: '{{ $dir }}/Model_02.glb' },
-            'model_03': { name: 'アジ', icon: '🐾', model: '{{ $dir }}/Model_03.glb' },
-            'model_04': { name: 'コアラ', icon: '🐾', model: '{{ $dir }}/Model_04.glb' },
-            'model_05': { name: 'あざらし', icon: '🐾', model: '{{ $dir }}/Model_05.glb' },
-            'model_06': { name: 'ぶた', icon: '🐾', model: '{{ $dir }}/Model_06.glb' },
-            'model_07': { name: 'モモンガ', icon: '🐾', model: '{{ $dir }}/Model_07.glb' },
-            'model_08': { name: 'ミーアキャット', icon: '🐾', model: '{{ $dir }}/Model_08.glb' },
-            'model_09': { name: 'こづめかわうそ', icon: '🐾', model: '{{ $dir }}/Model_09.glb' },
-            'model_10': { name: 'コンドル', icon: '🐾', model: '{{ $dir }}/Model_10.glb' },
-            'model_11': { name: 'ハリセンボン', icon: '🐾', model: '{{ $dir }}/Model_11.glb' },
-            'model_12': { name: 'カバ', icon: '🐾', model: '{{ $dir }}/Model_12.glb' },
-            'model_13': { name: 'カメレオン', icon: '🐾', model: '{{ $dir }}/Model_13.glb' },
-            'model_14': { name: 'ウーパールーパー', icon: '🐾', model: '{{ $dir }}/Model_14.glb' },
-            'model_15': { name: '白いネコ', icon: '🐾', model: '{{ $dir }}/Model_15.glb' },
-            'model_16': { name: 'むささび', icon: '🐾', model: '{{ $dir }}/Model_16.glb' },
-            'model_17': { name: 'カラス', icon: '🐾', model: '{{ $dir }}/Model_17.glb' },
-            'model_18': { name: 'かわうそ', icon: '🐾', model: '{{ $dir }}/Model_18.glb' },
-            'model_19': { name: 'すずめ', icon: '🐾', model: '{{ $dir }}/Model_19.glb' },
-            'model_20': { name: 'キリン', icon: '🐾', model: '{{ $dir }}/Model_20.glb' }
+            'model_01': { name: 'ぶた①', icon: '🐾', model: '{{ $dir }}/Model_01.glb' },
+            'model_02': { name: 'カモ', icon: '🐾', model: '{{ $dir }}/Model_02.glb' },
+            'model_03': { name: 'ペンギン①', icon: '🐾', model: '{{ $dir }}/Model_03.glb' },
+            'model_04': { name: 'パンダ', icon: '🐾', model: '{{ $dir }}/Model_04.glb' },
+            'model_05': { name: '白くま', icon: '🐾', model: '{{ $dir }}/Model_05.glb' },
+            'model_06': { name: 'トナカイ', icon: '🐾', model: '{{ $dir }}/Model_06.glb' },
+            'model_07': { name: 'ゾウ', icon: '🐾', model: '{{ $dir }}/Model_07.glb' },
+            'model_08': { name: 'ペンギン②', icon: '🐾', model: '{{ $dir }}/Model_08.glb' },
+            'model_09': { name: 'ハシビロコウ', icon: '🐾', model: '{{ $dir }}/Model_09.glb' },
+            'model_10': { name: 'ぶた②', icon: '🐾', model: '{{ $dir }}/Model_10.glb' },
+            'model_11': { name: 'クマ', icon: '🐾', model: '{{ $dir }}/Model_11.glb' },
+            'model_12': { name: 'ぶた③', icon: '🐾', model: '{{ $dir }}/Model_12.glb' },
+            'model_13': { name: 'ネコ', icon: '🐾', model: '{{ $dir }}/Model_13.glb' },
+            'model_14': { name: 'クォッカ', icon: '🐾', model: '{{ $dir }}/Model_14.glb' },
+            'model_15': { name: 'キリン', icon: '🐾', model: '{{ $dir }}/Model_15.glb' },
+            'model_16': { name: 'かわうそ', icon: '🐾', model: '{{ $dir }}/Model_16.glb' },
+            'model_17': { name: 'カピバラ', icon: '🐾', model: '{{ $dir }}/Model_17.glb' },
+            'model_18': { name: 'きつね', icon: '🐾', model: '{{ $dir }}/Model_18.glb' },
+            'model_19': { name: 'なかけもの', icon: '🐾', model: '{{ $dir }}/Model_19.glb' },
+            'model_20': { name: 'バーガー', icon: '🐾', model: '{{ $dir }}/Model_20.glb' }
         };
 
         const TOTAL_STAMP_SLOTS = {{ (int) config('ar202611.marker_count') }};

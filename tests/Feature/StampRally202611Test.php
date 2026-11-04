@@ -123,9 +123,12 @@ class StampRally202611Test extends TestCase
         $response->assertStatus(200);
         $html = $response->getContent();
 
-        // asset_dir 既定値（202610）のアセットを参照する（AC-2）
-        $this->assertStringContainsString('cg/202610/pattern-maker01.patt', $html);
-        $this->assertStringContainsString('cg/202610/Model_20.glb', $html);
+        // asset_dir 既定値（202611 専用アセット）を参照する（AC-2 / FR-36）
+        $this->assertStringContainsString('cg/202611/pattern-maker01.patt', $html);
+        $this->assertStringContainsString('cg/202611/Model_20.glb', $html);
+        // 202611 側の動物名が反映されている（STAMPS[].name と dashboard の $animals が同一）
+        $this->assertStringContainsString("name: 'ぶた①'", $html);
+        $this->assertStringContainsString("name: 'バーガー'", $html);
         // 202610 からの分離（AC-3）: 旧サフィックス -r2 を含まない
         $this->assertStringNotContainsString('202610-r2', $html);
         $this->assertStringContainsString('ar-stamp-rally-202611', $html);

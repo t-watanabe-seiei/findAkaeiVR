@@ -5,12 +5,14 @@
 | ARstampRally202611
 |--------------------------------------------------------------------------
 | アセット差し替え・閾値・収集期間・応募期限の単一切替点（design.md §3）。
-| cg/202611 へ切り替える場合は asset_dir を変更し、
-| public/sw-stamp202611.js の ASSET_DIR と VERSION を同期する（FR-36）。
+| 202611 専用アセット（public/cg/202611/ の Model_00..20.glb と
+| pattern-maker00..20.patt）へ切替済み（2026-11-04 / asset-swap-guide.md）。
+| 202610 へ戻す場合も asset_dir と public/sw-stamp202611.js の
+| ASSET_DIR を同期し、VERSION は必ず新しい値へ上げる（FR-36）。
 */
 
 return [
-    'asset_dir'    => env('AR202611_ASSET_DIR', '202610'),
+    'asset_dir'    => env('AR202611_ASSET_DIR', '202611'),
     'marker_count' => (int) env('AR202611_MARKER_COUNT', 20),
 
     // お菓子のガラポン: 到達段階（各 1 回・最大 4 回）。回数はクライアント LocalStorage で管理（FR-37〜FR-40）

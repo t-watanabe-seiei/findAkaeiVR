@@ -20,7 +20,7 @@
 - [x] T8 `resources/views/ARstampRally202611/` にパーシャル10個を複製（head / ui / scene / aframe-components / js-stamps / js-prize / js-throw / js-gallery / js-camera / js-init）→ **完了（2026-10-28）**: 202610 の 11 ファイル（3,880 行）を複製
 - [x] T9 識別子を 202611 化（design.md §4 の置換一覧。LocalStorage / IndexedDB / Cookie / API URL / console `[AR202611]` / JS 関数名。**サフィックスなし**）→ **完了（2026-10-28）**: `-202611`（`-r2` 廃止）/ `ARStampRallyDB202611` / `ar_user_id_202611` / `/stamp202611/{record-scan,check-status,apply-voucher}` / `sw-stamp202611.js` / `[AR202611]` / `getUserId202611` 等。**AC-3 達成**: `grep -rn 202610`（md 除く）= **0 件**
 - [x] T10 アセット参照を config 経由に置換（`scene.blade.php` の pattern・lazy-model、`js-stamps.blade.php` の `STAMPS[].model`。`@php $dir = config('ar202611.asset_dir'); @endphp` と `config('ar202611.marker_count')` ループ）→ **完了（2026-10-28）**: `asset('cg/' . $dir . '/…')` 4 箇所 / `@for ($i = 1; $i <= $count; $i++)` / `STAMPS[].model = '{{ $dir }}/Model_NN.glb'` / `TOTAL_STAMP_SLOTS = {{ (int) config('ar202611.marker_count') }}`
-- [ ] T11 検証: `GET /stamp202611` がレンダリングされ、pattern / lazy-model URL が `cg/202610/` であること（AC-2 / AC-3）→ **Blade 側は合格（2026-10-28）**: `view('ARstampRally202611')->render()` = 215,429 字、`cg/202610/pattern-maker01.patt` / `cg/202610/Model_20.glb` を含む、pattern 参照 21（maker00 + 20）。**HTTP 検証は T13（ルート追記）後に実施**
+- [x] T11 検証: `GET /stamp202611` がレンダリングされ、pattern / lazy-model URL が `cg/{asset_dir}/` であること（AC-2 / AC-3）→ **完了（2026-10-28 Blade 側 / 2026-11-04 切替後に再検証）**: `view('ARstampRally202611')->render()` = 235,283 字、`cg/202611/` 43 箇所（pattern 21 + lazy-model 21 + `Model_00`）、`cg/202610/` **0 箇所**、`pattern-maker` 21、`.glb` 44（共有 `poke_ball_seinei2.glb` 含む）。HTTP 検証は `StampRally202611Test::test_index_renders_with_asset_dir_from_config`（28 tests / 228 assertions PASS）で担保
 
 ## Phase 3: サーバー側（API・レートリミット）
 - [x] T12 `app/Http/Controllers/StampRally202611Controller.php` を作成（202610 版を複製し、`const PRIZE_EXCHANGE_THRESHOLD` と `exchange()` を**削除** → `checkStatus()`（design §5.2）と `applyVoucher()`（design §5.3）へ置換。`voucherThreshold()` / `weightFor()` / `stampCountFor()` / **`syncVoucherWeight()`（check-status と apply-voucher 共通の倍率上方更新ヘルパー・FR-43）** を静的メソッドで実装し、email は `trim` + `strtolower` で正規化。セッションキーは `ar_fingerprint_202611`。`PrizeExchange` の import は削除）
@@ -66,9 +66,9 @@
 - [x] T33 検証: SW fetch 戦略シミュレーション（navigate / 静的 cache-first / API 非介入 / 外部オリジン非介入 / offline フォールバック）とキューシミュレーション（AC-4 / AC-5）→ **完了（2026-10-28）**: Node.js（`vm` で SW を sandbox 化し `self` / `caches` / `fetch` を mock）で実施。SW = **48 断言すべて PASS**（install precache 29 件・ball.obj 非 precache / navigation はオンライン→ネットワーク、オフライン→precache 済み HTML、クエリ付きは `ignoreSearch`、他パスは `/offline`、キャッシュ皆無は 504 / 軽量アセットは stale-while-revalidate、重量アセット（`cg/`, `.patt`, `.glb`）は cache-first で背景再取得なし、未キャッシュ＋オフラインは 504 / API POST と `/csrf` と外部オリジンと他キャンペーンには非介入 / activate は `ar202611-*-v0` のみ削除し 202610 用キャッシュは保持 / `CLEAR_CACHES` は `ar202611-*` のみ / `BASE=/find/` 配置でも動作）。キュー = **23 断言すべて PASS**（上限200・時系列順・`scannedAt` 保持・4xx 非再送・419 はトークン更新後に再送・`navigator.onLine=false` では送信しない・再入防止）。**要確認**: `requirements.md` FR-20 の precache 一覧にある `geo-location.min.js` / `loaders/GLTFLoader.js` / `loaders/OBJLoader.js` / `css/stampRally.css` / `objects/ball.obj|ball.mtl` / `sounds/loading.ogg` は 202611 の blade が参照していないため SW の `CORE_URLS`（29 件）に含まれない → md 側の更新要（本タスクでは md を変更しない）
 
 ## Phase 7: 最終検証・完了報告
-- [ ] T34 全 PHP の `php -l` 再実行（config / Controller / AdminController / routes / AppServiceProvider）
-- [ ] T35 識別子監査: `grep -n "202610" resources/views/ARstampRally202611/*.blade.php`（コメントの出典参照を除く）と `grep -n "ar202610" public/sw-stamp202611.js` が 0 件（AC-3）
-- [ ] T36 分離監査: `git status --short` で既存キャンペーン（202603 / 202605 / 202606 / 202609 / 202610）と `public/js/`・既存 SW が未変更であることを確認（AC-7）
+- [x] T34 全 PHP の `php -l` 再実行（config / Controller / AdminController / routes / AppServiceProvider）→ **完了（2026-11-04）**: `config/ar202611.php` / `app/Http/Controllers/AdminController.php` / `tests/Feature/StampRally202611Test.php` すべて `No syntax errors`（T15 で Controller / routes / AppServiceProvider も確認済み）
+- [x] T35 識別子監査: `grep -n "202610" resources/views/ARstampRally202611/*.blade.php`（コメントの出典参照を除く）と `grep -n "ar202610" public/sw-stamp202611.js` が 0 件（AC-3）→ **完了（2026-11-04）**: blade は `js-init.blade.php:485` のコメント 1 件のみ（出典参照・許容）、`sw-stamp202611.js` の `ar202610` は **0 件**
+- [x] T36 分離監査: `git status --short` で既存キャンペーン（202603 / 202605 / 202606 / 202609 / 202610）と `public/js/`・既存 SW が未変更であることを確認（AC-7）→ **完了（2026-11-04）**: 変更は 202611 側の 5 ファイル（`config/ar202611.php` / `AdminController.php` / `js-stamps.blade.php` / `sw-stamp202611.js` / テスト）と新規 `public/cg/202611/` 42 点のみ。`public/cg/202610/` と既存キャンペーンファイルは未変更
 - [ ] T37 実機検証: Android Chrome / iOS Safari（低スペック機含む）でカメラ起動・マーカー認識・ボール投擲・ガラポンボタン・抽選応募、機内モードで AR 継続とキュー再送（AC-8）
 - [ ] T47 運営向け引継ぎメモを README に追記: ガラポンは画面提示により会場スタッフが回数を確認する（アプリは回数を記録しない）、商品券の抽選・当選連絡は業者が CSV を基に行う
 - [ ] T48 **帰宅後応募の受け入れ検証（Q-12 案A 確定・AC-14 / AC-15 / AC-16）**: 機内モードで 10 種収集 → 解除してページ再読み込み → 未送信キューが自動再送され `marker_scans.scanned_at` が**収集日**で記録されることを tinker で確認 → `check-status` の `stampCount` = 10 → `apply-voucher` 成功（**`collect_end`（2026-11-15 23:59:59）経過後・`apply_deadline`（2026-11-16 23:59:59）前の再送でも成功**することを確認）。未送信 1 件以上時は応募ボタン非表示＋`#pending-scans` 表示。期間外 / +24h 超の `scannedAt` は `now()` にフォールバック、`apply_deadline` 経過後は 422 `deadline_passed`
@@ -79,13 +79,13 @@
 ## 検証結果（未実施）
 | 項目 | 結果 |
 |---|---|
-| AC-1 `php -l` | 未実施（T15 / T34） |
-| AC-2 ルート一覧 | 未実施（T15 / T19） |
-| AC-3 識別子監査 | 未実施（T11 / T35） |
+| AC-1 `php -l` | 合格（T15 / T34: 2026-11-04 再実行で config / AdminController / テストすべて `No syntax errors`） |
+| AC-2 ルート一覧 | 合格（T15 / T19 / T60: 6 ルート + `admin.dashboard202611` / `admin.export dataset=voucherApplications202611`。`GET /stamp202611` は 200） |
+| AC-3 識別子監査 | 合格（T11 / T35: blade はコメント 1 件のみ、SW の `ar202610` 0 件、`202610-r2` 0 件） |
 | AC-4 SW 戦略 | 合格（T33: Node.js シミュレーション 48/48 PASS） |
 | AC-5 キュー | 合格（T33: Node.js シミュレーション 23/23 PASS） |
 | AC-6 閾値・倍率 | 未実施（T45） |
-| AC-7 分離（git status） | 未実施（T36） |
+| AC-7 分離（git status） | 合格（T36: 2026-11-04 監査で 202611 側 5 ファイル + `public/cg/202611/` 42 点のみ変更。既存キャンペーン / `public/js/` / 既存 SW / `cg/202610/` は未変更） |
 | AC-8 実機 | 未実施（T37） |
 | AC-9 ガラポン 4 回上限 | 未実施（T45） |
 | AC-10 応募 UI（email 重複・倍率表示） | 未実施（T45） |
@@ -169,6 +169,25 @@
   での差分確認 → 本実行 → ダッシュボード / CSV での確認。検証行（`test_`）も backfill 対象である注意）。
   併せて §5.6 の注記を「応募可否・倍率は 1 端末単位（`deviceStampCountFor()`）／`stampCountFor()` は合算で
   監査・表示用」へ更新し、§9 のテスト実績を 23 tests / 182 assertions へ更新
+
+### Phase 8: 202611 専用アセットへの切替（FR-32 / FR-33 / FR-36・2026-11-04）
+
+- [x] **T60** `public/cg/202611/` の 42 点（`Model_00..20.glb` / `pattern-maker00..20.patt`）受け入れと切替
+  - 受け入れ監査: 42 点すべて存在（欠番なし）。`pattern-maker*.patt` は 202610 と md5 が**不一致**
+    （= 202611 専用のマーカー。会場印刷物は差し替えが必要で、202610 の旧マーカーは認識されない）
+  - `config/ar202611.php`: `asset_dir` 既定を `'202610'` → **`'202611'`**（`.env` の `AR202611_ASSET_DIR` で上書き可能）
+  - `public/sw-stamp202611.js`: `VERSION` `'v1'` → **`'v2'`** / `ASSET_DIR` → **`'202611'`**
+    （cache-first のため VERSION を上げないと旧 `cg/202610` コピーが残り続ける。`activate` で `ar202611-*-v1` を破棄）
+  - 動物名 20 種を 202611 素材へ更新（**2 箇所同時**）: `js-stamps.blade.php` の `STAMPS[].name` と
+    `AdminController::dashboard202611()` の `$animals`。一覧は `asset-swap-guide.md` §2.1
+    （`model_01` ぶた① … `model_20` バーガー。キー `model_01..model_20` = `marker_id` は 202610 と同一のまま不変）
+  - `StampRally202611Test::test_index_renders_with_asset_dir_from_config` の期待値を `cg/202611/…` へ更新し、
+    動物名（`ぶた①` / `バーガー`）の出力も検証
+  - 検証: `php -l` 3 件 OK / `node --check public/sw-stamp202611.js` OK /
+    `DB_CONNECTION=sqlite DB_DATABASE=:memory: phpunit --filter=StampRally202611Test` = **28 tests・228 assertions PASS** /
+    `view('ARstampRally202611')->render()` = 235,283 字・`cg/202611/` 43・`cg/202610/` 0・`config('ar202611.asset_dir')` = `202611`
+  - **未実施（本番運用）**: `php artisan config:cache` の再実行、`GET /stamp202611` のブラウザ実機確認
+    （DevTools で `cg/202611/…` の 200 と `ar202611-*-v2` キャッシュ生成、`-v1` の消滅）、202610 印刷物の回収
 
 ### 残（FR-56 / FR-57 関連の運用）
 

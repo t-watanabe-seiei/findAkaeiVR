@@ -19,8 +19,8 @@
  */
 'use strict';
 
-var VERSION = 'v1';
-var ASSET_DIR = '202610';            // cg/{ASSET_DIR} を指す単一点（202611 素材公開時に '202611' へ変更）
+var VERSION = 'v2';                  // 切替ごとに上げる（v1 のままにすると旧 cg/202610 コピーが cache-first で残り続ける）
+var ASSET_DIR = '202611';            // cg/{ASSET_DIR} を指す単一点（config/ar202611.php の asset_dir と同期）
 var CACHE_PREFIX = 'ar202611-';
 var CACHE_HTML   = CACHE_PREFIX + 'html-'   + VERSION;
 var CACHE_CORE   = CACHE_PREFIX + 'core-'   + VERSION;

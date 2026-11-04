@@ -1063,28 +1063,30 @@ class AdminController extends Controller
             $showTest
         )->distinct()->count('fingerprint');
 
-        // 全モデルのリスト（202610 と同一アセット・同一 20 種）
+        // 全モデルのリスト（202611 専用アセット cg/202611・20 種）
+        // ラベルは resources/views/ARstampRally202611/js-stamps.blade.php の STAMPS[].name と同一にする。
+        // キー model_NN（marker_id）は変更しない（マーカー識別子は 202610 と同じ model_01..model_20）。
         $animals = [
-            'model_01' => 'ひつじ',
-            'model_02' => 'コウモリ',
-            'model_03' => 'アジ',
-            'model_04' => 'コアラ',
-            'model_05' => 'あざらし',
-            'model_06' => 'ぶた',
-            'model_07' => 'モモンガ',
-            'model_08' => 'ミーアキャット',
-            'model_09' => 'こづめかわうそ',
-            'model_10' => 'コンドル',
-            'model_11' => 'ハリセンボン',
-            'model_12' => 'カバ',
-            'model_13' => 'カメレオン',
-            'model_14' => 'ウーパールーパー',
-            'model_15' => '白いネコ',
-            'model_16' => 'むささび',
-            'model_17' => 'カラス',
-            'model_18' => 'かわうそ',
-            'model_19' => 'すずめ',
-            'model_20' => 'キリン',
+            'model_01' => 'ぶた①',
+            'model_02' => 'カモ',
+            'model_03' => 'ペンギン①',
+            'model_04' => 'パンダ',
+            'model_05' => '白くま',
+            'model_06' => 'トナカイ',
+            'model_07' => 'ゾウ',
+            'model_08' => 'ペンギン②',
+            'model_09' => 'ハシビロコウ',
+            'model_10' => 'ぶた②',
+            'model_11' => 'クマ',
+            'model_12' => 'ぶた③',
+            'model_13' => 'ネコ',
+            'model_14' => 'クォッカ',
+            'model_15' => 'キリン',
+            'model_16' => 'かわうそ',
+            'model_17' => 'カピバラ',
+            'model_18' => 'きつね',
+            'model_19' => 'なかけもの',
+            'model_20' => 'バーガー',
         ];
 
         // 各モデルの統計を収集（1 marker あたり 1 ベースクエリから派生・FR-54 で検証分を除外）

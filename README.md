@@ -1684,7 +1684,7 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 
 | # | ファイル | 内容 |
 |---|---------|------|
-| 1 | `config/ar202611.php` | 設定の単一点。収集期間 `2026-11-01 00:00` 〜 `2026-11-15 23:59:59`、応募期限 `2026-11-16 23:59:59`、`asset_dir='cg/202610'`（202611 用アセットは未作成のため 202610 を流用）、`marker_count=20`、ガラポン 4 段階、`voucher_threshold=10` / `voucher_weights=[9=>1, 14=>2, 20=>3]` |
+| 1 | `config/ar202611.php` | 設定の単一点。収集期間 `2026-11-01 00:00` 〜 `2026-11-15 23:59:59`、応募期限 `2026-11-16 23:59:59`、`asset_dir`（作成時は `'202610'` 流用 → **2026-11-04 に `'202611'` へ切替済み**）、`marker_count=20`、ガラポン 4 段階、`voucher_threshold=10` / `voucher_weights=[9=>1, 14=>2, 20=>3]` |
 | 2 | `app/Models/Stamp202611VoucherApplication.php` | 商品券抽選応募モデル（テーブル `stamp202611_voucher_applications`） |
 | 3 | `database/migrations/2026_11_01_000000_create_stamp202611_voucher_applications_table.php` | 202611 専用テーブル。`fingerprint` / `email` に UNIQUE（1 人 1 応募）、`weight`+`applied_at` に複合 index。`marker_scans` / `prize_exchanges` には触れない |
 | 4 | `app/Http/Controllers/StampRally202611Controller.php` | `recordScan` / `checkStatus` / `applyVoucher` と期間・倍率ヘルパー（`collectPeriod()` / `applyDeadline()` / `weightFor()` / `tierFor()` / `normalizeEmail()`）。収集種数と当選倍率はサーバー側で算出・強制 |
@@ -1700,7 +1700,7 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 | 14 | `…/js-camera.blade.php` | カメラ制御 |
 | 15 | `…/js-init.blade.php` | 起動処理、online/offline 監視、起動時に「トークン更新 → キュー再送 → 種数照会」 |
 | 16 | `…/offline.blade.php` | オフラインフォールバックページ（外部アセット依存なしの自己完結） |
-| 17 | `public/sw-stamp202611.js` | 202611 専用 SW（`ar202611-{html,core,assets}-v1`・precache 29 件・重量アセット cache-first・API と外部オリジン非介入） |
+| 17 | `public/sw-stamp202611.js` | 202611 専用 SW（`ar202611-{html,core,assets}-{VERSION}`・precache 29 件・重量アセット cache-first・API と外部オリジン非介入。`ASSET_DIR='202611'` / `VERSION='v2'`・2026-11-04 切替） |
 | 18 | `resources/views/admin/dashboard202611.blade.php` | 管理ダッシュボード（収集期間と応募期限を併記、応募一覧 20 件ページネーション + `q` 検索、CSV ダウンロードリンク） |
 | 19 | `tests/Feature/StampRally202611Test.php` | サーバー側自動テスト 15 メソッド |
 
@@ -1726,12 +1726,12 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 
 - `php -l`: config / Controller / AdminController / routes / AppServiceProvider / migration / Model すべて OK
 - `php artisan migrate`: DONE（57.76 ms）。既存 `marker_scans` 188 件 / `prize_exchanges` 1 件は無傷（AC-11）
-- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: 作成時 **OK (13 tests, 53 assertions)** → 2026-10-29 再実行で **OK (17 tests, 105 assertions)**（管理画面と CSV エクスポート、検証データ分離のテストを追加）。カバー: index の asset_dir（`cg/202610/…`）・offline / csrf ヘッダ・収集日内の `scannedAt` 採用と期間外の `now()` フォールバック・日次重複・9 種の 422 `not_eligible`・10 / 15 / 20 種の weight 1 / 2 / 3・`collect_end` 経過後の応募成功と `apply_deadline` 経過後の 422 `deadline_passed`・weight 自動昇格と非降格・email 正規化と一意性・`prize_exchanges` 無書き込み
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: 作成時 **OK (13 tests, 53 assertions)** → 2026-10-29 再実行で **OK (17 tests, 105 assertions)**（管理画面と CSV エクスポート、検証データ分離のテストを追加）。カバー: index の asset_dir（作成時は `cg/202610/…` → **2026-11-04 以降は `cg/202611/…` と動物名を検証**）・offline / csrf ヘッダ・収集日内の `scannedAt` 採用と期間外の `now()` フォールバック・日次重複・9 種の 422 `not_eligible`・10 / 15 / 20 種の weight 1 / 2 / 3・`collect_end` 経過後の応募成功と `apply_deadline` 経過後の 422 `deadline_passed`・weight 自動昇格と非降格・email 正規化と一意性・`prize_exchanges` 無書き込み
 - Node.js（`vm` で SW を sandbox 化）によるシミュレーション: SW fetch 戦略 **48/48 PASS**（AC-4）・オフラインキュー **23/23 PASS**（AC-5）
 
 **T47 運営向け引継ぎメモ（本項目で対応）:** お菓子のガラポンは LocalStorage 管理でアプリは回数を記録しない → 会場スタッフが画面の引抽回数を確認する。市内共通商品券の抽選・当選連絡は `GET /admin/export?dataset=voucherApplications202611` の CSV（`weight DESC, applied_at ASC`）を基に業者が行う。
 
-**tasks.md の残務:** T11 / T16〜T19 / T26〜T32 / T41〜T46 は対応ファイルが本コミットに含まれているためチェック更新のみが残る。**未着手:** T20〜T25（iOS カメラ起動の根本修正）、T34〜T38（最終監査・`cg/202611` への切替手順）、T37（Android / iOS 実機検証）、T48（帰宅後応募の実機受け入れ）
+**tasks.md の残務:** T11 / T16〜T19 / T26〜T32 / T41〜T46 は対応ファイルが本コミットに含まれているためチェック更新のみが残る（**T11 / T34 / T35 / T36 は 2026-11-04 に完了**）。**未着手:** T20〜T25（iOS カメラ起動の根本修正）、T37（Android / iOS 実機検証）、T48（帰宅後応募の実機受け入れ）。`cg/202611` への切替（T38 手順）は 2026-11-04 に実施済み（下記セクション）
 
 **注意点:** 検証用の一時ファイル 17 件（`_render202611.html`、`_render202611_script0-5.js`、`storage/_render202611.html`、`storage/_render202611_script0-5.js`、`_tmp_render202611.php`、`_tmp_render_out.txt`、`_tmp_voucher_test.cjs`／計約 16,000 行）は本コミットに含まれていた。アプリのコード（app / routes / resources / public / config / tests / database）から `_render202611` と `_tmp_*` への参照が 0 件であることを grep で確認し、2026-10-29 に削除した（`.gitignore` には追加しない）。
 
@@ -1788,7 +1788,7 @@ shooting3Dhalloween4 を参考に、以下の仕様変更を実施しました�
 | ファイル | 内容 |
 |---------|------|
 | `resources/views/ARstampRally202611/test-data-guide.md` | 検証用 URL・管理画面 / CSV の切替・検証用端末の準備とリセット・DB 整理（tinker）・`?test=1` 付け忘れ時の事後整理（fingerprint 特定 → `test_` 前置で隠蔽 / 削除）・検証ログ・限界と注意 |
-| `resources/views/ARstampRally202611/asset-swap-guide.md` | `cg/202610` → `cg/202611` 切替チェックリスト（FR-36）・配置ファイル一覧（`Model_00.glb`〜`Model_20.glb` / `pattern-maker00.patt`〜`pattern-maker20.patt`）・SW の `ASSET_DIR` / `VERSION` 更新・キャッシュ対処（`?sw=0`・「キャッシュ削除」）・ロールバック |
+| `resources/views/ARstampRally202611/asset-swap-guide.md` | `cg/202610` → `cg/202611` 切替チェックリスト（FR-36・**2026-11-04 実施済み**）・配置ファイル一覧（`Model_00.glb`〜`Model_20.glb` / `pattern-maker00.patt`〜`pattern-maker20.patt`）・**202611 の動物名 20 種の一覧（§2.1）**と名前を変える 2 箇所・SW の `ASSET_DIR` / `VERSION` 更新・キャッシュ対処（`?sw=0`・「キャッシュ削除」）・ロールバック |
 
 ### 5. 検証結果
 
@@ -1834,4 +1834,65 @@ FR-58 の収集 / 検出判定そのもの（サーバー側）、`check-status`
   **OK (28 tests, 226 assertions)**（FR-59 の 1 件を含む）
 - **影響範囲**: 202611 の抽選表示のみ。他キャンペーンの blade・SW・集計、`marker_scans` /
   `prize_exchanges` のスキーマは未変更
+
+
+## ARstampRally202611 専用アセットへの切替（FR-32 / FR-33 / FR-36・2026-11-04）
+
+`public/cg/202611/` に納品された 202611 専用素材（42 点）へ切り替えた。202611 が参照する
+pattern / glb はすべて 202611 版になり、レンダリング出力上の `cg/202610/` 参照は 0 件
+（共有アセット `cg/poke_ball_seinei2.glb` 等はそのまま）。
+
+### 1. 変更したファイル（5 件）
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `public/cg/202611/`（新規 42 点） | `Model_00.glb`〜`Model_20.glb`（21）と `pattern-maker00.patt`〜`pattern-maker20.patt`（21）。`pattern-maker*.patt` は 202610 のものと md5 が**不一致**（= 202611 専用のマーカー） |
+| `config/ar202611.php` | `asset_dir` 既定を `'202610'` → **`'202611'`**（`.env` の `AR202611_ASSET_DIR` で上書き可） |
+| `public/sw-stamp202611.js` | `VERSION` `'v1'` → **`'v2'`** / `ASSET_DIR` → **`'202611'`**。cache-first のため VERSION を上げないと旧 `cg/202610` コピーが残り続ける（`activate` で `ar202611-*-v1` を破棄） |
+| `resources/views/ARstampRally202611/js-stamps.blade.php` | `STAMPS['model_01'..'model_20'].name` を 202611 の動物名へ更新（キーと `model` パスは不変） |
+| `app/Http/Controllers/AdminController.php` | `dashboard202611()` の `$animals` を同一の 20 種へ更新（管理画面のラベルと client 表示を一致させる） |
+| `tests/Feature/StampRally202611Test.php` | `test_index_renders_with_asset_dir_from_config` の期待値を `cg/202611/pattern-maker01.patt` / `cg/202611/Model_20.glb` へ更新し、動物名（`ぶた①` / `バーガー`）も検証 |
+
+### 2. 202611 の動物名（`marker_id` は 202610 と同一のまま）
+
+| `marker_id` | 動物名 | `marker_id` | 動物名 |
+|---|---|---|---|
+| `model_01` | ぶた① | `model_11` | クマ |
+| `model_02` | カモ | `model_12` | ぶた③ |
+| `model_03` | ペンギン① | `model_13` | ネコ |
+| `model_04` | パンダ | `model_14` | クォッカ |
+| `model_05` | 白くま | `model_15` | キリン |
+| `model_06` | トナカイ | `model_16` | かわうそ |
+| `model_07` | ゾウ | `model_17` | カピバラ |
+| `model_08` | ペンギン② | `model_18` | きつね |
+| `model_09` | ハシビロコウ | `model_19` | なかけもの |
+| `model_10` | ぶた② | `model_20` | バーガー |
+
+`marker_id`（`model_01`〜`model_20`）を変えていないため、`marker_scans` の集計・ガラポン段階・
+抽選倍率・応募資格は**一切影響を受けない**。`marker_name` は送信時点の文字列として保存されるため、
+**切替前に記録された行のラベルは旧名のまま**（過去行を揃えるかは運用判断。管理画面の動物別統計は
+`marker_id` 側で絞っているため表示ラベルは新名になる）。
+
+### 3. 本番適用手順
+
+1. `public/cg/202611/` の 42 点と上記 5 ファイルをデプロイ（ファイル名が 1 文字でも違うと 404）
+2. `php artisan config:cache`（設定キャッシュを利用している場合。開発時は `config:clear`）
+   ＋ `php artisan optimize:clear`（compiled views 破棄。OPcache 利用時は `opcache_reset()` か PHP 再起動）
+3. `/stamp202611` を開き DevTools で `cg/202611/…` の 200 と、Service Worker が
+   `ar202611-{html,core,assets}-v2` を生成し `-v1` が消滅したことを確認。旧キャッシュが残る場合は
+   `/stamp202611/offline` の「キャッシュ削除」→ リロード、または `?sw=0` で素の取得状態を確認
+4. **会場印刷マーカーを 202611 版へ差し替え**（202610 の `pattern-maker*.patt` は内容が別物のため旧印刷物は認識されない）。
+   印刷物とモデルの対応はファイル番号（`pattern-makerNN` ↔ `Model_NN.glb`）で決まるため、業者素材の番号と動物名の対応を現物で確認
+5. DB 変更は不要（migration / `stamp202611:backfill-device-weight` の再実行も不要）
+
+### 4. 検証結果
+
+- `php -l`: `config/ar202611.php` / `app/Http/Controllers/AdminController.php` / `tests/Feature/StampRally202611Test.php` すべて OK
+- `node --check public/sw-stamp202611.js`: OK
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: **OK (28 tests, 228 assertions)**
+- `view('ARstampRally202611')->render()` = 235,283 字 / `cg/202611/` **43 箇所**（pattern 21 + lazy-model 21 + `Model_00`）/ `cg/202610/` **0 箇所** / `pattern-maker` 21 / `.glb` 44 / `config('ar202611.asset_dir')` = `202611`
+- 識別子監査（AC-3）: blade 側の `202610` は `js-init.blade.php:485` のコメント 1 件のみ、`sw-stamp202611.js` の `ar202610` は 0 件
+- 分離監査（AC-7）: `git status --short` の変更は 202611 側 5 ファイル + `public/cg/202611/` 42 点のみ。`public/cg/202610/`・他キャンペーン blade・`public/js/`・既存 SW は未変更
+
+**影響範囲**: 202611 のみ。`public/cg/202610/` は削除せず保持（既存キャンペーンが参照）。
 
