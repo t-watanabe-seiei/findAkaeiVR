@@ -457,6 +457,29 @@
   `php artisan optimize:clear`。**Xserver で DB がネットワーク FS（NFS）上の場合は `DB_SQLITE_JOURNAL_MODE=DELETE` に戻す**。
   WAL 化後は `database.sqlite-wal` / `database.sqlite-shm` も書き込み可能な権限で揃うこと（migration は不要）
 
+### T103: 応募フォーム開期中の応募ボタン非表示（FR-61・AC-26・2026-11-05）
+
+- [x] **T103-1** `js-prize.blade.php` へ開期中フラグ `var _voucherFormOpen202611 = false;` を追加
+- [x] **T103-2** `updateVoucherUI202611()` — 開期中は `#voucher-apply-button` を `display:none` にし、
+  フォームを閉じる条件を `if (form && !showButton)` → `if (form && applied)` へ変更
+  （`check-status` 応答・`online` 復帰・スタンプ帳を開いた時の背景更新で 6 桁欄を消さない）
+- [x] **T103-3** 応募フォームへ `openForm()` を追加（`_voucherFormOpen202611 = true` + ボタン非表示）。
+  緑ボタンの click は `openForm()` を呼ぶだけ。`closeForm()` は「やめる」と応募成功時だけ呼び、
+  閉じた後に `updateVoucherUI202611()` で収集種数・応募状態に応じてもう一度ボタンを出す
+- [x] **T103-4** 変更フォーム（FR-63）も同型 — `openForm()` が `#voucher-change-email` を隠し、
+  `canChange` へ `!_voucherChangeOpen202611` を追加。応募行が無い時の自動閉じは開期中以外だけ
+- [x] **T103-5** テスト追加 `test_voucher_apply_button_is_hidden_while_apply_form_is_open`
+  （描画 JS の needle 検査 + 旧実装 `if (form && !showButton) form.style.display` を含まないこと）。
+  `StampRally202611Test` は **53 tests / 453 assertions** PASS。描画済み HTML のインライン 6 スクリプトは
+  `node --check` すべて OK
+- [ ] **T103-6** 実機受け入れ: フォームを開く → 緑ボタンが消える → 確認コード送信 → 6 桁欄が残ったまま
+  （緑ボタンは出ない）→ 「やめる」で緑ボタンが戻る。スタンプ帳を開き直しても機内モードへしても消えない
+  （`test-data-guide.md` §2.6）
+- [ ] **T103-7** 本番反映: `resources/views/ARstampRally202611/js-prize.blade.php` をアップロード →
+  `php artisan optimize:clear`。Service Worker は navigation を network-first で取得するため
+  `public/sw-stamp202611.js` の `VERSION` は `v3` のまま（オフライン用の事前キャッシュ HTML だけ旧版が残るが
+  応募は通信必須のため影響なし）。反映後はハードリロードで確認（migration は不要）
+
 ### 残（FR-62 / FR-63 関連の運用）
 
 - [ ] 変更用メールの文面（件名「…メールアドレス変更 確認コード」）を運営へ確認してもらう

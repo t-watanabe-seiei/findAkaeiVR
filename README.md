@@ -2015,3 +2015,35 @@ pattern / glb はすべて 202611 版になり、レンダリング出力上の 
 **影響範囲**: 202611 の API 応答と SQLite 接続設定のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/` は未変更。
 `config/database.php` の sqlite 設定は全 rally 共通の接続設定のため、SQLite を使う機能はまとめて WAL の恩恵を受ける
 （`busy_timeout` の待機は応答を遅くしない範囲の 5 秒上限。MySQL 運用には影響しない）。
+## ARstampRally202611 応募フォーム開期中は応募ボタンを出さない（FR-61・AC-26・2026-11-05）
+
+### 1. 症状と原因
+
+| 症状 | 原因 | 対応 |
+| --- | --- | --- |
+| 6 桁の確認コードを入力中に緑の「商品券抽選に応募する」を再度押すとコード欄が消えて応募できない | 緑ボタンがフォームの外・上にあり、クリックハンドラが `resetEmailConfirm()` + `showStep('email')` を無条件で実行した | フォーム開期中は `#voucher-apply-button` を描画しない（`_voucherFormOpen202611`）。開く入口は `openForm()` だけ |
+| コード入力中にスタンプ帳を開き直すとフォームごと閉じる | `updateVoucherUI202611()` の `if (form && !showButton) form.style.display = 'none';` が `check-status` 応答・`online` 復帰などの背景更新で発火 | 閉じる条件を `if (form && applied)`（応募確定時）へ変更 |
+| 変更手続きの途中に変更フォームが閉じる | 応募行が無い時の自動閉じが `_voucherChangeOpen202611` を見ていなかった | 変更ボタンも開期中は非表示（`canChange` へ `!_voucherChangeOpen202611` を追加） |
+
+### 2. 動作
+
+- 応募フォームを開くと緑ボタンは消える。閉じるのはフォーム内の「やめる」だけ（閉じると収集種数・応募状態に応じて緑ボタンが戻る）
+- `check-status` 応答・`online` 復帰・ページ起動・スタンプ帳を開いた時などの背景更新は、開期中のフォームと入力値を閉じない / 消さない
+- サーバー側の応募可否（422 `not_eligible`）は変更していない（未送信スタンプがある状態でフォームが開いていても応募送信はサーバーが拒否する）
+
+### 3. 本番適用手順
+
+1. `resources/views/ARstampRally202611/js-prize.blade.php` をアップロード
+2. `php artisan optimize:clear`（OPcache 時は `opcache_reset()` か PHP 再起動）
+3. Service Worker は navigation を network-first で取得するため `public/sw-stamp202611.js` の `VERSION` は `v3` のまま。
+   反映後はハードリロードで確認（オフライン用の事前キャッシュ HTML だけ旧版が残るが応募は通信必須のため影響なし）
+4. **DB 変更（migration）は不要**
+
+### 4. 検証結果
+
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --filter=StampRally202611Test`: **OK (53 tests, 453 assertions)**
+  （新規 `test_voucher_apply_button_is_hidden_while_apply_form_is_open`）
+- 描画済み `/stamp202611` の HTML から抽出したインライン 6 スクリプトすべて `node --check` OK（検証用の一時ファイルは削除済み）
+- `php -l`: `tests/Feature/StampRally202611Test.php` OK
+
+**影響範囲**: 202611 の応募・変更フォームの描画規則のみ。サーバー API・DB・他キャンペーン（202603 / 202605 / 202606 / 202609 / 202610）は未変更。

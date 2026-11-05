@@ -130,6 +130,21 @@
    API を直接叩いても 422 `change_deadline_passed` になることを確認
    （期限は `check-status` の `emailChangeDeadline`。`.env` の `AR202611_EMAIL_CHANGE_DEADLINE` で一時的に短くして test 後に戻す）
 
+### 2.6 応募フォーム開期中の応募ボタン非表示（FR-61・AC-26）の実機手順
+
+応募手続き中に 6 桁の確認コード欄が消える不具合（2026-11-05）への対応確認。
+
+1. `/stamp202611?test=1` で 10 種以上収集してスタンプ帳を開く
+2. 緑の「商品券抽選に応募する」を押す → **この時点で緑ボタンが消え、フォームだけが残る**ことを確認
+3. アドレスを入力 → 「確認コードを送信」（2 押し込み）→ 6 桁入力ステップへ
+4. **画面上部に緑ボタンが現れないこと**、`#voucher-code`（6 桁欄）がそのまま表示されていることを確認
+5. スタンプ帳を閉じて開き直す → 6 桁欄と入力済みアドレスが消えないことを確認
+6. 機内モード（オフライン）にして 5 秒 → 解除 → 同じく消えないことを確認（`online` 復帰の背景更新）
+7. 「やめる」を押す → フォームが閉じ、**緑ボタンが戻る**ことを確認（収集種数が閾値以上なら）
+8. 6 桁を入れて「応募する」→ 応募完了表示（`#voucher-applied-info`）へ切り替わり、
+   フォームと緑ボタンが出ないことを確認
+9. 応募後の変更フローでも同じ: 変更ボタンを押すと変更ボタンが消え、コード入力中に背景更新でフォームが閉じない
+
 ## 3. 除外が効いている箇所
 
 | 画面・データ | 実装箇所 |
@@ -300,6 +315,7 @@ php artisan tinker
 | `test_admin_dashboard_and_csv_exclude_test_fingerprints` | 検証行（`test_fp_…`）が `dashboard202611` の `totalScans` / `uniqueScanners` / 応募一覧に出ない → `?show_test=1` で現れる → CSV（`dataset=voucherApplications202611`）に出ない → `&show_test=1` で出る。`?show_test=1&q=…` の検索でも `show_test` が維持され（検索フォームの hidden）、応募一覧のページネーション URL にも `show_test` が残る |
 | `test_prize_view_exposes_test_flag_and_prefix` | `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される |
 | `test_voucher_diagnostics_lines_are_gated_to_test_mode` | `/stamp202611` と `/stamp202611?test=1` の HTML に `VOUCHER_DIAGNOSTICS_202611 = isTestMode();` が出力され、参考値行 3 文言（検出種数 / 同一ブラウザ合算 / 閾値未満時の注意文）がすべて `VOUCHER_DIAGNOSTICS_202611` ゲート内侧にある（FR-59・§2.4） |
+| `test_voucher_apply_button_is_hidden_while_apply_form_is_open` | `/stamp202611` の HTML に開期中フラグ `_voucherFormOpen202611` と `button.style.display = (showButton && !_voucherFormOpen202611)`、`if (form && applied) form.style.display` が出力され、旧実装 `if (form && !showButton) form.style.display` を含まない（FR-61・AC-26・§2.6） |
 
 §5 の事後整理（前置変更 / 削除）は運用手順であり自動テストにはしていない。実施後は
 `/admin/dashboard202611?show_test=1` と既定表示の差分、および CSV の行数で手動確認する。

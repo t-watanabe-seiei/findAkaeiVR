@@ -770,10 +770,16 @@
                 button.textContent = '商品券抽選に応募する';
             }
 
-            button.style.display = showButton ? 'block' : 'none';
+            // フォームを開いている間は応募ボタン（緑）を出さない。
+            // 確認コード入力中に緑ボタンを二度押ししてコード欄が消える事故を防ぐ（FR-41 / FR-61・AC-26）。
+            // フォームを閉じる導線はフォーム内の「やめる」だけ。
+            button.style.display = (showButton && !_voucherFormOpen202611) ? 'block' : 'none';
             button.disabled = disabled;
 
-            if (form && !showButton) form.style.display = 'none';
+            // check-status 応答・online 復帰・スタンプ帳を開いた時などの背景更新では
+            // 開期中のフォームを閉じない（未送信スタンプや check-status 失敗でボタンが隠れても入力は失わない）。
+            // 応募が確定した時だけフォームを閉じて応募完了表示へ切り替える。
+            if (form && applied) form.style.display = 'none';
             updateVoucherAppliedInfo202611(applied, voucher);
         }
 
@@ -793,10 +799,10 @@
 
             if (!applied) {
                 appliedInfo.style.display = 'none';
-                // 変更フォームは応募済み行に対してだけ開くため、応募が無い状態では閉じる
-                if (changeForm) {
+                // 変更フォームは応募済み行に対してだけ開くため、応募が無い状態では閉じる。
+                // ただし変更手続きの途中（コード入力中）に背景更新が走った場合は閉じない（AC-26）。
+                if (changeForm && !_voucherChangeOpen202611) {
                     changeForm.style.display = 'none';
-                    _voucherChangeOpen202611 = false;
                 }
                 return;
             }
@@ -806,8 +812,9 @@
             appliedInfo.style.display = 'block';
 
             if (changeBtn) {
-                // 変更期限（email_change_deadline）以降は変更を受け付けない
-                var canChange = !isEmailChangeDeadlinePassed202611();
+                // 変更期限（email_change_deadline）以降は変更を受け付けない。
+                // 変更フォームを開いている間は変更ボタンを出さない（応募フォームと同じ規則・AC-26）。
+                var canChange = !isEmailChangeDeadlinePassed202611() && !_voucherChangeOpen202611;
                 changeBtn.style.display = canChange ? 'inline-block' : 'none';
                 changeBtn.disabled = !canChange;
             }
@@ -821,6 +828,8 @@
         var _requestingVoucherEmailCode202611 = false;
         var _voucherEmailConfirmed202611 = false;   // 送信先アドレスを利用者が目視確認済みか
         var _voucherSentEmail202611 = '';           // 確認コードを送信したメールアドレス（正規化後）
+        // 応募フォームを開いているか（開期中は緑ボタンを出さず、背景更新でフォームを閉じない・AC-26）
+        var _voucherFormOpen202611 = false;
 
         // 全角英数記号（U+FF01〜U+FF5E）を半角へ、全角/半角スペースを除去する（打ち間違いの自動補正）
         function normalizeEmailInput202611(value) {
@@ -967,11 +976,24 @@
                 if (sendBtn) sendBtn.textContent = '確認コードを送信';
             }
 
+            // フォームを開く（開期中は緑ボタンを隠す。閉じるのは「やめる」だけ）
+            function openForm() {
+                _voucherFormOpen202611 = true;
+                form.style.display = 'block';
+                button.style.display = 'none';
+                clearError();
+                resetEmailConfirm();
+                showStep('email');
+            }
+
             function closeForm() {
+                _voucherFormOpen202611 = false;
                 form.style.display = 'none';
                 clearError();
                 resetEmailConfirm();
                 showStep('email');
+                // 閉じた後は応募ボタンを収集種数・応募状態に応じて出し直す
+                updateVoucherUI202611();
             }
 
             function currentEmail() {
@@ -1039,6 +1061,8 @@
                 });
             }
 
+            // 緑ボタンはフォームを閉じている時だけ見える（openForm で隠れる）。
+            // 確認コード送信後に再度押せないため、コード欄が消えることはない。
             button.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1046,10 +1070,7 @@
                     showVoucherToast202611('抽選応募には通信が必要です。オンラインになってからもう一度お試しください。');
                     return;
                 }
-                form.style.display = 'block';
-                clearError();
-                resetEmailConfirm();
-                showStep('email');
+                openForm();
                 if (emailEl) emailEl.focus();
             });
 
@@ -1349,6 +1370,8 @@
                 _voucherChangeOpen202611 = true;
                 _voucherChangeSentEmail202611 = '';
                 form.style.display = 'block';
+                // 開期中は変更ボタンを隠す（応募フォームと同じ規則・AC-26）
+                openBtn.style.display = 'none';
                 clearError();
                 resetConfirm();
                 showStep('email');
@@ -1364,6 +1387,8 @@
                 resetConfirm();
                 showStep('email');
                 if (codeEl) codeEl.value = '';
+                // 閉じた後は変更ボタンを変更期限に応じて出し直す
+                updateVoucherUI202611();
             }
 
             function currentEmail() {

@@ -1686,5 +1686,34 @@ class StampRally202611Test extends TestCase
             ->assertJson(['success' => false, 'error' => 'server_busy'])
             ->assertHeader('Content-Type', 'application/json');
     }
-}
 
+    /**
+     * 応募フォームを開いている間は応募ボタン（緑）を出さない（案A・AC-26）。
+     * 確認コード入力中に緑ボタンを二度押しして 6 桁欄が消える不具合の再発防止と、
+     * check-status 応答などの背景更新で開期中のフォームが閉じないことの担保。
+     */
+    public function test_voucher_apply_button_is_hidden_while_apply_form_is_open(): void
+    {
+        $html = $this->get('/stamp202611')->getContent();
+
+        foreach ([
+            // 応募フォームの開期中フラグ
+            'var _voucherFormOpen202611 = false;',
+            '_voucherFormOpen202611 = true;',
+            '_voucherFormOpen202611 = false;',
+            // 開期中は緑ボタンを非表示。フォームは応募が確定した時だけ閉じる
+            "button.style.display = (showButton && !_voucherFormOpen202611) ? 'block' : 'none';",
+            "if (form && applied) form.style.display = 'none';",
+            // 緑ボタンは openForm() 経由でのみ開く（閉じる導線は「やめる」だけ）
+            'openForm();',
+            // 変更フォームも同じ規則（開期中は変更ボタンを隠す）
+            "!isEmailChangeDeadlinePassed202611() && !_voucherChangeOpen202611",
+            "openBtn.style.display = 'none';",
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, '不足する要素: ' . $needle);
+        }
+
+        // 旧実装（背景更新でフォームを閉じる / 緑ボタンを常時出す）へ戻っていないこと
+        $this->assertStringNotContainsString('if (form && !showButton) form.style.display', $html);
+    }
+}

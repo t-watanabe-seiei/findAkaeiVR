@@ -505,6 +505,32 @@ entry は新しいアドレスで上書きされるため打ち間違い宛の�
 `too_many`（`waitSeconds` を分へ換算）/ `server_busy`（時間をおいて再試行）を分岐する。
 想定外のステータスは `[AR202611] voucher code error` として console へ出す（原因特定のため）。
 
+### 5.10 応募・変更フォームの開中はトリガーボタンを非表示（FR-61・2026-11-05 追加）
+
+**問題**: 確認コードを送信して 6 桁を入力している最中に、フォームの外・上にある `#voucher-apply-button`（緑）を
+再度押すと、クリックハンドラが `resetEmailConfirm()` + `showStep('email')` を無条件で実行し、6 桁欄が `display:none`
+になって消えた（送信済みコードは Cache に生存しているのに画面から入力できなくなる）。
+加えて `updateVoucherUI202611()` 末尾の `if (form && !showButton) form.style.display = 'none';` は
+`check-status` 応答・`online` 復帰・ページ起動・スタンプ帳を開いた時の背景更新で呼ばれ、
+未送信スタンプ（`pending > 0`）や `deviceCount === null`（check-status 失敗）で開期中のフォーム自体を閉じていた。
+
+**設計（案A）**: フォームの開期中はトリガーボタンを描画しない。フォームを閉じる導線はフォーム内の「やめる」だけ。
+
+| 状態 | 応募ボタン `#voucher-apply-button` | フォーム `#voucher-form` |
+|---|---|---|
+| 閉じている | 収集種数・応募期限・オンライン状態に応じて表示（従来どおり） | `display:none` |
+| 開いている（アドレス入力 / 送信先確認 / 6 桁入力） | `_voucherFormOpen202611` により `display:none` | `display:block`（背景更新で閉じない） |
+| 応募確定 | 応募完了表示へ切り替えて表示しない | `applied` により `display:none` |
+
+- 開く入口は `openForm()` 1 箇所に集約（`_voucherFormOpen202611 = true` → ボタン非表示 → メールステップへ）。
+- 閉じる出口は `closeForm()`（「やめる」・応募成功）だけ。`closeForm()` は `updateVoucherUI202611()` を呼んで
+  収集種数・応募状態に応じてもう一度ボタンを出す（fetch は伴わない・軽量）。
+- 背景更新でフォームを閉じる条件は `applied`（応募が確定した時）だけ。開期中は入力値を保持する。
+- 変更フォーム（FR-63）も同型: `openForm()` が `#voucher-change-email` を隠し、
+  `updateVoucherAppliedInfo202611()` の `canChange` は `!_voucherChangeOpen202611` を含む。
+  応募行が無い場合の自動閉じは `_voucherChangeOpen202611` が false の時だけ（変更手続きの途中に閉じない）。
+- サーバー側の応募可否（422 `not_eligible`）は変更しない。未送信スタンプがある状態でフォームが開いていても応募送信はサーバーが拒否する。
+
 ## 6. 管理ダッシュボード
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）
