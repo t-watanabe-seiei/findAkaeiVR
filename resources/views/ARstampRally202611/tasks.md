@@ -308,7 +308,7 @@
 - [x] **T72** migration `2026_11_04_000000_add_email_verification_to_stamp202611_voucher_applications_table`:
   `email_code_sent_at` / `email_verified_at`（nullable）を追加し、既存行へ `email_verified_at = applied_at`（grandfathering）
 - [x] **T73** `Stamp202611VoucherApplication`: 2 列を fillable / datetime cast へ追加、`isEmailVerified()` / `isLegacyEmailApplication()`
-- [x] **T74** `config/ar202611.php`: `email_verification`（`enabled` / `code_ttl` 900 / `max_attempts` 5 / `resend_interval` 30 / `dns_check`）を env 付きで追加
+- [x] **T74** `config/ar202611.php`: `email_verification`（`enabled` / `code_ttl` 900 / `max_attempts` 5 / `resend_interval` 30 / `dns_check`（既定 false・T82 で修正））を env 付きで追加
 - [x] **T75** `App\Mail\Stamp202611VoucherCodeMail` + `resources/views/emails/stamp202611/voucher-code.blade.php`（同期送信・コードは本文のみ）
 - [x] **T76** `StampRally202611Controller`: `requestEmailCode()`（期限 → 資格 → 応募済み → 送信間隔の順で検証し Cache へ 6 桁を TTL 付き保持）、
   `consumeEmailCode()`（`hash_equals` 一致で Cache 削除・試行回数管理）、`applyVoucher()` は一致後に応募行を作る（`code` は `nullable|max:10`）。
@@ -343,9 +343,28 @@
 - [ ] メールが届かない場合の切り分け: `MAIL_FROM_ADDRESS` のドメイン権限 → SMTP 認証（502 `mail_failed` が返る）→
   一時的に `AR202611_EMAIL_VERIFICATION=false` へ（応募は 1 ステップに戻る）
 
+### Phase 3B 修正（2026-11-05）: 確認コード送信の 500（`validateDns` 未定義）
+
+背景: 本番で `POST /stamp202611/voucher-email-code` が
+`BadMethodCallException: Method Illuminate\Validation\Validator::validateDns does not exist`（500）で失敗し、
+確認コードが送信できなかった。原因は `email` のルールへ `|dns` を連結していたこと
+（Laravel 11.20.0 には `dns` ルールが存在しない。`email:rfc,dns` の `dns` 引数とは別物）。
+既存テストはすべて `dns_check => false` のため、この経路を通らず失敗を検出できていなかった。
+
+- [x] **T82** `config/ar202611.php`: `email_verification.dns_check` の既定を `true` → `false`（env `AR202611_EMAIL_DNS_CHECK`）
+- [x] **T83** `StampRally202611Controller::requestEmailCode()`: ルールを `required|email|max:190` に固定（`|dns` を撤去）。
+  正規化後、`dns_check` が true のときだけ新 `emailDomainExists()`（`checkdnsrr()` の MX → A。関数不在・DNS 参照の例外は通過）で照会し、
+  解決できなければ 422 `invalid_email`（メール送信なし）。`emailVerificationOptions()` の既定値も false へ
+- [x] **T84** `tests/Feature/StampRally202611Test.php`: DNS 系 3 テスト追加（`dns_check=true` で 500 にならない／
+  解決しないドメイン（`.invalid`）は 422 `invalid_email` でメール 0 通／`emailDomainExists()` の境界挙動）
+  → `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test` **OK (40 tests, 304 assertions)**
+- [ ] **T85** 本番反映: `.env` へ `AR202611_EMAIL_DNS_CHECK=false`（既定も false のため未設定でも復旧する）→
+  `php artisan optimize:clear`（OPcache 時は `opcache_reset()` か PHP 再起動）→ 実機でコード送信が 200 になることを確認。
+  500 が残る場合は `storage/logs/laravel.log` の `validateDns` 行と `php artisan tinker` の `config('ar202611.email_verification')` を確認
+
 ### 残（FR-61 関連の運用）
 
 - [ ] 確認コードのメール文面（差出人・件名・本文）を運営へ確認してもらう（`resources/views/emails/stamp202611/voucher-code.blade.php`）
 - [ ] 抽選実施前に `email_verified_at` が NULL の行（未確認）が存在しないこと運用で確認する（FR-61 では未確認行を作らないため 0 件のはず）
-- [ ] `dns_check=true` が参加者のドメインで誤検知しないか（DNS 解決できないドメインで 422 になる）を本番初日に監視する
+- [ ] `AR202611_EMAIL_DNS_CHECK=true` を有効化している場合だけ、参加者のドメインが 422 `invalid_email` になっていないか本番初日に監視する（既定は false で DNS 参照しない。DNS 参照そのものの失敗は通過する設計）
 

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -1227,6 +1228,74 @@ class StampRally202611Test extends TestCase
 
         $this->assertStringContainsString('123456', $html);
         $this->assertStringContainsString('15 分', $html);
+    }
+
+    /**
+     * FR-61 回帰テスト: dns_check = true でも 500 にならない。
+     *
+     * 本番で `BadMethodCallException: Method Illuminate\Validation\Validator::validateDns does not exist`
+     * が発生した。Laravel には `dns` バリデーションルールが存在しないため、ルール文字列へ `|dns` を
+     * 連結する実装は未定義ルール扱いで例外になる。DNS 照会は 200 か 422 invalid_email で返し、
+     * 500 を出さないことを保証する。
+     */
+    public function test_email_code_request_with_dns_check_enabled_never_returns_500(): void
+    {
+        $this->enableEmailVerification(['dns_check' => true]);
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-dns', 12);
+
+        $response = $this->requestEmailCode('fp-dns', 'verify@example.com');
+
+        // DNS 解決に成功すれば 200、できなければ 422 invalid_email（どちらでもよく、500 は出さない）
+        $this->assertContains($response->getStatusCode(), [200, 422]);
+
+        if ($response->getStatusCode() === 422) {
+            $response->assertJson(['success' => false, 'error' => 'invalid_email']);
+            Mail::assertNothingSent();
+            $this->assertNull($this->cachedEmailCode('fp-dns'));
+
+            return;
+        }
+
+        Mail::assertSent(Stamp202611VoucherCodeMail::class);
+        $this->assertIsArray($this->cachedEmailCode('fp-dns'));
+    }
+
+    /**
+     * FR-61: dns_check = true のとき、ドメインが解決できないアドレスは 422 invalid_email で弾く。
+     * `.invalid` は RFC 2606 で解決しないことが保証されている予約 TLD（テストで DNS に依存しない）。
+     */
+    public function test_email_code_request_rejects_domain_without_dns_records(): void
+    {
+        $this->enableEmailVerification(['dns_check' => true]);
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-nxdomain', 12);
+
+        $this->requestEmailCode('fp-nxdomain', 'verify@example.invalid')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'invalid_email']);
+
+        Mail::assertNothingSent();
+        $this->assertNull($this->cachedEmailCode('fp-nxdomain'));
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+    }
+
+    /**
+     * FR-61: ドメイン照会ヘルパーの境界挙動（DNS 照会できない形は照会せず通過させる）。
+     */
+    public function test_email_domain_exists_helper_boundaries(): void
+    {
+        $method = new ReflectionMethod(StampRally202611Controller::class, 'emailDomainExists');
+        $method->setAccessible(true);
+
+        // 解決しない予約 TLD は false（422 invalid_email の根拠）
+        $this->assertFalse($method->invoke(null, 'verify@example.invalid'));
+        // @ が無い形は DNS 照会せず通過（email ルールで既に弾かれるため 500 の原因にしない）
+        $this->assertTrue($method->invoke(null, 'nobody'));
     }
 }
 

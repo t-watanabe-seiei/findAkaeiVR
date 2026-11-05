@@ -383,8 +383,9 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 
 #### 送信 `POST /stamp202611/voucher-email-code`（`requestEmailCode()`）
 - ルート: `routes/web.php` の admin 配下グループ内、`->middleware('throttle:stamp202611_email_code')`（`AppServiceProvider::boot()` で 1 分 6 回 / fingerprint）
-- validate: `fingerprint` 必須 string、`email` 必須 `email|max:190`（`dns_check` が true のとき `|dns` を連結）
-- 順序（無駄なメールを送らない）: ①応募期限経過 → 422 `deadline_passed` ②`deviceStampCountFor() < voucher_threshold()` → 422 `not_eligible` ③`email` 既存応募あり → 422 `already_applied` ④`enabled=false` → `{success:true, verification_required:false}`（送信なし）⑤`resend_interval` 以内の再送信 → 429 `too_soon`（`waitSeconds`）
+- validate: `fingerprint` 必須 string、`email` 必須 `email|max:190`（**`|dns` は連結しない**: Laravel 11 に `dns` ルールは無く `Validator::validateDns` 未定義で `BadMethodCallException` = 500 になる）
+- 順序（無駄なメールを送らない）: ①応募期限経過 → 422 `deadline_passed` ②`dns_check = true` なら `emailDomainExists()` の DNS 照会 → 422 `invalid_email` ③`deviceStampCountFor() < voucher_threshold()` → 422 `not_eligible` ④`email` 既存応募あり → 422 `already_applied` ⑤`enabled=false` → `{success:true, verification_required:false}`（送信なし）⑥`resend_interval` 以内の再送信 → 429 `too_soon`（`waitSeconds`）
+- ドメイン存在確認 `emailDomainExists()`（既定 `dns_check = false`）: 正規化済みアドレスの `@` 以降を取り `checkdnsrr($domain, 'MX')`、無ければ `checkdnsrr($domain, 'A')`。どちらも無ければ false（422 `invalid_email`）。`checkdnsrr` 関数不在、または DNS 参照の例外（ネットワーク障害・共有ホスティングの制限）は `report()` 後に**通過**させる（DNS 参照の失敗で応募を止めない）。1 リクエストの DNS 参照は最大 2 回
 - コード生成・保持: `random_int(100000, 999999)` を Cache キー `ar202611:voucher-email-code:{fingerprint}` に `{email, code, sent_at, expires_at, attempts: 0}` で `code_ttl` 秒。単位は fingerprint（応募と同一単位）
 - 送信: `Mail::to($email)->send(new Stamp202611VoucherCodeMail($code, $ttlMinutes))`（**同期送信**。`ShouldQueue` を付けない = Xserver でキューワーカーを常駐させない）。`Throwable` を捕まえて Cache を破棄し 502 `mail_failed`（`report()` でログ）
 - 返却: `{success, verification_required: true, email: maskEmail($email), ttlMinutes, resendInterval}`。`maskEmail()` は `t***@example.com` 形式で**完全なアドレスを画面へ返さない**
@@ -421,7 +422,8 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 #### 本番の SMTP（`.env`）
 - `MAIL_MAILER=smtp` + `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_ENCRYPTION`（Xserver の SMTP 情報）、`MAIL_FROM_ADDRESS` は送信元アドレス（`subscription@seiei.online`）
 - 確認を一時的に止める: `AR202611_EMAIL_VERIFICATION=false`（応募は従来どおり 1 ステップへ戻る）。`MAIL_MAILER=log` の開発環境ではコードが `storage/logs/laravel.log` にしか出ないため確認フローを実機検証できない
-- `dns_check=true` は DNS 参照を伴うため、SMTP とは別に解決できないドメインがある場合だけ `AR202611_EMAIL_DNS_CHECK=false` で切る
+- ドメイン DNS 照会は `AR202611_EMAIL_DNS_CHECK=true` のときだけ（既定 `false`）。有効化すると参加者 1 人につき最大 2 回の DNS 参照が増え、解決できないドメインは 422 `invalid_email` になるため、**SMTP が正常でも応募が止まる**ことがある。誤検知が確認できたら `false` に戻す（6 桁コードの確認だけで FR-61 の目的は満たす）
+- 500 が出る場合の切り分け: `BadMethodCallException: Validator::validateDns does not exist` は未定義の `dns` ルールを使った実装（2026-11-04 まで）に残る。`email` のルール文字列は `required|email|max:190` のみであること
 
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）

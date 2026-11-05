@@ -154,7 +154,7 @@ ARstampRally202610 の**完成形**（iOS カメラ起動の根本修正＋Servi
 | `email_verification.code_ttl` | `900`（秒） | 確認コードの有効期限。Cache の TTL とメール本文の「有効期限 N 分」の根拠 |
 | `email_verification.max_attempts` | `5` | 1 コードあたりの入力試行上限。超過でコードを破棄し `code_expired`（総当たり対策） |
 | `email_verification.resend_interval` | `30`（秒） | 再送信の間隔。以内の再送信は 429 `too_soon`（`waitSeconds`） |
-| `email_verification.dns_check` | `true` | `email:rfc,dns` でドメイン存在を確認（false で DNS 参照を止める） |
+| `email_verification.dns_check` | `env('AR202611_EMAIL_DNS_CHECK', false)` | true のときだけ `checkdnsrr()`（MX → A の順）で参加者ドメインを照会し、解決できなければ 422 `invalid_email`（メールは送らない）。**Laravel には `dns` バリデーションルールは無い**ため controller で自前照会する（2026-11-05 修正・design.md §5.7）。DNS 参照そのものの失敗は通過させる |
 
 
 ### 8.3 機能要件

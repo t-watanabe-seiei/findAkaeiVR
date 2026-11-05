@@ -401,7 +401,7 @@ class StampRally202611Controller extends Controller
             'code_ttl' => max(60, (int) config('ar202611.email_verification.code_ttl', 900)),
             'max_attempts' => max(1, (int) config('ar202611.email_verification.max_attempts', 5)),
             'resend_interval' => max(0, (int) config('ar202611.email_verification.resend_interval', 30)),
-            'dns_check' => (bool) config('ar202611.email_verification.dns_check', true),
+            'dns_check' => (bool) config('ar202611.email_verification.dns_check', false),
         ];
     }
 
@@ -426,6 +426,41 @@ class StampRally202611Controller extends Controller
     }
 
     /**
+     * メールアドレスのドメインが存在するか（FR-61・dns_check が true のときだけ呼ぶ）。
+     *
+     * Laravel には `dns` バリデーションルールが存在しない（`email:rfc,dns` の dns 引数とは別物）ため、
+     * 未定義ルールによる BadMethodCallException を避ける目的で checkdnsrr() を直接使う。
+     * DNS 参照そのものの失敗（ネットワーク障害・共有ホスティングの制限）は応募を止める理由にしないため、
+     * 関数不在・例外時は true（通過）を返す。ドメインが解決できない場合だけ false。
+     *
+     * @param string $email 正規化済みのメールアドレス
+     */
+    private static function emailDomainExists(string $email): bool
+    {
+        $at = strrpos($email, '@');
+        $domain = $at === false ? '' : substr($email, $at + 1);
+
+        // 不正な形（念のため）と DNS 照会関数が無い環境は通過させる
+        if ($domain === '' || !function_exists('checkdnsrr')) {
+            return true;
+        }
+
+        foreach (['MX', 'A'] as $record) {
+            try {
+                if (checkdnsrr($domain, $record)) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                report($e);
+
+                return true; // DNS 参照が失敗した場合は応募を止めない
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * 確認コードの送信（POST /stamp202611/voucher-email-code）。
      *
      * 応募行はこの時点では作らない（未確認の行を抽選 CSV に混ぜない・FR-61）。
@@ -435,9 +470,12 @@ class StampRally202611Controller extends Controller
     {
         $options = self::emailVerificationOptions();
 
+        // 'dns' は Laravel のバリデーションルールではない（email:rfc,dns の dns 引数とは別物）ため連結しない。
+        // 連結すると Validator::validateDns が未定義で BadMethodCallException（500）になる。
+        // ドメイン存在確認は emailDomainExists() で行う（FR-61・dns_check）。
         $validated = $request->validate([
             'fingerprint' => 'required|string',
-            'email' => 'required|email|max:190' . ($options['dns_check'] ? '|dns' : ''),
+            'email' => 'required|email|max:190',
         ]);
 
         // 応募期限経過後は送信しない（FR-50）
@@ -453,6 +491,15 @@ class StampRally202611Controller extends Controller
         $fingerprint = $validated['fingerprint'];
         // email は trim + strtolower で正規化（FR-44）
         $email = strtolower(trim($validated['email']));
+
+        // ドメイン存在確認（dns_check が true のときだけ・FR-61）
+        if ($options['dns_check'] && !self::emailDomainExists($email)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'invalid_email',
+                'message' => 'メールアドレスのドメインが見つかりません。入力をご確認ください',
+            ], 422);
+        }
 
         session(['ar_fingerprint_202611' => $fingerprint]);
 

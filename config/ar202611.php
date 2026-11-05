@@ -40,7 +40,10 @@ return [
         'code_ttl'        => (int) env('AR202611_EMAIL_CODE_TTL', 900),        // 確認コードの有効期限（秒・既定 15 分）
         'max_attempts'    => (int) env('AR202611_EMAIL_MAX_ATTEMPTS', 5),      // 1 コードあたりの入力試行上限
         'resend_interval' => (int) env('AR202611_EMAIL_RESEND_INTERVAL', 30),  // 再送信の間隔（秒）
-        'dns_check'       => env('AR202611_EMAIL_DNS_CHECK', true),            // email:rfc,dns でドメイン存在を確認
+        // ドメイン存在チェック（true のときだけ emailDomainExists() で checkdnsrr() を呼ぶ）。
+        // Laravel には `dns` バリデーションルールが無いので、ルール文字列へは連結しない（500 になる）。
+        // 共有ホスティングでは DNS 参照が遅く誤検知もあり得るため既定は false（FR-61 の本人確認は 6 桁コードで成立する）。
+        'dns_check'       => env('AR202611_EMAIL_DNS_CHECK', false),         // true で参加者のドメインを DNS 照会
     ],
 
     // ── 複数端末での検証（FR-54）──────────────────────────────────────────

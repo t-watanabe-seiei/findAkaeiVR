@@ -218,6 +218,28 @@ OPcache を使っている場合は `opcache_reset()` か PHP / Web サーバー
 → ③ `php artisan optimize:clear` → ④ 実機で 2 ステップ応募と倍率バッジ表示を確認。
 確認を一時的に止めるなら `AR202611_EMAIL_VERIFICATION=false`（応募は 1 ステップに戻る）。
 
+### 2026-11-05 — 確認コード送信の 500 修正（DNS 照会は controller で自作・FR-61）
+
+本番で「確認コードを送信」が `BadMethodCallException: Method Illuminate\Validation\Validator::validateDns does not exist`（500）で失敗し、
+コードが送信できなかった。Laravel 11.20.0 には `dns` バリデーションルールが存在しない（`email:rfc,dns` の `dns` 引数とは別物）のに、
+`dns_check` が true の設定でルール文字列へ `|dns` を連結していたため未定義ルール扱いで例外になっていた
+（`requirements.md` FR-61 ／ `design.md` §5.7 ／ `tasks.md` T82〜T85）。
+
+| # | 対象 | 変更内容 |
+|---|------|---------|
+| 1 | `config/ar202611.php` | `email_verification.dns_check` の既定を `true` → **`false`**（env `AR202611_EMAIL_DNS_CHECK`） |
+| 2 | `StampRally202611Controller` | `email` のルールを `required|email|max:190` に固定（`|dns` を撤去）。`dns_check` が true のときだけ `emailDomainExists()`（`checkdnsrr()` の MX → A）で照会し、解決できなければ 422 `invalid_email`（メールは送らない）。`checkdnsrr` 不在や DNS 参照の例外は通過させる |
+| 3 | `.env` / `.env.example` | `AR202611_EMAIL_DNS_CHECK=false` と注意書きを追記 |
+| 4 | `tests/Feature/StampRally202611Test.php` | DNS 系 3 テスト追加（`dns_check=true` で 500 にならない／解決しないドメインは 422 `invalid_email` でメール 0 通／ヘルパーの境界）→ クラス **40 tests / 304 assertions PASS** |
+
+**本番の手順**: ① `.env` へ `AR202611_EMAIL_DNS_CHECK=false`（既定も false なので未設定でも復旧する）
+→ ② コードを反映（`requestEmailCode()` の `email` ルールに `|dns` が残っていないことを確認）
+→ ③ `php artisan optimize:clear`（OPcache 利用時は `opcache_reset()` か PHP 再起動）
+→ ④ 実機で「確認コードを送信」が 200 になることを確認。
+
+**切り分け**: `storage/logs/laravel.log` に `validateDns` があればコード未反映（②③を実行）／
+422 `invalid_email` は `dns_check=true` の DNS 誤検知（`false` へ）／502 `mail_failed` は SMTP 設定（T81 参照）。
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。
