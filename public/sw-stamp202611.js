@@ -19,7 +19,9 @@
  */
 'use strict';
 
-var VERSION = 'v2';                  // 切替ごとに上げる（v1 のままにすると旧 cg/202610 コピーが cache-first で残り続ける）
+var VERSION = 'v3';                  // 切替ごとに上げる（v1 のままにすると旧 cg/202610 コピーが cache-first で残り続ける）
+                                    // v3 = ガラポン確認ダイアログ（FR-62）と応募後のメールアドレス変更（FR-63）を
+                                    // 含むページ HTML を再キャッシュするため上げた（オフライン利用者にも届くようにする）
 var ASSET_DIR = '202611';            // cg/{ASSET_DIR} を指す単一点（config/ar202611.php の asset_dir と同期）
 var CACHE_PREFIX = 'ar202611-';
 var CACHE_HTML   = CACHE_PREFIX + 'html-'   + VERSION;

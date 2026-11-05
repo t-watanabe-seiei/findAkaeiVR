@@ -484,6 +484,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // ===== 12. ガラポン / 抽選応募 UI（js-prize.blade.php で実装）=====
     // 応募ボタン・フォームの開閉と送信（202610 の景品交換ボタンは 202611 では使わない）
     if (typeof initVoucherUI202611 === 'function') initVoucherUI202611();
+    // ガラポン押下前の確認ダイアログ（FR-62）と応募後のメールアドレス変更（FR-63）
+    if (typeof initGachaConfirm202611 === 'function') initGachaConfirm202611();
+    if (typeof initVoucherEmailChange202611 === 'function') initVoucherEmailChange202611();
 
     // ===== 13. ガイドボタン =====
     var guideOpenButton = document.getElementById('guide-button');

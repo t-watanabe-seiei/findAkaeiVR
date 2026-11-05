@@ -9,11 +9,21 @@
     <div style="max-width:560px;margin:0 auto;padding:24px 16px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,'Hiragino Sans','Noto Sans JP',sans-serif;">
         <div style="background:#fff;border-radius:12px;padding:22px 20px;border:1px solid #e3e8ef;">
             <p style="margin:0 0 6px;font-size:13px;color:#666;">ARスタンプラリー202611</p>
-            <h1 style="margin:0 0 14px;font-size:19px;color:#111;">市内共通商品券の抽選応募 確認コード</h1>
+            @if (($purpose ?? 'apply') === 'change')
+                <h1 style="margin:0 0 14px;font-size:19px;color:#111;">市内共通商品券の抽選 メールアドレス変更 確認コード</h1>
 
-            <p style="margin:0 0 14px;font-size:14px;line-height:1.7;">
-                抽選応募の確認コードをお送りします。スタンプ帳内の応募画面に入力してください。
-            </p>
+                <p style="margin:0 0 14px;font-size:14px;line-height:1.7;">
+                    応募済みのメールアドレスを変更するための確認コードをお送りします。<br>
+                    スタンプ帳内の「登録したメールアドレスを変更する」画面に入力してください。<br>
+                    <strong>このコードを入力しなければメールアドレスは変わりません。</strong>
+                </p>
+            @else
+                <h1 style="margin:0 0 14px;font-size:19px;color:#111;">市内共通商品券の抽選応募 確認コード</h1>
+
+                <p style="margin:0 0 14px;font-size:14px;line-height:1.7;">
+                    抽選応募の確認コードをお送りします。スタンプ帳内の応募画面に入力してください。
+                </p>
+            @endif
 
             <p style="margin:0 0 6px;font-size:13px;color:#666;">確認コード（6 桁）</p>
             <p style="margin:0 0 16px;font-size:30px;font-weight:800;letter-spacing:.18em;color:#111;text-align:center;">{{ $code }}</p>

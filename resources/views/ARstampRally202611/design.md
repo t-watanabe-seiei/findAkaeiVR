@@ -367,6 +367,13 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 - `draws.length >= CANDY_TIERS.length`（= 4）でボタンを `disabled` にし「ガラポンはすべて引きました」を表示
 - オフラインでも動作（fetch なし）。サーバー記録はないため、ブラウザデータ削除で回数はリセットされる（FR-39 で許容）
 
+#### 引く前の確認ダイアログ（FR-62・2026-11-05 追加）
+- ボタン押下では**引き済みにならない**。`renderGacha202611()` のクリックハンドラは ①引抽済み段階 → トーストだけ ②未到達段階 → トーストだけ ③それ以外 → `openGachaConfirm202611(tier)` で確認ダイアログを開く
+- `#gacha-confirm-dialog`（`ui.blade.php`・`role="alertdialog"`）+ `#gacha-confirm-overlay`。文言「N種ガラポンを引き済みにしますか？」。「はい」`#gacha-confirm-yes` → `confirmGachaDraw202611(tier)`（`drawGacha202611()` で LocalStorage へ記録 → `renderGacha202611()`）。「いいえ」`#gacha-confirm-no` → 記録せず「ガラポンは引いていません。」
+- 保留段階は `_gachaPendingTier202611`（モジュール変数）だけ。オーバーレイ押下でも閉じる（引き済みにならない）。結線は `initGachaConfirm202611()`（`js-init.blade.php` で 1 回だけ呼ぶ）
+- CSS は既存の `#confirm-dialog` と共有し、`.confirm-yes` だけ橙色（`#ff8c00`）にして「はい = 引き済み確定」を視覚化する。`js-throw.blade.php` の UI 要素除外リストへ 2 つの要素を追加（AR 画面のタップ処理と干渉させない）
+- LocalStorage のキー・回数管理（FR-39）・`drawGacha202611()` のロジックは変更しない（追加するのは確認の 1 工程だけ）
+
 ### 5.6 CSV ダウンロード（業者提出用・FR-45 / FR-48）
 - ルート: 既存 `GET /admin/export?dataset=voucherApplications202611&start=…&end=…`（`AdminController::exportCsv()` の `$allowed` に追加）
 - ヘッダ: `name, email, stamp_count, weight, applied_at`
@@ -408,6 +415,7 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 #### メール本文
 - `App\Mail\Stamp202611VoucherCodeMail`（`public readonly string $code` / `int $ttlMinutes`）→ `resources/views/emails/stamp202611/voucher-code.blade.php`（インラインスタイルの HTML・コードは本文のみ）
 - 件名「【ARスタンプラリー202611】商品券抽選の確認コード」。送信元は `config('mail.from.address')`
+ - 第 3 引数 `string $purpose = 'apply'`（FR-63）: `'apply'` は抽選応募、`'change'` は応募済みメールアドレス変更。`'change'` は件名と本文（「このコードを入力しなければメールアドレスは変わりません」）を切り替える
 
 #### クライアント（`js-prize.blade.php` / `ui.blade.php`）
 - `#voucher-step-email`（アドレス + お名前）→ `#voucher-email-confirm`（**2 押し込み**で送信先を目視確認 → 「このアドレスに送信」）→ `#voucher-step-code`（6 桁入力・`autocomplete="one-time-code"`・再送信 / メールアドレス変更）
@@ -425,6 +433,40 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 - ドメイン DNS 照会は `AR202611_EMAIL_DNS_CHECK=true` のときだけ（既定 `false`）。有効化すると参加者 1 人につき最大 2 回の DNS 参照が増え、解決できないドメインは 422 `invalid_email` になるため、**SMTP が正常でも応募が止まる**ことがある。誤検知が確認できたら `false` に戻す（6 桁コードの確認だけで FR-61 の目的は満たす）
 - 500 が出る場合の切り分け: `BadMethodCallException: Validator::validateDns does not exist` は未定義の `dns` ルールを使った実装（2026-11-04 まで）に残る。`email` のルール文字列は `required|email|max:190` のみであること
 
+### 5.8 応募後のメールアドレス変更（FR-63・2026-11-05 追加）
+
+**目的**: 応募時に入力ミスで届かないアドレスへ変更したくても変更手段が無かった問題への対応。
+**新しいアドレスへ 6 桁コードを送って入力してもらってからだけ**書き換える（未確認のまま変更しない / 他人のアドレスへ勝手に書き換えない）。
+応募行の `weight` / `stamp_count` / `tier` など抽選列は一切変更しない（応募そのものは取り消さない）。
+
+#### 期限（`config/ar202611.email_change_deadline`）
+- 既定 `2026-11-30 23:59:59`（`AR202611_EMAIL_CHANGE_DEADLINE`・JST）。抽選を 11 月末頃に行うため、それ以降は変更を受け付けない
+- `emailChangeDeadline()` は `Asia/Tokyo` で parse。未設定・空文字は既定値、parse 失敗は `applyDeadline()` へフォールバック
+- `check-status` は `emailChangeDeadline`（ISO8601）と `voucher.email`（`maskEmail()` 済み）を返す。クライアントは期限経過後に変更ボタンを出さない
+
+#### 送信 `POST /stamp202611/voucher-email-change-code`（`requestEmailChangeCode()`）
+- `->middleware('throttle:stamp202611_email_change_code')`（1 時間 3 回 / fingerprint）
+- validate: `fingerprint` 必須 string、`email` 必須 `email|max:190`（`|dns` は連結しない・§5.7）
+- 順序（無駄なメールを送らない）: ①変更期限経過 → 422 `change_deadline_passed` ②応募行無し（`findApplicationForChange()`）→ 422 `not_applied` ③現登録と同じ → 422 `same_email` ④`dns_check = true` で解決不可 → 422 `invalid_email` ⑤**他の応募行が使うアドレス** → 422 `email_in_use`（FR-44 の 1 メール 1 応募を維持）⑥`enabled = false` → `{success:true, verification_required:false}`（送信なし）⑦`resend_interval` 以内 → 429 `too_soon`（`waitSeconds`）
+- コードは Cache キー `ar202611:voucher-email-change:{fingerprint}`（**応募用 `voucher-email-code` とは別キー**。応募用コードを消費済みでも変更はでき、互いに使い回せない）
+- 送信は `Stamp202611VoucherCodeMail($code, $ttlMinutes, 'change')`（同期送信）。失敗は Cache を破棄して 502 `mail_failed`
+- 返却: `{success, verification_required, email: maskEmail($email), ttlMinutes, resendInterval, message}`
+
+#### 変更確定 `POST /stamp202611/voucher-email-change`（`changeVoucherEmail()`）
+- `->middleware('throttle:stamp202611_email_change')`（1 時間 10 回 / fingerprint）。validate は `fingerprint` / `email` / `code`（`nullable|string|max:10`）
+- 期限・応募行・`same_email`・`email_in_use` を再度検証してからコード検証へ進む（送信を飛ばして確定する経路を作らない）
+- `consumeEmailCode($fingerprint, $email, $code, 'change')` — §5.7 と同一の検証（`code_expired` / `code_required` / `code_invalid` + `remainingAttempts`、`hash_equals`、試行上限で entry 破棄）
+- 一致後にだけ `email` を書き換え、`email_code_sent_at = 変更用コードの送信時刻`、`email_verified_at = now()` を更新（管理画面 / CSV は「確認済み」のまま）
+- `QueryException`（email UNIQUE の同時競合）は `refresh()` で行を元へ戻し 422 `email_in_use`。未確認の値を DB へ残さない
+- 返却: `{success, email: maskEmail($email), emailVerified: true, changedAt, message}`。クライアントは `check-status` を引き直して表示を同期する
+
+#### クライアント（`ui.blade.php` / `js-prize.blade.php` / `head.blade.php`）
+- 応募後だけ `#voucher-applied-info`（「応募したメールアドレス: `voucher.email`」＋「登録したメールアドレスを変更する」ボタン）と `#voucher-lottery-note`（「※11月末頃に抽選し、当選者のみ事務局より御連絡します。」）を表示（`updateVoucherAppliedInfo202611()` を `updateVoucherUI202611()` の末尾から呼ぶ）
+- 変更フォーム `#voucher-change-form` は 2 ステップ（応募フォームと同じ作り）: `#voucher-change-step-email`（新アドレス → **2 押し込み**で送信先を目視確認）→ `#voucher-change-step-code`（6 桁入力・`autocomplete="one-time-code"`・再送信）。「やめる」`#voucher-change-cancel` はコードを入力しない限り変更しない
+- `requestVoucherEmailChangeCode202611()` / `changeVoucherEmail202611()`（419 応答は `refreshCsrfToken()` 後 1 回だけ再試行）。全角 / スペースの自動補正とエラー文言は応募と同じ `normalizeEmailInput202611()` / `voucherCodeErrorText202611()` を使う
+- 画面には常にマスク済みアドレスだけを表示し、完全なアドレスは返さない
+
+## 6. 管理ダッシュボード
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）
 - 期間: `config('ar202611.start')` / `config('ar202611.end')` を `Asia/Tokyo` → `UTC` に変換（既定 2026-11-01 00:00:00 〜 2026-11-30 23:59:59）

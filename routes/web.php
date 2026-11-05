@@ -123,6 +123,11 @@ Route::prefix('stamp202611')->group(function () {
         ->middleware('throttle:stamp202611_email_code');
     Route::post('/apply-voucher', [App\Http\Controllers\StampRally202611Controller::class, 'applyVoucher'])
         ->middleware('throttle:stamp202611_apply');
+    // 応募済みメールアドレスの変更（FR-63・design §5.8）: 新アドレスへ 6 桁コードを送信 → 入力で確定
+    Route::post('/voucher-email-change-code', [App\Http\Controllers\StampRally202611Controller::class, 'requestEmailChangeCode'])
+        ->middleware('throttle:stamp202611_email_change_code');
+    Route::post('/voucher-email-change', [App\Http\Controllers\StampRally202611Controller::class, 'changeVoucherEmail'])
+        ->middleware('throttle:stamp202611_email_change');
 });
 
 Route::match(['get', 'head'], '/number', function () {

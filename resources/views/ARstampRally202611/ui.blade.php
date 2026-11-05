@@ -84,6 +84,43 @@
                     </div>
                     <div id="voucher-error" role="alert"></div>
                 </div>
+
+                <!-- 応募後の表示（FR-63）: 応募したメールアドレス（マスク済み）と変更ボタン -->
+                <div id="voucher-applied-info" style="display:none;">
+                    <p class="voucher-applied-line">応募したメールアドレス: <strong id="voucher-applied-email"></strong></p>
+                    <button id="voucher-change-email" type="button">登録したメールアドレスを変更する</button>
+                </div>
+
+                <!-- メールアドレス変更の 2 ステップ（FR-63・design §5.8）:
+                     新アドレス入力 → 送信先の目視確認 → 新アドレスへ 6 桁コード送信 → 入力で変更完了 -->
+                <div id="voucher-change-form" style="display:none;">
+                    <div id="voucher-change-step-email">
+                        <label for="voucher-change-email-input">新しいメールアドレス</label>
+                        <input id="voucher-change-email-input" type="email" inputmode="email" autocomplete="email" placeholder="example@example.com" />
+                        <p class="voucher-input-note">全角で入力しても自動で半角に直します</p>
+                        <div id="voucher-change-email-confirm" class="voucher-email-confirm" style="display:none;">
+                            <p style="margin:0;">送信先: <strong id="voucher-change-email-confirm-target"></strong></p>
+                            <p style="margin:4px 0 0;">間違っていなければ「このアドレスに送信」をもう一度押してください。</p>
+                        </div>
+                        <div class="voucher-form-row">
+                            <button id="voucher-change-send-code" type="button">確認コードを送信</button>
+                            <button id="voucher-change-cancel" type="button">やめる</button>
+                        </div>
+                    </div>
+                    <div id="voucher-change-step-code" style="display:none;">
+                        <p class="voucher-code-target">確認コードを <strong id="voucher-change-code-email"></strong> に送信しました。<span id="voucher-change-code-ttl"></span> 分以内に入力してください。</p>
+                        <label for="voucher-change-code-input">届いた 6 桁の確認コード</label>
+                        <input id="voucher-change-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" />
+                        <div class="voucher-form-row">
+                            <button id="voucher-change-submit" type="button">変更完了</button>
+                            <button id="voucher-change-resend-code" type="button">コードを再送信</button>
+                        </div>
+                    </div>
+                    <div id="voucher-change-error" role="alert"></div>
+                </div>
+
+                <!-- 応募後だけに表示する抽選案内（FR-63） -->
+                <div id="voucher-lottery-note" style="display:none;">※11月末頃に抽選し、当選者のみ事務局より御連絡します。</div>
             </div>
 
             <div class="button-row">
@@ -139,6 +176,16 @@
         <div class="confirm-buttons">
             <button class="confirm-yes" id="confirm-yes" type="button">はい</button>
             <button class="confirm-no" id="confirm-no" type="button">いいえ</button>
+        </div>
+    </div>
+
+    <!-- ガラポン引く前の確認ダイアログ（FR-62・はいで引き済み確定／いいえで取りやめ） -->
+    <div id="gacha-confirm-overlay" aria-hidden="true"></div>
+    <div id="gacha-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="gacha-confirm-message">
+        <div class="confirm-message" id="gacha-confirm-message"></div>
+        <div class="confirm-buttons">
+            <button class="confirm-yes" id="gacha-confirm-yes" type="button">はい</button>
+            <button class="confirm-no" id="gacha-confirm-no" type="button">いいえ</button>
         </div>
     </div>
 

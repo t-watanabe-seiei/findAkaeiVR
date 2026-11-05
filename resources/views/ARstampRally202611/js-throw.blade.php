@@ -119,6 +119,8 @@
                 element.closest('#camera-help-modal')   ||
                 element.closest('#confirm-dialog')      ||
                 element.closest('#confirm-overlay')     ||
+                element.closest('#gacha-confirm-dialog')  ||
+                element.closest('#gacha-confirm-overlay') ||
                 element.closest('#camera-error')        ||
                 element.closest('.arjs-loader')
             );

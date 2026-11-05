@@ -1896,3 +1896,61 @@ pattern / glb はすべて 202611 版になり、レンダリング出力上の 
 
 **影響範囲**: 202611 のみ。`public/cg/202610/` は削除せず保持（既存キャンペーンが参照）。
 
+## ARstampRally202611 ガラポン前の確認（FR-62）と応募後のメールアドレス変更（FR-63・2026-11-05）
+
+### 1. 何を直したか
+
+| 問題 | 対応 |
+| --- | --- |
+| ガラポンボタンを 1 タップしただけで「引き済み」になり、誤タップでその段階の引抽権を失う | 押下では**確認ダイアログ**（`#gacha-confirm-dialog`）だけを開き、「はい」でだけ LocalStorage `ar-gacha-draws-202611` へ記録（FR-62）。「いいえ」とオーバーレイ押下は記録しない |
+| 応募時に入力ミスで届かないメールアドレスへ応募しても、参加者自身に変更手段が無い | **新しいアドレスへの 6 桁コード確認付き**で `email` を変更できる（FR-63）。応募自体（`weight` / `stamp_count` / `tier`）は変わらない |
+| 応募済みのアドレスが画面で確認できず、抽選連絡がいつ来るか不明 | スタンプ帳に「応募したメールアドレス: `v***@example.com`」（マスク済み）と「※11月末頃に抽選し、当選者のみ事務局より御連絡します。」を表示 |
+
+### 2. 追加した API（`routes/web.php`・参加者向け）
+
+| メソッド / パス | RateLimiter | 役割 |
+| --- | --- | --- |
+| `POST /stamp202611/voucher-email-change-code` | `stamp202611_email_change_code`（1 時間 3 回 / fingerprint） | 新しいアドレスへ 6 桁コードを送信（Cache `ar202611:voucher-email-change:{fingerprint}`・応募用キーとは別） |
+| `POST /stamp202611/voucher-email-change` | `stamp202611_email_change`（1 時間 10 回 / fingerprint） | コード一致後にだけ `email` / `email_code_sent_at` / `email_verified_at` を更新 |
+
+エラー種別: `change_deadline_passed`（422・`email_change_deadline` 経過）/ `not_applied`（応募行無し）/
+`same_email`（現登録と同じ）/ `email_in_use`（他の応募行が使用中・FR-44 の 1 メール 1 応募を維持）/
+`invalid_email`（`AR202611_EMAIL_DNS_CHECK=true` のときだけ）/ `too_soon`（429・`waitSeconds`）/
+`code_required` / `code_invalid`（`remainingAttempts`）/ `code_expired` / `mail_failed`（502）。
+`check-status` は `voucher.email`（マスク済み）と `emailChangeDeadline`（ISO8601）を新たに返す。**完全なメールアドレスは返さない。**
+
+### 3. 設定
+
+- `config/ar202611.php` → `email_change_deadline`（既定 `2026-11-30 23:59:59`・JST）。`.env` の `AR202611_EMAIL_CHANGE_DEADLINE`
+  で変更。**抽選を前倒しする場合は抽選実施時刻より前に下げる**（経過後は変更ボタン自体が消える）
+- メール確認自体（FR-61）の設定はそのまま: `AR202611_EMAIL_VERIFICATION` / `AR202611_EMAIL_CODE_TTL` /
+  `AR202611_EMAIL_MAX_ATTEMPTS` / `AR202611_EMAIL_RESEND_INTERVAL` / `AR202611_EMAIL_DNS_CHECK`（既定 false）
+- `Stamp202611VoucherCodeMail` は第 3 引数 `purpose`（`'apply'` / `'change'`）で件名と本文を切り替える
+
+### 4. 本番適用手順
+
+1. 変更ファイルをアップロード: `config/ar202611.php` / `app/Providers/AppServiceProvider.php` / `routes/web.php` /
+   `app/Http/Controllers/StampRally202611Controller.php` / `app/Mail/Stamp202611VoucherCodeMail.php` /
+   `resources/views/emails/stamp202611/voucher-code.blade.php` /
+   `resources/views/ARstampRally202611/{ui,head,js-prize,js-throw,js-init}.blade.php` / `public/sw-stamp202611.js`
+2. `php artisan optimize:clear`（OPcache 利用時は `opcache_reset()` か PHP 再起動）
+3. Service Worker のキャッシュが `ar202611-{html,core,assets}-v2` → **`-v3`** へ入れ替わることを DevTools で確認
+   （旧 `-v2` が残る場合は `/stamp202611/offline` の「キャッシュ削除」→ リロード）
+4. **DB 変更は不要**（migration なし。既存の `email` / `email_code_sent_at` / `email_verified_at` を使う）
+5. 実機確認: ガラポン 5 種で「いいえ」→ `ar-gacha-draws-202611` が空のまま / 「はい」→ `[5]`。
+   応募後の画面でマスク済みアドレスと変更ボタンが表示され、変更フローで `email` だけ変わることを確認
+
+### 5. 検証結果
+
+- `php -l`: `config/ar202611.php` / `app/Providers/AppServiceProvider.php` / `routes/web.php` /
+  `StampRally202611Controller.php` / `Stamp202611VoucherCodeMail.php` / `tests/Feature/StampRally202611Test.php` すべて OK
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`: **OK (48 tests, 398 assertions)**
+  （FR-63 の変更系 8 テストを追加: 応募行無し 422 `not_applied` / 応募用とは別キーでの送信 / コード一致必須 /
+  `same_email`・`email_in_use` / 期限経過後 422 `change_deadline_passed` / `check-status` のマスク済みアドレスと
+  `emailChangeDeadline` / `enabled=false` は無送信で変更可 / 再送信 429 `too_soon`）
+- 描画検証: `/stamp202611` の HTML に `#gacha-confirm-dialog` / `#gacha-confirm-yes` / `#voucher-applied-info` /
+  `#voucher-change-form` / `#voucher-lottery-note` と `initGachaConfirm202611()` / `initVoucherEmailChange202611()` が出力され、
+  インライン 6 スクリプトすべて `node --check` OK（検証用の一時スクリプトと HTML は削除済み）
+
+**影響範囲**: 202611 のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/`・既存 Service Worker は未変更。
+ガラポンの LocalStorage 仕様（FR-39）と応募の資格・倍率算出（FR-56 / FR-58）は変更していない。

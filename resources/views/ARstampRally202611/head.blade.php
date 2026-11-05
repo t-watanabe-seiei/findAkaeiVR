@@ -362,22 +362,23 @@
         }
         #voucher-apply-button:disabled { cursor: not-allowed; opacity: 0.7; background-color: #999 !important; }
         #voucher-form { margin-top: 12px; }
-        #voucher-form label { display: block; font-size: 13px; color: #555; margin-top: 8px; }
-        #voucher-form input {
+        #voucher-change-form { margin-top: 12px; }
+        #voucher-form label, #voucher-change-form label { display: block; font-size: 13px; color: #555; margin-top: 8px; }
+        #voucher-form input, #voucher-change-form input {
             width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px;
             box-sizing: border-box; background: #fff; color: #111;
         }
         .voucher-form-row { display: flex; gap: 8px; margin-top: 10px; }
-        #voucher-submit {
+        #voucher-submit, #voucher-change-submit {
             flex: 1; padding: 12px; background-color: #4CAF50; color: #fff; border: none;
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
         }
-        #voucher-submit:disabled { background-color: #999; cursor: not-allowed; }
-        #voucher-cancel {
+        #voucher-submit:disabled, #voucher-change-submit:disabled { background-color: #999; cursor: not-allowed; }
+        #voucher-cancel, #voucher-change-cancel {
             flex: 1; padding: 12px; background-color: #999; color: #fff; border: none;
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
         }
-        #voucher-error { margin-top: 8px; font-size: 13px; color: #b00020; font-weight: bold; }
+        #voucher-error, #voucher-change-error { margin-top: 8px; font-size: 13px; color: #b00020; font-weight: bold; }
         /* メールアドレス確認の 2 ステップフォーム（FR-61） */
         .voucher-input-note { margin: 4px 0 0; font-size: 12px; color: #777; }
         .voucher-email-confirm {
@@ -386,17 +387,35 @@
             font-size: 14px; line-height: 1.5;
         }
         .voucher-code-target { margin: 10px 0 0; font-size: 13px; color: #14416e; }
-        #voucher-code { letter-spacing: .3em; font-weight: bold; text-align: center; }
-        #voucher-send-code {
+        #voucher-code, #voucher-change-code-input { letter-spacing: .3em; font-weight: bold; text-align: center; }
+        #voucher-send-code, #voucher-change-send-code {
             flex: 1; padding: 12px; background-color: #1e88e5; color: #fff; border: none;
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
         }
-        #voucher-send-code:disabled { background-color: #999; cursor: not-allowed; }
-        #voucher-resend-code, #voucher-edit-email {
+        #voucher-send-code:disabled, #voucher-change-send-code:disabled { background-color: #999; cursor: not-allowed; }
+        #voucher-resend-code, #voucher-edit-email, #voucher-change-resend-code {
             flex: 1; padding: 12px; background-color: #78909c; color: #fff; border: none;
             border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
         }
-        #voucher-resend-code:disabled, #voucher-edit-email:disabled { background-color: #b0bec5; cursor: not-allowed; }
+        #voucher-resend-code:disabled, #voucher-edit-email:disabled, #voucher-change-resend-code:disabled { background-color: #b0bec5; cursor: not-allowed; }
+        /* 応募後のメールアドレス表示と変更（FR-63） */
+        #voucher-applied-info {
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+            background: #f2f8f2; border: 1px solid #b6d7b6;
+        }
+        .voucher-applied-line { margin: 0; font-size: 14px; color: #1f3d1f; line-height: 1.5; word-break: break-all; }
+        .voucher-applied-line strong { font-weight: 800; }
+        #voucher-change-email {
+            margin-top: 8px; padding: 10px 12px; background-color: #78909c; color: #fff; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        #voucher-change-email:disabled { background-color: #b0bec5; cursor: not-allowed; }
+        /* 応募後に表示する抽選案内（FR-63） */
+        #voucher-lottery-note {
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+            background: #fff8e1; border: 1px solid #f0c674; color: #7a5c00;
+            font-size: 13px; font-weight: bold; line-height: 1.5; text-align: center;
+        }
         #clear-stamps {
             flex: 1; padding: 12px; background-color: #f44336; color: white; border: none;
             border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
@@ -434,17 +453,19 @@
         .guide-note strong { display: block; margin-bottom: 6px; font-weight: 700; }
         .guide-note p { margin: 0; line-height: 1.25; }
 
-        #confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 10002; display: none; }
-        #confirm-dialog {
+        #confirm-overlay, #gacha-confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 10002; display: none; }
+        #confirm-dialog, #gacha-confirm-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
             background-color: white; border-radius: 15px; padding: 25px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 10003; display: none; min-width: 280px; text-align: center;
         }
-        #confirm-dialog .confirm-message { font-size: 16px; color: #333; margin-bottom: 20px; font-weight: bold; }
-        #confirm-dialog .confirm-buttons { display: flex; gap: 10px; justify-content: center; }
-        #confirm-dialog .confirm-buttons button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
-        #confirm-dialog .confirm-yes { background-color: #f44336; color: white; }
-        #confirm-dialog .confirm-no { background-color: #999; color: white; }
+        #confirm-dialog .confirm-message, #gacha-confirm-dialog .confirm-message { font-size: 16px; color: #333; margin-bottom: 20px; font-weight: bold; }
+        #confirm-dialog .confirm-buttons, #gacha-confirm-dialog .confirm-buttons { display: flex; gap: 10px; justify-content: center; }
+        #confirm-dialog .confirm-buttons button, #gacha-confirm-dialog .confirm-buttons button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        #confirm-dialog .confirm-yes, #gacha-confirm-dialog .confirm-yes { background-color: #f44336; color: white; }
+        #confirm-dialog .confirm-no, #gacha-confirm-dialog .confirm-no { background-color: #999; color: white; }
+        /* ガラポン確認の「はい」は引き済み確定（FR-62）なのでガラポンと同じ橙色にする */
+        #gacha-confirm-dialog .confirm-yes { background-color: #ff8c00; }
 
         #camera-help-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10010; justify-content: center; align-items: center; padding: 20px; }
         #camera-help-modal .camera-help-content { background: white; border-radius: 12px; max-width: 640px; width: 100%; padding: 18px 22px; box-shadow: 0 12px 36px rgba(0,0,0,0.3); }

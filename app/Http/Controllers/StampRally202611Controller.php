@@ -56,6 +56,26 @@ class StampRally202611Controller extends Controller
     }
 
     /**
+     * 応募済みメールアドレスの変更を受理する最終日時（FR-63・config/ar202611.email_change_deadline・JST）。
+     * 抽選（11 月末頃）以降は変更を受け付けない。設定値が不正な場合は応募期限へフォールバックする。
+     */
+    public static function emailChangeDeadline(): Carbon
+    {
+        try {
+            $value = config('ar202611.email_change_deadline');
+
+            // 未設定・空文字は既定値（抽選実施 11 月末）を使う（空文字を parse すると now になる）
+            if (!is_string($value) || trim($value) === '') {
+                $value = '2026-11-30 23:59:59';
+            }
+
+            return Carbon::parse($value, 'Asia/Tokyo');
+        } catch (\Throwable $e) {
+            return self::applyDeadline();
+        }
+    }
+
+    /**
      * 抽選応募に必要な収集種数。
      */
     public static function voucherThreshold(): int
@@ -360,6 +380,8 @@ class StampRally202611Controller extends Controller
             'candyTiers' => array_map('intval', (array) config('ar202611.candy_tiers')),
             'voucherThreshold' => self::voucherThreshold(),
             'applyDeadline' => self::applyDeadline()->toIso8601String(),
+            // 応募済みメールアドレスの変更期限（FR-63・この日時以降は変更ボタンを出さない）
+            'emailChangeDeadline' => self::emailChangeDeadline()->toIso8601String(),
             'voucher' => [
                 'applied' => $application !== null,
                 // weight は抽選の正本（device_* 設定済みなら device_weight と一致する）
@@ -374,6 +396,8 @@ class StampRally202611Controller extends Controller
                     : null,
                 // メールアドレス確認の状態（FR-61・確認導入以前の応募は true）
                 'emailVerified' => $application ? $application->isEmailVerified() : false,
+                // 応募済みメールアドレス（マスク済み・FR-63）。画面には完全なアドレスを返さない
+                'email' => $application ? self::maskEmail((string) $application->email) : null,
                 'updated' => $updated,
             ],
         ]);
@@ -407,10 +431,15 @@ class StampRally202611Controller extends Controller
 
     /**
      * 確認コードの Cache キー（応募と同一単位 = 1 fingerprint で保持する）。
+     *
+     * $purpose = 'apply' は抽選応募（FR-61）、'change' は応募済みメールアドレスの変更（FR-63）。
+     * 変更用のコードと応募用のコードは別キーで保持し、互いに使い回せないようにする。
      */
-    private static function emailCodeCacheKey(string $fingerprint): string
+    private static function emailCodeCacheKey(string $fingerprint, string $purpose = 'apply'): string
     {
-        return 'ar202611:voucher-email-code:' . $fingerprint;
+        $prefix = $purpose === 'change' ? 'voucher-email-change' : 'voucher-email-code';
+
+        return 'ar202611:' . $prefix . ':' . $fingerprint;
     }
 
     /**
@@ -594,12 +623,14 @@ class StampRally202611Controller extends Controller
      * 一致したら Cache を削除して ok = true を返す。不一致時は試行回数を増やし、
      * 上限到達でコードを破棄する（総当たり対策）。
      *
+     * $purpose は emailCodeCacheKey() と同一（'apply' = 応募・FR-61 / 'change' = メールアドレス変更・FR-63）。
+     *
      * @return array{ok:bool,error?:string,message?:string,remaining_attempts?:int,sent_at?:int|null}
      */
-    private static function consumeEmailCode(string $fingerprint, string $email, ?string $code): array
+    private static function consumeEmailCode(string $fingerprint, string $email, ?string $code, string $purpose = 'apply'): array
     {
         $options = self::emailVerificationOptions();
-        $key = self::emailCodeCacheKey($fingerprint);
+        $key = self::emailCodeCacheKey($fingerprint, $purpose);
         $entry = Cache::get($key);
 
         // 未送信・期限切れ・送信時と異なるメールアドレス
@@ -812,6 +843,255 @@ class StampRally202611Controller extends Controller
             'deviceStampCount' => (int) $application->device_stamp_count,
             'appliedAt' => $application->applied_at->toIso8601String(),
             'message' => '市内共通商品券の抽選会に応募しました',
+        ]);
+    }
+
+    // ── 応募後のメールアドレス変更（FR-63 / design §5.8）───────────────────
+
+    /**
+     * 変更対象の応募行を取得する（checkStatus() と同じ単位: fingerprint 優先、無ければ session_id）。
+     */
+    private static function findApplicationForChange(string $fingerprint): ?Stamp202611VoucherApplication
+    {
+        $application = Stamp202611VoucherApplication::where('fingerprint', $fingerprint)->first();
+
+        if (!$application) {
+            $sessionId = session()->getId();
+
+            if ($sessionId) {
+                $application = Stamp202611VoucherApplication::where('session_id', $sessionId)->first();
+            }
+        }
+
+        return $application;
+    }
+
+    /**
+     * 変更用 確認コードの送信（POST /stamp202611/voucher-email-change-code・FR-63）。
+     *
+     * 応募時（requestEmailCode）と同じ順序で無駄なメールを防ぐ:
+     * ①変更期限経過 → 422 change_deadline_passed ②応募行が無い → 422 not_applied
+     * ③現登録と同じ → 422 same_email ④dns_check = true → 422 invalid_email
+     * ⑤他の応募行が使うアドレス → 422 email_in_use ⑥enabled = false → 送信なしで変更可
+     * ⑦resend_interval 以内の再送信 → 429 too_soon
+     */
+    public function requestEmailChangeCode(Request $request)
+    {
+        $options = self::emailVerificationOptions();
+
+        // 'dns' は Laravel のバリデーションルールではない（emailDomainExists() で照会する・FR-61 の注記）
+        $validated = $request->validate([
+            'fingerprint' => 'required|string',
+            'email' => 'required|email|max:190',
+        ]);
+
+        $fingerprint = $validated['fingerprint'];
+        $email = strtolower(trim($validated['email']));
+
+        session(['ar_fingerprint_202611' => $fingerprint]);
+
+        if (now()->gt(self::emailChangeDeadline())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'change_deadline_passed',
+                'emailChangeDeadline' => self::emailChangeDeadline()->toIso8601String(),
+                'message' => '抽選の準備のため、メールアドレスは変更できません',
+            ], 422);
+        }
+
+        $application = self::findApplicationForChange($fingerprint);
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_applied',
+                'message' => '応募が見つかりません。ページを再読み込みしてください',
+            ], 422);
+        }
+
+        if ($email === strtolower((string) $application->email)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'same_email',
+                'message' => '現在登録済みのメールアドレスです。別のアドレスを入力してください',
+            ], 422);
+        }
+
+        if ($options['dns_check'] && !self::emailDomainExists($email)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'invalid_email',
+                'message' => 'メールアドレスのドメインが見つかりません。入力をご確認ください',
+            ], 422);
+        }
+
+        // 1 メールアドレス = 1 応募（FR-44）: 他の応募行が使うアドレスには変更できない
+        if (Stamp202611VoucherApplication::where('email', $email)->where('id', '!=', $application->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'email_in_use',
+                'message' => 'そのメールアドレスはすでに別の応募で使われています',
+            ], 422);
+        }
+
+        // 確認無効（開発環境・SMTP 未設定）: 送信なしで変更できる（changeVoucherEmail() も code を要求しない）
+        if (!self::emailVerificationEnabled()) {
+            return response()->json([
+                'success' => true,
+                'verification_required' => false,
+                'email' => self::maskEmail($email),
+            ]);
+        }
+
+        $key = self::emailCodeCacheKey($fingerprint, 'change');
+        $current = Cache::get($key);
+
+        if (is_array($current) && $options['resend_interval'] > 0) {
+            $elapsed = now()->getTimestamp() - (int) ($current['sent_at'] ?? 0);
+
+            if ($elapsed >= 0 && $elapsed < $options['resend_interval']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'too_soon',
+                    'waitSeconds' => $options['resend_interval'] - $elapsed,
+                    'message' => '少し待ってからもう一度送信してください',
+                ], 429);
+            }
+        }
+
+        $code = (string) random_int(100000, 999999);
+        $ttlMinutes = (int) ceil($options['code_ttl'] / 60);
+
+        Cache::put($key, [
+            'email' => $email,
+            'code' => $code,
+            'sent_at' => now()->getTimestamp(),
+            'expires_at' => now()->getTimestamp() + $options['code_ttl'],
+            'attempts' => 0,
+        ], $options['code_ttl']);
+
+        try {
+            Mail::to($email)->send(new Stamp202611VoucherCodeMail($code, $ttlMinutes, 'change'));
+        } catch (\Throwable $e) {
+            Cache::forget($key);
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'mail_failed',
+                'message' => '確認メールを送信できませんでした。時間をおいてもう一度お試しください',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'verification_required' => true,
+            'email' => self::maskEmail($email),
+            'ttlMinutes' => $ttlMinutes,
+            'resendInterval' => $options['resend_interval'],
+            'message' => '新しいメールアドレスへ確認コードを送信しました',
+        ]);
+    }
+
+    /**
+     * 応募済みメールアドレスの変更確定（POST /stamp202611/voucher-email-change・FR-63）。
+     *
+     * 確認有効時は change 用の 6 桁コードが一致してから email 列を書き換える（未確認のまま変更しない）。
+     * 変更後は email_code_sent_at（変更用コードの送信時刻）と email_verified_at（変更完了時刻）を更新し、
+     * 管理画面 / CSV で「確認済み」のまま維持する。weight など抽選列は変更しない。
+     */
+    public function changeVoucherEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'fingerprint' => 'required|string',
+            'email' => 'required|email|max:190',
+            // 変更用コード（requestEmailChangeCode で送信した 6 桁）。確認無効時は省略可
+            'code' => 'nullable|string|max:10',
+        ]);
+
+        $fingerprint = $validated['fingerprint'];
+        $email = strtolower(trim($validated['email']));
+
+        session(['ar_fingerprint_202611' => $fingerprint]);
+
+        if (now()->gt(self::emailChangeDeadline())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'change_deadline_passed',
+                'emailChangeDeadline' => self::emailChangeDeadline()->toIso8601String(),
+                'message' => '抽選の準備のため、メールアドレスは変更できません',
+            ], 422);
+        }
+
+        $application = self::findApplicationForChange($fingerprint);
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_applied',
+                'message' => '応募が見つかりません。ページを再読み込みしてください',
+            ], 422);
+        }
+
+        if ($email === strtolower((string) $application->email)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'same_email',
+                'message' => '現在登録済みのメールアドレスです。別のアドレスを入力してください',
+            ], 422);
+        }
+
+        // 1 メールアドレス = 1 応募（FR-44）
+        if (Stamp202611VoucherApplication::where('email', $email)->where('id', '!=', $application->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'email_in_use',
+                'message' => 'そのメールアドレスはすでに別の応募で使われています',
+            ], 422);
+        }
+
+        $emailCodeSentAt = $application->email_code_sent_at;
+
+        if (self::emailVerificationEnabled()) {
+            $check = self::consumeEmailCode($fingerprint, $email, $validated['code'] ?? null, 'change');
+
+            if (!$check['ok']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $check['error'],
+                    'remainingAttempts' => $check['remaining_attempts'] ?? null,
+                    'message' => $check['message'],
+                ], 422);
+            }
+
+            // 変更用コードの送信時刻を保持する（応募時の送信時刻は上書きする）
+            $emailCodeSentAt = isset($check['sent_at'])
+                ? Carbon::createFromTimestamp($check['sent_at'])
+                : now();
+        }
+
+        try {
+            $application->email = $email;
+            $application->email_code_sent_at = $emailCodeSentAt;
+            $application->email_verified_at = now();
+            $application->save();
+        } catch (QueryException $e) {
+            // email UNIQUE 競合（同時リクエスト）
+            $application->refresh(); // 変更前の値へ戻す（後続の save() で未確認値を書かない）
+
+            return response()->json([
+                'success' => false,
+                'error' => 'email_in_use',
+                'message' => 'そのメールアドレスはすでに別の応募で使われています',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'email' => self::maskEmail($email),
+            'emailVerified' => true,
+            'changedAt' => $application->email_verified_at->toIso8601String(),
+            'message' => 'メールアドレスを変更しました',
         ]);
     }
 }

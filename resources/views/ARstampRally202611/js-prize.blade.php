@@ -553,6 +553,75 @@
             setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 6000);
         }
 
+        // ========== ガラポン押下前の確認ダイアログ（FR-62）==========
+        // ボタン押下では引き済みにならない。#gacha-confirm-dialog の「はい」を押したときだけ
+        // drawGacha202611()（LocalStorage へ記録）を実行する。「いいえ」は記録を残さない。
+        var _gachaPendingTier202611 = null;
+
+        function openGachaConfirm202611(tier) {
+            var overlay = document.getElementById('gacha-confirm-overlay');
+            var dialog  = document.getElementById('gacha-confirm-dialog');
+            var message = document.getElementById('gacha-confirm-message');
+
+            _gachaPendingTier202611 = tier;
+            if (message) message.textContent = tier + '種ガラポンを引き済みにしますか？';
+            if (overlay) overlay.style.display = 'block';
+            if (dialog)  dialog.style.display  = 'block';
+        }
+
+        function closeGachaConfirm202611() {
+            var overlay = document.getElementById('gacha-confirm-overlay');
+            var dialog  = document.getElementById('gacha-confirm-dialog');
+
+            _gachaPendingTier202611 = null;
+            if (overlay) overlay.style.display = 'none';
+            if (dialog)  dialog.style.display  = 'none';
+        }
+
+        // 引き済み確定（FR-39 の回数管理はそのまま・サーバー送信しない）
+        function confirmGachaDraw202611(tier) {
+            var res = drawGacha202611(tier);
+
+            if (res.error === 'already_drawn') showVoucherToast202611('この段階のガラポンはすでに引いています。');
+            else if (res.error === 'not_reached') showVoucherToast202611(tier + '種類集めてから引けます。');
+            else if (res.error === 'all_drawn') showVoucherToast202611('ガラポンはすべて引きました。');
+            else showVoucherToast202611('ガラポン会場本部スタッフにこの画面をお見せください。');
+
+            renderGacha202611();
+        }
+
+        // ダイアログのはい / いいえ / オーバーレイ押下（1 回だけ結線する）
+        function initGachaConfirm202611() {
+            var yes     = document.getElementById('gacha-confirm-yes');
+            var no      = document.getElementById('gacha-confirm-no');
+            var overlay = document.getElementById('gacha-confirm-overlay');
+
+            if (yes) {
+                yes.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var tier = _gachaPendingTier202611;
+                    closeGachaConfirm202611();
+                    if (tier !== null) confirmGachaDraw202611(tier);
+                });
+            }
+            if (no) {
+                no.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeGachaConfirm202611();
+                    showVoucherToast202611('ガラポンは引いていません。');
+                });
+            }
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeGachaConfirm202611();
+                });
+            }
+        }
+
         // ガラポンボタン（到達済み段階のみ有効・引き済みは無効・オフラインでも押下可）
         function renderGacha202611() {
             var box  = document.getElementById('gacha-buttons');
@@ -584,12 +653,18 @@
                 b.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    var res = drawGacha202611(tier);
-                    if (res.error === 'already_drawn') showVoucherToast202611('この段階のガラポンはすでに引いています。');
-                    else if (res.error === 'not_reached') showVoucherToast202611(tier + '種類集めてから引けます。');
-                    else if (res.error === 'all_drawn') showVoucherToast202611('ガラポンはすべて引きました。');
-                    else showVoucherToast202611('ガラポン会場本部スタッフにこの画面をお見せください。');
-                    renderGacha202611();
+                    // FR-62: 押下時は必ず確認ダイアログを経由する（この時点では引き済みにならない）
+                    var draws = getGachaDraws202611();
+                    if (draws.indexOf(tier) !== -1) {
+                        showVoucherToast202611('この段階のガラポンはすでに引いています。');
+                        renderGacha202611();
+                        return;
+                    }
+                    if (reachableTiers202611().indexOf(tier) === -1) {
+                        showVoucherToast202611(tier + '種類集めてから引けます。');
+                        return;
+                    }
+                    openGachaConfirm202611(tier);
                 });
 
                 box.appendChild(b);
@@ -698,8 +773,48 @@
             button.disabled = disabled;
 
             if (form && !showButton) form.style.display = 'none';
+            updateVoucherAppliedInfo202611(applied, voucher);
         }
 
+
+        // 応募後の表示（FR-63）: 応募したメールアドレス（マスク済み）・変更ボタン・抽選案内
+        function updateVoucherAppliedInfo202611(applied, voucher) {
+            var appliedInfo = document.getElementById('voucher-applied-info');
+            var appliedMail = document.getElementById('voucher-applied-email');
+            var changeBtn   = document.getElementById('voucher-change-email');
+            var changeForm  = document.getElementById('voucher-change-form');
+            var lotteryNote = document.getElementById('voucher-lottery-note');
+
+            // 抽選案内は応募後だけに表示する
+            if (lotteryNote) lotteryNote.style.display = applied ? 'block' : 'none';
+
+            if (!appliedInfo) return;
+
+            if (!applied) {
+                appliedInfo.style.display = 'none';
+                // 変更フォームは応募済み行に対してだけ開くため、応募が無い状態では閉じる
+                if (changeForm) {
+                    changeForm.style.display = 'none';
+                    _voucherChangeOpen202611 = false;
+                }
+                return;
+            }
+
+            var shown = (voucher && voucher.email) ? String(voucher.email) : '';
+            if (appliedMail) appliedMail.textContent = shown || '（取得できませんでした。ページを再読み込みしてください）';
+            appliedInfo.style.display = 'block';
+
+            if (changeBtn) {
+                // 変更期限（email_change_deadline）以降は変更を受け付けない
+                var canChange = !isEmailChangeDeadlinePassed202611();
+                changeBtn.style.display = canChange ? 'inline-block' : 'none';
+                changeBtn.disabled = !canChange;
+            }
+
+            if (changeForm && changeForm.style.display === 'block' && !_voucherChangeOpen202611) {
+                changeForm.style.display = 'none';
+            }
+        }
 
         // ========== 抽選応募のメールアドレス確認（FR-61 / design §5.7）==========
         var _requestingVoucherEmailCode202611 = false;
@@ -727,6 +842,12 @@
             if (res.error === 'not_eligible') return res.message || '抽選応募の条件を満たしていません。';
             if (res.error === 'already_applied') return 'すでに応募済みです。1 メールアドレスにつき 1 口です。';
             if (res.error === 'deadline_passed') return '応募期限を過ぎたため応募できません。';
+            // 応募後のメールアドレス変更（FR-63）
+            if (res.error === 'not_applied') return '応募が見つかりません。ページを再読み込みしてください。';
+            if (res.error === 'same_email') return '現在登録済みのメールアドレスです。別のアドレスを入力してください。';
+            if (res.error === 'email_in_use') return 'そのメールアドレスはすでに別の応募で使われています。';
+            if (res.error === 'change_deadline_passed') return '抽選の準備のため、メールアドレスは変更できません。';
+            if (res.error === 'invalid_email') return res.message || 'メールアドレスのドメインが見つかりません。入力をご確認ください。';
             if (res.error === 'too_soon') {
                 var wait = res.waitSeconds ? Math.ceil(res.waitSeconds) : 30;
                 return '送信間隔です。' + wait + ' 秒待ってから再送信してください。';
@@ -1045,6 +1166,386 @@
             }
         }
 
+        // ========== 応募後のメールアドレス変更（FR-63 / design §5.8）==========
+        // 応募済み行のメールアドレスは、新しいアドレスへ 6 桁コードを送信して
+        // 入力してもらってからだけ書き換わる（応募用のコードとは別キー・使い回ししない）。
+        var _voucherChangeConfirmed202611 = false; // 送信先アドレスを利用者が目視確認済みか
+        var _voucherChangeSentEmail202611 = '';    // 変更用コードを送信した新しいアドレス（正規化後）
+        var _voucherChangeOpen202611        = false; // 変更フォームを開いているか
+        var _requestingVoucherChange202611  = false;
+
+        // 変更期限（check-status の emailChangeDeadline）。応答が無ければ期限前として扱う
+        function isEmailChangeDeadlinePassed202611() {
+            var iso = (_voucherStatus && _voucherStatus.emailChangeDeadline) ? _voucherStatus.emailChangeDeadline : '';
+            if (!iso) return false;
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return false;
+            return Date.now() > d.getTime();
+        }
+
+        // 変更用コードの送信（POST /stamp202611/voucher-email-change-code・CSRF 陳腐化は 1 回だけ再試行）
+        function requestVoucherEmailChangeCode202611(email) {
+            if (_requestingVoucherChange202611) return Promise.resolve({ success: false, error: 'busy' });
+            if (!navigator.onLine) return Promise.resolve({ success: false, error: 'offline' });
+
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfMeta) return Promise.resolve({ success: false, error: 'csrf' });
+
+            _requestingVoucherChange202611 = true;
+
+            return Promise.resolve(typeof refreshCsrfToken === 'function' ? refreshCsrfToken() : false)
+                .then(function () { return generateFingerprint(); })
+                .then(function (fp) {
+                    return fetch('{{ url("/stamp202611/voucher-email-change-code") }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        body: JSON.stringify({ fingerprint: fp, email: email })
+                    }).then(function (r) {
+                        return r.json().catch(function () { return {}; }).then(function (d) {
+                            return { status: r.status, data: d || {} };
+                        });
+                    });
+                })
+                .then(function (res) {
+                    var data = res.data;
+
+                    if (res.status === 200 && data.success) {
+                        return {
+                            success: true,
+                            verificationRequired: data.verification_required !== false,
+                            email: data.email || '',
+                            ttlMinutes: parseInt(data.ttlMinutes, 10) || 15,
+                            resendInterval: parseInt(data.resendInterval, 10) || 30
+                        };
+                    }
+
+                    if (res.status === 419) {
+                        return refreshCsrfToken().then(function (ok) {
+                            if (!ok) return { success: false, error: 'csrf' };
+                            _requestingVoucherChange202611 = false;
+                            return requestVoucherEmailChangeCode202611(email);
+                        });
+                    }
+
+                    return {
+                        success: false,
+                        error: data.error || ('HTTP ' + res.status),
+                        message: data.message || '',
+                        waitSeconds: data.waitSeconds
+                    };
+                })
+                .catch(function (err) {
+                    console.warn('[AR202611] requestEmailChangeCode error', err);
+                    return { success: false, error: 'network' };
+                })
+                .then(function (out) {
+                    _requestingVoucherChange202611 = false;
+                    return out;
+                });
+        }
+
+        // 変更の確定（POST /stamp202611/voucher-email-change）。成功後は check-status を引き直して表示を同期する
+        function changeVoucherEmail202611(email, code) {
+            if (_applyingVoucher) return Promise.resolve({ success: false, error: 'busy' });
+            if (!navigator.onLine) return Promise.resolve({ success: false, error: 'offline' });
+
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfMeta) return Promise.resolve({ success: false, error: 'csrf' });
+
+            _applyingVoucher = true;
+
+            return Promise.resolve(typeof refreshCsrfToken === 'function' ? refreshCsrfToken() : false)
+                .then(function () { return generateFingerprint(); })
+                .then(function (fp) {
+                    return fetch('{{ url("/stamp202611/voucher-email-change") }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        body: JSON.stringify({ fingerprint: fp, email: email, code: code || '' })
+                    }).then(function (r) {
+                        return r.json().catch(function () { return {}; }).then(function (d) {
+                            return { status: r.status, data: d || {} };
+                        });
+                    });
+                })
+                .then(function (res) {
+                    var data = res.data;
+
+                    if (res.status === 200 && data.success) {
+                        return checkStatus202611().then(function () {
+                            return { success: true, email: data.email || '' };
+                        });
+                    }
+
+                    if (res.status === 419) {
+                        return refreshCsrfToken().then(function (ok) {
+                            if (!ok) return { success: false, error: 'csrf' };
+                            _applyingVoucher = false;
+                            return changeVoucherEmail202611(email, code);
+                        });
+                    }
+
+                    return {
+                        success: false,
+                        error: data.error || ('HTTP ' + res.status),
+                        message: data.message || '',
+                        remainingAttempts: data.remainingAttempts
+                    };
+                })
+                .catch(function (err) {
+                    console.warn('[AR202611] changeVoucherEmail error', err);
+                    return { success: false, error: 'network' };
+                })
+                .then(function (out) {
+                    _applyingVoucher = false;
+                    return out;
+                });
+        }
+
+        // 変更フォームの 2 ステップ送信（新アドレス入力 → 送信先確認 → コード入力 → 変更完了）
+        function initVoucherEmailChange202611() {
+            var openBtn  = document.getElementById('voucher-change-email');
+            var form     = document.getElementById('voucher-change-form');
+            if (!openBtn || !form) return;
+
+            var stepEmail   = document.getElementById('voucher-change-step-email');
+            var stepCode    = document.getElementById('voucher-change-step-code');
+            var emailEl     = document.getElementById('voucher-change-email-input');
+            var codeEl      = document.getElementById('voucher-change-code-input');
+            var sendBtn     = document.getElementById('voucher-change-send-code');
+            var resendBtn   = document.getElementById('voucher-change-resend-code');
+            var submit      = document.getElementById('voucher-change-submit');
+            var cancel      = document.getElementById('voucher-change-cancel');
+            var errEl       = document.getElementById('voucher-change-error');
+            var confirmBox  = document.getElementById('voucher-change-email-confirm');
+            var confirmMail = document.getElementById('voucher-change-email-confirm-target');
+            var codeMail    = document.getElementById('voucher-change-code-email');
+            var codeTtl     = document.getElementById('voucher-change-code-ttl');
+
+            function showError(text) { if (errEl) errEl.textContent = text; }
+            function clearError()   { if (errEl) errEl.textContent = ''; }
+
+            function showStep(which) {
+                if (stepEmail) stepEmail.style.display = (which === 'code') ? 'none' : 'block';
+                if (stepCode)  stepCode.style.display  = (which === 'code') ? 'block' : 'none';
+            }
+
+            function resetConfirm() {
+                _voucherChangeConfirmed202611 = false;
+                if (confirmBox) confirmBox.style.display = 'none';
+                if (sendBtn) sendBtn.textContent = '確認コードを送信';
+            }
+
+            function openForm() {
+                _voucherChangeOpen202611 = true;
+                _voucherChangeSentEmail202611 = '';
+                form.style.display = 'block';
+                clearError();
+                resetConfirm();
+                showStep('email');
+                if (codeEl) codeEl.value = '';
+                if (emailEl) emailEl.focus();
+            }
+
+            function closeForm() {
+                _voucherChangeOpen202611 = false;
+                _voucherChangeSentEmail202611 = '';
+                form.style.display = 'none';
+                clearError();
+                resetConfirm();
+                showStep('email');
+                if (codeEl) codeEl.value = '';
+            }
+
+            function currentEmail() {
+                return normalizeEmailInput202611(emailEl ? emailEl.value : '');
+            }
+
+            // 変更確定（確認無効の設定時は code を空のまま送る）
+            function applyChange(code) {
+                var email = _voucherChangeSentEmail202611 || currentEmail();
+
+                if (!email) { showError('新しいメールアドレスを入力してください。'); return; }
+
+                if (submit) {
+                    submit.disabled = true;
+                    submit.textContent = '変更中…';
+                }
+
+                changeVoucherEmail202611(email, code).then(function (res) {
+                    if (submit) {
+                        submit.disabled = false;
+                        submit.textContent = '変更完了';
+                    }
+
+                    if (res.success) {
+                        closeForm();
+                        if (emailEl) emailEl.value = '';
+                        showVoucherToast202611('メールアドレスを変更しました。');
+                        updateVoucherUI202611();
+                        return;
+                    }
+
+                    // 確認コード関連のエラーは入力欄を空にして再入力を促す
+                    if (res.error === 'code_invalid' || res.error === 'code_required') {
+                        var left = (res.remainingAttempts === undefined || res.remainingAttempts === null)
+                            ? '' : '（残り ' + res.remainingAttempts + ' 回）';
+                        showError((res.message || '確認コードが一致しません。') + left);
+                        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+                        return;
+                    }
+                    if (res.error === 'code_expired') {
+                        showError('確認コードが無効または期限切れです。「コードを再送信」から新しいコードを取得してください。');
+                        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+                        return;
+                    }
+
+                    showError(voucherCodeErrorText202611(res));
+                    updateVoucherUI202611();
+                });
+            }
+
+            openBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!navigator.onLine) {
+                    showVoucherToast202611('メールアドレスの変更には通信が必要です。');
+                    return;
+                }
+                if (isEmailChangeDeadlinePassed202611()) {
+                    showVoucherToast202611('抽選の準備のため、メールアドレスは変更できません。');
+                    return;
+                }
+                openForm();
+            });
+
+            if (cancel) {
+                cancel.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeForm();
+                });
+            }
+
+            // 入力中のアドレスが変わったら送信先確認をやり直す（送信済みアドレスと違う値のため）
+            if (emailEl) {
+                emailEl.addEventListener('input', function () {
+                    resetConfirm();
+                    _voucherChangeSentEmail202611 = '';
+                    clearError();
+                });
+            }
+
+            // ステップ1: 全角の自動補正 → 送信先の再確認 → 変更用コード送信
+            if (sendBtn) {
+                sendBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    var raw   = emailEl ? emailEl.value : '';
+                    var email = normalizeEmailInput202611(raw);
+
+                    if (!email) { showError('新しいメールアドレスを入力してください。'); return; }
+
+                    if (hasFullWidth202611(raw) || hasSpace202611(raw)) {
+                        showError('メールアドレスを半角に直しました: ' + email);
+                        if (emailEl) emailEl.value = email;
+                    }
+
+                    if (!isValidEmail202611(email)) {
+                        resetConfirm();
+                        showError('メールアドレスの形が正しくありません（例: example@example.com）。');
+                        return;
+                    }
+
+                    // 1 回目の押下: 送信先を表示して確認を求める（別アドレスに送らないための確認）
+                    if (!_voucherChangeConfirmed202611) {
+                        _voucherChangeConfirmed202611 = true;
+                        if (confirmMail) confirmMail.textContent = email;
+                        if (confirmBox) confirmBox.style.display = 'block';
+                        sendBtn.textContent = 'このアドレスに送信';
+                        clearError();
+                        return;
+                    }
+
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = '送信中…';
+
+                    requestVoucherEmailChangeCode202611(email).then(function (res) {
+                        sendBtn.disabled = false;
+                        sendBtn.textContent = '確認コードを送信';
+
+                        if (!res.success) {
+                            showError(voucherCodeErrorText202611(res));
+                            updateVoucherUI202611();
+                            return;
+                        }
+
+                        _voucherChangeSentEmail202611 = email;
+                        resetConfirm();
+
+                        if (!res.verificationRequired) {
+                            applyChange('');   // 確認無効（開発環境）はそのまま変更する
+                            return;
+                        }
+
+                        showStep('code');
+                        clearError();
+                        showVoucherToast202611('確認コードを ' + res.email + ' に送信しました（' + res.ttlMinutes + ' 分以内）。');
+                        if (codeMail) codeMail.textContent = res.email;
+                        if (codeTtl) codeTtl.textContent = String(res.ttlMinutes);
+                        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+                    });
+                });
+            }
+
+            // ステップ2: 確認コード付きで変更確定
+            if (submit) {
+                submit.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!_voucherChangeSentEmail202611) {
+                        showError('まず「確認コードを送信」を押してください。');
+                        return;
+                    }
+
+                    applyChange(codeEl ? codeEl.value.trim() : '');
+                });
+            }
+
+            // コードを再送信（送信済みアドレス宛）
+            if (resendBtn) {
+                resendBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!_voucherChangeSentEmail202611) {
+                        showError('まず「確認コードを送信」を押してください。');
+                        return;
+                    }
+
+                    resendBtn.disabled = true;
+                    resendBtn.textContent = '送信中…';
+
+                    requestVoucherEmailChangeCode202611(_voucherChangeSentEmail202611).then(function (res) {
+                        resendBtn.disabled = false;
+                        resendBtn.textContent = 'コードを再送信';
+
+                        if (!res.success) {
+                            showError(voucherCodeErrorText202611(res));
+                            return;
+                        }
+
+                        clearError();
+                        showVoucherToast202611('新しい確認コードを送信しました（' + res.ttlMinutes + ' 分以内）。');
+                        if (codeMail) codeMail.textContent = res.email;
+                        if (codeTtl) codeTtl.textContent = String(res.ttlMinutes);
+                        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+                    });
+                });
+            }
+        }
+
         // スタンプ帳を開いた時の更新（ガラポン描画 → 応募状態 → サーバーの種数）
         function refreshStampBookRewards202611() {
             renderGacha202611();
@@ -1058,6 +1559,14 @@
         window.normalizeEmailInput202611     = normalizeEmailInput202611;
         window.voucherStatus202611           = voucherStatus202611;
         window.renderGacha202611             = renderGacha202611;
+        window.initGachaConfirm202611        = initGachaConfirm202611;
+        window.openGachaConfirm202611        = openGachaConfirm202611;
+        window.confirmGachaDraw202611        = confirmGachaDraw202611;
+        window.updateVoucherAppliedInfo202611   = updateVoucherAppliedInfo202611;
+        window.initVoucherEmailChange202611     = initVoucherEmailChange202611;
+        window.requestVoucherEmailChangeCode202611 = requestVoucherEmailChangeCode202611;
+        window.changeVoucherEmail202611         = changeVoucherEmail202611;
+        window.isEmailChangeDeadlinePassed202611 = isEmailChangeDeadlinePassed202611;
         window.updateVoucherUI202611         = updateVoucherUI202611;
         window.initVoucherUI202611           = initVoucherUI202611;
         window.refreshStampBookRewards202611 = refreshStampBookRewards202611;

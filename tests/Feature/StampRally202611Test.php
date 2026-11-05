@@ -96,6 +96,56 @@ class StampRally202611Test extends TestCase
         ]);
     }
 
+    /** 変更用コード送信 API（FR-63） */
+    private function requestEmailChangeCode(string $fingerprint, string $email)
+    {
+        return $this->postJson('/stamp202611/voucher-email-change-code', [
+            'fingerprint' => $fingerprint,
+            'email' => $email,
+        ]);
+    }
+
+    /** 変更確定 API（FR-63）。$code は 6 桁。空文字なら送らない（確認無効時の挙動確認用） */
+    private function changeVoucherEmail(string $fingerprint, string $email, string $code = '')
+    {
+        $payload = ['fingerprint' => $fingerprint, 'email' => $email];
+
+        if ($code !== '') {
+            $payload['code'] = $code;
+        }
+
+        return $this->postJson('/stamp202611/voucher-email-change', $payload);
+    }
+
+    /**
+     * 変更用の確認コード（Cache）。応募用キー（voucher-email-code）とは別キーであることを検証する（FR-63）。
+     *
+     * @return array{email:string,code:string,sent_at:int,expires_at:int,attempts:int}|null
+     */
+    private function cachedEmailChangeCode(string $fingerprint): ?array
+    {
+        $entry = Cache::get('ar202611:voucher-email-change:' . $fingerprint);
+
+        return is_array($entry) ? $entry : null;
+    }
+
+    /** 応募行を作り、変更フローの前提（応募済み・確認済み）を整える（FR-63） */
+    private function seedVerifiedApplication(string $fingerprint, string $email, int $kinds = 12): void
+    {
+        $this->enableEmailVerification();
+        $this->seedScans($fingerprint, $kinds);
+        $this->requestEmailCode($fingerprint, $email)->assertStatus(200);
+        $entry = $this->cachedEmailCode($fingerprint);
+        $this->assertIsArray($entry);
+        $this->applyVoucherWithCode($fingerprint, $email, (string) $entry['code'])->assertStatus(200);
+    }
+
+    /** 応募行を取り出す（変更前後の email 列を確認するため） */
+    private function application(string $fingerprint): Stamp202611VoucherApplication
+    {
+        return Stamp202611VoucherApplication::where('fingerprint', $fingerprint)->firstOrFail();
+    }
+
     /**
      * 収集期間内の日付に N 種のマーカー収集記録を作る（JST 壁時計で保存される）。
      * 既定の capture_type は 'ball_hit'（ボールを当てて収集）。応募資格の正本はこれ（FR-58）。
@@ -199,6 +249,23 @@ class StampRally202611Test extends TestCase
 
         $response->assertStatus(200);
         $html = $response->getContent();
+        // 既存テストの末尾に新 UI（FR-62 / FR-63）の存在確認をまとめる
+        foreach ([
+            'id="gacha-confirm-dialog"',
+            'id="gacha-confirm-yes"',
+            'id="voucher-applied-info"',
+            'id="voucher-applied-email"',
+            'id="voucher-change-email"',
+            'id="voucher-change-form"',
+            'id="voucher-change-code-input"',
+            'id="voucher-lottery-note"',
+            'initGachaConfirm202611()',
+            'initVoucherEmailChange202611()',
+            'voucher-email-change-code',
+            'voucher-email-change',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, '不足する要素: ' . $needle);
+        }
 
         // asset_dir 既定値（202611 専用アセット）を参照する（AC-2 / FR-36）
         $this->assertStringContainsString('cg/202611/pattern-maker01.patt', $html);
@@ -1296,6 +1363,187 @@ class StampRally202611Test extends TestCase
         $this->assertFalse($method->invoke(null, 'verify@example.invalid'));
         // @ が無い形は DNS 照会せず通過（email ルールで既に弾かれるため 500 の原因にしない）
         $this->assertTrue($method->invoke(null, 'nobody'));
+    }
+
+    // ── 応募後のメールアドレス変更（FR-63 / design §5.8）───────────────────
+
+    /** 変更用コード送信は応募行が無いと 422 not_applied（FR-63） */
+    public function test_email_change_code_requires_existing_application(): void
+    {
+        Mail::fake();
+
+        $this->requestEmailChangeCode('fp_nobody_202611', 'new@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'not_applied']);
+
+        $this->assertNull($this->cachedEmailChangeCode('fp_nobody_202611'));
+        Mail::assertNotSent(Stamp202611VoucherCodeMail::class);
+    }
+
+    /** 変更用コードは新しいアドレス宛に送信し、Cache は応募用と別キー（FR-63） */
+    public function test_email_change_code_is_sent_to_new_address_with_separate_cache_key(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_202611';
+        $this->seedVerifiedApplication($fp, 'old@example.com');
+        Mail::assertSentCount(1);
+
+        $this->requestEmailChangeCode($fp, 'new@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'verification_required' => true])
+            ->assertJsonMissingPath('code');
+
+        Mail::assertSent(Stamp202611VoucherCodeMail::class, function (Stamp202611VoucherCodeMail $mail) {
+            return $mail->hasTo('new@example.com') && $mail->purpose === 'change';
+        });
+
+        $entry = $this->cachedEmailChangeCode($fp);
+        $this->assertIsArray($entry);
+        $this->assertSame('new@example.com', $entry['email']);
+        $this->assertMatchesRegularExpression('/^[0-9]{6}$/', (string) $entry['code']);
+
+        // 応募用のコード（apply キー）はそのまま残る（変更用コードと使い回さない）
+        $applyEntry = $this->cachedEmailCode($fp);
+        $this->assertNull($applyEntry, '応募確定で応募用コードは消費済みのはず');
+    }
+
+    /** 変更確定は code 一致が必要。不一致のままでは email は変わらない（FR-63） */
+    public function test_email_change_requires_valid_code(): void
+    {
+        $fp = 'fp_chg_code_202611';
+        $this->seedVerifiedApplication($fp, 'old2@example.com');
+        $this->requestEmailChangeCode($fp, 'new2@example.com')->assertStatus(200);
+        $entry = $this->cachedEmailChangeCode($fp);
+        $this->assertIsArray($entry);
+
+        $this->changeVoucherEmail($fp, 'new2@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_required']);
+        $this->assertSame('old2@example.com', $this->application($fp)->email);
+
+        $this->changeVoucherEmail($fp, 'new2@example.com', '000000')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_invalid']);
+        $this->assertSame('old2@example.com', $this->application($fp)->email);
+
+        $this->changeVoucherEmail($fp, 'new2@example.com', (string) $entry['code'])
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'emailVerified' => true]);
+
+        $row = $this->application($fp);
+        $this->assertSame('new2@example.com', $row->email);
+        $this->assertNotNull($row->email_verified_at);
+        $this->assertTrue($row->isEmailVerified());
+        $this->assertNull($this->cachedEmailChangeCode($fp), '変更確定で変更用コードは消費される');
+    }
+
+    /** 現登録と同じアドレスと、他の応募行が使うアドレスは変更できない（FR-44 / FR-63） */
+    public function test_email_change_rejects_same_or_taken_email(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_taken_202611';
+        $this->seedVerifiedApplication($fp, 'taken1@example.com');
+        $this->seedVerifiedApplication('fp_chg_other_202611', 'taken2@example.com');
+
+        // 現登録と同じアドレス（コード送信も変更確定も無駄なメールを送らない）
+        $this->requestEmailChangeCode($fp, 'taken1@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'same_email']);
+        $this->changeVoucherEmail($fp, 'taken1@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'same_email']);
+
+        // 他の応募行が使うアドレス
+        $this->requestEmailChangeCode($fp, 'taken2@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'email_in_use']);
+        $this->assertNull($this->cachedEmailChangeCode($fp), '使えないアドレスにはコードを送らない');
+
+        $this->assertSame('taken1@example.com', $this->application($fp)->email);
+    }
+
+    /** 変更期限（email_change_deadline）経過後はコード送信も変更確定も 422（FR-63） */
+    public function test_email_change_rejected_after_change_deadline(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_deadline_202611';
+        $this->seedVerifiedApplication($fp, 'before@example.com');
+
+        config(['ar202611.email_change_deadline' => '2026-12-01 00:00:00']);
+        Carbon::setTestNow(Carbon::parse('2026-12-02 09:00:00', 'Asia/Tokyo'));
+
+        $this->requestEmailChangeCode($fp, 'after@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'change_deadline_passed']);
+        $this->changeVoucherEmail($fp, 'after@example.com')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'change_deadline_passed']);
+
+        $this->assertSame('before@example.com', $this->application($fp)->email);
+        $this->assertNull($this->cachedEmailChangeCode($fp));
+
+        Carbon::setTestNow();
+    }
+
+    /** check-status はマスク済みアドレスと変更期限を返す（完全なアドレスは返さない・FR-63） */
+    public function test_check_status_returns_masked_email_and_change_deadline(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_mask_202611';
+        $this->seedVerifiedApplication($fp, 'participant@example.com');
+
+        $response = $this->checkStatus($fp)->assertStatus(200);
+        $json = $response->json();
+
+        $this->assertTrue($json['voucher']['applied']);
+        $this->assertSame('p**********@example.com', $json['voucher']['email']);
+        $this->assertStringNotContainsString('participant', (string) $response->getContent());
+        $this->assertArrayHasKey('emailChangeDeadline', $json);
+        $this->assertSame('2026-11-30T23:59:59+09:00', $json['emailChangeDeadline']);
+    }
+
+    /** 確認無効（開発環境・SMTP 未設定）はコード無しで変更できる（FR-61 と同じ扱い・FR-63） */
+    public function test_email_change_without_verification_applies_immediately(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_noconfirm_202611';
+        $this->seedVerifiedApplication($fp, 'plain@example.com');
+        config(['ar202611.email_verification.enabled' => false]);
+
+        $this->requestEmailChangeCode($fp, 'plain2@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'verification_required' => false]);
+        $this->assertNull($this->cachedEmailChangeCode($fp), '確認無効ではコードを保持しない');
+
+        $this->changeVoucherEmail($fp, 'plain2@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'email' => 'p*****@example.com', 'emailVerified' => true]);
+
+        $this->assertSame('plain2@example.com', $this->application($fp)->email);
+        // 応募時の 1 通だけで、変更フローではメールを送らない
+        Mail::assertSentCount(1);
+    }
+
+    /** 変更用コードの再送信は resend_interval 以内だと 429 too_soon（FR-61 と同じ規則・FR-63） */
+    public function test_email_change_code_resend_is_throttled(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_resend_202611';
+        $this->seedVerifiedApplication($fp, 'slow@example.com');
+        config(['ar202611.email_verification.resend_interval' => 60]);
+
+        $this->requestEmailChangeCode($fp, 'slow2@example.com')->assertStatus(200);
+        $this->requestEmailChangeCode($fp, 'slow2@example.com')
+            ->assertStatus(429)
+            ->assertJson(['success' => false, 'error' => 'too_soon']);
+
+        Mail::assertSentCount(2); // 応募 1 通 + 変更用 1 通（再送信は送信されない）
     }
 }
 
