@@ -1954,3 +1954,64 @@ pattern / glb はすべて 202611 版になり、レンダリング出力上の 
 
 **影響範囲**: 202611 のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/`・既存 Service Worker は未変更。
 ガラポンの LocalStorage 仕様（FR-39）と応募の資格・倍率算出（FR-56 / FR-58）は変更していない。
+
+## ARstampRally202611 確認コードの打ち間違い復旧と SQLite のロック解消（FR-61 / FR-64・2026-11-05）
+
+### 1. 何を直したか
+
+| 問題 | 原因 | 対応 |
+| --- | --- | --- |
+| 「確認コードを送信できませんでした。」が繰り返し出て応募完了できない（ログに `SQLSTATE[HY000]: General error: 5 database is locked`） | `SESSION_DRIVER=database` / `CACHE_STORE=database`（`throttle` のカウンタ増分）/ 応募行 `INSERT` が **1 本の SQLite ファイル**へ集中。SQLite 既定は `busy_timeout=0` / `journal_mode=delete` なので別リクエストの書き込みと衝突した瞬間に例外 | `config/database.php` の sqlite 接続で `journal_mode=WAL` / `busy_timeout=5000` / `synchronous=NORMAL` を既定化（FR-64） |
+| 429 / 500 が **HTML** で返り、クライアントが `r.json()` を読めずエラー種別を分岐できない | Laravel の既定応答が HTML エラーページ | `bootstrap/app.php` の `withExceptions()` で `stamp202611/*` だけ JSON 化: 429 → `{error:"too_many", waitSeconds}`、`database is locked` → 503 `{error:"server_busy"}` |
+| アドレスを打ち間違えてコードが届かない参加者が、`resend_interval`（30 秒）を待つまで直したアドレスへ送り直せない | 再送信クールダウンが fingerprint 単位で「どのアドレス宛でも」効いていた | `resend_interval` は **Cache entry と同じアドレス宛**だけに適用。違うアドレスへの送信は打ち間違いの修正とみなし待たせない（FR-61） |
+| 送信回数上限「1 時間 3 回」が正常な再試行を止める | `throttle:stamp202611_email_code` が 3/時 | `email_verification.code_send_limit_per_hour`（既定 6・`AR202611_EMAIL_CODE_LIMIT_PER_HOUR`）へ |
+| SQLite のロックが UNIQUE 競合の `catch` で握りつぶされ「すでに応募済みです」等の誤案内になる | `applyVoucher()` / `changeVoucherEmail()` の `catch (QueryException)` | `isDatabaseLock()` で判別して再スローし 503 `server_busy` へ寄せる |
+
+### 2. 動作（FR-61 / FR-63）
+
+- 打ち間違いアドレス宛に送信した直後でも、**直したアドレス**への再送信は 200（メール 2 通）。同じアドレスへの即再送信は従来どおり 429 `too_soon`
+- 打ち間違い宛の古いコードは使えない（`apply-voucher` は 422 `code_invalid`、変更は 422 `code_expired`）。作り直された新しいコードで応募完了する
+- 1 時間あたり 6 回を超えると 429 JSON `{success:false, error:"too_many", waitSeconds}`（クライアントは「N 分ほど置いて…」と表示）
+- DB が混み合ったときは 503 JSON `{success:false, error:"server_busy"}`（クライアントは「サーバーが混み合っています。10 秒ほどおいて…」と表示）
+
+### 3. 設定（新規）
+
+| `.env` | 既定 | 内容 |
+| --- | --- | --- |
+| `DB_SQLITE_JOURNAL_MODE` | `WAL` | SQLite のジャーナルモード。**NFS 等のネットワークファイルシステムでは `DELETE` に戻す** |
+| `DB_SQLITE_BUSY_TIMEOUT` | `5000`（ms） | ロックの待機時間（0 だと衝突即例外） |
+| `DB_SQLITE_SYNCHRONOUS` | `NORMAL` | WAL 時の同期レベル |
+| `AR202611_EMAIL_CODE_LIMIT_PER_HOUR` | `6` | 1 端末（fingerprint）1 時間の確認コード送信上限（応募用・変更用それぞれ） |
+
+確認: `php artisan tinker` で `DB::select('PRAGMA journal_mode')` → `wal` / `PRAGMA busy_timeout` → `5000` /
+`PRAGMA synchronous` → `1`。WAL 化後は `database/database.sqlite-wal` / `database/database.sqlite-shm` が並走する
+（`database/.gitignore` の `*.sqlite*` が対象。バックアップ・転送時は 3 ファイルまとめて扱う）。
+
+### 4. 本番適用手順
+
+1. 変更ファイルをアップロード: `config/database.php` / `bootstrap/app.php` / `app/Providers/AppServiceProvider.php` /
+   `config/ar202611.php` / `app/Http/Controllers/StampRally202611Controller.php` /
+   `resources/views/ARstampRally202611/js-prize.blade.php`
+2. `.env` へ `DB_SQLITE_*` を追加（既定がそのまま望ましい値）。**Xserver で DB がネットワーク FS 上の場合は
+   `DB_SQLITE_JOURNAL_MODE=DELETE`**（WAL はネットワーク FS では使わない）。
+   `database/` へ PHP が書き込めること（`-wal` / `-shm` を作れること）を確認する
+3. `php artisan optimize:clear`（OPcache 時は `opcache_reset()` か PHP 再起動）
+4. **DB 変更（migration）は不要**
+5. 実機確認: 打ち間違いアドレスへ送信 → 直したアドレスへ即再送信（429 にならない）→ 新しいコードで応募完了。
+   `storage/logs/laravel.log` に `database is locked` が出ないことを確認
+
+### 5. 検証結果
+
+- `php -l`: `config/database.php` / `bootstrap/app.php` / `app/Providers/AppServiceProvider.php` /
+  `config/ar202611.php` / `StampRally202611Controller.php` / `tests/Feature/StampRally202611Test.php` すべて OK
+- `DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --filter=StampRally202611Test`:
+  **OK (52 tests, 444 assertions)**。新規 4 テスト = 応募の打ち間違い復旧（`test_email_code_resend_to_corrected_email_is_immediate`）/
+  変更の打ち間違い復旧（`test_email_change_code_resend_to_corrected_email_is_immediate`）/
+  throttle 超過の JSON 429（`test_email_code_throttle_returns_json_too_many`）/
+  `database is locked` の JSON 503（`test_sqlite_lock_returns_json_503`）
+- 実 DB の pragma 確認: `journal_mode=wal` / `busy_timeout=5000` / `synchronous=1`
+- `storage/logs/laravel.log` の `database is locked` は 0 件
+
+**影響範囲**: 202611 の API 応答と SQLite 接続設定のみ。202603 / 202605 / 202606 / 202609 / 202610 の blade・`public/js/` は未変更。
+`config/database.php` の sqlite 設定は全 rally 共通の接続設定のため、SQLite を使う機能はまとめて WAL の恩恵を受ける
+（`busy_timeout` の待機は応答を遅くしない範囲の 5 秒上限。MySQL 運用には影響しない）。

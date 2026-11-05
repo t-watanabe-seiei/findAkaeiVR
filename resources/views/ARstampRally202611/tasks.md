@@ -428,6 +428,35 @@
   `php artisan optimize:clear`（非 TTY では T65-2 の BufferedOutput 方法。OPcache 時は `opcache_reset()` か PHP 再起動）→
   実機でガラポン確認と変更フローを確認。**DB 変更（migration）は不要**（既存の `email` / `email_code_sent_at` / `email_verified_at` を使う）
 
+### T102: 確認コードの打ち間違い復旧と SQLite のロック解消（FR-61 / FR-64・2026-11-05）
+
+- [x] **T102-1** `config/database.php` の sqlite 接続に `journal_mode=WAL` / `busy_timeout=5000` /
+  `synchronous=NORMAL` を追加（`DB_SQLITE_JOURNAL_MODE` / `DB_SQLITE_BUSY_TIMEOUT` / `DB_SQLITE_SYNCHRONOUS` で調整）
+- [x] **T102-2** `bootstrap/app.php` の `withExceptions()` で `stamp202611/*` の 429 を JSON
+  `{success:false, error:"too_many", waitSeconds}`、`database is locked` の `QueryException` を
+  503 JSON `{success:false, error:"server_busy"}` へ変換（`Exceptions::throttle()` はレポート回数を抑える API なので使わない）
+- [x] **T102-3** `requestEmailCode()` / `requestEmailChangeCode()` の `resend_interval` 判定を
+  **Cache entry の `email` と同じアドレス宛だけ**に限定（違うアドレスへの送信＝打ち間違いの修正は待たせない）
+- [x] **T102-4** `email_verification.code_send_limit_per_hour`（既定 6・`AR202611_EMAIL_CODE_LIMIT_PER_HOUR`）を追加し
+  `stamp202611_email_code` / `stamp202611_email_change_code` を 1 時間 3 回 → 6 回へ
+- [x] **T102-5** `applyVoucher()` / `changeVoucherEmail()` の `catch (QueryException)` に `isDatabaseLock()` を入れ、
+  ロックは `already_applied` / `email_in_use` に変換せず再スロー（`changeVoucherEmail()` は `refresh()` 前に抜ける）
+- [x] **T102-6** `js-prize.blade.php` のコード送信系 fetch へ `Accept: application/json` を付け、
+  `voucherCodeErrorText202611()` へ `too_many` / `server_busy` の文言分岐を追加
+  （`too_soon` は「アドレスを直した場合はそのままもう一度押してください」へ更新）
+- [x] **T102-7** `.env.example` へ `DB_SQLITE_JOURNAL_MODE` / `DB_SQLITE_BUSY_TIMEOUT` /
+  `DB_SQLITE_SYNCHRONOUS` / `AR202611_EMAIL_CODE_LIMIT_PER_HOUR` を追記
+- [x] **T102-8** テスト 4 本追加（`test_email_code_resend_to_corrected_email_is_immediate` /
+  `test_email_change_code_resend_to_corrected_email_is_immediate` /
+  `test_email_code_throttle_returns_json_too_many` / `test_sqlite_lock_returns_json_503`）。
+  `StampRally202611Test` は **52 tests / 444 assertions** PASS（`DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test`）
+- [ ] **T102-9** 実機受け入れ: 打ち間違いアドレスへ送信 → 直したアドレスへ即再送信（429 にならない）→
+  新しいコードで応募完了。`storage/logs/laravel.log` に `database is locked` が出ないこと
+- [ ] **T102-10** 本番反映: `config/database.php` / `bootstrap/app.php` / `app/Providers/AppServiceProvider.php` /
+  `config/ar202611.php` / `StampRally202611Controller.php` / `js-prize.blade.php` / `.env` をアップロード →
+  `php artisan optimize:clear`。**Xserver で DB がネットワーク FS（NFS）上の場合は `DB_SQLITE_JOURNAL_MODE=DELETE` に戻す**。
+  WAL 化後は `database.sqlite-wal` / `database.sqlite-shm` も書き込み可能な権限で揃うこと（migration は不要）
+
 ### 残（FR-62 / FR-63 関連の運用）
 
 - [ ] 変更用メールの文面（件名「…メールアドレス変更 確認コード」）を運営へ確認してもらう

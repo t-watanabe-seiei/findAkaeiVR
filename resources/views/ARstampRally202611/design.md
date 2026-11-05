@@ -466,6 +466,45 @@ Schema::create('stamp202611_voucher_applications', function (Blueprint $table) {
 - `requestVoucherEmailChangeCode202611()` / `changeVoucherEmail202611()`（419 応答は `refreshCsrfToken()` 後 1 回だけ再試行）。全角 / スペースの自動補正とエラー文言は応募と同じ `normalizeEmailInput202611()` / `voucherCodeErrorText202611()` を使う
 - 画面には常にマスク済みアドレスだけを表示し、完全なアドレスは返さない
 
+### 5.9 確認コード再送信の緩和・エラー応答の JSON 化・SQLite のロック解消（FR-61 / FR-64・2026-11-05 追加）
+
+**背景（2026-11-05 の不具合）**: 参加者が「確認コードを送信できませんでした。」を繰り返して応募完了できなかった。
+原因は 2 つが重なっている。
+
+**① `SQLSTATE[HY000]: General error: 5 database is locked`**
+`SESSION_DRIVER=database`（セッション書き込み）・`CACHE_STORE=database`（`throttle` のカウンタ増分）・
+応募行の `INSERT` が **1 本の SQLite ファイル**へ集中し、SQLite 既定値（`busy_timeout=0` / `journal_mode=delete`）では
+別リクエストの書き込みと衝突した瞬間に即例外になる。
+→ `config/database.php` の sqlite 接続で `journal_mode=WAL`（読み取りと書き込みを並行化）、
+`busy_timeout=5000`（ロックを最大 5 秒待って再試行）、`synchronous=NORMAL`（WAL での推奨値）を既定にした。
+`DB_SQLITE_JOURNAL_MODE` / `DB_SQLITE_BUSY_TIMEOUT` / `DB_SQLITE_SYNCHRONOUS` で調整する。
+**WAL は NFS 等のネットワークファイルシステムでは使わない**（共有ホスティングで SQLite を使う場合は `DELETE` へ戻す）。
+WAL へ切り替えると `database.sqlite-wal` / `database.sqlite-shm` が並走する（`database/.gitignore` の `*.sqlite*` が対象）。
+運用確認は `PRAGMA journal_mode; PRAGMA busy_timeout; PRAGMA synchronous;`（既定で `wal / 5000 / 1`）。
+
+**② HTML で返るエラー**
+`ThrottleRequestsException`（429）と `QueryException`（500）は HTML エラーページで返り、
+クライアントの `r.json()` が失敗してエラー種別を分岐できなかった（実害として「送信できませんでした。」に化けた）。
+→ `bootstrap/app.php` の `withExceptions()` に `$exceptions->render()` を 2 本置き、
+`$request->is('stamp202611/*')` に対してだけ ①429 `{success:false, error:"too_many", waitSeconds: Retry-After}`
+②`database is locked` を含む `QueryException` は 503 `{success:false, error:"server_busy"}` を JSON で返す。
+`Exceptions::throttle()` は「例外のレポート回数」を抑える API なので 429 の応答には使わない。
+controller 側の UNIQUE 競合 `catch (QueryException)` は `isDatabaseLock()` でロックを判別して **再スロー**する
+（ロックを `already_applied` / `email_in_use` へ誤変換しない。`changeVoucherEmail()` では `refresh()` 前に抜ける）。
+
+**再送信の間隔（FR-61）**: `resend_interval` は **同じアドレス宛**の再送信にだけ適用する。
+Cache entry の `email` と違うアドレスへの送信は「打ち間違いを直した再試行」とみなし間隔を要求しない。
+entry は新しいアドレスで上書きされるため打ち間違い宛の古いコードは使えなくなる
+（`applyVoucher` は 422 `code_invalid`、変更は 422 `code_expired`）ので、
+正しいアドレスへ即座に送り直して応募を完了できる。同じアドレスへの乱打は従来どおり 429 `too_soon`、
+1 時間あたりの送信回数上限は `code_send_limit_per_hour`（既定 6・`stamp202611_email_code` /
+`stamp202611_email_change_code`）で抑える。
+
+**クライアント（`js-prize.blade.php`）**: コード送信系の fetch には `Accept: application/json` を付け、
+`voucherCodeErrorText202611()` で `too_soon`（「アドレスを直した場合はそのままもう一度押してください」）/
+`too_many`（`waitSeconds` を分へ換算）/ `server_busy`（時間をおいて再試行）を分岐する。
+想定外のステータスは `[AR202611] voucher code error` として console へ出す（原因特定のため）。
+
 ## 6. 管理ダッシュボード
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）

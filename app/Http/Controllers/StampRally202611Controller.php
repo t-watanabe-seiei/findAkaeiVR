@@ -455,6 +455,16 @@ class StampRally202611Controller extends Controller
     }
 
     /**
+     * QueryException が SQLite のロック由来かどうか（"database is locked"）。
+     * UNIQUE 競合と混同すると「すでに応募済みです」等の誤案内になるため、
+     * ロックは呼び出し側の catch で握りつぶさず再スローして 503 server_busy にする。
+     */
+    private static function isDatabaseLock(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'database is locked');
+    }
+
+    /**
      * メールアドレスのドメインが存在するか（FR-61・dns_check が true のときだけ呼ぶ）。
      *
      * Laravel には `dns` バリデーションルールが存在しない（`email:rfc,dns` の dns 引数とは別物）ため、
@@ -569,8 +579,11 @@ class StampRally202611Controller extends Controller
         $key = self::emailCodeCacheKey($fingerprint);
         $current = Cache::get($key);
 
-        // 短すぎる間隔での再送信は断る（送信コスト・乱打対策）
-        if (is_array($current) && $options['resend_interval'] > 0) {
+        // 短すぎる間隔での「同じアドレスへの」再送信は断る（送信コスト・乱打対策）。
+        // 送信済みアドレスと違うアドレスへの送信は、入力ミスを直した再試行なので間隔を要求しない（FR-61）。
+        // 打ち間違いでコードが届かなかった場合に、アドレスを直して即座に再送信できることが必要。
+        if (is_array($current) && $options['resend_interval'] > 0
+            && ($current['email'] ?? '') === $email) {
             $elapsed = now()->getTimestamp() - (int) ($current['sent_at'] ?? 0);
             if ($elapsed >= 0 && $elapsed < $options['resend_interval']) {
                 return response()->json([
@@ -825,6 +838,11 @@ class StampRally202611Controller extends Controller
                 'email_verified_at' => now(),
             ]);
         } catch (QueryException $e) {
+            // SQLite のロックは UNIQUE 競合ではない（誤って「すでに応募済みです」にしない）
+            if (self::isDatabaseLock($e)) {
+                throw $e;
+            }
+
             // fingerprint / email の UNIQUE 競合（同時リクエスト）
             return response()->json([
                 'success' => false,
@@ -946,7 +964,10 @@ class StampRally202611Controller extends Controller
         $key = self::emailCodeCacheKey($fingerprint, 'change');
         $current = Cache::get($key);
 
-        if (is_array($current) && $options['resend_interval'] > 0) {
+        // 応募時と同じ規則: 間隔を要求するのは「同じアドレスへの」再送信だけ。
+        // 入力ミスを直して別のアドレスへ送り直す場合は待たせない（FR-63）。
+        if (is_array($current) && $options['resend_interval'] > 0
+            && ($current['email'] ?? '') === $email) {
             $elapsed = now()->getTimestamp() - (int) ($current['sent_at'] ?? 0);
 
             if ($elapsed >= 0 && $elapsed < $options['resend_interval']) {
@@ -1076,6 +1097,11 @@ class StampRally202611Controller extends Controller
             $application->email_verified_at = now();
             $application->save();
         } catch (QueryException $e) {
+            // SQLite のロックは UNIQUE 競合ではない（refresh() もロックされるため即再スローする）
+            if (self::isDatabaseLock($e)) {
+                throw $e;
+            }
+
             // email UNIQUE 競合（同時リクエスト）
             $application->refresh(); // 変更前の値へ戻す（後続の save() で未確認値を書かない）
 

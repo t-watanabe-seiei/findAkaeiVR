@@ -43,10 +43,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('stamp202611_scan', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
         RateLimiter::for('stamp202611_check', fn (Request $request) => Limit::perMinute(120)->by($key202611($request)));
         RateLimiter::for('stamp202611_apply', fn (Request $request) => Limit::perHour(10)->by($key202611($request)));
-        // 確認コード送信（FR-61）: 1 端末（fingerprint）あたり 1 時間 3 回まで
-        RateLimiter::for('stamp202611_email_code', fn (Request $request) => Limit::perHour(3)->by($key202611($request)));
-        // 応募後のメールアドレス変更（FR-63）: 変更用コード送信は 1 時間 3 回、変更確定は 1 時間 10 回まで
-        RateLimiter::for('stamp202611_email_change_code', fn (Request $request) => Limit::perHour(3)->by($key202611($request)));
+        // 確認コード送信（FR-61）: 1 端末（fingerprint）あたり 1 時間 N 回まで。
+        // 打ち間違いでコードが届かなかった場合は「アドレスを直して送り直す」操作で複数回使うため、
+        // 3 回だと正常な再試行が 429 で止まる（既定 6 回・AR202611_EMAIL_CODE_LIMIT_PER_HOUR で調整）。
+        // 総当たりは 1 コードあたりの入力試行上限（max_attempts）で止まるため、送信回数の上限は緩めてもよい。
+        $emailCodeLimit = max(1, (int) config('ar202611.email_verification.code_send_limit_per_hour', 6));
+
+        RateLimiter::for('stamp202611_email_code', fn (Request $request) => Limit::perHour($emailCodeLimit)->by($key202611($request)));
+        // 応募後のメールアドレス変更（FR-63）: 変更用コード送信は 1 時間同じ上限、変更確定は 1 時間 10 回まで
+        RateLimiter::for('stamp202611_email_change_code', fn (Request $request) => Limit::perHour($emailCodeLimit)->by($key202611($request)));
         RateLimiter::for('stamp202611_email_change', fn (Request $request) => Limit::perHour(10)->by($key202611($request)));
     }
 }

@@ -37,9 +37,16 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
+            // SQLite は 1 ファイルへ読み書きが集中すると "database is locked"（HY000 / code 5）になる。
+            // SESSION_DRIVER=database・CACHE_STORE=database（レートリミットのカウンタ増分）・応募行の書き込みが
+            // 同じ DB ファイルに集中するため、既定（busy_timeout 0ms / journal_mode delete）では
+            // 別リクエストの書き込みと衝突した瞬間に即 500 になる。
+            // WAL は読み取りを書き込みと並行にし、busy_timeout はロックを最大 N ms 待ってから再試行する。
+            // ※ WAL は NFS 等のネットワークファイルシステムでは使わないこと
+            //   （共有ホスティングで SQLite の場合は DB_SQLITE_JOURNAL_MODE=DELETE に戻す）。
+            'busy_timeout' => (int) env('DB_SQLITE_BUSY_TIMEOUT', 5000),
+            'journal_mode' => env('DB_SQLITE_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SQLITE_SYNCHRONOUS', 'NORMAL'),
         ],
 
         'mysql' => [

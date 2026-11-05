@@ -7,13 +7,18 @@ use App\Mail\Stamp202611VoucherCodeMail;
 use App\Models\MarkerScan;
 use App\Models\Stamp202611VoucherApplication;
 use Carbon\Carbon;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
+use PDOException;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -1544,6 +1549,142 @@ class StampRally202611Test extends TestCase
             ->assertJson(['success' => false, 'error' => 'too_soon']);
 
         Mail::assertSentCount(2); // 応募 1 通 + 変更用 1 通（再送信は送信されない）
+    }
+
+    /**
+     * FR-61: アドレスを打ち間違えてコードが届かなかった場合、別のアドレスへ直した再送信は
+     * resend_interval を待たない（fingerprint 単位のクールダウンは「同じアドレス宛」だけに適用）。
+     * 打ち間違いアドレス宛の古いコードは、直したアドレスでは使えない。
+     */
+    public function test_email_code_resend_to_corrected_email_is_immediate(): void
+    {
+        $this->enableEmailVerification(['resend_interval' => 60]);
+        Mail::fake();
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00', 'Asia/Tokyo'));
+
+        $this->seedScans('fp-typo', 12);
+
+        // 打ち間違いのアドレスへ送信済み（参加者には届かない）
+        $this->requestEmailCode('fp-typo', 'typo@gmial.co.jp')->assertStatus(200);
+        $typo = $this->cachedEmailCode('fp-typo');
+        $this->assertIsArray($typo);
+
+        // 直したアドレスへの再送信は 429 too_soon にならない（同じ 1 秒後で送信できる）
+        $this->requestEmailCode('fp-typo', 'fixed@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'verification_required' => true]);
+        Mail::assertSentCount(2);
+
+        $fixed = $this->cachedEmailCode('fp-typo');
+        $this->assertIsArray($fixed);
+        $this->assertSame('fixed@example.com', $fixed['email']);
+        $this->assertNotSame($typo['code'], $fixed['code'], 'コードは作り直される');
+
+        // 同じアドレスへの即再送信は従来どおり 429 too_soon（乱打対策は維持）
+        $this->requestEmailCode('fp-typo', 'fixed@example.com')
+            ->assertStatus(429)
+            ->assertJson(['success' => false, 'error' => 'too_soon']);
+        Mail::assertSentCount(2);
+
+        // 打ち間違いアドレス宛の古いコードは直したアドレスで使えない
+        // （Cache の entry は新しいアドレスで上書き済みなので、コード不一致として弾かれる）
+        $this->applyVoucherWithCode('fp-typo', 'fixed@example.com', (string) $typo['code'])
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_invalid']);
+        $this->assertSame(0, Stamp202611VoucherApplication::count());
+
+        // 新しいコードで応募完了する（復旧経路が通る）
+        $this->applyVoucherWithCode('fp-typo', 'fixed@example.com', (string) $fixed['code'])
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'applied' => true]);
+        $this->assertSame(1, Stamp202611VoucherApplication::count());
+    }
+
+    /** FR-63: 変更でも同じ。別のアドレスへ直した再送信は resend_interval を待たない */
+    public function test_email_change_code_resend_to_corrected_email_is_immediate(): void
+    {
+        Mail::fake();
+
+        $fp = 'fp_chg_typo_202611';
+        $this->seedVerifiedApplication($fp, 'typo@example.com');
+        config(['ar202611.email_verification.resend_interval' => 60]);
+
+        // 変更先を打ち間違えて送信（届かない）
+        $this->requestEmailChangeCode($fp, 'typo2@gmial.co.jp')->assertStatus(200);
+
+        // 直したアドレスへは待たずに送信できる
+        $this->requestEmailChangeCode($fp, 'fixed2@example.com')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'verification_required' => true]);
+        Mail::assertSentCount(3); // 応募 1 通 + 変更用 2 通
+
+        // 同じアドレスへの即再送信は 429 too_soon
+        $this->requestEmailChangeCode($fp, 'fixed2@example.com')
+            ->assertStatus(429)
+            ->assertJson(['success' => false, 'error' => 'too_soon']);
+
+        // 打ち間違いアドレス宛の変更用コードでは変更確定できない
+        $typoEntry = $this->cachedEmailChangeCode($fp);
+        $this->assertIsArray($typoEntry);
+        $this->assertSame('fixed2@example.com', $typoEntry['email']);
+
+        $this->changeVoucherEmail($fp, 'typo2@gmial.co.jp', '123456')
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'error' => 'code_expired']);
+        $this->assertSame('typo@example.com', $this->application($fp)->email);
+    }
+
+    /**
+     * 202611 API のレートリミット超過は HTML ではなく JSON（error: too_many + waitSeconds）で返す。
+     * HTML だとクライアントで種別を分岐できず「確認コードを送信できませんでした。」に化ける。
+     */
+    public function test_email_code_throttle_returns_json_too_many(): void
+    {
+        $this->enableEmailVerification(['resend_interval' => 0]);
+        Mail::fake();
+        $this->seedScans('fp-throttle', 12);
+
+        // 固定キーで 1 分 2 回へ差し替えて決定論的に検証する（セッション/IP に依存しない）
+        RateLimiter::for('stamp202611_email_code', fn ($request) => Limit::perMinute(2)->by('throttle-test-key'));
+
+        $this->requestEmailCode('fp-throttle', 'a1@example.com')->assertStatus(200);
+        $this->requestEmailCode('fp-throttle', 'a2@example.com')->assertStatus(200);
+
+        $response = $this->requestEmailCode('fp-throttle', 'a3@example.com');
+        $response->assertStatus(429)
+            ->assertJson(['success' => false, 'error' => 'too_many'])
+            ->assertHeader('Content-Type', 'application/json');
+
+        $json = $response->json();
+        $this->assertIsArray($json);
+        $this->assertArrayHasKey('waitSeconds', $json);
+        $this->assertGreaterThanOrEqual(1, (int) $json['waitSeconds']);
+        Mail::assertSentCount(2); // 3 通目は送信されない
+    }
+
+    /**
+     * SQLite の "database is locked"（本来 500 の HTML）は JSON の 503 server_busy に変換する。
+     * HTML で返るとクライアントはエラー種別を分岐できず、
+     * 「確認コードを送信できませんでした。」に化ける（今回の不具合の実経路）。
+     */
+    public function test_sqlite_lock_returns_json_503(): void
+    {
+        // テストログに "database is locked" を残さない
+        config(['logging.default' => 'null']);
+
+        Route::post('/stamp202611/__lock-test', function () {
+            throw new QueryException(
+                'sqlite',
+                'update "cache" set "value" = i:17; where "key" = efc07ba8d7557acedfa9cb8e26af77fb',
+                [],
+                new PDOException('SQLSTATE[HY000]: General error: 5 database is locked')
+            );
+        });
+
+        $this->postJson('/stamp202611/__lock-test')
+            ->assertStatus(503)
+            ->assertJson(['success' => false, 'error' => 'server_busy'])
+            ->assertHeader('Content-Type', 'application/json');
     }
 }
 

@@ -229,7 +229,8 @@
             var meta = document.querySelector('meta[name="csrf-token"]');
             return fetch('{{ url("/stamp202611/record-scan") }}', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': meta ? meta.content : '' },
+                // Accept を付けると 429 / 500 が HTML ではなく JSON で返る（エラー種別を分岐できる）
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': meta ? meta.content : '' },
                 body:    JSON.stringify(payload)
             }).then(function (r) {
                 return { ok: r.ok, tokenExpired: r.status === 419, status: r.status };
@@ -350,7 +351,7 @@
             return generateFingerprint().then(function (fp) {
                 return fetch('{{ url("/stamp202611/check-status") }}', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                     body:   JSON.stringify({ fingerprint: fp })
                 });
             }).then(function (r) {
@@ -396,7 +397,7 @@
                 .then(function (fp) {
                     return fetch('{{ url("/stamp202611/apply-voucher") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                         body: JSON.stringify({
                             fingerprint: fp,
                             deviceInfo: collectDeviceInfo(),
@@ -850,13 +851,22 @@
             if (res.error === 'invalid_email') return res.message || 'メールアドレスのドメインが見つかりません。入力をご確認ください。';
             if (res.error === 'too_soon') {
                 var wait = res.waitSeconds ? Math.ceil(res.waitSeconds) : 30;
-                return '送信間隔です。' + wait + ' 秒待ってから再送信してください。';
+                return '同じアドレスへ ' + wait + ' 秒以内に再送信しました。アドレスを直した場合はそのままもう一度押してください。';
             }
+            // 1 時間あたりの送信回数上限（throttle）。打ち間違いの再試行が続いたときに出る
+            if (res.error === 'too_many') {
+                var limitWait = res.waitSeconds ? Math.ceil(res.waitSeconds / 60) : 60;
+                return 'この端末からの送信回数が増えすぎました。' + limitWait + ' 分ほど置いてからもう一度お試しください。';
+            }
+            // サーバー側の一時的な混雑（SQLite のロックなど・503）
+            if (res.error === 'server_busy') return res.message || 'サーバーが混み合っています。10 秒ほどおいてもう一度お試しください。';
             if (res.error === 'mail_failed') return '確認メールを送信できませんでした。時間をおいてもう一度お試しください。';
             if (res.error === 'offline') return '確認コードの送信には通信が必要です。';
             if (res.error === 'csrf') return 'セッションが切れました。ページを再読み込みしてください。';
             if (res.error === 'network') return '通信に失敗しました。時間をおいてもう一度お試しください。';
-            return res.message || '確認コードを送信できませんでした。';
+            // 想定外のステータス（HTML が返った等）は種別をログに出す（原因特定のため）
+            console.warn('[AR202611] voucher code error', res.error, res.status, res.message);
+            return res.message || '確認コードを送信できませんでした。時間をおいてもう一度お試しください。';
         }
 
         // 確認コード送信（POST /stamp202611/voucher-email-code・CSRF 陳腐化は 1 回だけ再試行・FR-26）
@@ -874,7 +884,7 @@
                 .then(function (fp) {
                     return fetch('{{ url("/stamp202611/voucher-email-code") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                         body: JSON.stringify({ fingerprint: fp, email: email })
                     }).then(function (r) {
                         return r.json().catch(function () { return {}; }).then(function (d) {
@@ -1198,7 +1208,7 @@
                 .then(function (fp) {
                     return fetch('{{ url("/stamp202611/voucher-email-change-code") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                         body: JSON.stringify({ fingerprint: fp, email: email })
                     }).then(function (r) {
                         return r.json().catch(function () { return {}; }).then(function (d) {
@@ -1259,7 +1269,7 @@
                 .then(function (fp) {
                     return fetch('{{ url("/stamp202611/voucher-email-change") }}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfMeta.content },
                         body: JSON.stringify({ fingerprint: fp, email: email, code: code || '' })
                     }).then(function (r) {
                         return r.json().catch(function () { return {}; }).then(function (d) {

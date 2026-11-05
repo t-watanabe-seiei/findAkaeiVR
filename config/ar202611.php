@@ -40,6 +40,9 @@ return [
         'code_ttl'        => (int) env('AR202611_EMAIL_CODE_TTL', 900),        // 確認コードの有効期限（秒・既定 15 分）
         'max_attempts'    => (int) env('AR202611_EMAIL_MAX_ATTEMPTS', 5),      // 1 コードあたりの入力試行上限
         'resend_interval' => (int) env('AR202611_EMAIL_RESEND_INTERVAL', 30),  // 再送信の間隔（秒）
+        // 1 端末（fingerprint）あたり 1 時間のコード送信回数上限（throttle:stamp202611_email_code /
+        // stamp202611_email_change_code）。アドレスの打ち間違いを直して送り直す再試行を吸収できる数を既定 6 にする。
+        'code_send_limit_per_hour' => (int) env('AR202611_EMAIL_CODE_LIMIT_PER_HOUR', 6),
         // ドメイン存在チェック（true のときだけ emailDomainExists() で checkdnsrr() を呼ぶ）。
         // Laravel には `dns` バリデーションルールが無いので、ルール文字列へは連結しない（500 になる）。
         // 共有ホスティングでは DNS 参照が遅く誤検知もあり得るため既定は false（FR-61 の本人確認は 6 桁コードで成立する）。
