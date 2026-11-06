@@ -537,6 +537,38 @@
   README は §11 参照 1 行に短縮、`tasks.md` に T104-10a〜10g の本番チェックボックスを追加。
   重複見出し（§3）と SW キャッシュ名の誤記（`stamp202611-*-v4` → `ar202611-*-v4`）を修正
 
+### T104-13〜 収集種数の欠落（LocalStorage 10 種 / サーバー 9 種）調査と対策（2026-11-06）
+
+症状: リセット後のテスト端末で LocalStorage は 10 種（ガラポン 10 回）なのに `check-status` の
+`deviceStampCount` は 9 で応募ボタンが止まる。`marker_scans` では該当 fingerprint（`fp_uv97du`）の
+`ball_hit` が 9 種（`model_09` だけ欠番）・`marker_scan` は 18 種。応募行は 0 件（まだ誰も応募確定していない）。
+原因と対策は design.md §5.12 に記録。
+
+- [x] **T104-13** `collectStamp()`: ball_hit を LocalStorage の有無と切り離して送信（既存種も送る）。
+  連打抑止はメモリ内 `_ballHitReportedThisPage`（ページ単位・1 マーカー 1 回）。サーバーは `ball_hit` を
+  行で累積するだけで応募種数は `COUNT(DISTINCT marker_id)` のままなので再送は冪等
+- [x] **T104-14** `recordMarkerScan()`: HTTP 4xx/5xx を破棄せず 1 回即再試行 → 失敗なら `enqueueScan()`
+- [x] **T104-15** `flushScanQueue()`: 失敗件を `failed` に集めて書き戻し、**後続は送り続ける**
+  （従来は最初の 1 件で打ち切り → 未送信滞留 → FR-52 の応募ボタン非表示が長引いた）
+- [x] **T104-16** `checkStatus()`: 送信 fingerprint を正本、セッション値はフォールバックに降格
+  （`?test=1` と通常 URL の往復で表示と応募判定が別 fingerprint 化していた）
+- [x] **T104-17** `js-reset.blade.php`: `marker-scan-cache-202611-*` を削除対象に追加
+  （`test-data-guide.md` §11.8 の手順書と実装の不一致を解消）
+- [x] **T104-18** テスト追加（`StampRally202611Test`）: 上記 4 点を担保する 3 件とリセット選別条件の更新 →
+  **58 tests / 500 assertions** PASS（`DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/phpunit tests/Feature/StampRally202611Test.php`）
+- [ ] **T104-19** 実機受け入れ: 問題端末で `?test=1` を外して `/stamp202611` だけを開き直し、
+  「この端末の収集」が 10 種になることを確認。ならない場合は欠番（`model_09`）の LocalStorage エントリを
+  1 件だけ消してその場でボール当て → 新規扱いで `record-scan` が飛ぶことを Console で確認（design.md §5.12）
+- [ ] **T104-20** fingerprint の永続化: `UserIdDB202611` / Cookie / localStorage の書込失敗時に
+  **ページごとに別 fingerprint** が立つ（実測で 1 端末に複数本・時刻が重複）。書込失敗の再試行と
+  同一ブラウザ内の統一を検討する（種数が端末単位で割れる問題の本丸）
+- [ ] **T104-21** `test_fp_*` の抽選扱いを運営と決める: 検証モードで集めた種も通常 fingerprint と同じ資格を持つ
+  （実測 `test_fp_3gzc4a` は 15 種で応募可）。除外する場合は `deviceStampCountFor()` / `applyVoucher()` に
+  `test_prefix` 除外を入れ、`test_prefix` 変更時は既存行の扱いも決める（§7 の CSV 除外とは別軸）
+- [ ] **T104-22** （任意）自己復旧: `check-status` が `recordedMarkerIds`（`ball_hit` の distinct）を返し、
+  クライアントが LocalStorage と突き合わせて欠落分を自動再送する `resyncScans202611()`。
+  markerId は `STAMPS` のホワイトリスト検証と 1 日上限が必須
+
 ### 残（FR-62 / FR-63 関連の運用）
 
 - [ ] 変更用メールの文面（件名「…メールアドレス変更 確認コード」）を運営へ確認してもらう

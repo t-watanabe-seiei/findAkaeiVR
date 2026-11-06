@@ -317,7 +317,8 @@ detectedStampCountFor(fingerprint)       … 検出のみ（表示・スタッ�
   - **実装注記（2026-10-28・T12）**: `APP_TIMEZONE=Asia/Tokyo` で `marker_scans.scanned_at` は **JST 壁時計の文字列**として保存されている（既存 188 件で確認）。そのため `collectPeriod()` / `applyDeadline()` は **`Asia/Tokyo` で parse してそのまま比較**し、UTC へ変換しない。UTC 変換を挟むと `whereBetween` のバインドが 9 時間ずれて収集期間末尾（15 日 15:00 以降）が種数からこぼれる。Carbon の `between` / `lte` は絶対時刻比較なのでクライアントの UTC ISO8601 と混線しない
 
 ### 5.2 checkStatus（読み取り＋**倍率の自動昇格**・202610 の check-prize 相当）
-- `session('ar_fingerprint_202611') ?: $request->input('fingerprint')`
+- **fingerprint の正本は送信値**（T104-16・2026-11-06 変更）: `$request->input('fingerprint')`（空でなく 64 字以下）を優先し、無いときだけ `session('ar_fingerprint_202611')` へフォールバックする。
+  セッション優先だと `?test=1`（`test_fp_*`）と通常 URL（`fp_*`）を同一ブラウザで行き来したとき直前に hit したページの fingerprint が残り、`apply-voucher`（送信 fingerprint を使う）と照合先が食い違って「この端末の収集: 9 種（この端末 10 種）」で応募不能になる（§5.12）
 - 収集種数は**サーバー側**で算出: 合算は `stampCountFor()`（`MarkerScan::where('session_id', $sid)->orWhere('fingerprint', $fp)->distinct()->count('marker_id')`・`scanned_at` を **`self::collectPeriod()` = `collect_start` / `collect_end`（JST 壁時計のまま・§5.1 の実装注記）**で絞る。FR-50）。応募資格と倍率の正本は `deviceStampCountFor($fp)`（`capture_type='ball_hit'` の distinct 数・FR-56 / FR-58）、参考値として `detectedStampCountFor($fp)`（`capture_type='marker_scan'` の distinct 数）も算出する
   - **帰宅後応募の成立点**: オフライン収集分は次回ロード時に自動再送されるため、`collect_end` までに再送されていれば（記録日時が収集日であることと併せて）この種数に含まれる。案A では `scanned_at` が収集日なので、**再送が `collect_end` をまたいでいても**種数は減らない（`apply_deadline` 前なら応募可能）
   - 未送信キュー（クライアント LocalStorage）の分は**この種数に含まれない**（サーバー未着信のため）。FR-52 で応募ボタンを抑制する根拠
@@ -558,6 +559,7 @@ entry は新しいアドレスで上書きされるため打ち間違い宛の�
 |---|---|
 | 1 | `localStorage['ar-reset-epoch-202611']` と `config('ar202611.reset_epoch')` を比べ、**一致なら何もしない**（冪等） |
 | 2 | 不一致なら `ar-` 始まりかつ `202611` を含むキーを削除（将来追加されるキーも吸収。`ar-*-202610` は保持） |
+| 2b | 日付付きで残る `marker-scan-cache-202611-*` も同じループで削除する（T104-17・test-data-guide.md §11.8 と実装を一致） |
 | 3 | Cookie `ar_user_id_202611` と IndexedDB `ARStampRallyDB202611` を消す（fingerprint の元を消して新規端末にする） |
 | 4 | SW が登録済みなら `postMessage({ type: 'CLEAR_CACHES' })` で**キャッシュだけ**消す（SW は unregister しない → 次回 navigation で network-first の新 HTML を取得） |
 | 5 | 新しい世代を localStorage へ保存する（`location.reload()` はしない。head で全 202611 JS より前に走るため同一読み込みでクリーン） |
@@ -583,7 +585,40 @@ entry は新しいアドレスで上書きされるため打ち間違い宛の�
   `scanned_at` 条件の SQL で削除する。
 - ガラポンの引抽回数（`ar-gacha-draws-202611`）も消える。運営の目視記録とは照合できなくなる。
 
-## 6. 管理ダッシュボード
+### 5.12 収集種数の欠落防止（T104-13〜T104-16・2026-11-06 追加）
+
+**症状**: リセット後のテスト端末で LocalStorage は 10 種（ガラポンは 10 で引ける）なのに
+`check-status` の `deviceStampCount` は 9 で、応募ボタンが「10 種の収集が必要（現在 9 種）」で止まる。
+`marker_scans` では該当 fingerprint の `ball_hit` が 9 種（`model_09` だけ欠番）・`marker_scan` は 18 種だった。
+
+**原因（4 件すべて実測で確認）**
+
+| # | 原因 | 箇所 |
+|---|---|---|
+| 1 | `collectStamp()` が `recordMarkerScan()` を「LocalStorage に新規登録した分岐」でしか呼ばない。キーが `markerId` のみで fingerprint を含まないため `?test=1` と通常 URL で共有され、片方で集めた種はもう片方の fingerprint へ**永久に送られない** | `js-stamps.blade.php` `collectStamp()` |
+| 2 | `recordMarkerScan()` が HTTP 4xx/5xx を**キューに入れず破棄**していた（再送は fetch 例外と 419 のみ） | `js-prize.blade.php` `recordMarkerScan()` |
+| 3 | `flushScanQueue()` が最初の 1 件失敗で後続を打ち切っていた。1 件の失敗が未送信として滞留し、`pending > 0` で応募ボタン自体が非表示になる（FR-52） | `js-prize.blade.php` `flushScanQueue()` |
+| 4 | `checkStatus()` がセッションの fingerprint を優先し、`applyVoucher()` は送信 fingerprint を使うため、**表示と応募判定が別 fingerprint** になりうる | `StampRally202611Controller::checkStatus()` |
+
+**対策**
+
+- **T104-13**: `collectStamp()` は ball_hit を LocalStorage の有無と切り離して送信する。
+  連打対策は **メモリ内**の `_ballHitReportedThisPage`（ページ読み込み単位・1 マーカー 1 回）だけ。
+  LocalStorage に持つと原因 1 と同じ構造になる。サーバーは `ball_hit` を行として累積するだけで
+  応募種数は `COUNT(DISTINCT marker_id)` のままなので**再送は冪等**（`marker_scan` のような当日去重はしない）。
+- **T104-14**: HTTP 4xx/5xx は 1 回だけ即再試行し、失敗したら `enqueueScan()` でキューへ退避する（破棄しない）。
+- **T104-15**: フラッシュは失敗件を `failed` に集めて**後続送り続ける**。完了時に `failed` だけ書き戻す
+  （FR-24 の「時系列順に送信」は保ちつつ、失敗件のみ次回再試行。キュー上限 200 件で頭打ち）。
+- **T104-16**: `checkStatus()` は送信 fingerprint を正本、セッション値はフォールバックに降格（§5.2）。
+
+**残る限界**
+
+- fingerprint は `userId` のハッシュから作るため、Cookie / IndexedDB / localStorage の読み書きに失敗した
+  端末では**ページごとに別 fingerprint** が立つ（実測で 1 端末に複数本）。種数が端末単位で割れるため、
+  恒久対策は fingerprint の永続化（`UserIdDB202611` の書込失敗時の再試行）が本丸。
+- `test_fp_*` は通常 fingerprint と同じ扱いで応募資格を持つ（`test_fp_3gzc4a` は 15 種で応募可）。
+  検証分を抽選から除外する与否は未決定（§7 の CSV 除外とは別軸）。
+
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）
 - 期間: `config('ar202611.start')` / `config('ar202611.end')` を `Asia/Tokyo` → `UTC` に変換（既定 2026-11-01 00:00:00 〜 2026-11-30 23:59:59）
@@ -658,7 +693,8 @@ entry は新しいアドレスで上書きされるため打ち間違い宛の�
 recordMarkerScan202611(markerId, ...)
   ├─ navigator.onLine === false → enqueueScan202611(payload)（LocalStorage）して resolve
   ├─ fetch 成功 → 通常処理
-  └─ fetch 通信エラー → enqueueScan202611(payload)（HTTP 4xx/5xx は再送しない）
+  ├─ fetch 通信エラー → enqueueScan202611(payload)
+  └─ HTTP 4xx/5xx → 1 回だけ即再試行 → 失敗なら enqueueScan202611(payload)（T104-14・破棄しない）
 ページ起動時（js-init）→ refreshCsrfToken202611() → flushScanQueue202611() → checkStatus202611()
 window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → checkStatus202611()
 応募直前 → flushScanQueue202611() → refreshCsrfToken202611() → apply-voucher
@@ -679,7 +715,10 @@ window 'online' → refreshCsrfToken202611() → flushScanQueue202611() → chec
 - キューキー `ar-scan-queue-202611`、上限 200 件（超過は先頭＝最古を破棄）。
 - 各要素は送信 body そのもの（markerId / markerName / fingerprint / deviceInfo / captureType / scannedAt）を保持し、再送時は元の `scannedAt` を使う。
 - `refreshCsrfToken202611()` は `GET /stamp202611/csrf`（`no-store`）で新トークンを取得し `meta[name=csrf-token]` を更新（キャッシュ済み HTML のトークン陳腐化 = 419 対策）。
-- 再送失敗時はキューへ戻して打ち切り（次回 `online` / 次回ロードで再試行）。
+- **フラッシュは失敗を飛ばして後続を送る（T104-15）**: 時系列順に送るが、失敗した件だけ `failed` に集めて書き戻し、
+  後続は送り続ける。従来は最初の 1 件失敗で打ち切っており、1 件の失敗が「LocalStorage 10 種 / サーバー 9 種」の
+  恒久欠落と `pending > 0` による応募ボタン非表示（FR-52）を生んだ（§5.12）。各スキャンは相互依存がない。
+  失敗件は次回 `online` / 次回ロードで再試行し、キューは 200 件で頭打ち（超過は最古を破棄）。
 - 抽選応募はオフラインでは行わない。ガラポンボタンはオフラインでも押下可（LocalStorage のみ・fetch なし）。
 
 ### 8.6 UI 状態表示（FR-25 / FR-52）

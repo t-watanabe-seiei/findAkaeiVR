@@ -345,7 +345,14 @@ class StampRally202611Controller extends Controller
      */
     public function checkStatus(Request $request)
     {
-        $fingerprint = session('ar_fingerprint_202611') ?: $request->input('fingerprint');
+        // 送信された fingerprint を正本、セッション値はフォールバックにする（T104-16）。
+        // セッション優先だと ?test=1（test_fp_*）と通常 URL（fp_*）を同一ブラウザで行き来したとき、
+        // 直前に hit したページの fingerprint が残り「この端末の収集: 9 種（この端末 10 種）」のように
+        // 表示（check-status）と応募判定（apply-voucher は送信 fingerprint）が食い違う。
+        $sent       = is_string($request->input('fingerprint')) ? trim($request->input('fingerprint')) : '';
+        $fingerprint = $sent !== '' && strlen($sent) <= 64
+            ? $sent
+            : session('ar_fingerprint_202611');
         $sessionId = session()->getId();
 
         $stampCount = self::stampCountFor($sessionId, $fingerprint);

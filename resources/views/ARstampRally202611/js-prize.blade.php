@@ -237,7 +237,10 @@
             });
         }
 
-        // キューのフラッシュ（FR-24）: 時系列順に送信、失敗以降は未送信分を保持
+        // キューのフラッシュ（FR-24）: 時系列順に送信し、失敗した件だけ残す（T104-15）。
+        // 従来は最初の 1 件が失敗すると後続を打ち切っていたため、1 件の失敗が
+        // 「LocalStorage は 10 種 / サーバー 9 種」の恒久欠落と応募ボタン非表示を生んだ。
+        // 各スキャンは相互依存がないため失敗件を飛ばして後続を送ってよい（失敗件は次回再試行）。
         function flushScanQueue() {
             if (_flushingScanQueue) return Promise.resolve(0);
             var queue = readScanQueue();
@@ -245,9 +248,10 @@
             if (!navigator.onLine) return Promise.resolve(0);
             _flushingScanQueue = true;
             var sent = 0;
+            var failed = [];
 
             function step(i) {
-                if (i >= queue.length) return Promise.resolve(sent);
+                if (i >= queue.length) return Promise.resolve(null);
                 var item = queue[i];
                 return postRecordScan(item).then(function (res) {
                     if (res.tokenExpired) {
@@ -260,23 +264,25 @@
                 }).then(function (res) {
                     if (res && res.ok) {
                         sent++;
-                        return step(i + 1);
+                    } else {
+                        failed.push(item);
+                        console.warn('[AR202611] flush failed, kept for retry:', item.markerId,
+                            'status=' + (res ? res.status : 'no response'));
                     }
-                    console.warn('[AR202611] flush stopped at', item.markerId);
-                    return sent;
+                    return step(i + 1);
                 }).catch(function (err) {
-                    console.warn('[AR202611] flush error', err);
-                    return sent;
+                    failed.push(item);
+                    console.warn('[AR202611] flush error, kept for retry:', item.markerId, err);
+                    return step(i + 1);
                 });
             }
 
-            return step(0).then(function (done) {
-                var left = queue.slice(done);
-                writeScanQueue(left);
+            return step(0).then(function () {
+                writeScanQueue(failed);
                 _flushingScanQueue = false;
-                if (done > 0) console.log('[AR202611] flushed scans:', done, 'remaining:', left.length);
+                if (sent > 0) console.log('[AR202611] flushed scans:', sent, 'remaining:', failed.length);
                 if (typeof window.updateOfflineBanner === 'function') window.updateOfflineBanner();
-                return done;
+                return sent;
             });
         }
 
@@ -308,8 +314,26 @@
                             });
                         });
                     }
-                    console.warn('[AR202611] recordMarkerScan HTTP ' + res.status);
-                    return { error: 'HTTP ' + res.status };
+                    // HTTP 4xx/5xx（429 / 500 / 422 等）は破棄せず 1 回だけ即再試行し、
+                    // だめならキューへ退避して次回フラッシュで送る（T104-14）。
+                    // 従来はここで破棄しており、1 件の失敗が収集種数の恒久欠落になった。
+                    console.warn('[AR202611] recordMarkerScan HTTP ' + res.status + ' -> retry');
+                    return postRecordScan(payload).then(function (res2) {
+                        if (res2.ok) return { sent: true };
+                        if (res2.tokenExpired) {
+                            return refreshCsrfToken().then(function (ok) {
+                                if (!ok) { enqueueScan(payload); return { queued: true }; }
+                                return postRecordScan(payload).then(function (res3) {
+                                    if (res3.ok) return { sent: true };
+                                    enqueueScan(payload);
+                                    return { queued: true };
+                                });
+                            });
+                        }
+                        console.warn('[AR202611] recordMarkerScan queued after HTTP ' + res2.status);
+                        enqueueScan(payload);
+                        return { queued: true };
+                    });
                 }).catch(function (err) {
                     // fetch 例外（通信断）: キューへ退避して後で再送
                     console.warn('[AR202611] recordMarkerScan error', err);

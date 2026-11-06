@@ -273,6 +273,24 @@ localStorage / IndexedDB）、サーバー側と端末側の 2 段で消す設�
 （2026-11-05 ②③ の確認コード再送信緩和 / エラー応答 JSON 化（FR-64）とフォーム開中のボタン非表示（AC-26）は
 `requirements.md` AC-25 / AC-26・`design.md` §5.9 / §5.10・`tasks.md` T102 / T103 に記録）
 
+### 2026-11-06 — 収集種数の欠落（LocalStorage 10 種 / サーバー 9 種）を修正（T104-13〜T104-18）
+
+リセット後のテスト端末で「この端末 10 種（ガラポン 10 回）」なのに `この端末の収集: 9 種` で応募ボタンが
+止まる問題を、`marker_scans` の実データ（該当 fingerprint の `ball_hit` 9 種・`model_09` 欠番・`marker_scan` 18 種）
+から特定した。**応募行は 0 件**なので、まだ誰の応募も確定していない（やり直しは不要）。
+
+| # | ファイル | 変更 |
+|---|---|---|
+| 1 | `js-stamps.blade.php` | `collectStamp()` は ball_hit を **LocalStorage の有無と切り離して**サーバーへ送る。キーが `markerId` のみで fingerprint を含まないため、`?test=1` で集めた種が通常 URL の fingerprint へ永久に載らなかった。連打抑止はメモリ内 `_ballHitReportedThisPage`（LocalStorage に持つと同じ穴になる）。サーバーは `ball_hit` を行で累積するだけで応募種数は `COUNT(DISTINCT marker_id)` のままなので**再送は冪等** |
+| 2 | `js-prize.blade.php` | `recordMarkerScan()` は HTTP 4xx/5xx を**破棄せず** 1 回即再試行 → 失敗なら `ar-scan-queue-202611` へ退避 |
+| 3 | `js-prize.blade.php` | `flushScanQueue()` は失敗件を `failed` に集めて書き戻し、**後続は送り続ける**（従来は最初の 1 件で打ち切り → 未送信滞留 → 応募ボタン非表示が長引いた） |
+| 4 | `StampRally202611Controller::checkStatus()` | **送信 fingerprint を正本**、セッション値はフォールバックに降格（`?test=1` と通常 URL の往復で表示と応募判定が別 fingerprint 化していた） |
+| 5 | `js-reset.blade.php` | リセットの削除対象に `marker-scan-cache-202611-*` を追加（`test-data-guide.md` §11.8 と実装の不一致を解消） |
+| 6 | `tests/Feature/StampRally202611Test.php` | 上記を担保するテスト 3 件を追加 + リセットの選別条件アサーション更新 → **58 tests / 500 assertions PASS** |
+
+原因・限界（1 端末に複数 fingerprint が立つ問題、`test_fp_*` の抽選扱い）は `design.md` §5.12、
+未実施の follow-up は `tasks.md` T104-19〜T104-22 に記録。
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。

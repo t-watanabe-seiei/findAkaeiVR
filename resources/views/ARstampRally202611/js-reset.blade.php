@@ -16,13 +16,17 @@
     if (stored !== null && String(stored) === String(EPOCH)) return;        // 冪等: 同一世代では再実行しない
 
     // (1) 202611 系の localStorage キーを消す（逆順ループで削除しながら走査する）。
-    //     'ar-' で始まり '202611' を含むキーだけ対象。将来追加されるキーも自動的に吸収される。
+    //     対象は「'ar-' で始まり '202611' を含むキー」と、日付付きで残る
+    //     'marker-scan-cache-202611-*'（design §11.8 の手順書と実装を一致させる・T104-17）。
+    //     将来追加されるキーも 'ar-' 接頭辞なら自動的に吸収される。
     var removed = [];
     try {
         for (var i = localStorage.length - 1; i >= 0; i--) {
             var k = localStorage.key(i);
             if (!k || k === EPOCH_KEY) continue;
-            if (k.indexOf('ar-') !== 0 || k.indexOf('202611') === -1) continue;
+            var isArKey = k.indexOf('ar-') === 0 && k.indexOf('202611') !== -1;
+            var isScanCacheKey = k.indexOf('marker-scan-cache-202611') === 0;
+            if (!isArKey && !isScanCacheKey) continue;
             localStorage.removeItem(k);
             removed.push(k);
         }

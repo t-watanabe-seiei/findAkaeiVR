@@ -1733,8 +1733,10 @@ class StampRally202611Test extends TestCase
             "var EPOCH_KEY = 'ar-reset-epoch-202611';",
             // 同一世代では再実行しない（冪等）
             'if (stored !== null && String(stored) === String(EPOCH)) return;',
-            // 'ar-' 始まりかつ '202611' を含むキーだけ消す（202610 以前は保持）
-            "if (k.indexOf('ar-') !== 0 || k.indexOf('202611') === -1) continue;",
+            // 'ar-' 始まりかつ '202611' を含むキーと marker-scan-cache-202611-* を消す（202610 以前は保持）
+            "var isArKey = k.indexOf('ar-') === 0 && k.indexOf('202611') !== -1;",
+            "var isScanCacheKey = k.indexOf('marker-scan-cache-202611') === 0;",
+            'if (!isArKey && !isScanCacheKey) continue;',
             // fingerprint の元（userId）は IndexedDB と Cookie からも消す
             "var IDB_NAME  = 'ARStampRallyDB202611';",
             'indexedDB.deleteDatabase(IDB_NAME);',
@@ -1756,6 +1758,90 @@ class StampRally202611Test extends TestCase
         // head（SW 登録より前）で走り、body のスタンプ管理 JS より前に localStorage を空にしている
         $this->assertLessThan($swRegAt, $resetAt);
         $this->assertLessThan($stampsAt, $resetAt);
+    }
+
+    /**
+     * T104-13: ボール当て（ball_hit）は LocalStorage に既存でもサーバーへ送る。
+     * LocalStorage のキーは markerId のみで fingerprint を含まないため、?test=1 で
+     * 収集済みのマーカーは通常 URL の fingerprint へ永久に記録されなかった
+     * （「この端末 10 種 / この端末の収集 9 種」の直接原因）。
+     */
+    public function test_client_reports_ball_hit_even_when_stamp_already_collected(): void
+    {
+        $html = $this->get('/stamp202611')->getContent();
+
+        foreach ([
+            // 1 ページ読み込み中の連打だけ抑えるメモリ内ガード（LocalStorage には持たせない）
+            'var _ballHitReportedThisPage = {};',
+            'if (!_ballHitReportedThisPage[stampId]) {',
+            'var isNew = !stamps[stampId];',
+            "try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) {}",
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, '不足する要素: ' . $needle);
+        }
+
+        // recordMarkerScan が「新規収集」の分岐内だけに閉じ込められていないこと
+        $this->assertSame(
+            1,
+            substr_count($html, "recordMarkerScan(stampId, name, 'ball_hit')"),
+            'ball_hit の送信が isNew の分岐に閉じ込められている'
+        );
+    }
+
+    /**
+     * T104-14 / T104-15: HTTP 4xx/5xx は破棄せずキューへ退避し、フラッシュは失敗件を
+     * 飛ばして後続を送る。1 件の失敗が収集種数の恒久欠落と応募ボタン非表示にならないこと。
+     */
+    public function test_client_keeps_failed_scans_and_continues_flushing_queue(): void
+    {
+        $html = $this->get('/stamp202611')->getContent();
+
+        foreach ([
+            // 失敗した件だけ残して後続は送り続ける
+            'var failed = [];',
+            'failed.push(item);',
+            'writeScanQueue(failed);',
+            // HTTP 4xx/5xx は 1 回即再試行し、だめならキューへ退避する
+            "console.warn('[AR202611] recordMarkerScan HTTP ' + res.status + ' -> retry');",
+            "console.warn('[AR202611] recordMarkerScan queued after HTTP ' + res2.status);",
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, '不足する要素: ' . $needle);
+        }
+
+        // 旧実装（最初の 1 件で打ち切り / HTTP エラーを破棄）へ戻っていないこと
+        $this->assertStringNotContainsString("console.warn('[AR202611] flush stopped at'", $html);
+        $this->assertStringNotContainsString("return { error: 'HTTP ' + res.status };", $html);
+    }
+
+    /**
+     * T104-16: check-status は送信された fingerprint を正本とし、セッション値は
+     * フォールバックだけ。セッション優先だと ?test=1 と通常 URL を同一ブラウザで
+     * 行き来したとき、表示（check-status）と応募判定（apply-voucher）が別端末になる。
+     */
+    public function test_check_status_prefers_request_fingerprint_over_session(): void
+    {
+        $this->seedScans('fp-pref-a', 9);
+        $this->seedScans('fp-pref-b', 10);
+
+        // record-scan でセッションへ fp-pref-a が紐付く（旧実装だと以降の照会は 9 種のまま）
+        $this->postJson('/stamp202611/record-scan', [
+            'markerId'     => 'model_01',
+            'markerName'   => 'model_01',
+            'fingerprint'  => 'fp-pref-a',
+            'deviceInfo'   => ['isIOS' => false],
+            'scannedAt'    => '2026-11-10T03:00:00.000Z',
+            'captureType'  => 'ball_hit',
+        ])->assertStatus(200);
+
+        // 同じセッションで別 fingerprint を送れば、送った側の種数が返る
+        $this->checkStatus('fp-pref-b')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'deviceStampCount' => 10]);
+
+        // fingerprint 無しの照会はセッション値へフォールバックする
+        $this->postJson('/stamp202611/check-status', [])
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'deviceStampCount' => 9]);
     }
 
     /**

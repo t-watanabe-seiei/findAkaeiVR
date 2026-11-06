@@ -148,32 +148,46 @@
 
         // ========== スタンプ登録 ==========
 
+        // ball_hit の送信済みガード（T104-13）。ページ読み込み単位で 1 マーカー 1 回だけ送る。
+        // LocalStorage に保持すると（キーが markerId のみで fingerprint を含まないため）
+        // ?test=1 と通常 URL で共有されて、もう一方の fingerprint へ永久に送られなくなる。
+        // メモリ内のみならページを開き直すたびに再送され、欠落した fingerprint を自己修復する。
+        var _ballHitReportedThisPage = {};
+
         function collectStamp(stampId, screenshot) {
             if (!stampId) return false;
             screenshot = screenshot || null;
+            var name = (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : stampId;
             try {
                 var stamps = getCollectedStamps();
-                if (!stamps[stampId]) {
-                    var name = (STAMPS[stampId] && STAMPS[stampId].name) ? STAMPS[stampId].name : stampId;
+                var isNew = !stamps[stampId];
+
+                // サーバーへ送るのは LocalStorage の有無と切り離す（T104-13）。
+                // 既存でも「別 fingerprint（?test=1 など）で集めた」可能性があるため ball_hit は送る。
+                // サーバーは ball_hit を行として累積するだけで応募種数は COUNT(DISTINCT marker_id)
+                // のままなので再送は冪等（marker_scan のような当日去重はしない）。
+                if (!_ballHitReportedThisPage[stampId]) {
+                    _ballHitReportedThisPage[stampId] = true;
+                    try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) {}
+                }
+
+                if (isNew) {
                     stamps[stampId] = { collectedAt: new Date().toISOString(), name: name, screenshot: screenshot };
                     saveCollectedStamps(stamps);
                     updateStampBadge();
-
-                    try { recordMarkerScan(stampId, name, 'ball_hit'); } catch (e) {}
-
-                    var total = Object.keys(stamps).length;
-                    var isComplete = total === Object.keys(STAMPS).length;
-                    if (isComplete) { playSound(_ensureSound(2)); showCompleteParticles(); }
-                    else            { playSound(_ensureSound(1)); showNormalParticles(); }
-                    showStampNotification(stampId, isComplete);
-                    return true;
-                } else {
-                    if (screenshot && (!stamps[stampId].screenshot || stamps[stampId].screenshot.length < 100)) {
-                        stamps[stampId].screenshot = screenshot;
-                        saveCollectedStamps(stamps);
-                    }
-                    return false;
+                } else if (screenshot && (!stamps[stampId].screenshot || stamps[stampId].screenshot.length < 100)) {
+                    stamps[stampId].screenshot = screenshot;
+                    saveCollectedStamps(stamps);
                 }
+
+                if (!isNew) return false;
+
+                var total = Object.keys(stamps).length;
+                var isComplete = total === Object.keys(STAMPS).length;
+                if (isComplete) { playSound(_ensureSound(2)); showCompleteParticles(); }
+                else            { playSound(_ensureSound(1)); showNormalParticles(); }
+                showStampNotification(stampId, isComplete);
+                return true;
             } catch (err) {
                 // クォータ超過等の例外時は、screenshotをnull化して再保存（スタンプ個数・名前は保持）
                 try {
