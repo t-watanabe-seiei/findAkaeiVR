@@ -531,6 +531,58 @@ entry は新しいアドレスで上書きされるため打ち間違い宛の�
   応募行が無い場合の自動閉じは `_voucherChangeOpen202611` が false の時だけ（変更手続きの途中に閉じない）。
 - サーバー側の応募可否（422 `not_eligible`）は変更しない。未送信スタンプがある状態でフォームが開いていても応募送信はサーバーが拒否する。
 
+### 5.11 テストデータの完全リセット（FR-65・2026-11-06 追加）
+
+テスト運用で積み上がったデータは **サーバー側**と**参加者端末側**の 2 段で消す。スタンプ・ガラポン・
+応募状態・未送信キューの正本は端末の localStorage / IndexedDB なので、**DB の行だけ消しても端末は
+応募済み・ガラポン引き済みのまま**残る（`check-status` が 0 種を返しても LocalStorage 側の表示が先行する）。
+
+#### サーバー側 `php artisan stamp202611:reset`（`app/Console/Commands/ResetStamp202611Data.php`）
+
+| 対象 | 既定の挙動 | 省略オプション |
+|---|---|---|
+| `marker_scans` 全行（収集 `ball_hit`・検出 `marker_scan` を問わず） | 削除 | なし |
+| `stamp202611_voucher_applications` 全行（fingerprint / email の UNIQUE も解放） | 削除 | なし |
+| `cache`（メール確認コード `ar202611:voucher-*` と RateLimiter の 1 時間窓） | `Cache::flush()` | `--keep-cache` |
+| `sessions`（`ar_fingerprint_202611` の session 紐付き） | 削除 | `--keep-sessions` |
+| `sqlite_sequence` の該当 2 行（AUTOINCREMENT 連番を 1 へ戻す） | 削除（sqlite のときだけ） | — |
+| `prize_exchanges` | **触らない**（202609 / 202610 専用） | — |
+
+- `--dry-run` は件数表示のみ（削除 0 件）。`--force` 無しは exit 1 で実行しない（本番での誤削除を防ぐ）。
+- 削除は 1 トランザクション。実行前に「`marker_scans` は 202610 以前と共有で過去履歴も消える」を警告する。
+- 実行後は現在の `config('ar202611.reset_epoch')` を表示し、端末側を消すには 1 増やす旨を案内する。
+
+#### 端末側 `resources/views/ARstampRally202611/js-reset.blade.php`（head・SW 登録より前）
+
+| 手順 | 内容 |
+|---|---|
+| 1 | `localStorage['ar-reset-epoch-202611']` と `config('ar202611.reset_epoch')` を比べ、**一致なら何もしない**（冪等） |
+| 2 | 不一致なら `ar-` 始まりかつ `202611` を含むキーを削除（将来追加されるキーも吸収。`ar-*-202610` は保持） |
+| 3 | Cookie `ar_user_id_202611` と IndexedDB `ARStampRallyDB202611` を消す（fingerprint の元を消して新規端末にする） |
+| 4 | SW が登録済みなら `postMessage({ type: 'CLEAR_CACHES' })` で**キャッシュだけ**消す（SW は unregister しない → 次回 navigation で network-first の新 HTML を取得） |
+| 5 | 新しい世代を localStorage へ保存する（`location.reload()` はしない。head で全 202611 JS より前に走るため同一読み込みでクリーン） |
+
+- 世代は HTML 経由で伝える。SW の `VERSION`（キャッシュ差し替え・FR-36）とは別軸で、`v3 → v4` は
+  「新しい HTML とアセットを取り直させる」目的で上げる（`activate` で `*-v3` キャッシュは自動削除）。
+- オフラインの端末は HTML を取得できないため消えない。**online 復帰後の読み込みで消える**。
+- 私密モード等で localStorage が読めない端末は何もしない（例外を握って続行する）。
+
+#### 反映手順（順序が重要）
+
+1. `php artisan stamp202611:reset --dry-run` → 削除対象の件数を確認
+2. `php artisan stamp202611:reset --force` → サーバー DB を消す
+3. `.env` の `AR202611_RESET_EPOCH` を **1 増やす**（DB を消した日と同じ日に）
+4. `config/ar202611.php` / `head.blade.php` / `js-reset.blade.php` / `public/sw-stamp202611.js`（`VERSION`）をアップロード
+5. `php artisan config:clear && php artisan view:clear && php artisan cache:clear`
+   （`config:cache` 済みだと古い世代がキャッシュされたまま残り、リセットが効かない）
+
+#### 限界
+
+- 端末側は「次回 online でページを読み込んだ時」にしか消えない（离线端末・未再読込端末は残る）。
+- `marker_scans` はキャンペーン共用。過去キャンペーンの履歴も消えるため、残したい場合は本コマンドを使わず
+  `scanned_at` 条件の SQL で削除する。
+- ガラポンの引抽回数（`ar-gacha-draws-202611`）も消える。運営の目視記録とは照合できなくなる。
+
 ## 6. 管理ダッシュボード
 ## 6. 管理ダッシュボード
 - ルート: `Route::get('/dashboard202611', [AdminController::class, 'dashboard202611'])->name('admin.dashboard202611');`（`auth` + admin グループ内）

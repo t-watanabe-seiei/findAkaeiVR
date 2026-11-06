@@ -240,6 +240,39 @@ OPcache を使っている場合は `opcache_reset()` か PHP / Web サーバー
 **切り分け**: `storage/logs/laravel.log` に `validateDns` があればコード未反映（②③を実行）／
 422 `invalid_email` は `dns_check=true` の DNS 誤検知（`false` へ）／502 `mail_failed` は SMTP 設定（T81 参照）。
 
+### 2026-11-06 — テストデータの完全リセット（FR-65 / AC-27）
+
+テスト運用で積み上がった収集・検出・抽選応募を初期状態へ戻す導線を追加した。
+**サーバー DB だけ消しても参加者端末は応募済み・ガラポン引き済みのまま**残るため（正本は端末の
+localStorage / IndexedDB）、サーバー側と端末側の 2 段で消す設計にした。
+
+| # | 変更 | 内容 |
+|---|---|---|
+| 1 | `app/Console/Commands/ResetStamp202611Data.php`（新規） | `php artisan stamp202611:reset`。`--dry-run` は件数と `現在の AR202611_RESET_EPOCH` の表示のみ（削除しない）、`--force` 無しは exit 1。1 トランザクションで `marker_scans` 全行と `stamp202611_voucher_applications` 全行を削除、`Cache::flush()`（メール確認コードと RateLimiter の 1 時間窓）、`sessions` 削除、SQLite では `sqlite_sequence` の該当行も削除。`--keep-sessions` / `--keep-cache` で対象を絞れる。**`prize_exchanges` は触らない** |
+| 2 | `config/ar202611.php` / `.env` / `.env.example` | `reset_epoch`（`AR202611_RESET_EPOCH`・既定 1）を追加。**DB を消した日と同じ日に 1 増やす**と端末側が消える。ローカル `.env` は今回に合わせて `2` |
+| 3 | `resources/views/ARstampRally202611/js-reset.blade.php`（新規）+ `head.blade.php` | 世代不一致のときだけ ①`ar-` 始まりで `202611` を含む localStorage キー ②Cookie `ar_user_id_202611` ③IndexedDB `ARStampRallyDB202611` を消し、SW へ `CLEAR_CACHES` を送る。同一世代では何もしない（冪等）。`ar-*-202610` は保持。head の SW 登録より前に読み込む |
+| 4 | `public/sw-stamp202611.js` | `VERSION` を `v3` → `v4`（`activate` で `*-v3` キャッシュを自動削除） |
+| 5 | `tests/Feature/StampRally202611Test.php` | `test_client_reset_epoch_script_is_rendered_before_service_worker` と `test_reset_command_clears_scans_and_voucher_applications` を追加 → クラス **55 tests / 481 assertions PASS** |
+
+**反映手順（順序が重要・design.md §5.11 / test-data-guide.md §11）**: ①`stamp202611:reset --dry-run`
+→ ②`--force` → ③`.env` の `AR202611_RESET_EPOCH` を 1 増やす → ④コード反映 →
+⑤`php artisan config:clear && php artisan view:clear && php artisan cache:clear`
+（`config:cache` 済みだと古い世代が残りリセットが効かない）。migration は不要。
+
+→ 手順別のコマンド・出力の読み方・各手順の副作用・逆順にした場合の結果は
+**`test-data-guide.md` §11（11.0 全体像 / 11.1 バックアップ / 11.7 順序の理由 / 11.9 完了確認）** を参照。
+
+**限界**: 端末側は次回 online で読み込んだときにしか消えない（离线端末は残る）。`marker_scans` は
+202610 以前と共有のため過去履歴も消える（残すなら `scanned_at` 条件の SQL で削除）。ガラポンの引抽回数も消える。
+
+**検証時の注意**: ローカル（Windows）では `journal_mode=WAL` が `database is locked` →
+`database disk image is malformed` へ至るケースが確認できた。テストは
+`DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test`、
+または `DB_SQLITE_JOURNAL_MODE=DELETE` で実行する（本番が NFS の場合も `DELETE` 推奨）。
+
+（2026-11-05 ②③ の確認コード再送信緩和 / エラー応答 JSON 化（FR-64）とフォーム開中のボタン非表示（AC-26）は
+`requirements.md` AC-25 / AC-26・`design.md` §5.9 / §5.10・`tasks.md` T102 / T103 に記録）
+
 ## 注意
 - 実装時は 202610 含む既存キャンペーンの blade / controller / route / RateLimiter / SW を変更しない（追記のみ）。
 - `cg/202610/` アセットを削除または改名すると 202610 と 202611 の両方に影響する。

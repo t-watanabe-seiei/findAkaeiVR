@@ -19,7 +19,10 @@
  */
 'use strict';
 
-var VERSION = 'v3';                  // 切替ごとに上げる（v1 のままにすると旧 cg/202610 コピーが cache-first で残り続ける）
+var VERSION = 'v4';                  // 切替ごとに上げる（v1 のままにすると旧 cg/202610 コピーが cache-first で残り続ける）
+                                     // v4 = テストデータ全消去（2026-11-06・stamp202611:reset）と
+                                     // クライアント側リセット（js-reset.blade.php / AR202611_RESET_EPOCH）を
+                                     // 配るために上げた。activate で *-v3 キャッシュは自動削除される。
                                     // v3 = ガラポン確認ダイアログ（FR-62）と応募後のメールアドレス変更（FR-63）を
                                     // 含むページ HTML を再キャッシュするため上げた（オフライン利用者にも届くようにする）
 var ASSET_DIR = '202611';            // cg/{ASSET_DIR} を指す単一点（config/ar202611.php の asset_dir と同期）

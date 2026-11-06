@@ -480,6 +480,63 @@
   `public/sw-stamp202611.js` の `VERSION` は `v3` のまま（オフライン用の事前キャッシュ HTML だけ旧版が残るが
   応募は通信必須のため影響なし）。反映後はハードリロードで確認（migration は不要）
 
+### T104: テストデータの完全リセット（FR-65・AC-27・2026-11-06）
+
+- [x] **T104-1** `config/ar202611.php` へ `reset_epoch`（`AR202611_RESET_EPOCH`・既定 1）を追加
+  （design.md §5.11。js-reset が読み取り、reset コマンドが現在値を表示する）
+- [x] **T104-2** `.env.example` へ `AR202611_RESET_EPOCH=1` を追記。ローカル `.env` は今回の消去に合わせて `2`
+- [x] **T104-3** `resources/views/ARstampRally202611/js-reset.blade.php` を新規作成 —
+  世代不一致時のみ ①`ar-` 始まりで `202611` を含む localStorage キー削除 ②Cookie `ar_user_id_202611` と
+  IndexedDB `ARStampRallyDB202611` 削除 ③SW へ `CLEAR_CACHES` 送信 ④`ar-reset-epoch-202611` 保存。
+  同一世代では何もしない（冪等）。`ar-*-202610` は保持
+- [x] **T104-4** `head.blade.php` の Service Worker 登録 `<script>` より前へ `@include('ARstampRally202611.js-reset')`
+  （body の `js-stamps` より前に localStorage を空にするため）
+- [x] **T104-5** `app/Console/Commands/ResetStamp202611Data.php`（`stamp202611:reset`）—
+  `--dry-run` / `--force`（無しは exit 1）/ `--keep-sessions` / `--keep-cache`。
+  `marker_scans` + `stamp202611_voucher_applications` を 1 トランザクションで削除、`Cache::flush()`、
+  `sessions` 削除、sqlite のとき `sqlite_sequence` の該当行を削除。`prize_exchanges` は触らない
+- [x] **T104-6** `public/sw-stamp202611.js` の `VERSION` を `v3` → `v4`（`activate` で `*-v3` キャッシュを自動削除）
+- [x] **T104-7** テスト 2 件追加 `test_client_reset_epoch_script_is_rendered_before_service_worker`
+  （needle + head/body 内の出力位置 + `ar-*-202610` を消さない選別条件）と
+  `test_reset_command_clears_scans_and_voucher_applications`（`--force` 無し exit 1 / `--dry-run` は削除 0 /
+  本実行で 0 件へ / 同じ fingerprint・email で再応募可）。
+  `DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test` で
+  **55 tests / 481 assertions** PASS
+- [x] **T104-8** ローカル DB での実データ確認: 収集 3 件 + 応募 1 件 → `--dry-run`（変化なし）→
+  `--force`（3 件 / 1 件削除・`sqlite_sequence` から該当行が消える）を確認。
+  **注意**: ローカル（Windows / `c:\MyApp`）では `journal_mode=WAL` で `database is locked` →
+  `database disk image is malformed` に至ることを確認。検証は `DB_SQLITE_JOURNAL_MODE=DELETE` か
+  上記の `:memory:` 併用で行う（本番 Xserver が NFS の場合も `DELETE` 推奨・T102-10）
+- [ ] **T104-9** 実機受け入れ（`test-data-guide.md` §2.7）: 世代 1 → 2 で 202611 系だけ消える /
+  2 回目の読み込みでは消えない / `ar-*-202610` が残る / 新しい `ar-user-id-202611` になる
+- [ ] **T104-10** 本番反映（design.md §5.11 の順序）: ①`stamp202611:reset --dry-run` ②`--force`
+  ③`.env` の `AR202611_RESET_EPOCH` を 1 増やす ④`config/ar202611.php` / `head.blade.php` /
+  `js-reset.blade.php` / `sw-stamp202611.js` をアップロード ⑤`config:clear` / `view:clear` / `cache:clear`
+  （migration は不要）
+- [ ] **T104-10a** 手順 0 バックアップ: `database.sqlite`（または本番 DB）を
+  `backup_before_reset_YYYYMMDD` としてコピー。`marker_scans` は 202610 以前と共有のため過去分も消える
+  （残すなら本コマンドを使わず `scanned_at` 条件の SQL）。`test-data-guide.md` §11.1
+- [ ] **T104-10b** 手順 1 の `--dry-run` 出力で件数と `現在の AR202611_RESET_EPOCH`（本番は未設定なら `1`）を控える。
+  非 TTY なら T65-2 の一時的スクリプト。`no such table` なら先に `migrate --force`（§11.2）
+- [ ] **T104-10c** 手順 2 `--force` 前に CSV をダウンロード（`sessions` 削除で管理画面はログアウトする）。
+  RateLimiter の 1 時間窓と未使用のメール確認コードも消える（残すなら `--keep-cache`・§11.3）
+- [ ] **T104-10d** 手順 3 は `.env` を**サーバー上で直接**編集（git 管理外）。epoch を増やさないまま手順 4・5 だけやると
+  端末は 1 バイトも消えない。②〜⑤ は 10 分程度で連続実行し、オフラインキューの再送による検証行復活を防ぐ（§11.7）
+- [ ] **T104-10e** 手順 5 は `optimize:clear` でも可。**OPcache 有効時は `opcache_reset()` か PHP 再起動**がないと
+  古い `config/ar202611.php` が返り epoch が 1 のまま（T65-4 と同じ手順・§11.6）
+- [ ] **T104-10f** 反映後の確認: `--dry-run` 再実行で epoch が新しい値 / dashboard・CSV が 0 件 /
+  端末 Console に `client state reset` が 1 回だけ / `ar-*-202610` が残る / 新しい `ar-user-id-202611`（§11.9）
+- [ ] **T104-10g** 离线端末は原理的に消えない（SW の旧 HTML が返る）。応募期限（2026-11-16 23:59）前に
+  1 回 online で開かせる運用でカバー（§11.8）
+- [x] **T104-11** `ResetStamp202611Data` の世代番号表示を `--dry-run` でも出すよう変更（削除前に
+  `.env` の更新と `config:clear` / `view:clear` / OPcache の反映を確認できる）。テスト側も
+  `expectsOutputToContain('現在の AR202611_RESET_EPOCH = ')` を追加 → **55 tests / 481 assertions** PASS
+- [x] **T104-12** 手順書の整備: `test-data-guide.md` §11 を 11.0 全体像 / 11.1 バックアップ /
+  11.2〜11.6 手順 1〜5（コマンド・出力の読み方・副作用・フラグ）/ 11.7 順序の理由 /
+  11.8 端末側で消えるもの（`ar-user-id-202611` も消えて fingerprint が変わる）/ 11.9 完了確認 へ拡張。
+  README は §11 参照 1 行に短縮、`tasks.md` に T104-10a〜10g の本番チェックボックスを追加。
+  重複見出し（§3）と SW キャッシュ名の誤記（`stamp202611-*-v4` → `ar202611-*-v4`）を修正
+
 ### 残（FR-62 / FR-63 関連の運用）
 
 - [ ] 変更用メールの文面（件名「…メールアドレス変更 確認コード」）を運営へ確認してもらう

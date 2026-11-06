@@ -61,4 +61,12 @@ return [
     'test_param'  => env('AR202611_TEST_PARAM', 'test'),
     'test_prefix' => env('AR202611_TEST_FP_PREFIX', 'test_'),
 
+    // ── テストデータリセット（FR-65 / design.md §5.11）──────────────────────
+    // サーバー側の marker_scans / stamp202611_voucher_applications を消した日と同じ日に
+    // この値を 1 増やすと、次回のページ読み込みで全端末の 202611 系クライアント状態
+    // （localStorage・IndexedDB・Service Worker キャッシュ）を自動で消去する。
+    // 端末に保存された世代と不一致のときだけ発火するため冪等（毎回消えることはない）。
+    // js-reset.blade.php が読み取り、stamp202611:reset コマンドが現在値を表示する。
+    'reset_epoch' => (int) env('AR202611_RESET_EPOCH', 1),
+
 ];

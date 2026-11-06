@@ -145,6 +145,28 @@
    フォームと緑ボタンが出ないことを確認
 9. 応募後の変更フローでも同じ: 変更ボタンを押すと変更ボタンが消え、コード入力中に背景更新でフォームが閉じない
 
+### 2.7 テストデータのリセット（FR-65・AC-27）の実機手順
+
+サーバー側を `stamp202611:reset` で消したあと、**端末側（スタンプ・ガラポン・応募状態）も消えていること**の確認。
+`AR202611_RESET_EPOCH` を 1 増やしたあとに 1 回だけ消え、2 回目以降は消えないことを確認する。
+
+1. DevTools → Application → Local Storage で `ar-stamp-rally-202611` / `ar-gacha-draws-202611` /
+   `ar-voucher-applied-202611` など 202611 系キーと `ar-reset-epoch-202611`（旧世代）を確認する。
+   他キャンペーンの `ar-*-202610` キーが混ざっている端末では、それも一緒に確認する
+2. サーバー側で `php artisan stamp202611:reset --dry-run` → `--force` を実行し、`.env` の
+   `AR202611_RESET_EPOCH` を 1 増やして `config:clear` / `view:clear` / `cache:clear` する（§11）
+3. `/stamp202611?test=1` を**通常どおり読み込む**（ハードリロードでなくてよい）→ Console に
+   `[AR202611] client state reset -> epoch <新しい値> / keys removed: N` が出ることを確認
+4. Local Storage を確認: **202611 系キーは消えている**、`ar-reset-epoch-202611` は新しい値で再作成されている、
+   **`ar-*-202610` は残っている**ことを確認
+5. Application → IndexedDB で `ARStampRallyDB202611` が消えていること、Cookie `ar_user_id_202611` が
+   消えていることを確認。読み込み直後に新しい `ar-user-id-202611`（`uid_…`）が作られることも確認
+6. Application → Service Worker → Cache Storage が `ar202611-html-v4` / `ar202611-core-v4` /
+   `ar202611-assets-v4` だけになっていること（`ar202611-*-v3` は消えている）を確認
+7. **同じ URL をもう 1 回読み込む** → `client state reset` のログが**出ない**こと（冪等）と、
+   5 で作られた新しい `ar-user-id-202611` がそのまま残っていることを確認
+8. スタンプ 0 種・ガラポン未引・未応募で画面が出ることを確認（`?test=1` なので fingerprint は `test_fp_…`）
+
 ## 3. 除外が効いている箇所
 
 | 画面・データ | 実装箇所 |
@@ -305,6 +327,7 @@ php artisan tinker
 |---|---|---|
 | `test_param` | `test` | 検証モードを起動するクエリ名（`?test=1`） |
 | `test_prefix` | `test_` | fingerprint に付ける前置字 |
+| `reset_epoch` | `1` | テストデータリセットの世代番号（`AR202611_RESET_EPOCH`）。DB を消した日に 1 増やすと端末側も消える（FR-65・§2.7 / §11） |
 
 ## 9. 自動テスト
 
@@ -316,6 +339,8 @@ php artisan tinker
 | `test_prize_view_exposes_test_flag_and_prefix` | `/stamp202611` の HTML に `TEST_FP_PARAM` / `TEST_FP_PREFIX`（`"test_"`）と `isTestMode` が出力される |
 | `test_voucher_diagnostics_lines_are_gated_to_test_mode` | `/stamp202611` と `/stamp202611?test=1` の HTML に `VOUCHER_DIAGNOSTICS_202611 = isTestMode();` が出力され、参考値行 3 文言（検出種数 / 同一ブラウザ合算 / 閾値未満時の注意文）がすべて `VOUCHER_DIAGNOSTICS_202611` ゲート内侧にある（FR-59・§2.4） |
 | `test_voucher_apply_button_is_hidden_while_apply_form_is_open` | `/stamp202611` の HTML に開期中フラグ `_voucherFormOpen202611` と `button.style.display = (showButton && !_voucherFormOpen202611)`、`if (form && applied) form.style.display` が出力され、旧実装 `if (form && !showButton) form.style.display` を含まない（FR-61・AC-26・§2.6） |
+| `test_client_reset_epoch_script_is_rendered_before_service_worker` | `/stamp202611` の HTML に世代スクリプトが head の「Service Worker 登録」より前・body の `LocalStorage操作` より前に出力され、`var EPOCH = <config の reset_epoch>`、冪等ガード、選別条件 `k.indexOf('ar-') !== 0 || k.indexOf('202611') === -1`（`ar-*-202610` を消さない）、`indexedDB.deleteDatabase(IDB_NAME)`、Cookie `ar_user_id_202611` 削除、`postMessage({ type: 'CLEAR_CACHES' })` を含む（FR-65・AC-27・§2.7） |
+| `test_reset_command_clears_scans_and_voucher_applications` | `stamp202611:reset` は `--force` 無しで exit 1（DB 変化なし）、`--dry-run` は exit 0 で削除 0 件かつ `現在の AR202611_RESET_EPOCH` を表示（§11.2 / §11.4 の確認手順）、`--force` は収集 12 + 検出 3 の `marker_scans` と応募 1 件を 0 件へ戻し、**同じ fingerprint / email で再収集・再応募できる**（FR-65・AC-27） |
 
 §5 の事後整理（前置変更 / 削除）は運用手順であり自動テストにはしていない。実施後は
 `/admin/dashboard202611?show_test=1` と既定表示の差分、および CSV の行数で手動確認する。
@@ -326,12 +351,14 @@ php artisan tinker
 DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit --filter=StampRally202611Test
 ```
 
-クラス全体は **28 tests / 226 assertions**（2026-11-02 時点）。1 端末基準（FR-56 / FR-57）の
+クラス全体は **55 tests / 481 assertions**（2026-11-06 時点）。1 端末基準（FR-56 / FR-57）の
 テスト 6 件、収集のみで判定する FR-58 のテスト 4 件（検出のみで応募不可／収集・検出の併記／
 閾値と倍率／`--recount-device-count` の是正）、参考値行の表示ゲート FR-59 のテスト 1 件の
 一覧は `design.md` §10。
 
 （`php artisan test` は非 TTY 環境で "stdout is not a tty" となるため `./vendor/bin/phpunit` を使う）
+（ローカル（Windows）で `journal_mode=WAL` が `database is locked` → `database disk image is malformed`
+へ至る環境がある。その場合は上の `:memory:` 併用、または `DB_SQLITE_JOURNAL_MODE=DELETE` で実行する）
 
 ## 10. 応募倍率の 1 端末基準化（FR-56 / FR-57）を本番 DB へ反映する手順
 
@@ -406,3 +433,185 @@ php artisan stamp202611:backfill-device-weight --recount-device-count
   ```
 
   差分確認後、`--dry-run` を `false` に変えて本実行し、もう 1 回 `--dry-run` を走らせて「更新 0 件」を確認する
+
+## 11. テストデータのリセット（FR-65・AC-27）
+
+テスト運用で積み上がった収集・検出・抽選応募を初期状態へ戻す手順書。
+**サーバー DB を消すだけでは端末は応募済み・ガラポン引き済みのまま**残る（正本は端末の
+localStorage / IndexedDB）。逆に**端末だけ消すとサーバーに古い行が残る**。必ず 2 段・この順序で実施する。
+
+### 11.0 全体像：何がどこで消えるのか
+
+| どちらを消すか | 手順 | 手段 |
+|---|---|---|
+| サーバー側（`marker_scans` / `stamp202611_voucher_applications` / `sessions` / `cache`） | 1 → 2 | artisan コマンドが DB を直接削除 |
+| 参加者の端末側（localStorage / IndexedDB / SW キャッシュ / Cookie） | 3 → 4 → 5 | サーバーが世代番号を 1 上げ、**端末が自分で**捨てる |
+
+端末の中身はサーバーから直接消せません。端末が HTML 内の世代番号（`AR202611_RESET_EPOCH`）を
+自分で覚えている値と比較し、**不一致のときだけ**消す仕組みです。そのため手順 3（番号）／4（番号を届ける）／
+5（古い値を返さない）の 3 つが揃わないと端末は 1 バイトも消えません。
+
+### 11.1 手順 0：バックアップ（推奨）
+
+`stamp202611:reset` は **`marker_scans` を全行削除**します。このテーブルは 202610 以前と共有で
+キャンペーン区別の列が無いため、**過去キャンペーン（202603〜202610）のスキャン履歴も一緒に消えます**。
+
+```
+cp database/database.sqlite database/backup_before_reset_YYYYMMDD.sqlite   # DB_CONNECTION=sqlite の場合
+```
+
+過去分を残すなら **このコマンドを使わず**、`scanned_at >= '2026-10-29 00:00:00'`
+（`config('ar202611.collect_start')`・`AR202611_COLLECT_START`）条件の SQL で削除する。
+
+### 11.2 手順 1：`--dry-run`（削除しない・件数確認だけ）
+
+```
+php artisan stamp202611:reset --dry-run
+```
+
+出力の読み方：
+
+```
+削除対象: marker_scans 214 件（2026-10-29 00:00:00 以降 26 件・fingerprint 3 件）/ 抽選応募 2 件
+cache: flush する / sessions: 57 件削除
+marker_scans は 202610 以前と共有です。過去キャンペーンの履歴も削除されます。
+現在の AR202611_RESET_EPOCH = 1          ← 手順 3 の現在値
+端末側の localStorage / IndexedDB を消すには、この値を 1 増やして .env を更新し、
+php artisan config:clear && php artisan view:clear && php artisan cache:clear を実行してください（FR-65）。
+dry-run: 何も削除していません。実行するには --force を付けてください。
+```
+
+- 1 件目の数値 = **テーブル全体の総数**（＝過去分も含めて消える実数）。括弧内 = 収集期間以降の 202611 分だけ
+- `現在の AR202611_RESET_EPOCH` は**手順 3 の現在値**（dry-run でも表示される）。`.env` に未設定なら `config/ar202611.php` の
+  `env('AR202611_RESET_EPOCH', 1)` で `1` になる（ローカル `.env` は 2、`.env.example` は 1）
+- `--force` 無しは exit 1 で終了し、削除は走らない（意図した安全装置）
+- `SQLSTATE[42S02] ... no such table` が出る場合は本番 DB に 202611 の migration が未適用。
+  先に `php artisan migrate --force` が必要（リセット自体は migration を要求しない）
+- SSH が非 TTY で `stdout is not a tty` になる場合は §10 と同じ一時的スクリプトで呼ぶ（実行後に削除）
+
+### 11.3 手順 2：`--force`（ここで実際に消える）
+
+```
+php artisan stamp202611:reset --force
+php artisan stamp202611:reset --force --keep-sessions --keep-cache   # 下表の副作用を残す場合
+```
+
+1 トランザクション内で ①`marker_scans` 全行 ②`stamp202611_voucher_applications` 全行
+③`sessions` ④SQLite の `sqlite_sequence` 該当行（次回 id が 1 に戻る）⑤`Cache::flush()` の順に実行。
+
+完了出力（同じく末尾に世代番号が再表示される）：
+
+```
+削除完了: marker_scans 214 件 / 抽選応募 2 件 / sessions 57 件 / cache flush
+現在の AR202611_RESET_EPOCH = 2
+```
+
+| 対象 | 既定 | 既定の副作用 | 残すフラグ |
+|---|---|---|---|
+| `marker_scans` 全行（収集・検出問わず） | 削除 | 過去キャンペーン分も消える（§11.1） | — |
+| `stamp202611_voucher_applications` 全行 | 削除 | `fingerprint` / `email` の UNIQUE が解放され再応募可能に | — |
+| `sessions` | 削除 | 参加者の `ar_fingerprint_202611` 紐付きが切れる。**ログイン中の `/admin/dashboard202611` はログアウト**（CSV は実行前にダウンロード） | `--keep-sessions` |
+| `cache` | `Cache::flush()` | `CACHE_STORE=database` なら `cache` テーブルを truncate。**RateLimiter の 1 時間窓**（分 120 / 時 10）と**未使用のメール確認コード**（`ar202611:voucher-email-code:*`）が無効化 | `--keep-cache` |
+| `prize_exchanges` | **触らない** | 202611 では不使用（202609 / 202610 専用） | — |
+
+### 11.4 手順 3：`.env` の `AR202611_RESET_EPOCH` を 1 増やす
+
+判定は厳密一致です（`js-reset.blade.php`）：
+
+```js
+var stored = localStorage.getItem('ar-reset-epoch-202611');   // 端末が覚えている世代
+if (stored !== null && String(stored) === String(EPOCH)) return;   // 一致なら何もしない（冪等）
+```
+
+- 端末は前回 `1` を保存済み。サーバーが `1` のままなら一致 → **何も消えない**
+- サーバーが `2` なら不一致 → 消去が走り、消去後に `2` を保存 → 次回以降は一致して再発火しない
+- つまり「1 増やす」は**発火スイッチ**。増やさないと手順 4・5 をやっても端末は消えない。
+  2 以上飛ばしても動作するが次回の増減が分かりにくくなるので 1 刻み
+- `.env` は git 管理外。**サーバー上で直接**編集（FTP でダウンロード→追記→アップロード、または管理パネル）
+
+```
+AR202611_RESET_EPOCH=2
+```
+
+**反映の確認**（削除せずに確認できる）：手順 1 の `--dry-run` を再実行し、末尾が
+`現在の AR202611_RESET_EPOCH = 2` になること。`1` のままなら手順 5 が効いていない。
+
+### 11.5 手順 4：反映する 4 ファイルとそれぞれの役割
+
+| ファイル | 状態 | 役割 |
+|---|---|---|
+| `config/ar202611.php` | 変更 | `'reset_epoch' => (int) env('AR202611_RESET_EPOCH', 1)`。**`.env` の番号を PHP に通す唯一の配管** |
+| `resources/views/ARstampRally202611/head.blade.php` | 変更 | `<head>` 内・SW 登録の直前に `@include('ARstampRally202611.js-reset')` |
+| `resources/views/ARstampRally202611/js-reset.blade.php` | **新規** | 消去処理の本体。`<head>` で同期実行されるため `js-init`（`DOMContentLoaded` 内）より先に走り、**オフラインキューが再送される前に捨てられる** |
+| `public/sw-stamp202611.js` | `VERSION` を `v3` → `v4` | キャッシュ世代名が `ar202611-*-v3` → `ar202611-*-v4` になり `activate` が旧世代を削除。**オフライン利用者にも新しい HTML / アセットを配るための値上げ** |
+
+- 世代番号は `@json(config('ar202611.reset_epoch'))` が HTML 内インライン JS に埋め込まれて届く。
+  `<html data-ar202611-reset-epoch>` は blade ではなく **js-reset が実行時に書き込む**検証用目印
+- SW キャッシュは js-reset が直接消さず、稼働中 SW へ `postMessage({type:'CLEAR_CACHES'})` を投げる。
+  SW 側は `CACHE_PREFIX = 'ar202611-'` 始まりの**全キャッシュを削除**するため、旧 VERSION の SW でも消える
+
+### 11.6 手順 5：キャッシュクリア（migration は不要）
+
+```
+php artisan config:clear    # bootstrap/cache/config.php → .env の新しい番号を通す
+php artisan view:clear      # storage/framework/views → head.blade の include を反映
+php artisan cache:clear     # アプリキャッシュ
+```
+
+一括なら `php artisan optimize:clear`。**OPcache 有効環境（Xserver 含む）ではこれら 3 つだけでは古い
+`config/ar202611.php` が残り epoch が 1 のまま**なので、PHP 再起動または `opcache_reset()` を併用
+（本番の非 TTY 実行と併せて `tasks.md` T65-2 / T65-4 参照）。
+
+**migration 不要な理由**：このリセットは**削除しかしない**（新テーブル・新列なし、UNIQUE 制約もそのまま）。
+`php artisan migrate` を走らせても差分は出ない。
+※ `tasks.md` で `[ ]` の `2026_11_02_000000`（device_weight 列）／`2026_11_04_000000`（email 認証列）が
+本番未適用なら、それは §10 の**別手順**として別途判断。リセットの成否とは無関係。
+
+### 11.7 順序の理由（逆順・省略で何が起きるか）
+
+```
+①dry-run → ②force → ③epoch++ → ④upload → ⑤clear
+   確認      サーバー   番号      番号を     古い値を
+           を空に    上げる    端末へ届かせる 返さない
+```
+
+| 誤り | 結果 |
+|---|---|
+| epoch を先に上げる | 端末だけ空 / サーバーに旧行が残る → 「帳簿は空なのに収集 12 種」の不整合。応募済みフラグも消えるため**同じメールで再応募可能**（二重応募） |
+| upload 前に epoch だけ変更 | `config()` が 1 を返し不一致にならない → 端末は消えない |
+| clear を省略 | HTML に出てくる epoch が 1 のまま → 端末は消えない |
+| ②〜④ の間が空く | 削除済み DB へ**オフラインキュー（`ar-scan-queue-202611`）の再送で検証行が復活**しうる → ②〜⑤ を 10 分程度で連続実行。可能なら検証用オフライン端末を先に 1 回 online で開かせてキューを空にしてから削除 |
+
+### 11.8 端末側で消えるもの・消えないもの
+
+**消える**（次回 online 読み込み時）
+- localStorage: `ar-` で始まり `202611` を含むキーを自動列挙して削除
+  （`ar-stamp-rally-202611` / `ar-captured-animals-202611` / `ar-gallery-selection-202611` /
+  `ar-scan-queue-202611` / `ar-voucher-applied-202611` / `ar-gacha-draws-202611` /
+  `ar-camera-reload-202611` / `marker-scan-cache-202611-*`）。将来追加されるキーも自動的に吸収
+- IndexedDB: `ARStampRallyDB202611` を `deleteDatabase`（`scans` / `stamps` / `userId` store ごと）
+- Cookie: `ar_user_id_202611`
+- SW キャッシュ: `ar202611-*`（VERSION 全世代）
+
+**消えない**：`ar-*-202610` など他キャンペーンのキー、Service Worker 自体（unregister しない）、
+`prize_exchanges` / `users` などの他テーブル。
+
+**注意：`ar-user-id-202611`（userId）も消え、fingerprint は新しい値で再生成される**（完全な新規端末扱い）。
+検証行を `test_` 前置で区別している場合、その検証 fingerprint は変わる（`?show_test=1` での切り分け運用は有効）。
+サーバー側は全削除しているため整合は取れるが、「サーバーだけ消して端末は残す」部分実行とは相性が悪い。
+
+**离线端末が消えない理由**：リセットコードは HTML に埋め込まれており、オフラインでは SW のキャッシュ済み
+**旧 HTML（旧 epoch）**が返るため不一致を検出できない。navigation は network-first なので
+**online 復帰後の最初の読み込みで消える**。完全に通信しない端末は原理的に消せないため、会場スタッフの端末確認か
+応募期限（2026-11-16 23:59）前に 1 回 online 化してもらう運用でカバーする。
+
+### 11.9 完了確認
+
+1. `php artisan stamp202611:reset --dry-run` を再実行 → `現在の AR202611_RESET_EPOCH = 2` / `0 件`
+2. `/admin/dashboard202611`（sessions を消したため再ログイン要）の総スキャン数・応募数が 0（`?show_test=1` でも 0）
+3. CSV `voucherApplications202611` の行数が 0
+4. 検証端末の Console に `[AR202611] client state reset -> epoch <新しい値>` が **1 回だけ**出ること（§2.7 の 1〜8）
+5. `<html … data-ar202611-reset-epoch="2">` であること。`ar-reset-epoch-202611` は `2` で再作成されており、
+   読み込み直後に新しい `ar-user-id-202611`（`uid_…`）が作られること（§2.7 の 5）
+6. 同じ端末で再収集 → 再応募できること（fingerprint / email の UNIQUE で弾かれない）
+7. 端末実機は `?_v=2` 付き URL で確認（README の「キャッシュで 0 件に見える」落とし穴対策）

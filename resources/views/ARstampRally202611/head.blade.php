@@ -510,6 +510,9 @@
         #offline-banner.visible { display: block; }
     </style>
 
+    {{-- テストデータリセット（FR-65 / design.md §5.11）。body の 202611 JS より前に走らせるため head で読み込む --}}
+    @include('ARstampRally202611.js-reset')
+
     <script>
     // ========== Service Worker 登録（202611 専用・FR-19）==========
     // 他キャンペーン（202605 / 202609 など）とは共有しない。

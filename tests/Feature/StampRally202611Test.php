@@ -1716,4 +1716,80 @@ class StampRally202611Test extends TestCase
         // 旧実装（背景更新でフォームを閉じる / 緑ボタンを常時出す）へ戻っていないこと
         $this->assertStringNotContainsString('if (form && !showButton) form.style.display', $html);
     }
+
+    /**
+     * クライアント側リセット（FR-65）: 世代番号スクリプトが head の SW 登録より前に出力されること。
+     * 202611 系キーだけ消し、202610 以前を消さない選別条件も検査する。
+     */
+    public function test_client_reset_epoch_script_is_rendered_before_service_worker(): void
+    {
+        $epoch = (int) config('ar202611.reset_epoch', 1);
+        $this->assertGreaterThanOrEqual(1, $epoch);
+
+        $html = $this->get('/stamp202611')->getContent();
+
+        foreach ([
+            "var EPOCH     = {$epoch};",
+            "var EPOCH_KEY = 'ar-reset-epoch-202611';",
+            // 同一世代では再実行しない（冪等）
+            'if (stored !== null && String(stored) === String(EPOCH)) return;',
+            // 'ar-' 始まりかつ '202611' を含むキーだけ消す（202610 以前は保持）
+            "if (k.indexOf('ar-') !== 0 || k.indexOf('202611') === -1) continue;",
+            // fingerprint の元（userId）は IndexedDB と Cookie からも消す
+            "var IDB_NAME  = 'ARStampRallyDB202611';",
+            'indexedDB.deleteDatabase(IDB_NAME);',
+            "var UID_COOKIE = 'ar_user_id_202611';",
+            "document.cookie = UID_COOKIE + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';",
+            // SW 側の既存ハンドラでキャッシュだけ消す（SW 自体は unregister しない）
+            "worker.postMessage({ type: 'CLEAR_CACHES' });",
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, '不足する要素: ' . $needle);
+        }
+
+        $resetAt  = strpos($html, "var EPOCH_KEY = 'ar-reset-epoch-202611';");
+        $swRegAt  = strpos($html, 'Service Worker 登録（202611 専用');
+        $stampsAt = strpos($html, 'LocalStorage操作');
+
+        $this->assertNotFalse($resetAt);
+        $this->assertNotFalse($swRegAt);
+        $this->assertNotFalse($stampsAt);
+        // head（SW 登録より前）で走り、body のスタンプ管理 JS より前に localStorage を空にしている
+        $this->assertLessThan($swRegAt, $resetAt);
+        $this->assertLessThan($stampsAt, $resetAt);
+    }
+
+    /**
+     * サーバー側リセットコマンド（FR-65）: --force 無しは失敗、--dry-run は削除しない、
+     * 本実行は収集・検出・応募を全消去し、同じ fingerprint で再収集できる。
+     */
+    public function test_reset_command_clears_scans_and_voucher_applications(): void
+    {
+        $this->seedScans('fp-reset-1', 12);
+        $this->seedDetections('fp-reset-1', 3);
+        $this->seedLegacyApplication('fp-reset-1', 'reset@example.com', 12, 1);
+
+        // --force 無しは実行しない（本番での誤削除を防ぐ）
+        $this->artisan('stamp202611:reset')->assertExitCode(1);
+        $this->assertDatabaseCount('marker_scans', 15);
+        $this->assertDatabaseCount('stamp202611_voucher_applications', 1);
+
+        // --dry-run は件数表示のみ（削除しない）。世代番号は dry-run でも表示されるため、
+        // 何も消さずに .env / config:clear / OPcache の反映を確認できる（test-data-guide.md §11.2 / §11.4）
+        $this->artisan('stamp202611:reset', ['--dry-run' => true])
+            ->expectsOutputToContain('現在の AR202611_RESET_EPOCH = ')
+            ->assertExitCode(0);
+        $this->assertDatabaseCount('marker_scans', 15);
+        $this->assertDatabaseCount('stamp202611_voucher_applications', 1);
+
+        // 本実行: 収集 12 種・検出 3 種・応募 1 件を消去する
+        $this->artisan('stamp202611:reset', ['--force' => true])->assertExitCode(0);
+        $this->assertDatabaseCount('marker_scans', 0);
+        $this->assertDatabaseCount('stamp202611_voucher_applications', 0);
+
+        // 消去後は同じ fingerprint で再収集できる（fingerprint / email の UNIQUE で弾かれない）
+        $this->seedScans('fp-reset-1', 3);
+        $this->seedLegacyApplication('fp-reset-1', 'reset@example.com', 3, 1);
+        $this->assertDatabaseCount('marker_scans', 3);
+        $this->assertDatabaseCount('stamp202611_voucher_applications', 1);
+    }
 }
